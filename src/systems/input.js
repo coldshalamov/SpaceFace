@@ -1424,6 +1424,9 @@ export const input = {
     this.state = null;
     this.bus = null;
     this.helpers = null;
+    if (this.gamepad && typeof this.gamepad.destroy === 'function') {
+      try { this.gamepad.destroy(); } catch (_) {}
+    }
     this.gamepad = null;
     this.touch = null;
     this._canvas = null;

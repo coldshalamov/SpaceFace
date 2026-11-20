@@ -887,6 +887,7 @@ export function sampleGamepadFrame(captureMode = false) {
 export function createGamepad(ctx, { connectionEvents = true, laneHaptics = false } = {}) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
+  const unsubs = [];
 
   // PQ-164.03: latch the strongest recent slam from the physics authority. The pulse decays on sim
   // ticks (never wall time) so the haptic is deterministic and replay-safe. Both impact receipts
@@ -981,27 +982,27 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   };
   const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
   if (!laneHaptics && bus && typeof bus.on === 'function') {
-    bus.on('physics:impact', onImpact, { presentation: true });
-    bus.on('combat:collisionConsequence', onImpact);
-    bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
-    bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut'));
-    bus.on('tether:releaseRated', (p) => {
+    unsubs.push(bus.on('physics:impact', onImpact, { presentation: true }));
+    unsubs.push(bus.on('combat:collisionConsequence', onImpact));
+    unsubs.push(bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched')));
+    unsubs.push(bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut')));
+    unsubs.push(bus.on('tether:releaseRated', (p) => {
       startPulse(HAPTIC_RELEASE_PULSES[(p && p.classification) || 'messy']
         || HAPTIC_RELEASE_PULSES.messy, 'tether:releaseRated');
-    });
-    bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught'));
-    bus.on('charge:detonated', (p) => {
+    }));
+    unsubs.push(bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught')));
+    unsubs.push(bus.on('charge:detonated', (p) => {
       if (p && CHARGE_PLAYER_TRIGGERS.has(p.trigger)) {
         startPulse(HAPTIC_VERB_PULSES['charge:detonated'], 'charge:detonated');
       }
-    });
-    bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged'));
+    }));
+    unsubs.push(bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged')));
     // FB-009: the cut-BY-an-NPC edge is the player's own line dying under them; the whip snap
     // is the player's own stored release. Both pulse through the same one-live-pulse gate.
-    bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
-    bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
-    bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
-    bus.on('gyre:snagged', (payload) => {
+    unsubs.push(bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut')));
+    unsubs.push(bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap')));
+    unsubs.push(bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn')));
+    unsubs.push(bus.on('gyre:snagged', (payload) => {
       // The grip beat grades by cored mass like the shake and voice do — a 6 t
       // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
       // shake's realistic-mass band (2400 is for katamaris, not cores).
@@ -1010,8 +1011,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
       const base = HAPTIC_VERB_PULSES['gyre:snagged'];
       startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
-    });
-    bus.on('gyre:windup', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:windup', (payload) => {
       // The coil draw grades by payload like the launch it precedes (ballMass /
       // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
       // heavier, matching the bigger pull-back the sim applies.
@@ -1023,8 +1024,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const w = payload && Number.isFinite(payload.windW01) ? 0.4 + 0.6 * payload.windW01 : 1;
       const base = HAPTIC_VERB_PULSES['gyre:windup'];
       startPulse({ strong: (base.strong + 0.3 * t) * w, weak: (base.weak + 0.15 * t) * w, ms: base.ms + 50 * t }, 'gyre:windup');
-    });
-    bus.on('gyre:thrown', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:thrown', (payload) => {
       // The throw crack grades by payload like snagged/windup — but on MASS, not
       // speed (a capped moon throws slower; speed-lerping would invert intent).
       // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
@@ -1038,31 +1039,31 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // Forced admission replaces the in-flight windup pulse like the audio
       // twin's own layer cut (same class as gyre:launched's gap fix).
       startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown', true);
-    });
-    bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
-    bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
-    bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
-    bus.on('gyre:caught', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full')));
+    unsubs.push(bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow')));
+    unsubs.push(bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave')));
+    unsubs.push(bus.on('gyre:caught', (payload) => {
       // The first fill grades by the meal's heft like snagged/absorbTick — a
       // pebble's net-fill whispers, a 200 t wreck entering lands on the hands.
       // /200 matches the snag band (basin meals are pre-katamari mass).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
       const base = HAPTIC_VERB_PULSES['gyre:caught'];
       startPulse({ strong: base.strong + 0.15 * t, weak: base.weak + 0.1 * t, ms: base.ms + 20 * t }, 'gyre:caught');
-    });
+    }));
     // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
     // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
     const worldFeelBook = createWorldFeelBook(bus);
     for (const eventName of WORLD_FEEL_SEAM_IDS) {
-      bus.on(eventName, (payload) => {
+      unsubs.push(bus.on(eventName, (payload) => {
         const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
         if (!worldFeelRelevant(state, eventName, snap)) return;
         if (!admitWorldFeelSeam(worldFeelBook, eventName, snap, worldFeelTick(state))) return;
         const spec = worldFeelHaptic(eventName, snap);
         if (spec) startPulse(spec, eventName);
-      });
+      }));
     }
-    bus.on('gyre:absorbTick', (payload) => {
+    unsubs.push(bus.on('gyre:absorbTick', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
       // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
       // The tick is sim-rate-gated (shares absorbCueMinGapS): a dense feed reads as
@@ -1070,8 +1071,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 80);
       const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
       startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbTick');
-    });
-    bus.on('gyre:dropped', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:dropped', (payload) => {
       // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
       // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
       // full thud; an empty beam closing is a soft flick — audio already splits those voices.
@@ -1085,42 +1086,42 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // same glassier voice + snap close it already wears, same pulse in the hands.
       if (payload && (payload.reason === 'strained' || payload.reason === 'core_lost')) spec = 'gyre:torn';
       startPulse(HAPTIC_VERB_PULSES[spec], spec);
-    });
-    bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
+    }));
+    unsubs.push(bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained')));
     // Player beats: a dash, a hit taken, a kill scored, a base dropped. Every payload
     // is world-scoped, so the gate is the player's id — NPC events stay silent. The
     // id must exist first: with no player spawned, an id-less payload (a wave-booked
     // entity:killed carries no killerId) would read `undefined === undefined` true.
-    bus.on('ship:dash', (p) => {
+    unsubs.push(bus.on('ship:dash', (p) => {
       if (state && state.playerId != null && p && p.shipId === state.playerId) startPulse(HAPTIC_VERB_PULSES['ship:dash'], 'ship:dash');
-    });
-    bus.on('projectile:hit', (p) => {
+    }));
+    unsubs.push(bus.on('projectile:hit', (p) => {
       if (state && state.playerId != null && p && p.targetId === state.playerId) startPulse(HAPTIC_VERB_PULSES['projectile:hit'], 'projectile:hit');
-    });
-    bus.on('entity:killed', (p) => {
+    }));
+    unsubs.push(bus.on('entity:killed', (p) => {
       if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['entity:killed'], 'entity:killed');
-    });
-    bus.on('combat:baseDestroyed', (p) => {
+    }));
+    unsubs.push(bus.on('combat:baseDestroyed', (p) => {
       if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
-    });
+    }));
     // RC-FELT: the player's own ACCEPTED attacks pulse by weapon family. `combat:damage`
     // fires per settled packet (never combat:fire — a trigger pull is not a hit felt).
     // The callback only queues; admission happens in _stepHaptics so a same-tick kill
     // keeps the heavier kill pulse. First qualifying impact per tick wins — a bullet
     // stream stays one tap, not a backlog.
-    bus.on('combat:damage', (p) => {
+    unsubs.push(bus.on('combat:damage', (p) => {
       if (!hapticsAcceptingFeedback()) return;
       const spec = weaponImpactHaptic(p, state && state.playerId);
       if (!spec) return;
       const t = currentTick();
       if (pendingFamily && pendingFamily.queuedTick === t) return;
       pendingFamily = { ...spec, queuedTick: t };
-    });
+    }));
     // The authoritative big-moment edge — bulletTime's detector already owns consequence,
     // visibility, cooldown and per-minute suppression; the pad consumes its verdict and
     // never re-detects. `moment:amended` (a rating upgrade inside a live episode) must not
     // replay the pulse, and one rootId queues at most once.
-    bus.on('moment:holyShit', (p) => {
+    unsubs.push(bus.on('moment:holyShit', (p) => {
       if (!hapticsAcceptingFeedback()) return;
       const pid = state && state.playerId;
       if (pid == null || !p || p.actorId !== pid) return;
@@ -1135,11 +1136,11 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       }
       momentRoots.set(rootId, t);
       pendingMoment = { rootId, queuedTick: t };
-    });
+    }));
     // Queued feedback never crosses a restore/run boundary — a pulse queued before the
     // load describes a world that no longer exists.
     for (const resetEvent of ['save:restoring', 'game:newGame', 'run:started']) {
-      bus.on(resetEvent, clearPendingFeedback);
+      unsubs.push(bus.on(resetEvent, clearPendingFeedback));
     }
   }
 
@@ -1711,6 +1712,11 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       lastHapticTick = -1;
       this.lastButton = null;
       this._wasActive = false;
+    },
+
+    destroy() {
+      for (const off of unsubs) if (typeof off === 'function') off();
+      unsubs.length = 0;
     },
   };
 

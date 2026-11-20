@@ -24,6 +24,7 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { BINDINGS, getPromptDevice } from '../ui/bindings.js';
 import { attentionAdmits } from '../ui/attentionGlass.js';
 import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
@@ -33,6 +34,8 @@ import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { CONTRACT_47A_B0_TAG } from './missionShared.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { releaseAssistMode } from './masslineThrow.js';
+import { WHIP_IMPACT_SOLID } from './masslineImpacts.js';
 import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique, STRAIN_GLOW_DANGER_THRESHOLD } from './masslineControlLaw.js';
@@ -45,7 +48,10 @@ import { SHIPS } from '../data/ships.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { forEachDressingRow } from '../world/dressingTable.js';
+import { findSwarmArrival } from './swarmSafety.js';
 import { MASS_ANCHOR_RATIO } from './tetherGameplay.js';
 import {
   ONBOARDING_TRACKER_STEPS, RAID_WINGMAN_NAME, SWING_CLINIC_LINE, SWING_CLINIC_RUNG_ID,
@@ -158,7 +164,7 @@ import {
   shelfVerbEnabled,
   verbBindingLabel,
 } from '../onboarding/verbSpeech.js';
-import { isHostileToPlayer } from './scanner.js';
+import { isHostileToPlayer, scannerProfileForState } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
 import { isPlayerWanted } from './heat.js';
 import { lawfulPatrolOnGlass } from './lawSecurity.js';
@@ -179,8 +185,8 @@ const TAU = Math.PI * 2;
 
 // ── Save/load helpers (FB-114) ────────────────────────────────────────────────
 // Rail records are plain JSON-shaped data (beats, flags, actor id slots). Actor ids
-// are session-local and dead after any restore, so a persisted record always
-// serializes with empty id slots and restores them empty.
+// are session-local, so persisted records carry empty slots. A surviving physical
+// actor must rejoin the rail through its current restored life.
 function plainClone(v) {
   if (v == null || typeof v !== 'object') return v == null ? null : v;
   try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; }
@@ -271,6 +277,13 @@ const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall be
 const RAID_THROW_MIN_SPEED_WU = 25;
 const RAID_CLINIC_RAIDER_OFFSET_WU = 120;
 const RAID_CLINIC_ROCK_GAP_WU = 110;
+const RAID_ROCK_GAP_WU = 150;
+const RAID_ROCK_RADIUS_WU = 48;
+const RAID_ROCK_COLLIDER_RADIUS_WU = asteroidColliderRadius('ast_raid_throw_rock', RAID_ROCK_RADIUS_WU);
+const RAID_THROW_PRACTICE_RANGE_WU = 350;
+const RAID_WITHDRAW_RADIUS_WU = 700;
+const RAID_WITHDRAW_SPEED_WU = 12;
+const RAID_SWING_ROOM_WU = 72;
 const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
 // INF-062 — consecutive genuine latch denials before the one contextual hint.
 const LATCH_DENIAL_HINT_AFTER = 3;
@@ -292,9 +305,11 @@ const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this w
 // Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
 // law cutter stands witness. Taking it reports the theft through the real law owner entry
 // (lawSecurity.reportIncident → heat.applyIncidentReceipt), so the player EXPERIENCES the search
-// ring instead of reading a warning. Leaving it is a first-class choice: the tableau stands down
-// after CLAIMED_WINDOW_S and the rail moves on — no wall.
+// ring instead of reading a warning. Leaving the area advances the rail. The authored
+// timeout also keeps the route moving for a pilot who stays nearby.
 const CLAIMED_WINDOW_S = 120;
+const CLAIMED_OFFER_READ_S = 4;
+const CLAIMED_LEAVE_RADIUS_WU = 480;
 const CLAIMED_PICKUP_COUNT = 3;
 const CLAIMED_WITNESS_OFFSET_WU = 380; // inside LAW_INCIDENT_WITNESS_RADIUS (450)
 const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long before DONE resolves
@@ -325,15 +340,15 @@ export const BEATS = [
   },
   { // THE RAID — enemy becomes a projectile: latch, swing, release into the rock.
     key: 'raid',
-    line: 'Latch the raider. Swing him into the rock.',
+    line: 'Latch the raider or fly away.',
     followups: [
-      { on: 'raid:latched', line: 'Build speed. Let go at the big rock.' },
+      { on: 'raid:latched', line: 'Build speed. Aim at the rock. Use the lit throw cue.' },
     ],
     done: 'raidKill',
   },
   { // THE CONSEQUENCE — claimed salvage, a law witness, a real search ring to outrun.
     key: 'claimed',
-    line: 'Claimed salvage. Take it anyway, or leave it.',
+    line: 'Helios claims this cargo. Fly through it to steal it, or fly away.',
     followups: [
       { on: 'claimed:taken', line: "You're marked. Outrun the search ring." },
     ],
@@ -414,6 +429,7 @@ const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
   // Beat lines, keyed by beat.key; followups, keyed by the firedFollowups id (beat.key + ':' + fu.on).
   // A string value appends that action's key; a function composes the whole line (SEED-ST-05).
   thrust: 'forward',            // Thrust until speed passes forty.
+  tether: 'tether',             // Latch the loose rock.
   'tether:target:acquired': 'tether', // Latch it. Massline.
   // SEED-ST-05 — "Hold tether to reel" taught only the modifier, so a stranger holding just the
   // tether key reels nothing. The first-hold line names the whole chord: the hold that gives line
@@ -422,13 +438,38 @@ const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
     const hold = verbBindingLabel(state, 'tether');
     if (!hold) return null;
     const reelIn = verbBindingLabel(state, 'forward');
-    const reelOut = verbBindingLabel(state, 'brake');
+    const reelOut = verbBindingLabel(state, 'reverse', undefined, { keyboardFallback: false });
     return `Winch in. Hold ${hold} — ${reelIn || 'forward'} reels in${reelOut ? `, ${reelOut} pays out` : ''}.`;
   },
+  raid: (state) => {
+    const latch = verbBindingLabel(state, 'tether');
+    return latch ? `Latch the raider (${latch}) or fly away.` : null;
+  },
+  'raid:raid:latched': (state, line) => {
+    const device = state?.input?.promptDevice || getPromptDevice();
+    let action = MOUSE_ACTION_LABELS.tether;
+    if (device === 'touch') action = 'Flick';
+    else if (device === 'gamepad') action = verbBindingLabel(state, 'tether', device, { keyboardFallback: false });
+    return action ? `${line} (${action})` : line;
+  },
   burst: 'fire',                // Fire a short burst into the raider.
-  seam: 'scanPulse',            // Pulse the scanner.
-  'seam:scan:hit': 'mine',      // Beam the bright seams.
+  seam: (state, line) => seamControlLine(state, line, false),
+  'seam:scan:hit': (state, line) => seamControlLine(state, line, true),
 });
+
+function seamControlLine(state, line, mining) {
+  const device = state?.input?.promptDevice || getPromptDevice();
+  if (device === 'touch') return mining ? `${line} Hold Mine.` : `${line} Tap Powers → Flight → Scan.`;
+
+  const options = { keyboardFallback: false };
+  const direct = !mining || device === 'gamepad'
+    ? verbBindingLabel(state, mining ? 'mine' : 'scanPulse', device, options)
+    : '';
+  if (direct) return `${line} (${direct})`;
+
+  const wheel = verbBindingLabel(state, 'contextWheel', device, options);
+  return wheel ? `${line} Hold ${wheel} and choose ${mining ? 'Mine Beam' : 'Scan'}.` : line;
+}
 
 /** The beat line with its taught control's live key appended, or the line unchanged. */
 export function taughtVerbLine(state, id, line) {
@@ -506,7 +547,7 @@ export const ONBOARDING_OBJECTIVE_MARKER = Object.freeze({
 export function buildOnboardingObjectiveWaypoint(beat, target) {
   if (!target || !target.pos) return null;
   const beatKey = String(beat && beat.key || 'objective').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
-  return {
+  const waypoint = {
     onboarding: true,
     pos: { x: target.pos.x, z: target.pos.z },
     label: target.label || 'Beacon',
@@ -515,6 +556,12 @@ export function buildOnboardingObjectiveWaypoint(beat, target) {
     markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
     mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
   };
+  const rock = beatKey === 'seam' ? target.entity : null;
+  if (rock?.id != null && rock.occupantGeneration != null) {
+    waypoint.presentationEntityId = rock.id;
+    waypoint.presentationEntityGeneration = rock.occupantGeneration;
+  }
+  return waypoint;
 }
 
 function hasPlayerSelectedNavWaypoint(state) {
@@ -547,15 +594,18 @@ function tetherLessonIsLocal(state, owner) {
   return !home || !current || home === current;
 }
 
-function hasTrackedActiveMission(state) {
+function trackedActiveMission(state) {
   const id = state?.ui?.trackedMissionId;
-  return id != null && (state?.missions?.active || []).some((m) => m?.id === id && m.status === 'active');
+  return id == null ? null : (state?.missions?.active || []).find((m) => m?.id === id && m.status === 'active');
 }
 
 export const onboarding = {
   name: 'onboarding',
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
@@ -607,15 +657,15 @@ export const onboarding = {
     this._rangePromptEl = null;
 
     const bus = this.bus;
-    bus.on('orbital-gallery:started', () => this._teardown());
-    bus.on('kinetic-league:started', () => this._teardown());
+    this._unsubs.push(bus.on('orbital-gallery:started', () => this._teardown()));
+    this._unsubs.push(bus.on('kinetic-league:started', () => this._teardown()));
     // The first-run splash is the sole opening line. B0 waits until it is physically removed.
-    bus.on('ui:firstRunSplash:active', () => { this._firstRunSplashPending = true; });
-    bus.on('ui:firstRunSplash:done', () => {
+    this._unsubs.push(bus.on('ui:firstRunSplash:active', () => { this._firstRunSplashPending = true; }));
+    this._unsubs.push(bus.on('ui:firstRunSplash:done', () => {
       this._firstRunSplashPending = false;
       try { this._tryAdvanceBeat(); } catch (_) { /* never let onboarding break the bus */ }
-    });
-    bus.on('game:scenePrepared', (p) => {
+    }));
+    this._unsubs.push(bus.on('game:scenePrepared', (p) => {
       const state = this.state;
       const player = state && state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(state.playerId)
@@ -634,16 +684,16 @@ export const onboarding = {
           this.prepareStartingScene(p || {});
         } catch (_) {}
       });
-    });
+    }));
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
     // The payload names a scenario slice for harness boots (47a sim, lab scenarios); those own
     // their cast, so the rescue opening only stages on the default route (no scenario payload).
-    bus.on('game:started', (p) => this._begin(p || {}));
-    bus.on('game:newGame', (p) => { this._pendingFlownBefore = !!(p && p.flownBefore === true); });
+    this._unsubs.push(bus.on('game:started', (p) => this._begin(p || {})));
+    this._unsubs.push(bus.on('game:newGame', (p) => { this._pendingFlownBefore = !!(p && p.flownBefore === true); }));
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
-    bus.on('save:loaded', (p) => {
+    this._unsubs.push(bus.on('save:loaded', (p) => {
       this._pendingFlownBefore = false;
       this._teardown();
       this._dockControlInRange = false;
@@ -658,17 +708,17 @@ export const onboarding = {
       if (this._resumeSavedRail()) return;
       this._beginStoryMode();
       this._speakContinueRecap(p);
-    });
+    }));
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', (p) => {
+    this._unsubs.push(bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
       this._onBeatEvent('dock:docked', p);
       // A berth arrival after the rail still earns the rack pointer — during the rail the B5
       // line owns this same floor, so the sale/payout triggers below carry it there instead.
       if (!this._tutorialRailOwnsVoice()) this._maybeSpeakFitOffer(p && p.stationId);
-    });
-    bus.on('economy:tradeCompleted', (p) => {
+    }));
+    this._unsubs.push(bus.on('economy:tradeCompleted', (p) => {
       if (!p || p.side !== 'sell') return;
       // The earned rack pointer outranks the generic board pointer: a sale that closes an
       // offer's price gap names the exact module it buys. _maybeSpeakFitOffer spends the
@@ -676,106 +726,106 @@ export const onboarding = {
       // sale whose contract payout already spoke the pointer via economy:grantCredits.
       this._maybeSpeakFitOffer(p.stationId);
       this._onBeatEvent('sold', p);
-    });
-    bus.on('economy:grantCredits', () => this._maybeSpeakFitOffer());
-    bus.on('mining:start', (p) => this._onBeatEvent('mining:start', p || {}));
-    bus.on('mining:yield', (p) => this._recordTrainingOreYield(p || {}));
-    bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
-    bus.on('mission:accepted', (p) => this._onMissionAccepted(p || {}));
-    bus.on('mission:completed', (p) => this._onMissionCompleted(p || {}));
+    }));
+    this._unsubs.push(bus.on('economy:grantCredits', () => this._maybeSpeakFitOffer()));
+    this._unsubs.push(bus.on('mining:start', (p) => this._onBeatEvent('mining:start', p || {})));
+    this._unsubs.push(bus.on('mining:yield', (p) => this._recordTrainingOreYield(p || {})));
+    this._unsubs.push(bus.on('pickup:collected', (p) => this._recordOreCollected(p || {})));
+    this._unsubs.push(bus.on('mission:accepted', (p) => this._onMissionAccepted(p || {})));
+    this._unsubs.push(bus.on('mission:completed', (p) => this._onMissionCompleted(p || {})));
 
     // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
-    bus.on('massline:throw', (p) => { const o = this.state && this.state.onboarding; if (o) o.firstThrowSeen = true; this._onFirstThrow(p || {}); });
-    bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {}));
+    this._unsubs.push(bus.on('massline:throw', (p) => { const o = this.state && this.state.onboarding; if (o) o.firstThrowSeen = true; this._onFirstThrow(p || {}); }));
+    this._unsubs.push(bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {})));
     // Production winch path (attachments.reel) emits tether:reel {before,after}. Gate the B1 cut
     // follow-up on rest length <= TETHER_REEL_MAX_WU so loose pay-out/early ticks do not teach cut.
-    bus.on('tether:reel', (p) => this._onTetherReel(p || {}));
-    bus.on('tether:released', (p) => this._onBeatEvent('tether:released', p || {}));
-    bus.on('tether:broke', (p) => this._onTetherBroken(p || {}));
-    bus.on('tether:nearBreak', (p) => this._onBeatEvent('tether:nearBreak', p || {}));
-    bus.on('scan:completed', (p) => this._onTrainingScanComplete(p || {}));
-    bus.on('flybyFocus:start', (p) => {
+    this._unsubs.push(bus.on('tether:reel', (p) => this._onTetherReel(p || {})));
+    this._unsubs.push(bus.on('tether:released', (p) => this._onBeatEvent('tether:released', p || {})));
+    this._unsubs.push(bus.on('tether:broke', (p) => this._onTetherBroken(p || {})));
+    this._unsubs.push(bus.on('tether:nearBreak', (p) => this._onBeatEvent('tether:nearBreak', p || {})));
+    this._unsubs.push(bus.on('scan:completed', (p) => this._onTrainingScanComplete(p || {})));
+    this._unsubs.push(bus.on('flybyFocus:start', (p) => {
       if (p && p.targetId === this._trainerId) this._onBeatEvent('flybyFocus:start', p);
-    });
-    bus.on('combat:fire', (p) => this._onTrainingFire(p || {}));
+    }));
+    this._unsubs.push(bus.on('combat:fire', (p) => this._onTrainingFire(p || {})));
 
     // ── Rescue-opening rail (PQ-163.00) ─────────────────────────────────────────────────
     // The three rescue verbs ride the production event stream next to the drill handlers.
     // Every handler below no-ops unless its rescue beat is current, so the drill, the
     // 47-A slice harness, and the B1 audit scripts observe zero behavior change.
-    bus.on('tether:latched', (p) => this._onRescueLatched(p || {}));
-    bus.on('tether:reel', (p) => this._onRescueReel(p || {}));
-    bus.on('tether:released', (p) => this._onRescueReleased(p || {}));
-    bus.on('tether:cut', (p) => this._onRescueCut(p || {}));
-    bus.on('tether:broke', (p) => this._onRescueBroke(p || {}));
-    bus.on('tether:whipImpact', (p) => this._onRescueWhipImpact(p || {}));
-    bus.on('combat:shove', (p) => this._onRescueShoveEvent(p || {}));
-    bus.on('combat:fire', (p) => this._onRescueFire(p || {}));
-    bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
-    bus.on('player:death', () => this._onRescuePlayerDeath());
-    bus.on('rescue:started', () => this._offerStoreSentence());
+    this._unsubs.push(bus.on('tether:latched', (p) => this._onRescueLatched(p || {})));
+    this._unsubs.push(bus.on('tether:reel', (p) => this._onRescueReel(p || {})));
+    this._unsubs.push(bus.on('tether:released', (p) => this._onRescueReleased(p || {})));
+    this._unsubs.push(bus.on('tether:cut', (p) => this._onRescueCut(p || {})));
+    this._unsubs.push(bus.on('tether:broke', (p) => this._onRescueBroke(p || {})));
+    this._unsubs.push(bus.on('tether:whipImpact', (p) => this._onRescueWhipImpact(p || {})));
+    this._unsubs.push(bus.on('combat:shove', (p) => this._onRescueShoveEvent(p || {})));
+    this._unsubs.push(bus.on('combat:fire', (p) => this._onRescueFire(p || {})));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._onRescueKilled(p || {})));
+    this._unsubs.push(bus.on('player:death', () => this._onRescuePlayerDeath()));
+    this._unsubs.push(bus.on('rescue:started', () => this._offerStoreSentence()));
     // The berth surface announces itself live: 'station' atop the screen stack is the
     // admitted dock surface. The paused sim produces no ticks to re-offer on, so the
     // offer is re-emitted on this forwarded signal — the round trip lands while the
     // receipt lane can still draw it.
-    bus.on('ui:screenTop', (p = {}) => {
+    this._unsubs.push(bus.on('ui:screenTop', (p = {}) => {
       if (p.id === 'station') this._offerStoreSentence();
-    });
+    }));
     // The admitted dock surface reports the sentence painted; the shown stamp lands here,
     // never at offer time, so a line nobody could draw is never marked shown.
-    bus.on('firsthour:sentencePresented', () => this._onStoreSentencePresented());
+    this._unsubs.push(bus.on('firsthour:sentencePresented', () => this._onStoreSentencePresented()));
 
     // TEACH-04 — fitting the transverse snare head speaks its deploy verb once, naming the
     // player's own bound key. The head does nothing until it is asked to lay the line, so the
     // lesson belongs at the fit, not before it and not at the first catch.
-    bus.on('module:equipped', (p) => {
+    this._unsubs.push(bus.on('module:equipped', (p) => {
       if (!p || p.defId !== 'mod_transverse_snare_m') return;
       if (!massline2Flag('masslineHeadTransverseSnare')) return;
       const key = resolveActionLabel(this.state, 'tether', { empty: 'LATCH' });
       this._showHint('masslineSnareHead',
         `Snare head fitted — ${key} lays the line across their path.`,
         p);
-    });
+    }));
     // Fitting the Repulsion Trap adds a verb beside the sticky plate instead of replacing it:
     // one line, once per profile, naming both verbs on the player's own bound keys.
-    bus.on('module:equipped', (p) => {
+    this._unsubs.push(bus.on('module:equipped', (p) => {
       if (!p || !MODULES.find((m) => m.id === p.defId)?.mods?.repulsionTrap) return;
       const throwKey = resolveActionLabel(this.state, 'chargeThrow', { empty: 'THROW' });
       const brakeKey = resolveActionLabel(this.state, 'brake', { empty: 'BRAKE' });
       this._showHint('repulsionTrapVerbs',
         `Repulsion Trap fitted — ${throwKey} sticks a plate; ${brakeKey} + ${throwKey} drops the trap.`,
         p);
-    });
+    }));
     // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
     // profile, through the same first-use voice.
-    bus.on('dock:undocked', () => {
+    this._unsubs.push(bus.on('dock:undocked', () => {
       this._onUndockedFromChoice();
       this._maybeSpeakFitFelt();
-    });
+    }));
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
-    bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
-    bus.on('range:opened', (p) => this._onRangeOpened(p || {}));
-    bus.on('ship:boostStart', (p) => this._onMissingThreeBoostStart(p || {}));
-    bus.on('fields:deployed', (p) => this._onMissingThreeFieldDeploy(p || {}));
-    bus.on('fields:coneToggled', (p) => this._onMissingThreeCone(p || {}));
+    this._unsubs.push(bus.on('tether:latched', (p) => this._onLatchPointer(p || {})));
+    this._unsubs.push(bus.on('range:opened', (p) => this._onRangeOpened(p || {})));
+    this._unsubs.push(bus.on('ship:boostStart', (p) => this._onMissingThreeBoostStart(p || {})));
+    this._unsubs.push(bus.on('fields:deployed', (p) => this._onMissingThreeFieldDeploy(p || {})));
+    this._unsubs.push(bus.on('fields:coneToggled', (p) => this._onMissingThreeCone(p || {})));
 
     // ── Raid + claimed tableau (thesis-first route, 2026-09-18) ─────────────────────────
     // The momentum kill reads the production whip/tumble event stream; the wanted beat rides
     // the real heat owner (lawSecurity.reportIncident → heat.applyIncidentReceipt → heat:changed).
-    bus.on('tether:latched', (p) => this._onRaidLatched(p || {}));
-    bus.on('tether:released', (p) => this._onRaidReleased(p || {}));
-    bus.on('tether:cut', (p) => this._onRaidReleased(p || {}));
-    bus.on('tether:whipImpact', (p) => this._onRaidWhipImpact(p || {}));
-    bus.on('entity:killed', (p) => this._onRaidKilled(p || {}));
-    bus.on('player:death', () => this._onRaidPlayerDeath());
-    bus.on('pickup:collected', (p) => this._onClaimedPickup(p || {}));
-    bus.on('heat:changed', (p) => this._onClaimedHeat(p || {}));
+    this._unsubs.push(bus.on('tether:latched', (p) => this._onRaidLatched(p || {})));
+    this._unsubs.push(bus.on('tether:released', (p) => this._onRaidReleased(p || {})));
+    this._unsubs.push(bus.on('tether:cut', (p) => this._onRaidReleased(p || {})));
+    this._unsubs.push(bus.on('tether:whipImpact', (p) => this._onRaidWhipImpact(p || {})));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._onRaidKilled(p || {})));
+    this._unsubs.push(bus.on('player:death', () => this._onRaidPlayerDeath()));
+    this._unsubs.push(bus.on('pickup:collected', (p) => this._onClaimedPickup(p || {})));
+    this._unsubs.push(bus.on('heat:changed', (p) => this._onClaimedHeat(p || {})));
     // TEACH-10 — the first wanted escalation teaches the stand-down path (own listener;
     // the claimed-beat heat listener above is untouched).
-    bus.on('heat:changed', (p) => this._onWantedStandDownLesson(p || {}));
-    bus.on('tether:released', (p) => this._onSwingRelease(p || {}));
-    bus.on('tether:cut', (p) => this._onSwingRelease(p || {}));
+    this._unsubs.push(bus.on('heat:changed', (p) => this._onWantedStandDownLesson(p || {})));
+    this._unsubs.push(bus.on('tether:released', (p) => this._onSwingRelease(p || {})));
+    this._unsubs.push(bus.on('tether:cut', (p) => this._onSwingRelease(p || {})));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -783,7 +833,7 @@ export const onboarding = {
     // skipped the staged tutorial.
 
     // First enemy encounter: triggered when the player first takes damage from a hostile.
-    bus.on('combat:damage', (p) => {
+    this._unsubs.push(bus.on('combat:damage', (p) => {
       if (!p) return;
       const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
       if (!hitPlayer) return;
@@ -791,22 +841,22 @@ export const onboarding = {
         ...p,
         entityId: p.attackerId != null ? p.attackerId : p.sourceId,
       });
-    });
+    }));
 
     // First shield break: triggered when shields drop to zero.
-    bus.on('combat:damage', (p) => {
+    this._unsubs.push(bus.on('combat:damage', (p) => {
       if (!p || !p.isPlayer || !p.brokeShield) return;
       this._showHint('firstShieldDrop', firstUseLine('firstShieldDrop'), {
         ...p,
         entityId: p.attackerId != null ? p.attackerId : p.sourceId,
       });
-    });
+    }));
 
     // First hull bite: the shield regrows in front of the player; the hull never does.
     // The first hit that reaches plate teaches the survival rule once — plate stays hurt
     // until a repair berth welds it — so the hull bar is never silently persistent.
     // A killing hit stays quiet: the defeat screen owns that moment, lesson unspent.
-    bus.on('combat:damage', (p) => {
+    this._unsubs.push(bus.on('combat:damage', (p) => {
       if (!p || !(Number(p.hullDamage) > 0)) return;
       const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
       if (!hitPlayer) return;
@@ -815,23 +865,23 @@ export const onboarding = {
         ...p,
         entityId: p.attackerId != null ? p.attackerId : p.sourceId,
       });
-    });
+    }));
 
     // TEACH-13 — the first inbound lock with a decoy aboard names the bound key
     // once. An empty magazine stays silent. The MISSILE LOCK warning is not this line.
-    bus.on('combat:lockChanged', (p) => this._onInboundMissileLock(p || {}));
+    this._unsubs.push(bus.on('combat:lockChanged', (p) => this._onInboundMissileLock(p || {})));
 
     // First station approach: enriches the existing dock prompt with what stations offer.
-    bus.on('dock:range', (payload) => {
+    this._unsubs.push(bus.on('dock:range', (payload) => {
       this._dockControlInRange = !!(payload && payload.inRange);
       if (!payload || !payload.inRange) return;
       this._showHint('firstStation', firstUseLine('firstStation'), payload);
-    });
+    }));
 
     // First jump gate approach: teach the player how gates work. Holding the first trade run
     // upgrades the generic "Plot a jump." once — the tolls are part of the pay, so the gate
     // line quotes them and stamps firstGate so the generic line never follows.
-    bus.on('gate:range', (payload) => {
+    this._unsubs.push(bus.on('gate:range', (payload) => {
       this._gateControlInRange = !!(payload && payload.inRange);
       if (!payload || !payload.inRange) return;
       const run = this._firstTradeRun();
@@ -845,67 +895,65 @@ export const onboarding = {
         return;
       }
       this._showHint('firstGate', firstUseLine('firstGate'), payload);
-    });
+    }));
 
-    // X-04: landing in the contract's sector names the worklight lead-in once.
-    bus.on('jump:arrive', (p) => {
+    // Name the delivery berth on the outbound leg.
+    this._unsubs.push(bus.on('jump:arrive', (p) => {
       const run = this._firstTradeRun();
       if (!run || !p || p.sectorId !== run.destSectorId) return;
-      // Only the Helios leg reads this way — the Flare Rack lead-in is the out-run, not a
-      // return or a later Ceres entry. world.js stamps the departure sector on the payload
-      // (state.world keeps no previous-sector field).
       if (p.fromSectorId !== this._runOriginSectorId(run)) return;
-      this._showHint('firstGateArrive', 'Ceres. Follow the Flare Rack to the refinery.', {});
-    });
+      const destination = this._sectorById(run.destSectorId)?.stations?.find((station) => station.id === run.destStationId);
+      if (destination?.name) this._showHint('firstGateArrive', `Dock at ${destination.name} to deliver the sealed cargo.`, {});
+    }));
 
     // An add that fit emits cargo:changed and, when it also overflowed, cargo:full
     // in the same turn. The flag dies with that turn: an exact fill never emits
     // cargo:full, and the pickup listener below clears it before the next rock.
-    bus.on('cargo:changed', () => this._noteHoldGrew());
+    this._unsubs.push(bus.on('cargo:changed', () => this._noteHoldGrew()));
     // First cargo full still teaches the sale — unless the hold was already full
     // and this add took nothing. That refusal names the jettison key once (TEACH-11).
-    bus.on('cargo:full', (p) => this._onCargoFull(p || {}));
-    bus.on('pickup:collected', () => { this._holdGrewBeforeFull = false; });
+    this._unsubs.push(bus.on('cargo:full', (p) => this._onCargoFull(p || {})));
+    this._unsubs.push(bus.on('pickup:collected', () => { this._holdGrewBeforeFull = false; }));
 
     // X-01: the salvage loop pays but the first-hour player cannot see it — say it once each,
     // on the fill and on the cash-in. _showHint defers while the rail owns the voice, so a 344
     // kill inside the rail speaks on the next post-rail fill or dock.
-    bus.on('salvage:changed', (p) => {
+    this._unsubs.push(bus.on('salvage:changed', (p) => {
       if (p && p.cashIn) return;
       if ((p && p.used | 0) > 0) this._showHint('firstSalvageBay', firstUseLine('firstSalvageBay'), {});
-    });
-    bus.on('salvage:bayCashedIn', (p) => {
+    }));
+    this._unsubs.push(bus.on('salvage:bayCashedIn', (p) => {
       if ((p && p.credits | 0) > 0) this._showHint('firstSalvageCashIn', firstUseLine('firstSalvageCashIn'), {});
-    });
+    }));
 
     // X-07: the vent pays a named lesson once each — a clean cut teaches the release, and a
     // beam that cooked at the peg learns the banked-ore stop. Each is one-time per profile.
-    bus.on('mining:ventBonus', (p) => {
+    this._unsubs.push(bus.on('mining:ventBonus', (p) => {
       if (!p) return;
       if (p.clean === true) {
         this._showHint('miningCleanCut', 'Clean cut. Let go before the peg.', {});
       } else if ((p.peggedS || 0) >= 1) {
         this._showHint('miningPegged', 'Pegged beam stops banking. Let go in the amber.', {});
       }
-    });
+    }));
 
     // X-03: buying the named module retires the chip id; hints.fitOffer stays true.
-    bus.on('module:purchased', (p) => {
+    this._unsubs.push(bus.on('module:purchased', (p) => {
       if (p && p.defId && this.state.player.hints
         && this.state.player.hints.fitOfferDefId === p.defId) {
         delete this.state.player.hints.fitOfferDefId;
       }
-    });
+    }));
 
     // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
     // enters gets ONE line — the chart ends here, the rim is theirs to name. Fires on
     // world's firstVisit flag so return trips never re-teach; player.hints keeps it once-only.
-    bus.on('sector:enter', (p) => {
+    this._unsubs.push(bus.on('sector:enter', (p) => {
       if (!p || !p.firstVisit) return;
       const sector = p.sector;
       if (!sector || sector.charted !== false) return;
       this._showHint('firstFrontier', firstUseLine('firstFrontier'), p);
-    });
+    }));
 
     // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
     // The first-session rail covers flight + first dock/sell, but drill-mining, outfitting, the tech
@@ -920,51 +968,51 @@ export const onboarding = {
     // explanation. (The comment used to describe an 8-tab hub across the top; that layout is gone,
     // and the live copy in hudAttention.js already points at the rail and at Departure Check.) This fires on every first dock (not just
     // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
-    bus.on('dock:docked', (p) => {
+    this._unsubs.push(bus.on('dock:docked', (p) => {
       this._showHint('firstHub', firstUseLine('firstHub'), p);
-    });
+    }));
 
     // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
-    bus.on('drill:start', (p) => {
+    this._unsubs.push(bus.on('drill:start', (p) => {
       this._showHint('firstDrill', firstUseLine('firstDrill'), p);
-    });
+    }));
 
     // Outfitting: the first time the player equips OR buys a module at a station.
-    bus.on('ui:fitModule', (p) => {
+    this._unsubs.push(bus.on('ui:fitModule', (p) => {
       this._showHint('firstOutfit', firstUseLine('firstOutfit'), p);
-    });
-    bus.on('ui:buyModule', (p) => {
+    }));
+    this._unsubs.push(bus.on('ui:buyModule', (p) => {
       this._showHint('firstOutfit', firstUseLine('firstOutfit'), p);
-    });
+    }));
 
     // Tech tree: the first time the player researches a node.
-    bus.on('tech:researched', (p) => {
+    this._unsubs.push(bus.on('tech:researched', (p) => {
       this._showHint('firstTech', firstUseLine('firstTech'), p);
-    });
+    }));
 
     // Automation: the first time the player deploys a drone.
-    bus.on('asset:deployed', (p) => {
+    this._unsubs.push(bus.on('asset:deployed', (p) => {
       if (!p || p.kind !== 'drone') return;
       this._showHint('firstAutomation', firstUseLine('firstAutomation'), p);
-    });
+    }));
 
     // Claims/bases: the first time the player claims a body.
-    bus.on('claim:claimed', (p) => {
+    this._unsubs.push(bus.on('claim:claimed', (p) => {
       this._showHint('firstClaim', firstUseLine('firstClaim'), p);
-    });
+    }));
 
     // Crafting: the first time the player queues a craft job (refine/assemble/augment).
-    bus.on('craft:queueChanged', (p) => {
+    this._unsubs.push(bus.on('craft:queueChanged', (p) => {
       this._showHint('firstCraft', firstUseLine('firstCraft'), p);
-    });
+    }));
 
     // Bomb bay: the first time the player releases a drift bomb. NPC droppers do not
     // exist yet; the owner filter keeps their future drops from spending the lesson.
-    bus.on('bombs:dropped', (p) => {
+    this._unsubs.push(bus.on('bombs:dropped', (p) => {
       const playerId = this.state && this.state.playerId;
       if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
       this._showHint('firstBombDrop', firstUseLine('firstBombDrop'), p);
-    });
+    }));
 
     // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
     // flag-off sessions never see them). One-shot contextual hints for the three new verbs; the
@@ -974,29 +1022,29 @@ export const onboarding = {
     // the staged tether beat's own cut line), so it is gone. Instead, consecutive genuine
     // latch denials earn ONE contextual hint naming the block; any clean latch resets the
     // streak — success suppresses the pending lesson — and player.hints keeps it once-only.
-    bus.on('tether:latchDenied', (payload) => {
+    this._unsubs.push(bus.on('tether:latchDenied', (payload) => {
       if (!massline2Flag('throw')) return;
       this._latchDenialStreak = (this._latchDenialStreak || 0) + 1;
       if (this._latchDenialStreak < LATCH_DENIAL_HINT_AFTER) return;
       const line = latchDenialHintLine(payload && payload.reason);
       this._showHint('masslineLatchDenied', line, payload);
-    });
-    bus.on('tether:latched', () => {
+    }));
+    this._unsubs.push(bus.on('tether:latched', () => {
       this._latchDenialStreak = 0;
-    });
-    bus.on('tether:latched', (payload) => {
+    }));
+    this._unsubs.push(bus.on('tether:latched', (payload) => {
       if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
       const target = this.state.entities && this.state.entities.get(payload.targetId);
       if (!isHitchHintTarget(target)) return;
       this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), { ...payload, entityId: payload.targetId });
-    });
+    }));
     // SF-291 — the same rope, two careers. The fitting screen already grades the fit's tow
     // class and swing rating (shipCapabilities); these beats connect a MEASURED strain to that
     // number exactly once each: latching a movable load the drive cannot put under way, and
     // whipping a mass the same drive could never have towed. Each names the honest existing
     // fit that improves that specific difficulty; refusing it gates nothing — the physics
     // already worked, the line just says why it was hard.
-    bus.on('tether:latched', (payload) => {
+    this._unsubs.push(bus.on('tether:latched', (payload) => {
       if (!payload || payload.targetId == null) return;
       const target = this.state.entities && this.state.entities.get(payload.targetId);
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -1016,13 +1064,13 @@ export const onboarding = {
       this._showHint('masslineTowClass',
         'That load is past your drive\'s tow rating — it will haul, just slowly. A stronger drive raises the class.',
         { entityId: payload.targetId });
-    });
+    }));
     // TEACH-12 — the first latch on a far heavier body teaches the brace once per profile.
-    bus.on('tether:latched', (payload) => this._onTetherLatchedBrace(payload || {}));
+    this._unsubs.push(bus.on('tether:latched', (payload) => this._onTetherLatchedBrace(payload || {})));
     // TEACH-14 — the first swing that loads the rope toward its limit names the release window once per profile.
-    bus.on('tether:nearBreak', (payload) => this._teachReleaseWindow(payload || {}));
-    bus.on('tether:strain', (payload) => this._teachReleaseWindow({ ...payload, actorId: this.state.playerId }));
-    bus.on('tether:whipImpact', (payload) => {
+    this._unsubs.push(bus.on('tether:nearBreak', (payload) => this._teachReleaseWindow(payload || {})));
+    this._unsubs.push(bus.on('tether:strain', (payload) => this._teachReleaseWindow({ ...payload, actorId: this.state.playerId })));
+    this._unsubs.push(bus.on('tether:whipImpact', (payload) => {
       if (!massline2Flag('throw')) return;
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
       const towClass = towClassMassFor(player && player.data && player.data.derived);
@@ -1037,12 +1085,12 @@ export const onboarding = {
       this._showHint('masslineThrowClass',
         'You just threw a mass your drive cannot tow — a winch kit cinches the next swing faster.',
         payload);
-    });
-    bus.on('massline:selfSling', (p) => {
+    }));
+    this._unsubs.push(bus.on('massline:selfSling', (p) => {
       if (!massline2Flag('throw')) return;
       this._showHint('masslineSelfSling', firstUseLine('masslineSelfSling'), p);
-    });
-    bus.on('cargo:jettisoned', (p) => {
+    }));
+    this._unsubs.push(bus.on('cargo:jettisoned', (p) => {
       if (!massline2Flag('jettisonImpulse')) return;
       // TEACH-01 — 'Dump aft to push' is the drop-kick lesson; it must be earned at cruise
       // speed. A parked dump teaches nothing about reaction mass, so it cannot spend the
@@ -1059,26 +1107,26 @@ export const onboarding = {
       this._showHint('masslineJettisonImpulse', firstUseLine('masslineJettisonImpulse'), p);
       this._dropKickJustSpoke = !before
         && !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
-    });
-    bus.on('bulletTime:start', (p) => {
+    }));
+    this._unsubs.push(bus.on('bulletTime:start', (p) => {
       if (!massline2Flag('bulletTime')) return;
       this._showHint('masslineBulletTime', firstUseLine('masslineBulletTime'), p);
-    });
-    bus.on('cloak:engaged', (p) => {
+    }));
+    this._unsubs.push(bus.on('cloak:engaged', (p) => {
       if (!massline2Flag('cloak')) return;
       this._showHint('masslineCloak', firstUseLine('masslineCloak'), p);
-    });
-    bus.on('charge:aftDropped', (p) => {
+    }));
+    this._unsubs.push(bus.on('charge:aftDropped', (p) => {
       if (!massline2Flag('bombPropulsion')) return;
       this._showHint('bombPropulsion', firstUseLine('bombPropulsion'), p);
-    });
+    }));
     // TEACH-05 — the first mass seed deploy is spoken with the warning-then-collapse rule
     // the seed lives by. Once per profile; a foreign owner's deploy never teaches it.
-    bus.on('massSeed:deployed', (p) => {
+    this._unsubs.push(bus.on('massSeed:deployed', (p) => {
       const playerId = this.state && this.state.playerId;
       if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
       this._showHint('massSeedDeploy', firstUseLine('massSeedDeploy'), p);
-    });
+    }));
 
     // ── Verb shelf (FB-002/FB-116): every bound verb is spoken once, in the player's own
     // device vocabulary, on the moment the verb matters. The five-verb rail already teaches
@@ -1090,26 +1138,26 @@ export const onboarding = {
     this._shelfPending = null;
     this._shelfStraightS = 0;
 
-    bus.on('module:equipped', (p) => {
+    this._unsubs.push(bus.on('module:equipped', (p) => {
       if (!p || !this.state || p.shipId !== this.state.playerId) return;
       // bulletTime rides the first fit of any kind — the moment the hull stops being stock.
       this._speakShelfVerb('bulletTime');
       // cloak speaks only when the fit actually grants a shroud — teaching a verb with no
       // hardware behind it is the lie the trigger exists to prevent.
       if (fittedCloakModule(this.state)) this._speakShelfVerb('cloak');
-    });
+    }));
 
     // First-use verbs speak on their own receipts — the player already did the thing, and the
     // line names the binding that did it.
-    bus.on('beacon:deployed', (p) => this._speakShelfVerb('deployBeacon', p));
-    bus.on('planet:collector', (p) => {
+    this._unsubs.push(bus.on('beacon:deployed', (p) => this._speakShelfVerb('deployBeacon', p)));
+    this._unsubs.push(bus.on('planet:collector', (p) => {
       if (!p || p.on !== true) return; // toggling off is not the lesson
       this._speakShelfVerb('toggleSkimCollector', p);
-    });
+    }));
     // The planet's bands speak the first time the player reaches them (U5): each band's
     // receipt names what the band is and the law that governs it — once per save.
-    bus.on('planet:bandFirst', (p) => this._speakBandFirst(p));
-    bus.on('cargo:jettisoned', (p) => {
+    this._unsubs.push(bus.on('planet:bandFirst', (p) => this._speakBandFirst(p)));
+    this._unsubs.push(bus.on('cargo:jettisoned', (p) => {
       // The drop-kick line owns an at-speed first dump; the shelf defers so the moment
       // never speaks two lessons. At rest, flag-off, or any later dump the shelf names
       // the verb itself — jettisonLot stays a bound verb the player used.
@@ -1117,9 +1165,14 @@ export const onboarding = {
       this._dropKickJustSpoke = false;
       if (deferredToKick) return;
       this._speakShelfVerb('jettisonLot', p);
-    });
+    }));
 
     this._lastControlMode = null;
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   // Speak one shelf verb once. When the staged rail owns the voice the moment parks in
@@ -1664,7 +1717,7 @@ export const onboarding = {
     // Absolute simulation timestamps survive: a restored caption resumes its window, never restarts it.
     ob.trackerCaptions = sanitizeTrackerCaptions(d.trackerCaptions);
     ob.rescue = restoreRescueRecord(d.rescue);
-    ob.raid = plainClone(d.raid);
+    ob.raid = railRecord(d.raid);
     ob.claimed = plainClone(d.claimed);
     ob.missingThree = restoreMissingThreeRecord(d.missingThree);
     st.onboarding = ob;
@@ -1731,7 +1784,7 @@ export const onboarding = {
     if (raid && ob.beatDoneAt.raid == null) {
       ob.active = true;
       raid.active = true;
-      this._spawnRaidCast();
+      if (!this._adoptRestoredRaidCast()) this._spawnRaidCast({ wing: 'keep' });
       raidRestaged = true;
       resumed = true;
     }
@@ -1773,6 +1826,7 @@ export const onboarding = {
       ob.active = true;
       this._storyMode = false;
       const beat = BEATS[ob.currentBeat];
+      if (beat?.key === 'seam' && this._contract47aSampleRecovered()) this._beatDone(beat);
       if (beat && ob.beatDoneAt[beat.key] == null) {
         // Raid/claimed stage through their restored records above; _enterBeat would
         // rebuild (and reset) the record the restore just preserved.
@@ -1788,8 +1842,7 @@ export const onboarding = {
         if (!ob.beatAction) ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
         speakMainBeat = !tetherAway;
       } else {
-        // A completed tether beat already dropped its salvage. Let the normal cadence
-        // advance to its successor instead of replaying entry/reward work.
+        // The completed beat advances on the normal cadence without replaying its setup.
         this._lastTextAtS = -Infinity;
       }
       resumed = true;
@@ -1802,7 +1855,7 @@ export const onboarding = {
     const rescueCurrent = rescue && rescue.current && rescue.beats[rescue.current]
       && rescue.beats[rescue.current].state === 'current' ? rescue.current : null;
     if (rescueCurrent) {
-      const line = rescueBeatLine(rescueCurrent);
+      const line = this._rescueInstruction(rescueCurrent);
       ob.beatAction = line;
       this._sayTutorial(line);
     } else if (three && three.current) {
@@ -2087,8 +2140,8 @@ export const onboarding = {
   _onTrainingScanComplete(payload) {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
-    if (!ob || !beat || beat.key !== 'seam' || this._miningRockId == null) return;
-    const rock = this.state.entities && this.state.entities.get(this._miningRockId);
+    if (!ob || !beat || beat.key !== 'seam') return;
+    const rock = this._seamMiningRock();
     if (!rock || !rock.data || !(rock.data.scanHighlightUntil >= (this.state.simTime || 0))) return;
     if (!payload.found || !(payload.found.asteroids > 0)) return;
     this._onBeatEvent('scan:hit', { ...payload, targetId: rock.id });
@@ -2213,22 +2266,28 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat || beat.key !== 'seam' || payload.minerId !== this.state.playerId) return;
-    const rock = this._miningRockId != null && this.state.entities && this.state.entities.get(this._miningRockId);
+    const rock = this._seamMiningRock();
     if (!rock || !rock.pos || !payload.pos) return;
     if (Math.hypot(payload.pos.x - rock.pos.x, payload.pos.z - rock.pos.z) > Math.max(6, rock.radius || 0)) return;
     const qty = Math.max(1, Number(payload.qty) || 1);
     ob.trainingOre = (ob.trainingOre || 0) + qty;
     ob.oreCollected = Math.max(ob.oreCollected || 0, ob.trainingOre);
-    // OPENING-1: the lesson's rock IS the bound 47-A source, so the same yield also stamps
-    // B0's manifest — resolve the beat on either ledger reaching its authored line.
-    if (ob.trainingOre >= SEAM_ORE_TARGET || this._contract47aSampleRecovered()) this._beatDone(beat);
+    if (rock.data?.trainingMining === true && ob.trainingOre >= SEAM_ORE_TARGET) this._beatDone(beat);
     this._refreshBeatPanel();
   },
 
+  _seamMiningRock() {
+    const sample = this.registry?.get?.('missions')?.contract47aSampleEntity?.();
+    if (sample) return sample;
+    const rock = this.state.entities?.get(this._miningRockId);
+    return rock?.alive !== false && rock?.type === 'asteroid' && rock.data?.trainingMining === true ? rock : null;
+  },
+
   // OPENING-1 (item 5): the seam lesson works the contract's own bound sample rock. Read-only —
-  // missions owns the binding; when no bound source exists (legacy save, wrong sector, already
-  // recovered) the synthetic training rock stages as before so the lesson still lands.
+  // Missions owns the binding. A legacy or away lesson without a bound site can still use its
+  // synthetic training rock.
   _bindSeamMiningTarget() {
+    if (this._contract47aSampleRecovered()) return null;
     const missions = this.registry && this.registry.get && this.registry.get('missions');
     let sample = missions && typeof missions.contract47aSampleEntity === 'function'
       ? missions.contract47aSampleEntity() : null;
@@ -2242,6 +2301,7 @@ export const onboarding = {
       if (this.state.onboarding) this.state.onboarding._miningRockId = sample.id;
       return sample;
     }
+    if (missions?.contract47aSampleSite?.()) return null;
     return this._spawnMiningRock();
   },
 
@@ -2555,8 +2615,13 @@ export const onboarding = {
     const now = this.state.simTime || 0;
     swing.clinicOpenedAtS = now;
     swing.clinicLesson = lesson;
-    if (lesson === 'raid' && this._raid()) this._spawnRaidCast({ clinic: true });
-    else if (lesson === 'rescue' && this._rescueCurrentKey() === 'swing') {
+    let instruction = SWING_CLINIC_LINE;
+    if (lesson === 'raid' && this._raid()) {
+      // A pilot can reattach during the preceding attempt's miss timer.
+      // Keep that live line and cast. The diamond guides them back to the rock.
+      if (!this.state.player?.tether?.active) this._spawnRaidCast({ clinic: true });
+      instruction = 'Swing Clinic. Reel in and swing the Raider. Use the lit throw cue.';
+    } else if (lesson === 'rescue' && this._rescueCurrentKey() === 'swing') {
       this._respawnRescueSlot('swing');
       ob.rescue.rockLatched = false;
       ob.rescue.rockReeled = false;
@@ -2570,8 +2635,8 @@ export const onboarding = {
     this.bus.emit('onboarding:rangePrompt', {
       active: true, text: RANGE_POINTER_LINE, atS: now, rungId: SWING_CLINIC_RUNG_ID, reason: 'swingClinic',
     });
-    ob.beatAction = SWING_CLINIC_LINE;
-    this._sayTutorial(SWING_CLINIC_LINE);
+    ob.beatAction = instruction;
+    this._sayTutorial(instruction);
     this.bus.emit('onboarding:swingClinic', { lesson, misses: swing.misses, atS: now });
     this._refreshBeatPanel();
   },
@@ -2599,13 +2664,18 @@ export const onboarding = {
     if (beat.key === 'tether' && !tetherLessonIsLocal(this.state, this)) return;
     const player = this.state.entities.get(this.state.playerId);
     if (!player || !player.pos) return;
-    // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
-    // never a wall: the seam beat respawns its marked rock the moment it is gone.
     const miningRock = this._miningRockId != null && this.state.entities.get(this._miningRockId);
     if (beat.key === 'seam') {
+      // Missions settles the assay before this lesson sees the same mining receipt. The
+      // recovered contract has no live source to resolve, so read the earned result first.
+      if (this._contract47aSampleRecovered()) {
+        this._beatDone(beat);
+        this._refreshBeatPanel();
+        return;
+      }
       // OPENING-1: while the bound 47-A source lives, the lesson's rock IS that body — rebind if
       // the id went stale (id recycle, sector re-materialize). The synthetic training rock only
-      // restages when no bound source exists (legacy save, wrong sector, already recovered).
+      // restages when no bound source exists (legacy save, wrong sector).
       const missions = this.registry && this.registry.get && this.registry.get('missions');
       let sample = missions && typeof missions.contract47aSampleEntity === 'function'
         ? missions.contract47aSampleEntity() : null;
@@ -2620,8 +2690,7 @@ export const onboarding = {
         }
       } else if (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining) {
         // A shelved bound body keeps its durable id and re-materializes on approach; the
-        // synthetic rock restages only when no bound site remains (legacy save, wrong sector,
-        // already recovered).
+        // synthetic rock restages only when no bound site remains.
         const boundSite = missions && typeof missions.contract47aSampleSite === 'function'
           ? missions.contract47aSampleSite() : null;
         if (!boundSite) {
@@ -3329,7 +3398,7 @@ export const onboarding = {
     if (idx > 0 && rescue.beats[RESCUE_ORDER[idx - 1]].state !== 'done') return;
     rescue.current = next;
     rescue.beats[next].state = 'current';
-    const line = rescueBeatLine(next);
+    const line = this._rescueInstruction(next);
     this.state.onboarding.beatAction = line;
     // Adopt a latch the player already holds (grabbed early): the beat must never strand.
     if (next === 'grab' && rescue.ids.pod != null
@@ -3364,9 +3433,32 @@ export const onboarding = {
       && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.rock)) {
       rescue.rockLatched = true;
     }
-    this._sayTutorial(line);
     this._setRescueWaypoint(true);
+    const waypoint = this.state.nav?.waypoint;
+    const trackerShowsLine = waypoint?.markerId === `rescue:${next}` && waypoint.reason === line;
+    this._sayTutorial(line, { visual: !trackerShowsLine });
     this._refreshBeatPanel();
+  },
+
+  _rescueInstruction(key, rockLatched) {
+    if (key !== 'swing') return rescueBeatLine(key);
+    const st = this.state;
+    const device = st.input?.promptDevice || getPromptDevice();
+    const rockId = this._rescue()?.ids.rock;
+    const latched = rockLatched ?? rescuePlayerLatchedTo(st, st.playerId, rockId);
+    if (!latched) {
+      const line = st.player?.tether;
+      if (line?.active && line.targetId != null && line.targetId !== rockId) {
+        return 'Release the current line. Latch the marked rock.';
+      }
+      const latch = device === 'touch' ? 'TETHER' : verbBindingLabel(st, 'tether', device);
+      return latch ? `Latch the loose rock with ${latch}.` : 'Latch the loose rock.';
+    }
+    if (device === 'gamepad' || !massline2Flag('throw')) return rescueBeatLine(key);
+    if (device === 'touch') return 'Flick the rock toward the wreck.';
+    return releaseAssistMode(st) === 'arm'
+      ? 'Aim at the wreck. Hold RMB to throw.'
+      : 'Aim at the wreck. Tap RMB to throw.';
   },
 
   // The marker identity stays beat-stable while onboarding owns nav; active player courses win.
@@ -3379,11 +3471,14 @@ export const onboarding = {
     // beat state remain live; the player can point the same course owner back at an objective.
     if (hasPlayerSelectedNavWaypoint(st)) return true;
     const key = rescue.current;
-    const line = rescueBeatLine(key);
+    let rockLatched = false;
     let target = null;
     if (key === 'swing') {
       const rock = this._rescueActor('rock');
-      if (rock) target = { pos: rock.pos, label: 'Loose Rock' };
+      rockLatched = !!rock && rescuePlayerLatchedTo(st, st.playerId, rock.id);
+      const wreck = rockLatched ? this._rescueActor('derelict') : null;
+      if (wreck) target = { pos: wreck.pos, label: 'Derelict' };
+      else if (rock) target = { pos: rock.pos, label: 'Loose Rock' };
     } else if (key === 'shove') {
       const scout = this._rescueActor('scout');
       if (scout) target = { pos: scout.pos, label: 'Scout' };
@@ -3406,6 +3501,7 @@ export const onboarding = {
       const foreignKind = existing.kind;
       if (foreignKind !== 'mission' && foreignKind !== 'story') return true;
     }
+    const line = this._rescueInstruction(key, rockLatched);
     st.nav.waypoint = {
       onboarding: true,
       pos: { x: target.pos.x, z: target.pos.z },
@@ -3583,9 +3679,25 @@ export const onboarding = {
     if (key === 'swing') {
       const rock = this._rescueActor('rock');
       const derelict = this._rescueActor('derelict');
-      // A missing standing piece restages the whole authored tableau — respawning only
-      // the working slot would loop forever on a wreck or wall that is never coming back.
-      if (!derelict) { this._spawnRescueCast(); return; }
+      if (!derelict) {
+        if (rock && rescuePlayerLatchedTo(this.state, this.state.playerId, rock.id)) {
+          // Keep the held body's identity and velocity. Put only the missing wreck
+          // back one authored tow pass beyond the rock.
+          const turn = Math.atan2(rock.pos.z - player.pos.z, rock.pos.x - player.pos.x) / TAU;
+          const specs = makeRescueCastSpecs(player.pos, () => turn);
+          const replacement = specs.derelict;
+          replacement.pos.x += rock.pos.x - specs.rock.pos.x;
+          replacement.pos.z += rock.pos.z - specs.rock.pos.z;
+          const spawned = this.helpers?.spawnEntity?.(replacement);
+          if (spawned) {
+            spawned._invulnUntil = Infinity;
+            rescue.ids.derelict = spawned.id;
+          }
+        } else {
+          this._spawnRescueCast();
+        }
+        return;
+      }
       // FIX-03: a gone lesson rock is not a fail — any thrown body completes the beat now,
       // so the objective retargets the nearest loose throwable in reach rather than pointing
       // at a body that no longer exists. Only an empty pocket still fails and restages.
@@ -3791,7 +3903,7 @@ export const onboarding = {
     this._respawnRescueSlot(key);
     // Re-speak the verb once (recovery, not a lecture). Later fails of the same beat
     // restage the body and keep the waypoint; they do not lecture again.
-    const line = rescueBeatLine(key);
+    const line = this._rescueInstruction(key);
     if (this.state.onboarding) this.state.onboarding.beatAction = line;
     if (speakRecovery) this._sayTutorial(line);
     this._setRescueWaypoint(true);
@@ -3919,7 +4031,60 @@ export const onboarding = {
     if (id == null || !this.state.entities) return null;
     const entity = this.state.entities.get(id);
     if (slot === 'wing' && !(entity && entity.data && entity.data.onboardingRaidWing === true)) return null;
+    if (slot === 'throwRock' && !this._isRaidThrowRock(raid, entity)) return null;
     return entity && entity.alive !== false ? entity : null;
+  },
+
+  _adoptRestoredRaidCast() {
+    const state = this.state;
+    const raid = this._raid();
+    const player = state.entities?.get(state.playerId);
+    if (!raid) return false;
+    const sector = state.world?.currentSectorId;
+    const mirror = state.player?.tether;
+    const line = mirror?.active && state.combat?.attachments?.byId?.[mirror.attachmentId];
+    // The physical endpoints are remapped before save:loaded; the HUD mirror is repaired later.
+    const held = line?.id === mirror?.attachmentId && line?.state === 'active'
+      && line.ownerId === state.playerId && player?.alive !== false
+      && line.ownerGeneration != null && line.ownerGeneration === occupantGenerationOf(player)
+      ? state.entities.get(line.targetId) : null;
+    const selected = {};
+    for (const entity of state.entities?.values?.() || []) {
+      const data = entity.data;
+      const home = entity.homeSectorId || data?.homeSectorId;
+      if (entity.alive === false || entity.id === state.playerId || entity.isPlayer === true
+        || entity.playerOwned === true || data?.playerOwned === true || data?.controlLease
+        || data?.onboarding !== true || (home && sector && home !== sector)
+        || !Number.isFinite(entity.pos?.x) || !Number.isFinite(entity.pos?.z)) continue;
+      let slot;
+      if (entity.type === 'ship' && data.onboardingRaid === true && data.ai?.passive === true) slot = 'raider';
+      else if (entity.type === 'ship' && data.onboardingRaidWing === true && !raid.wingDone) slot = 'wing';
+      else if (entity.type === 'asteroid' && data.raidRole === 'throwRock'
+        && data.typeId === 'ast_raid_throw_rock') slot = 'throwRock';
+      else if (entity.type === 'drone' && data.raidRole === 'hauler') slot = 'hauler';
+      else continue;
+      const heldLife = slot === 'raider' && entity === held && line.targetGeneration != null
+        && line.targetGeneration === occupantGenerationOf(entity);
+      const distance = heldLife ? -1 : Math.hypot(entity.pos.x - (player?.pos?.x ?? 0), entity.pos.z - (player?.pos?.z ?? 0));
+      if (!selected[slot] || distance < selected[slot].distance) selected[slot] = { entity, distance };
+    }
+    const raider = selected.raider?.entity;
+    const rock = raider ? selected.throwRock?.entity : null;
+    raid.ids = {
+      raider: raider?.id ?? null,
+      wing: selected.wing?.entity.id ?? null,
+      throwRock: rock?.id ?? null,
+      hauler: raider ? selected.hauler?.entity.id ?? null : null,
+    };
+    raid.throwRockGeneration = occupantGenerationOf(rock);
+    raid.lastWhipAt = null;
+    // _resolveRaidDone restores just the missing target rock on the first eligible flight tick.
+    return !!raider;
+  },
+
+  _isRaidThrowRock(raid, entity) {
+    return entity?.type === 'asteroid' && entity.data?.onboarding === true && entity.data.raidRole === 'throwRock'
+      && (raid.throwRockGeneration == null || occupantGenerationOf(entity) === raid.throwRockGeneration);
   },
 
   _enterRaidBeat() {
@@ -3967,7 +4132,6 @@ export const onboarding = {
     const haulerPos = at(RAID_HAULER_OFFSET_WU, 0.5);
     const raiderSpec = makeEnemySpawnSpec('reaver_pirate', 1, raiderPos, { startedTick: st.tick });
     if (raiderSpec) {
-      raiderSpec.name = 'Claim Jumper';
       // Lesson body: real enough to be the fantasy (a hostile mid-raid), tuned so the taught
       // throw kills and a starter-gun refusal is a long deliberate grind.
       raiderSpec.hull = raiderSpec.hullMax = RAID_RAIDER_HULL;
@@ -3980,6 +4144,7 @@ export const onboarding = {
       raiderSpec.shield = raiderSpec.shieldMax = 0;
       raiderSpec.shieldRegenRate = 0;
       raiderSpec.data = raiderSpec.data || {};
+      raiderSpec.data.name = 'Claim Jumper';
       raiderSpec.data.onboarding = true;
       raiderSpec.data.onboardingRaid = true;
       raiderSpec.data.weapons = [];
@@ -4028,21 +4193,7 @@ export const onboarding = {
     }
     // A throw-target rock right downrange of the raider: the tow pass distance stays short
     // and readable, and the thrown body always has a solid near its release line.
-    const throwRock = this.helpers.spawnEntity({
-      type: 'asteroid',
-      pos: at(raiderRange + (clinic ? RAID_CLINIC_ROCK_GAP_WU : 150), 0),
-      vel: { x: 0, z: 0 },
-      radius: 26,
-      mass: 4000,
-      hull: 5000,
-      hullMax: 5000,
-      physicsBody: { radius: asteroidColliderRadius('ast_raid_throw_rock', 26) },
-      data: {
-        onboarding: true, raidRole: 'throwRock',
-        typeId: 'ast_raid_throw_rock',
-      },
-    });
-    raid.ids.throwRock = throwRock && throwRock.id != null ? throwRock.id : null;
+    this._spawnRaidThrowRock(raid, at(raiderRange + (clinic ? RAID_CLINIC_ROCK_GAP_WU : RAID_ROCK_GAP_WU), 0));
     const hauler = this.helpers.spawnEntity({
       type: 'drone',
       name: 'Nervous Hauler',
@@ -4062,6 +4213,47 @@ export const onboarding = {
     });
     raid.ids.hauler = hauler && hauler.id != null ? hauler.id : null;
     raid.lastWhipAt = null;
+  },
+
+  _spawnRaidThrowRock(raid, pos) {
+    const rock = this.helpers?.spawnEntity?.({
+      type: 'asteroid',
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: RAID_ROCK_RADIUS_WU,
+      mass: 4000,
+      hull: 5000,
+      hullMax: 5000,
+      // The lesson uses a fixed target that passing traffic cannot knock out of the arena.
+      physicsBody: { dynamic: false, radius: RAID_ROCK_COLLIDER_RADIUS_WU },
+      data: {
+        onboarding: true, raidRole: 'throwRock',
+        typeId: 'ast_raid_throw_rock',
+      },
+    });
+    if (rock?.id == null) return;
+    raid.ids.throwRock = rock.id;
+    raid.throwRockGeneration = occupantGenerationOf(rock);
+  },
+
+  _restoreRaidThrowRock(raid, player, raider) {
+    const state = this.state;
+    const sector = state.world?.currentSectorId;
+    const raiderSector = raider.homeSectorId || raider.data?.homeSectorId;
+    if ((state.mode && state.mode !== 'flight') || (sector && raiderSector && sector !== raiderSector)) return;
+    const swing = state.onboarding.pace?.swing;
+    const clinic = swing?.clinicOpenedAtS != null && swing.clinicLesson === 'raid';
+    const gap = clinic ? RAID_CLINIC_ROCK_GAP_WU : RAID_ROCK_GAP_WU;
+    const dx = raider.pos.x - player.pos.x;
+    const dz = raider.pos.z - player.pos.z;
+    const bearing = dx || dz ? Math.atan2(dz, dx) : (player.rot || 0);
+    const proposed = { x: raider.pos.x + Math.cos(bearing) * gap, z: raider.pos.z + Math.sin(bearing) * gap };
+    const reserved = [];
+    forEachDressingRow(state, row => {
+      if (row.collides && (!row.homeSectorId || !sector || row.homeSectorId === sector)) reserved.push(row);
+    });
+    const pos = findSwarmArrival(state, proposed, RAID_ROCK_COLLIDER_RADIUS_WU, { anchor: raider.pos, reserved });
+    if (pos) this._spawnRaidThrowRock(raid, pos);
   },
 
   // opts.wing: 'keep' leaves the live wing armed as it stands (gun-kill/drift restage);
@@ -4115,6 +4307,15 @@ export const onboarding = {
       if (slot === 'wing' && id != null && this.state.entities) {
         const held = this.state.entities.get(id);
         if (!held || !held.data || held.data.onboardingRaidWing !== true) {
+          raid.ids[slot] = null;
+          continue;
+        }
+      }
+      if (slot === 'throwRock') {
+        const rock = this.state.entities?.get(id);
+        const owned = this._isRaidThrowRock(raid, rock);
+        raid.throwRockGeneration = null;
+        if (!owned) {
           raid.ids[slot] = null;
           continue;
         }
@@ -4212,18 +4413,18 @@ export const onboarding = {
     if (!raid) return;
     if (payload.targetId !== raid.ids.raider && payload.victimId !== raid.ids.raider) return;
     raid.lastWhipAt = this.state.simTime || 0;
-    // THE THESIS MOMENT: the thrown raider struck the rock as a projectile. A solid or
-    // crushing impact on the throw-target rock completes the lesson — the enemy became a
-    // projectile, whether or not the hull finally caves.
+    // A solid or crushing Raider impact completes the lesson whether the Raider
+    // hit the marked rock free of the line or was still being swung on it.
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat || beat.key !== 'raid') return;
-    const wallId = raid.ids.throwRock != null ? raid.ids.throwRock : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+    const wallId = this._raidActor('throwRock')?.id ?? (raid.ids.throwRock == null ? ob.rescue?.ids?.asteroid : null);
     if (payload.victimId !== wallId) return;
     if (payload.rating !== 'solid' && payload.rating !== 'crushing') return;
-    if (!ob.beatDoneAt.raid) {
+    if (ob.beatDoneAt.raid == null) {
       this._beatDone(beat);
-      this._emitMilestone('momentumKill', { cause: 'throwImpact', rating: payload.rating, beat: 'raid' });
+      const cause = payload.slung === false ? 'towSlam' : 'throwImpact';
+      this._emitMilestone('momentumKill', { cause, rating: payload.rating, beat: 'raid' });
     }
   },
 
@@ -4363,6 +4564,7 @@ export const onboarding = {
       intent.fire = false;
       intent.fireGroup = null;
     }
+    if (raid.pilotWithdrew) return;
     this.bus.emit('comms:popup', {
       sender: "Claim Jumper's Wing",
       text: "Not for his cut. I'm gone.",
@@ -4378,6 +4580,7 @@ export const onboarding = {
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !beat || beat.key !== 'raid') return;
     this._stepRaidWing();
+    if (ob.beatDoneAt.raid != null) return;
     const raider = this._raidActor('raider');
     if (!raider) {
       // Kill handling stays event-driven (_onRaidKilled) and its emits are synchronous:
@@ -4387,31 +4590,35 @@ export const onboarding = {
       const slotId = raid.ids && raid.ids.raider;
       const occupant = slotId != null && this.state.entities
         ? this.state.entities.get(slotId) : null;
-      if (ob.beatDoneAt.raid == null && !(occupant && occupant.alive !== false)) {
+      if (!(occupant && occupant.alive !== false)) {
         this._respawnRaidRaider();
       }
       return;
     }
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.pos) return;
-    // Tow-slam proof: the raider latched and CARRIED into the throw-target rock at speed.
-    // The whip observer only rates energetic contacts; a slow heavy tow that grinds the
-    // raider into the rock is the same lesson landing, so accept the plain contact read.
+    if (!player?.pos || !raider.pos) return;
+    const rock = this._raidActor('throwRock');
     const tetherMirror = this.state.player && this.state.player.tether;
     const towLatched = !!(tetherMirror && tetherMirror.active && tetherMirror.targetId === raider.id);
-    if (towLatched) {
-      const wallId = raid.ids.throwRock != null ? raid.ids.throwRock
-        : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
-      const wallEnt = wallId != null && this.state.entities ? this.state.entities.get(wallId) : null;
-      if (wallEnt && wallEnt.pos && raider.pos) {
-        const towSpeed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
-        const dWallRaider = Math.hypot(raider.pos.x - wallEnt.pos.x, raider.pos.z - wallEnt.pos.z);
-        const contact = (Number(raider.radius) || 8) + (Number(wallEnt.radius) || 26) + 40;
-        if (dWallRaider <= contact && towSpeed >= 40) {
-          this._beatDone(beat);
-          this._emitMilestone('momentumKill', { cause: 'towSlam', beat: 'raid' });
-          return;
+    const gap = Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z);
+    if (!towLatched && gap >= RAID_WITHDRAW_RADIUS_WU && rock?.pos && player.vel && player.alive !== false) {
+      const dx = player.pos.x - rock.pos.x;
+      const dz = player.pos.z - rock.pos.z;
+      const range = Math.hypot(dx, dz);
+      if (range >= RAID_WITHDRAW_RADIUS_WU
+          && dx * player.vel.x + dz * player.vel.z >= range * RAID_WITHDRAW_SPEED_WU) {
+        raid.pilotWithdrew = true;
+        this._beatDone(beat);
+        // This pilot left the fight. There is no wreck here to offer as claimed salvage.
+        ob.beatDoneAt.claimed ??= this.state.simTime || 0;
+        const swing = ob.pace?.swing;
+        if (swing?.pendingLesson === 'raid') {
+          swing.pendingAtS = null;
+          swing.pendingLesson = null;
         }
+        this._emitMilestone('raidWithdrawn');
+        this._sayTutorial("You're clear. Back to the mining job.");
+        return;
       }
     }
     // A raider that somehow drifts clear restages near the wall — retry, never a wall.
@@ -4422,9 +4629,10 @@ export const onboarding = {
       ? false
       : raiderAi && (raiderAi.fsm === 'flee'
         || (raiderAi.activity && raiderAi.activity.kind === ActivityKind.DISENGAGE));
-    if ((raiderFled && !towLatched)
-      || Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z) > 3000) {
+    if ((raiderFled && !towLatched) || gap > 3000) {
       this._respawnRaidRaider('He ran. Follow the diamond and latch him.');
+    } else if (!rock) {
+      this._restoreRaidThrowRock(raid, player, raider);
     }
   },
 
@@ -4439,13 +4647,12 @@ export const onboarding = {
     return ob && ob.claimed && ob.claimed.active && !ob.finished ? ob.claimed : null;
   },
 
-  _claimedActor(slot) {
-    const claimed = this._claimed();
-    if (!claimed) return null;
-    const id = claimed.ids && claimed.ids[slot];
-    if (id == null || !this.state.entities) return null;
+  _claimedEntity(id) {
+    const life = this._claimedCast?.get(id);
+    if (!life) return null;
     const entity = this.state.entities.get(id);
-    return entity && entity.alive !== false ? entity : null;
+    return entity === life.entity && entity.alive !== false
+      && occupantGenerationOf(entity) === life.generation ? entity : null;
   },
 
   _enterClaimedBeat() {
@@ -4468,6 +4675,23 @@ export const onboarding = {
     this._spawnClaimedCast();
   },
 
+  _nearestClaimedPickup(claimed, pilot) {
+    if (!pilot?.pos) return null;
+    let nearest = null;
+    let nearestDistance2 = Infinity;
+    for (const id of claimed?.ids?.pickups || []) {
+      const pickup = this._claimedEntity(id);
+      if (pickup?.type !== 'pickup' || pickup.alive === false
+        || pickup.data?.claimedCargo !== true || pickup.data?.onboarding !== true || !pickup.pos) continue;
+      const distance2 = (pilot.pos.x - pickup.pos.x) ** 2 + (pilot.pos.z - pickup.pos.z) ** 2;
+      if (distance2 < nearestDistance2) {
+        nearest = pickup;
+        nearestDistance2 = distance2;
+      }
+    }
+    return nearest;
+  },
+
   _spawnClaimedCast() {
     const st = this.state;
     const claimed = this._claimed();
@@ -4475,6 +4699,11 @@ export const onboarding = {
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos) return;
     this._removeClaimedActors();
+    // Actor IDs are stripped by the rail save; each staged cast proves its own lives.
+    this._claimedCast = new Map();
+    const remember = (entity) => {
+      if (entity?.id != null) this._claimedCast.set(entity.id, { entity, generation: occupantGenerationOf(entity) });
+    };
     // Spill site: ahead of the player, on the raid bearing — the wreck the player just made.
     const raid = st.onboarding.raid;
     const raider = raid && raid.ids && raid.ids.raider != null && st.entities.get(raid.ids.raider);
@@ -4504,7 +4733,8 @@ export const onboarding = {
           onboarding: true, claimedCargo: true, despawnAt,
         },
       });
-      if (pickup && pickup.id != null) claimed.ids.pickups.push(pickup.id);
+      if (pickup?.id != null) claimed.ids.pickups.push(pickup.id);
+      remember(pickup);
     }
     const patrolSpec = makeEnemySpawnSpec('patrol_lawman', 1, at(CLAIMED_WITNESS_OFFSET_WU, 0.35),
       { startedTick: st.tick });
@@ -4521,6 +4751,7 @@ export const onboarding = {
       patrolSpec.data.claimsCutter = true;
       const patrol = this.helpers.spawnEntity(patrolSpec);
       claimed.ids.patrol = patrol && patrol.id != null ? patrol.id : null;
+      remember(patrol);
     }
   },
 
@@ -4529,16 +4760,12 @@ export const onboarding = {
     if (!claimed || !claimed.ids) return;
     const player = this.state && this.state.player;
     const patrolId = claimed.ids.patrol;
-    if (patrolId != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
-      this.helpers.removeEntity(patrolId);
+    if (player?.targetId === patrolId && this._claimedEntity(patrolId)) player.targetId = null;
+    for (const id of this._claimedCast?.keys() || []) {
+      if (this._claimedEntity(id)) this.helpers?.removeEntity?.(id);
     }
-    if (player && patrolId != null && player.targetId === patrolId) player.targetId = null;
+    this._claimedCast?.clear();
     claimed.ids.patrol = null;
-    for (const id of claimed.ids.pickups || []) {
-      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
-        this.helpers.removeEntity(id);
-      }
-    }
     claimed.ids.pickups = [];
   },
 
@@ -4548,7 +4775,8 @@ export const onboarding = {
     const beat = ob && BEATS[ob.currentBeat];
     if (!claimed || !ob || !beat || beat.key !== 'claimed' || claimed.taken) return;
     if (!payload || payload.collectorId !== this.state.playerId) return;
-    if (!claimed.ids.pickups.includes(payload.pickupId)) return;
+    if (!claimed.ids.pickups.includes(payload.pickupId) || !this._claimedEntity(payload.pickupId)) return;
+    if (successfulPickupAmount(payload) <= 0) return;
     claimed.taken = true;
     claimed.takenAt = this.state.simTime || 0;
     this._onBeatEvent('claimed:taken', payload);
@@ -4619,14 +4847,23 @@ export const onboarding = {
       // Continue restored mid-report) resolves on the same clock from the take — the cargo
       // is already aboard, so the scene stands down rather than waiting out a ring that
       // can never come.
-      // Ancient or hand-cut records can lack either stamp; a missing clock re-opens the
-      // full window rather than hanging the tableau on NaN.
-      const idleSince = claimed.taken
-        ? (Number.isFinite(claimed.takenAt) ? claimed.takenAt
-          : (Number.isFinite(claimed.enteredAt) ? claimed.enteredAt : now))
-        : (Number.isFinite(claimed.enteredAt) ? claimed.enteredAt : now);
+      // Old saves can lack the offer time. Start that clock once when flight resumes.
+      if (!Number.isFinite(claimed.enteredAt)) claimed.enteredAt = now;
+      const idleSince = claimed.taken && Number.isFinite(claimed.takenAt)
+        ? claimed.takenAt : claimed.enteredAt;
       if (now - idleSince >= CLAIMED_WINDOW_S) {
         this._finishClaimed(claimed.taken ? 'noEscalation' : 'declined');
+      } else if (!claimed.taken && now - idleSince >= CLAIMED_OFFER_READ_S) {
+        const pilot = this.state.entities.get(this.state.playerId);
+        const pickup = this._nearestClaimedPickup(claimed, pilot);
+        if (pickup) {
+          const dx = pilot.pos.x - pickup.pos.x;
+          const dz = pilot.pos.z - pickup.pos.z;
+          const leaving = dx * (pilot.vel?.x || 0) + dz * (pilot.vel?.z || 0) > 0;
+          if (leaving && dx * dx + dz * dz >= CLAIMED_LEAVE_RADIUS_WU ** 2) {
+            this._finishClaimed('declined');
+          }
+        }
       }
       return;
     }
@@ -5109,8 +5346,14 @@ export const onboarding = {
     // Entry/recovery stamps are automatic. Do not let them replace a player-selected local course
     // while its own autopilot/ribbon is still active; explicit map course actions can retarget it.
     if (hasPlayerSelectedNavWaypoint(st)) {
-      if (BEATS[ob.currentBeat]?.key === 'tether') {
-        const context = !tetherLessonIsLocal(st, this) ? 'away' : hasTrackedActiveMission(st) ? 'tracked' : 'lesson';
+      const current = BEATS[ob.currentBeat];
+      if (current?.key === 'seam' && ob.beatDoneAt?.seam == null) {
+        ob.plottedSeam = this._seamWorkpoint(current, st.nav.waypoint);
+      } else if (ob.plottedSeam) {
+        ob.plottedSeam = null;
+      }
+      if (current?.key === 'tether') {
+        const context = !tetherLessonIsLocal(st, this) ? 'away' : trackedActiveMission(st) ? 'tracked' : 'lesson';
         if (this._tetherCueContext !== context) {
           this._tetherCueContext = context;
           this._refreshBeatPanel();
@@ -5118,6 +5361,7 @@ export const onboarding = {
       }
       return;
     }
+    if (ob.plottedSeam) ob.plottedSeam = null;
     // A current rescue verb owns the marker: one verb, one diamond, same beat-stable identity.
     if (this._setRescueWaypoint(force)) return;
     if (this._setMissingThreeWaypoint(force)) return;
@@ -5125,7 +5369,13 @@ export const onboarding = {
     const existing = st.nav.waypoint;
     if (beat?.key === 'tether') {
       const away = !tetherLessonIsLocal(st, this);
-      const yielding = away || hasTrackedActiveMission(st);
+      const tracked = trackedActiveMission(st);
+      // Cold Start is tracked automatically. Give the local learner rock the single
+      // objective slot until the first latch; the mission itself stays pinned.
+      const teachingLatch = ob.beatDoneAt.tether == null
+        && tracked?.storyTag === CONTRACT_47A_B0_TAG && tracked.params?.sampleRecovered !== true
+        && this._liveTrainingDerelict()?.data?.rescueRole === 'rock';
+      const yielding = away || (!!tracked && !teachingLatch);
       const context = away ? 'away' : yielding ? 'tracked' : 'lesson';
       if (yielding && existing?.onboarding && existing.markerId === 'onboarding:tether') {
         st.nav.waypoint = null;
@@ -5138,7 +5388,7 @@ export const onboarding = {
         // OPENING-1 (item 4): the yield used to leave the marker slot empty while mission nav was
         // suppressed — the 47-A mark vanished until the lesson ended. While the tracked job is
         // the 47-A recovery, the diamond stays on its bound rock with the contract's own line.
-        const sampleTarget = this._contract47aSampleTarget();
+        const sampleTarget = tracked?.storyTag === CONTRACT_47A_B0_TAG ? this._contract47aSampleTarget() : null;
         if (sampleTarget) {
           st.nav.waypoint = {
             ...buildOnboardingObjectiveWaypoint(beat, sampleTarget),
@@ -5152,43 +5402,65 @@ export const onboarding = {
       if (existing && existing.onboarding) st.nav.waypoint = null;
       return;
     }
-    // The raid diamond tracks the raider; the claimed diamond tracks the spill until taken.
+    // The raid diamond marks the next physical action. The latch bark is history.
     if (beat && beat.key === 'raid') {
-      const raid = this._raid();
       const raider = this._raidActor('raider');
-      if (!raid || !raider) {
-        if (existing && existing.onboarding && String(existing.markerId || '').startsWith('onboarding:raid')) {
+      if (!raider || ob.beatDoneAt.raid != null) {
+        if (existing?.onboarding && existing.markerId === 'onboarding:raid') {
           st.nav.waypoint = null;
         }
         return;
       }
+      const line = st.player?.tether;
+      const towingRaider = line?.active && line.targetId === raider.id;
+      const release = towingRaider ? null : st.massline2?.throw?.lastThrow;
+      const age = release ? st.simTime - release.time : Infinity;
+      const releaseHeadingForRock = release?.payloadId === raider.id && release.payloadGeneration != null
+        && release.payloadGeneration === occupantGenerationOf(raider) && release.prediction?.onSolution === true
+        && age >= 0 && age <= release.prediction.timeOfFlight;
+      const markedRock = towingRaider || releaseHeadingForRock ? this._raidActor('throwRock') : null;
+      const watchingImpact = releaseHeadingForRock && markedRock && release.aimTargetId === markedRock.id
+        && release.aimTargetGeneration != null && release.aimTargetGeneration === occupantGenerationOf(markedRock);
+      const rock = towingRaider || watchingImpact ? markedRock : null;
+      const target = rock || raider;
+      let reason = taughtVerbLine(st, beat.key, beat.line);
+      if (watchingImpact) reason = 'Raider released. Watch the marked rock.';
+      else if (rock) {
+        const rockDistance = Math.hypot(raider.pos.x - rock.pos.x, raider.pos.z - rock.pos.z);
+        if (rockDistance > RAID_THROW_PRACTICE_RANGE_WU) reason = 'Tow back to the rock, or release and fly away.';
+        else if (Math.hypot(raider.vel?.x || 0, raider.vel?.z || 0) < WHIP_IMPACT_SOLID) {
+          if (line.restLength > 0 && line.restLength < RAID_SWING_ROOM_WU) {
+            const hold = verbBindingLabel(st, 'tether');
+            const payOut = verbBindingLabel(st, 'reverse', undefined, { keyboardFallback: false });
+            reason = hold && payOut ? `Hold ${hold} and ${payOut} to let out the line.`
+              : 'Use Winch Out to give the Raider room to swing.';
+          } else {
+            const thrust = verbBindingLabel(st, 'forward');
+            reason = `Thrust${thrust ? ` (${thrust})` : ''} past one side of the rock. Aim at it as the Raider swings.`;
+          }
+        } else reason = taughtVerbLine(st, 'raid:raid:latched', beat.followups[0].line);
+      } else if (towingRaider) reason = 'Keep the Raider on the line.';
+      else if (line?.active && line.targetId != null) reason = 'Release the current line. Latch the raider.';
       st.nav.waypoint = {
         onboarding: true,
-        pos: { x: raider.pos.x, z: raider.pos.z },
-        label: 'Raider',
-        reason: ob.beatAction || beat.line,
+        pos: { x: target.pos.x, z: target.pos.z },
+        label: rock ? 'Throw target' : 'Raider',
+        reason,
         markerId: 'onboarding:raid',
         markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
         mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
       };
+      if (rock?.data?.raidRole === 'throwRock' && rock.occupantGeneration != null) {
+        st.nav.waypoint.presentationEntityId = rock.id;
+        st.nav.waypoint.presentationEntityGeneration = rock.occupantGeneration;
+      }
       return;
     }
     if (beat && beat.key === 'claimed') {
       const claimed = this._claimed();
       const wantedFired = claimed && claimed.wantedFired;
-      let target = null;
-      if (!wantedFired) {
-        const pickups = claimed && claimed.ids ? claimed.ids.pickups : [];
-        let best = null, bestD = Infinity;
-        const p = st.entities && st.entities.get(st.playerId);
-        for (const id of pickups || []) {
-          const e = id != null && st.entities ? st.entities.get(id) : null;
-          if (!e || e.alive === false || !e.pos) continue;
-          const d = p && p.pos ? Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) : 0;
-          if (d < bestD) { bestD = d; best = e; }
-        }
-        if (best) target = { pos: best.pos, label: 'Claimed Cargo' };
-      }
+      const pickup = wantedFired ? null : this._nearestClaimedPickup(claimed, st.entities?.get(st.playerId));
+      const target = pickup && { pos: pickup.pos, label: 'Claimed Cargo' };
       if (!target) {
         if (existing && existing.onboarding && String(existing.markerId || '').startsWith('onboarding:claimed')) {
           st.nav.waypoint = null;
@@ -5238,12 +5510,14 @@ export const onboarding = {
       if (derelict) target = { pos: derelict.pos, label: derelict.data && derelict.data.rescueRole === 'rock' ? 'Loose rock' : 'Derelict' };
     }
     else if (beat && beat.key === 'seam') {
-      const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
-      // The lesson's rock is the bound 47-A source while it lives — the mark keeps the contract's
-      // own site name; only a tutorial-spawned fallback reads as the drill's Bright Seam.
-      if (rock && rock.alive !== false) {
-        target = { pos: rock.pos, label: rock.data && rock.data.trainingMining ? 'Bright Seam' : '47-A Recovery Site' };
+      const workpoint = this._seamWorkpoint(beat);
+      if (workpoint) {
+        ob.beatAction = workpoint.reason;
+        st.nav.waypoint = workpoint;
+      } else if (existing?.onboarding) {
+        st.nav.waypoint = null;
       }
+      return;
     }
     else if (beat && beat.key === 'dock') target = this._findHelios();
     // The drills land the player back in open space; the job pick waits at the same berth.
@@ -5258,6 +5532,41 @@ export const onboarding = {
       ...beat,
       line: beat.key === 'tether' ? `Optional: ${ob.beatAction || beat.line}` : ob.beatAction || beat.line,
     }, target);
+  },
+
+  _seamWorkpoint(beat, course = null) {
+    const st = this.state;
+    const rock = this._seamMiningRock();
+    const target = rock
+      ? { pos: rock.pos, label: rock.data?.trainingMining ? 'Bright Seam' : '47-A Recovery Site', entity: rock }
+      : this._contract47aSampleTarget();
+    if (!target?.pos) return null;
+    const pilotPos = st.entities?.get(st.playerId)?.pos;
+    const is47a = target.label === '47-A Recovery Site';
+    const longApproach = is47a && pilotPos
+      && Math.hypot(target.pos.x - pilotPos.x, target.pos.z - pilotPos.z) > scannerProfileForState(st).nearRadius;
+    if (course) {
+      // Validate the chart fix when it is chosen. After that the same course still owns the
+      // approach, even if the bound rock drifts or materializes on a later simulation tick.
+      if (!is47a || course.label !== target.label || !course.pos) return null;
+      const previous = st.onboarding.plottedSeam?.coursePos;
+      const sameCourse = previous?.x === course.pos.x && previous?.z === course.pos.z;
+      const site = this._contract47aSampleTarget()?.pos || target.pos;
+      if (!sameCourse && !(Math.hypot(course.pos.x - site.x, course.pos.z - site.z) <= 6)) return null;
+    }
+    const beamLine = st.onboarding.firedFollowups?.['seam:scan:hit'] ? beat.followups[0] : null;
+    let line = taughtVerbLine(st, beamLine ? `seam:${beamLine.on}` : beat.key, beamLine?.line || beat.line);
+    if (longApproach && course) {
+      line = target.label;
+    } else if (longApproach) {
+      const device = st.input?.promptDevice || getPromptDevice();
+      const chart = device === 'kbm' ? BINDINGS.localmap.label
+        : verbBindingLabel(st, 'map', device, { keyboardFallback: false });
+      line = `Open the Chart${chart ? ` (${chart})` : ''} and track 47-A.`;
+    }
+    const workpoint = buildOnboardingObjectiveWaypoint({ ...beat, line }, target);
+    if (course) workpoint.coursePos = { x: course.pos.x, z: course.pos.z };
+    return workpoint;
   },
 
   _clearObjectiveWaypoint() {
@@ -5299,14 +5608,14 @@ export const onboarding = {
       && byStationId.get('station_helios');
     if (indexed && indexed.alive && indexed.type === 'station' && indexed.pos) {
       const name = (indexed.data && (indexed.data.name || indexed.data.stationName)) || 'HELIOS';
-      return { pos: indexed.pos, label: name };
+      return this._stationObjectiveTarget(indexed, name);
     }
     const list = indexedTypeScan(this.state, 'stations');
     for (const e of list) {
       if (!e || !e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
       if (e.data && e.data.stationId === 'station_helios') {
         const name = e.data.name || e.data.stationName || 'HELIOS';
-        return { pos: e.pos, label: name };
+        return this._stationObjectiveTarget(e, name);
       }
     }
     // Fallback: nearest station.
@@ -5319,7 +5628,13 @@ export const onboarding = {
       const d = dx * dx + dz * dz;
       if (d < bestD) { bestD = d; best = e; }
     }
-    return best ? { pos: best.pos, label: 'Station' } : null;
+    return best ? this._stationObjectiveTarget(best, 'Station') : null;
+  },
+
+  _stationObjectiveTarget(station, label) {
+    const hull = this.state.entities.get(this.state.playerId);
+    const anchor = resolveDockAnchor(station, resolveCollisionProxyManifest(station), hull);
+    return { pos: anchor || station.pos, label };
   },
 
   // ---- DOM ------------------------------------------------------------------------------------
@@ -5422,7 +5737,7 @@ export const onboarding = {
     const step = onboardingTrackerStep(ob, BEATS);
     // Exactly one persistent command surface: spatial lessons use the HUD waypoint; non-spatial
     // lessons (thrust/brake/heat) use this compact panel title.
-    const tetherYields = beat?.key === 'tether' && hasTrackedActiveMission(this.state);
+    const tetherYields = beat?.key === 'tether' && this._tetherCueContext === 'tracked';
     const demoteObjectiveCopy = this._beatPanelYields();
 
     if (this._kickerLabelEl) {

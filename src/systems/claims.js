@@ -340,6 +340,9 @@ export const claims = {
   saveSnapshotOwned: true,
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.ctx = ctx;
@@ -348,35 +351,40 @@ export const claims = {
     if (!this.state.claims) this.state.claims = { bodies: [] };
     // World respawns POI entities on sector entry — re-stamp specialization identity on them.
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('sector:enter', () => { this._ensureRetiredRefineryShells(); this._applyAllPoiLabels(); });
+      this._unsubs.push(this.bus.on('sector:enter', () => { this._ensureRetiredRefineryShells(); this._applyAllPoiLabels(); }));
       // PQ-170.01: world respawns stations on sector entry — re-stamp the growth they earned.
-      this.bus.on('sector:enter', () => this._stampAllStationGrowth());
+      this._unsubs.push(this.bus.on('sector:enter', () => this._stampAllStationGrowth()));
       // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
-      this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {}));
+      this._unsubs.push(this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {})));
       // NXB-027: accepted contract freight is player-supplied throughput too — the same lot the
       // economy just stocked. The committed receipt dedupes canonical retries (and only them).
-      this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {}));
-      this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {}));
+      this._unsubs.push(this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {})));
+      this._unsubs.push(this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {})));
       // LAW-09: the raid marker's ignore verb — standing a claim down on purpose settles through
       // the same 'ignored' column the deadline lapse pays.
-      this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
+      this._unsubs.push(this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {})));
       // FB-132: the flight prompt's other two doors. 'Go' re-affirms the alarm waypoint claims
       // already owns; 'delegate' spends a same-sector supported depot's patrol rotation early —
       // the depot answers instead of posting its scheduled beat.
-      this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {}));
-      this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {}));
-      this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
+      this._unsubs.push(this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {})));
+      this._unsubs.push(this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {})));
+      this._unsubs.push(this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {})));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
-      this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
-      this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
+      this._unsubs.push(this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {})));
+      this._unsubs.push(this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {})));
       // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
       // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
       // the sale; a hull kill arrives through the ordinary freight:loss ledger.
-      this.bus.on('claim:convoyManifested', (payload) => this._onConvoyManifested(payload || {}));
-      this.bus.on('claim:convoyDocked', (payload) => this._onConvoyDocked(payload || {}));
-      this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {}));
+      this._unsubs.push(this.bus.on('claim:convoyManifested', (payload) => this._onConvoyManifested(payload || {})));
+      this._unsubs.push(this.bus.on('claim:convoyDocked', (payload) => this._onConvoyDocked(payload || {})));
+      this._unsubs.push(this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {})));
     }
     this._resumeDefenseIds = new Set();
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   // Claim the body at a POI. Validates credits + that it's unclaimed. POI def carries size/name/pos.

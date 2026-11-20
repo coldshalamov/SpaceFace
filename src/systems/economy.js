@@ -1738,6 +1738,9 @@ export const economy = {
   saveSnapshotOwned: true,
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -1782,7 +1785,7 @@ export const economy = {
     // Work budgets are economy-owned; world/mining owners still own physical entities.
     // A grant is a reservation of extraction work, NEVER a cargo or credit grant.
     for (const action of ['reserve', 'settle', 'cancel']) {
-      bus.on(`economy:resourceWork:${action}`, (payload) => {
+      this._unsubs.push(bus.on(`economy:resourceWork:${action}`, (payload) => {
         if (!payload || typeof payload !== 'object') return;
         const sector = SECTORS.find((row) => row.id === payload.sectorId);
         payload.result = sector
@@ -1794,41 +1797,41 @@ export const economy = {
           publishedUnits: action === 'settle' && r.ok ? r.producedQty : 0,
           depletedRequests: r.reason === 'work_depleted' ? 1 : 0,
         });
-      });
+      }));
     }
 
-    bus.on('mission:offered', () => recordEconomyPulse(state.economy, state.simTime, { offers: 1 }));
-    bus.on('mission:accepted', () => recordEconomyPulse(state.economy, state.simTime, { accepts: 1 }));
+    this._unsubs.push(bus.on('mission:offered', () => recordEconomyPulse(state.economy, state.simTime, { offers: 1 })));
+    this._unsubs.push(bus.on('mission:accepted', () => recordEconomyPulse(state.economy, state.simTime, { accepts: 1 })));
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
-    bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
+    this._unsubs.push(bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason)));
     // The site emits this only after committing the completed physical brace. Economy
     // authenticates that receipt and owns the one-time wage, including save/replay.
-    bus.on('worldSite:operationReceipt', (p) => this.settleCeresBraceWage(p));
-    bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
-    bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount));
-    bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
-    bus.on('economy:payBounty', (p) => {
+    this._unsubs.push(bus.on('worldSite:operationReceipt', (p) => this.settleCeresBraceWage(p)));
+    this._unsubs.push(bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p)));
+    this._unsubs.push(bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount)));
+    this._unsubs.push(bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p)));
+    this._unsubs.push(bus.on('economy:payBounty', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
       payload.result = this.payBounty(payload);
-    });
+    }));
 
     // Stale debt ages into a posted bounty (the debt/bounty ledger connection). core emits
     // { days:absoluteDay, elapsed }; unpaid debt sitting past the grace window adds a deterministic
     // daily levy to player.bounty until settled — the ledger the law hunts on grows, visibly.
-    bus.on('day:tick', (p) => this._onDebtStaleDay(p));
+    this._unsubs.push(bus.on('day:tick', (p) => this._onDebtStaleDay(p)));
 
     // ---- trade intents from UI ------------------------------------------------------------
-    bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); });
-    bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); });
-    bus.on('economy:marketOpened', (p) => {
+    this._unsubs.push(bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); }));
+    this._unsubs.push(bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); }));
+    this._unsubs.push(bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
       this.snapshotIntel(p.stationId);
-    });
-    bus.on('map:sectorCharted', (p) => {
+    }));
+    this._unsubs.push(bus.on('map:sectorCharted', (p) => {
       if (p && p.source === 'survey' && p.sectorId) this.seedMemoryFromSurvey(p.sectorId);
-    });
+    }));
 
     // ---- NPC / passive-income trades route through the same execute path (self-balancing) --
     // NPC / drone trades move market stock (their activity shifts prices — the whole point of a
@@ -1837,19 +1840,19 @@ export const economy = {
     // bug where an NPC "sale" literally paid the player. Now they use the stock-only pressure path
     // (applyStockPressure), the same path automation uses, so NPCs are real economic actors without
     // a wallet-coupling accident. (Audit cut-list #2.)
-    bus.on('aiTrader:requestTrade', (p) => {
+    this._unsubs.push(bus.on('aiTrader:requestTrade', (p) => {
       if (!p) return;
       this.applyStockPressure(p.stationId, p.commodityId, p.side, p.qty);
-    });
-    bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
+    }));
+    this._unsubs.push(bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));
-    });
+    }));
     // Contract cargo lands in the receiving market — a delivered lot is real goods through the
     // same stock authority as a sale, so relieving a starved yard physically re-feeds its line.
     // NXB-027: identified deliveries settle once — the committed receipt makes a retry republish
     // the canonical freight fact for dependent owners instead of moving stock a second time.
-    bus.on('cargo:delivered', (p) => { this.applyFreightDelivery(p); });
+    this._unsubs.push(bus.on('cargo:delivered', (p) => { this.applyFreightDelivery(p); }));
 
     // ---- market play (R480) --------------------------------------------------------------
     // Shares and slips are fantasy contracts on real freight. The buyer names a live inbound
@@ -1857,30 +1860,30 @@ export const economy = {
     // the settled row leaves the open book. The Dump Chute is the player's own pod intake: it
     // commits under the shared journal, pays the documented discount, and adds the goods to the
     // receiving market through the ordinary stock authority.
-    bus.on('ui:convoyShareBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyConvoyShare(p); });
-    bus.on('ui:forwardSlipBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyForwardSlip(p); });
-    bus.on('cargo:podIntake', (p) => { if (p && typeof p === 'object') p.result = this.applyPodIntake(p); });
-    bus.on('tether:releaseRated', (p) => { if (p && typeof p === 'object') this._routeDeliberateReleaseToChute(p); });
-    bus.on('freight:arrival', (p) => { if (p && typeof p === 'object') this._settleFreightArrival(p); });
-    bus.on('freight:loss', (p) => { if (p && typeof p === 'object') this._settleFreightLoss(p); });
+    this._unsubs.push(bus.on('ui:convoyShareBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyConvoyShare(p); }));
+    this._unsubs.push(bus.on('ui:forwardSlipBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyForwardSlip(p); }));
+    this._unsubs.push(bus.on('cargo:podIntake', (p) => { if (p && typeof p === 'object') p.result = this.applyPodIntake(p); }));
+    this._unsubs.push(bus.on('tether:releaseRated', (p) => { if (p && typeof p === 'object') this._routeDeliberateReleaseToChute(p); }));
+    this._unsubs.push(bus.on('freight:arrival', (p) => { if (p && typeof p === 'object') this._settleFreightArrival(p); }));
+    this._unsubs.push(bus.on('freight:loss', (p) => { if (p && typeof p === 'object') this._settleFreightLoss(p); }));
     // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
     // are sold, moves the destination price. Missions owns the board opportunity that follows.
-    bus.on('entity:killed', (p) => this._openCargoKillChain(p));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._openCargoKillChain(p)));
     // THE WORLD REMEMBERS — a berth's own crew killed by the player is a strike; a surplus-band
     // ore flood is a boom. (`station:strike` / `station:boom` receipts.)
-    bus.on('entity:killed', (p) => this._onStationCrewKilled(p));
-    bus.on('economy:oreFlood', (p) => this._onOreFloodCondition(p));
-    bus.on('pickup:collected', (p) => this._noteCargoKillSalvage(p));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._onStationCrewKilled(p)));
+    this._unsubs.push(bus.on('economy:oreFlood', (p) => this._onOreFloodCondition(p)));
+    this._unsubs.push(bus.on('pickup:collected', (p) => this._noteCargoKillSalvage(p)));
     // Traffic only delivers a stable manifest receipt. Economy validates the source station and
     // writes the one eligible salvage listing, returning a synchronous acknowledgement so traffic
     // can retain a rejected hold instead of silently deleting it.
-    bus.on('salvage:npcUnload', (p) => {
+    this._unsubs.push(bus.on('salvage:npcUnload', (p) => {
       if (!p || typeof p !== 'object') return;
       p.intakeResult = this.applyNpcSalvageIntake(p);
-    });
+    }));
 
     // ---- station markets populated on dock + sector entry ---------------------------------
-    bus.on('dock:docked', (p) => {
+    this._unsubs.push(bus.on('dock:docked', (p) => {
       if (p && p.stationId) {
         this._lastDockedStation = p.stationId;
         this._stationServiceBerth = p.stationId;
@@ -1893,44 +1896,44 @@ export const economy = {
         // The berth's memory of you, in its own voice (strike, boom, grudge, blockade, outage).
         this._announceStationConditions(p.stationId);
       }
-    });
-    bus.on('dock:undocked', () => {
+    }));
+    this._unsubs.push(bus.on('dock:undocked', () => {
       this._lastDockedStation = null;
       this._stationServiceBerth = null;
-    });
-    bus.on('sector:enter', (p) => this.populateSector(p));
+    }));
+    this._unsubs.push(bus.on('sector:enter', (p) => this.populateSector(p)));
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
-    bus.on('ui:service', (p) => { if (p) this.handleService(p); });
+    this._unsubs.push(bus.on('ui:service', (p) => { if (p) this.handleService(p); }));
     // Cancelled hardship work releases its unused daily allowance as well as its debt.
     // Delivered welds remain counted, so repeated undocks cannot multiply the aid floor.
-    bus.on('service:aborted', (p) => {
+    this._unsubs.push(bus.on('service:aborted', (p) => {
       const budget = state.player.emergencyRepairBudget;
       if (p?.source !== 'stationServices' || !budget || p.emergencyRepairDay !== budget.day) return;
       const released = Number(p.undeliveredEmergencyHull);
       if (Number.isFinite(released) && released > 0) budget.usedHull = Math.max(0, budget.usedHull - released);
-    });
+    }));
     // FB-101 — a dry tank with no pump in the sector still has a door: one smallest-jump
     // reserve per day, filed as debt, announced with the figure it costs.
-    bus.on('fuel:empty', (p) => this._onFuelEmpty(p));
+    this._unsubs.push(bus.on('fuel:empty', (p) => this._onFuelEmpty(p)));
     // FB-111 — the tow charge is a credit move plus a debt filing; both stay on this writer.
-    bus.on('economy:towCharge', (p) => { if (p) this._settleTowCharge(p); });
+    this._unsubs.push(bus.on('economy:towCharge', (p) => { if (p) this._settleTowCharge(p); }));
 
     // ---- contraband scanning (jump-gate use / patrol proximity) ---------------------------
-    bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' }));
-    bus.on('patrol:proximity', (p) => this.runScan(p || {}));
+    this._unsubs.push(bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' })));
+    this._unsubs.push(bus.on('patrol:proximity', (p) => this.runScan(p || {})));
     // A hull that broke a customs weir unread is a runner — the gate faction's scanners remember
     // it through the same hot-until record an evaded scan writes.
-    bus.on('customs:weirBolt', (p) => { if (p && p.factionId) this._markFactionGatesHot(p.factionId); });
-    bus.on('contraband:bribe', (p) => {
+    this._unsubs.push(bus.on('customs:weirBolt', (p) => { if (p && p.factionId) this._markFactionGatesHot(p.factionId); }));
+    this._unsubs.push(bus.on('contraband:bribe', (p) => {
       if (p && typeof p === 'object') p.result = this.payBribe(p);
-    });
+    }));
 
     // ---- event injection from other systems (missions, combat) ----------------------------
-    bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); });
-    bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {}));
+    this._unsubs.push(bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); }));
+    this._unsubs.push(bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {})));
     // §15.6 C6 — a body the player threw through a docking ring is a bill, an outage and a memory.
-    bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
+    this._unsubs.push(bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p)));
     // Save owners restore after economy. Rebuild this derived read model only after factions and
     // sectorSim have restored their authoritative conflict/field state.
     // A mature save's market refresh + synthetic reseed is ~30ms — too big for one emit-slice
@@ -1939,11 +1942,11 @@ export const economy = {
     // the drain gets yield seams between them.
     for (let s = 0; s < ECONOMY_SAVE_LOADED_SLICES; s++) {
       const sliceIndex = s;
-      bus.on('save:loaded', () => this.refreshAllPersistentDemand({
+      this._unsubs.push(bus.on('save:loaded', () => this.refreshAllPersistentDemand({
         reseedSynthetic: true,
         sliceIndex,
         sliceCount: ECONOMY_SAVE_LOADED_SLICES,
-      }));
+      })));
     }
     // Registry listener order places economy before sectorSim. If offline catch-up crosses a
     // blockade/surplus threshold, this receipt arrives after the field mutation and reconciles the
@@ -1953,9 +1956,14 @@ export const economy = {
     // would land sim mutations on nondeterministic boundaries. Instead the receipt queues
     // the same sliced refresh and economy.update drains one slice per tick — deterministic
     // boundaries, ~30ms spread over 8 ticks instead of one brick inside the restore drain.
-    bus.on('sectorsim:offlineSummary', () => {
+    this._unsubs.push(bus.on('sectorsim:offlineSummary', () => {
       this._offlineSummaryRefresh = { sliceIndex: 0 };
-    });
+    }));
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   // -------------------------------------------------------------------------------------------
