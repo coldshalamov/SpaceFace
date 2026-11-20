@@ -91,6 +91,9 @@ function toNonNegativeInt(value) {
   return n > 0 ? n : 0;
 }
 
+/** Perks no longer reach a Swarm run: progress unlocks options, never stats. */
+const SWARM_PERKS_REACH_RUN = false;
+
 function runOnlyAward(reason) {
   return reason === 'hangar_war_chest' || reason === 'swarm:sellBack' || reason === 'crucible:pact'
     || reason?.startsWith('swarm:stake:') || reason?.startsWith('swarm:checkpoint:');
@@ -246,7 +249,10 @@ export const runSession = {
         const pick = request && Array.isArray(request.perks) ? request.perks
           : (profile && profile.perks && profile.perks.loadout);
         const perks = normalizePerkLoadout(pick, earned);
-        if (perks.length) next.telemetry.perks = perks;
+        // Perks gave stats (triple bounty, free re-rolls, cooked-off bodies...): nothing carries
+        // power into a run (director 2026-11-20 - stars unlock options, never stats). The earned
+        // pick stays on the profile; it no longer reaches the run.
+        if (perks.length && SWARM_PERKS_REACH_RUN) next.telemetry.perks = perks;
       }
     }
     const committed = this._commitRun(next, 'run:started', {

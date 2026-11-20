@@ -450,7 +450,7 @@ test('SWARM-06: begin stamps threats and the earned-checked perk pick onto telem
   const run = h.state.run;
   assert.deepEqual(run.telemetry.threats, ['thick_pack', 'no_rerolls']);
   // gambler is earned at 8 stars; bounty_hunter needs a finished challenge — dropped.
-  assert.deepEqual(run.telemetry.perks, ['gambler']);
+  assert.equal(run.telemetry.perks, undefined, 'director 2026-11-20: stars unlock options, never stats - a perk pick no longer reaches the run');
 });
 
 test('SWARM-06: a gauntlet begin stamps no swarm depth rows', () => {

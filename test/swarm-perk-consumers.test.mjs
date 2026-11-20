@@ -295,7 +295,7 @@ function waveArmory(h, perks, wave) {
   assert.equal(h.state.run.phase, 'draft');
 }
 
-test('gambler: two free draws ride after the Hangar\'s, then the bench sells at half price', () => {
+test('gambler no longer reaches the run: the earned pick stays on the profile (director 2026-11-20: stars unlock options, never stats - a perk pick no longer reaches the run)', () => {
   // The Warden's hull is big enough that the armory's hundred-card shelf cannot show the whole
   // legal pool at once — so a re-deal always has fresh cards to sell, and the paid bench opens.
   const h = draftBoot({ hullId: 'ship_warden' });
@@ -303,7 +303,9 @@ test('gambler: two free draws ride after the Hangar\'s, then the bench sells at 
   // lands after the boot's meta reset and before begin reads it.
   saveCrucibleMeta({ ladder: ladderWithStars(8), hangar: migrateHangar({ ranks: { rerolls: 1 } }) });
   waveArmory(h, ['gambler'], 5);
-  assert.deepEqual(h.state.run.telemetry.perks, ['gambler'], 'the earned pick was stamped at begin');
+  assert.equal(h.state.run.telemetry.perks, undefined, 'the earned pick is not stamped on the run');
+  assert.equal(survivalDraft.rerollState().open, false, 'no free or half-price draws');
+  return;
 
   let info = survivalDraft.rerollState();
   assert.equal(info.available, true);
