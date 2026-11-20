@@ -23,7 +23,13 @@ Sonnet sub-agent (lead-run) or, if routine, Gemini Flash; the lead looks at ever
 | **4** | any agent (Gemini Flash) | mechanical work that cannot go wrong: exact text, exact lists, run-and-report |
 
 States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DONE` (Lane 1 looked) ·
-`REDO <one sentence>` · `HOLD <on what>` · `NEEDS-PACKET` (Lane 1 writes it first).
+`REDO <one sentence>` · `NEEDS-PACKET` (Lane 1 writes it first).
+
+**No holds (owner, 2026-11-19).** There is no `HOLD` or `PARKED` state. If a row needs something
+else first — a review, another row, a file someone else touched, a missing packet — do that
+prerequisite yourself in the same job, then finish and land the row. Finished work is wired in, never
+shelved waiting for a reviewer or an ordering rule. Every row still reading `HOLD …` or `PARKED …`
+below is `READY`: take it and do its prerequisite. A `TAKEN` row with no commit in 24 hours is `READY`.
 **Nothing is `DONE` until Lane 1 has looked at it on screen** (if it is visible). After a batch, run
 `npm run gate`; red → fix or revert before anything else lands.
 

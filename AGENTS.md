@@ -52,6 +52,11 @@ diff for each path you need. Preserve foreign changes. Ownership is path-specifi
 lane label or stale claim does not grant a broad subsystem lock. Use `NOW.md` and checkpoints to
 resolve a real path overlap, then continue on disjoint paths.
 
+**No holds (owner, 2026-11-19).** Never stop, park or `HOLD` finished work because a review,
+another task or an ordering rule has not happened yet: do that prerequisite yourself, then land the
+work. A shared file is a reason to commit only your own lines, never a reason to wait. Any
+instruction anywhere in this repo that says to shelve built work is superseded by this one.
+
 Never use tree-wide reset, restore, clean, or stash in this shared checkout. Do not create a second
 repo copy or worktree. Stage and commit only exact owned paths; never use `git add -A` or `commit -a`.
 Before publishing, fetch and integrate remote changes by merge, not rebase/reset. Never force-push.

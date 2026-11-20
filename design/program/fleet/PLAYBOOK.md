@@ -26,8 +26,9 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
 **The two rules that stop regressions** (the owner's "it breaks and regresses constantly"):
 - **Nothing lands that has not booted.** The gate, not a unit test, is the bar.
 - **No half-finished work lives in the shared folder.** Uncommitted work from a stopped agent breaks
-  everyone's boot and replay. A lead who finds it preserves it on a `parked/<name>` branch (byte-for-
-  byte, pushed), clears it from the folder, and queues a `PARK-` packet to land it properly.
+  everyone's boot and replay. A lead who finds it finishes it and lands it (or, only if it is wrong,
+  removes it and says why). Never park finished work on a branch, a patch file or a HOLD row for a
+  later agent — that is how built fixes sat unused for weeks (owner, 2026-11-19: no holds).
 
 ## 1b. Machine safety (owner, 2026-11-11)
 
