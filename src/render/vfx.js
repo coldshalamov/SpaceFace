@@ -3083,6 +3083,7 @@ export const vfx = {
     add('fields:deployed', (p) => this._ensurePowerFx()?.onFieldDeployed(p, this.state));
     add('massSeed:deployed', (p) => this._ensurePowerFx()?.pinFired(p));
     add('massSeed:stakeCast', (p) => this._ensurePowerFx()?.stakeCast(p, this.state));
+    add('fields:plowLaunched', (p) => this._ensurePowerFx()?.plowLaunched(p, this.state));
     add('massSeed:staked', (p) => this._ensurePowerFx()?.staked(p, this.state));
     add('massSeed:stakeReleased', (p) => this._powerFx?.stakeReleased(p, this.state));
     add('massSeed:locking', (p) => this._ensurePowerFx()?.pinLanding(p, false));
