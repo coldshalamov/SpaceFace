@@ -276,7 +276,10 @@ function refreshReadModel(state, force = false) {
   const selectedMode = fittings.includes(P.moduleId) ? 'pinball'
     : fittings.includes(T.moduleId) ? 'boomerang' : veilReadiness ? 'veil_step' : null;
   const activeMode = active?.mode || 'boomerang';
-  const activePhase = selectedMode === activeMode && active && (
+  // A live bank/return lease is shown for its whole life whatever the fit screen says; only the
+  // lingering terminal outcome is tied to the selected kit.
+  const liveBoomerang = active?.mode === 'boomerang' && (active.phase === 'bank' || active.phase === 'return');
+  const activePhase = liveBoomerang || selectedMode === activeMode && active && (
     activeMode === 'boomerang'
       ? active.phase === 'bank' || active.phase === 'return'
         || (tick - finite(active.updatedTick ?? active.tick) < 180)
@@ -365,8 +368,6 @@ function publishIntent(state, run, dt, target) {
   const rot = finite(player.rot);
   const noseX = Math.cos(rot), noseZ = Math.sin(rot);
   const rightX = -noseZ, rightZ = noseX;
-  const tangentHeading = Math.atan2(tangentZ, tangentX);
-  const turn = clamp(wrapAngle(tangentHeading - rot) / 0.72, -1, 1);
   const runtime = state.flightRuntime || (state.flightRuntime = {});
   runtime.heroManeuverIntent = {
     version: 1,
@@ -375,7 +376,6 @@ function publishIntent(state, run, dt, target) {
     occupantGeneration: player.occupantGeneration,
     throttle: clamp(worldX * noseX + worldZ * noseZ, -T.maxFlightControl, T.maxFlightControl),
     strafe: clamp(worldX * rightX + worldZ * rightZ, -T.maxFlightControl, T.maxFlightControl),
-    turn,
     phase: 'bank',
     boost: elapsed >= T.bankBoostStartS
       && elapsed <= T.bankBoostStartS + T.bankBoostDurationS,
@@ -386,10 +386,15 @@ function publishIntent(state, run, dt, target) {
     bombId: run.bombId, cost: run.reservationCost, bankBoostCost: run.bankBoostCost,
     energyRequired: run.energyRequired,
     attackCommitted: run.attackCommitted, elapsed: run.elapsed,
+    // The chip stays up for the whole lease: stamp the live phase every tick and keep the read
+    // model current, so it can never age out while the maneuver still owns throttle and position.
+    updatedTick: state.tick,
   });
   if (run.justStarted) {
     run.justStarted = false;
     refreshReadModel(state, true);
+  } else {
+    refreshReadModel(state);
   }
 }
 

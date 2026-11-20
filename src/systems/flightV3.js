@@ -369,7 +369,8 @@ export const flightV3 = {
     if (heroManeuverActive) {
       input.throttle = clamp(finite(maneuverIntent.throttle), -1, 1);
       input.strafe = clamp(finite(maneuverIntent.strafe), -1, 1);
-      input.turn = clamp(finite(maneuverIntent.turn), -1, 1);
+      // HARMONY-FIX 7 (R23): the maneuver owns throttle, strafe and boost; the nose stays the
+      // pilot's (input.turn is left exactly as the pilot's own stick made it).
       input.boost = maneuverIntent.boost === true;
       input.boostPressed = input.boost && !this._prevBoost;
       input.brake = false;

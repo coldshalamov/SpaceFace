@@ -561,7 +561,7 @@ test('one Bomb command makes a physical V3 bank, drops one canonical bomb, and p
     const intent = state.flightRuntime.heroManeuverIntent;
     assert.equal(intent.playerId, player.id);
     assert.equal(intent.occupantGeneration, player.occupantGeneration);
-    assert.ok(Math.abs(intent.throttle) <= 1 && Math.abs(intent.strafe) <= 1 && Math.abs(intent.turn) <= 1);
+    assert.ok(Math.abs(intent.throttle) <= 1 && Math.abs(intent.strafe) <= 1 && intent.turn === undefined); // HARMONY-FIX 7: the maneuver no longer publishes a yaw command
     assert.equal(state.flightRuntime.heroManeuverStatus.phase, 'bank');
     player.data = { ...(player.data || {}), derived: getDerivedStats('ship_kestrel', ['wpn_pulse_laser_s', 'mod_boomerang_run']) };
     player.physicsBody = { schemaVersion: 1, dynamic: true, shape: 'ball', radius: player.radius,
@@ -1059,6 +1059,38 @@ test('Boomerang terminal outcome remains projected briefly, with bomb commitment
     s.maneuvers.update(0, s.state);
     assert.equal(s.state.heroManeuverReadModel.phase, 'ready',
       'fresh readiness replaces the terminal result after its brief reading window');
+  } finally {
+    s.maneuvers.destroy();
+    s.close();
+  }
+});
+
+test('HARMONY-FIX 7: a maneuver bank leaves the nose to the pilot and keeps its chip up for the whole lease', () => {
+  const s = prepareScenario(190);
+  try {
+    const { state, player, maneuvers } = s;
+    command(state);
+    maneuvers.update(1 / 60, state);
+    const flight = Object.create(flightV3);
+    flight.init({ state, bus: s.bus, helpers: { getEntity: id => state.entities.get(id) } });
+    // Aim the nose well away from the bank's tangent: the old override would have steered it.
+    player.rot = 1.2;
+    state.input.turn = 0; state.input.turnIntent = 0;
+    const intent = state.flightRuntime.heroManeuverIntent;
+    assert.ok(intent, 'the lease is live');
+    assert.equal(intent.turn, undefined, 'the maneuver publishes no yaw command');
+    flight._stepCraft(player, state.input, 1 / 60, state, true);
+    const cmd = consumePhysicsCommand(player);
+    const yaw = Math.abs(cmd?.control?.torque?.y ?? cmd?.control?.yaw ?? cmd?.control?.angular ?? 0);
+    assert.ok(yaw < 1e-6, `the pilot held no turn, so the nose gets no steering (yaw command ${yaw})`);
+    // The chip: still showing the bank on every tick of the lease, not only every sixth.
+    for (let i = 0; i < 40 && maneuvers._run; i++) {
+      tick(state, maneuvers, 1 / 60);
+      assert.equal(state.heroManeuverReadModel.mode, 'boomerang');
+      assert.ok(['bank', 'return'].includes(state.flightRuntime.heroManeuverStatus.phase));
+    }
+    assert.ok(maneuvers._run, 'still inside the lease');
+    assert.equal(state.heroManeuverReadModel.phase, 'bank', 'chip is up mid-lease');
   } finally {
     s.maneuvers.destroy();
     s.close();
