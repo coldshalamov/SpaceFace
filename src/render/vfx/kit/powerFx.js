@@ -497,6 +497,7 @@ export class PowerFx {
     const keys = PLOW_KEYS;
     if (!cone) {
       if (this.plow) { for (const k of keys) this.shells.release(k); this.plow = null; }
+      if (this._plowRims && this._plowRims.size) this._plowHeld(state, 0, 0, 0, this.time);
       return;
     }
     const { x, z } = this._toLocal(cone.center.x, cone.center.z);
@@ -532,37 +533,98 @@ export class PowerFx {
       Object.assign(this.s, { x, y: 1.3, z, birth: t, from: 14, to: R, life: 0.45, halfWidth: 3.2, r: 1.5, g: 3.2, b: 3.8, alpha: 0.7, mode: SHELL_MODE.EXPAND, arcStart: heading - half * 0.9, arcSpan: half * 1.8, seed: unit(plow.seed, 100 + plow.n) });
       this.shells.emit(this.s);
     }
+    // Captured rocks (state.fields.plow.held): an arc from the bow to each one and a hot rim on it.
+    this._plowHeld(state, x, z, heading, t);
     if (t >= plow.nextGrind) {
       plow.nextGrind = t + 0.08;
-      const ents = state.entityList;
-      let n = 0;
-      if (ents) for (let i = 0; i < ents.length && n < 10; i++) {
-        const e = ents[i];
-        if (!e || e.alive === false || !e.pos || e.id === state.playerId || !BODY_TYPES.has(e.type)) continue;
-        const l = this._toLocal(e.pos.x, e.pos.z);
-        const ex = l.x - x; const ez = l.z - z;
-        const d = Math.hypot(ex, ez);
-        if (d > R || d < 6) continue;
-        let da = Math.atan2(ez, ex) - heading;
-        da = Math.atan2(Math.sin(da), Math.cos(da));
-        if (Math.abs(da) > half) continue;
-        n++;
-        const rad = Number.isFinite(e.radius) ? e.radius : 6;
-        const bx = l.x - Math.cos(heading) * rad * 0.8;
-        const bz = l.z - Math.sin(heading) * rad * 0.8;
-        for (let k = 0; k < 3; k++) {
-          const a = heading + Math.PI + (unit(plow.seed, 1000 + plow.n * 97 + i * 7 + k) - 0.5) * 1.8;
-          const v = 90 + 160 * unit(plow.seed, 2000 + plow.n * 97 + i * 7 + k);
-          this._spark(bx, 2, bz, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.22 + 0.15 * unit(plow.seed, 3000 + k + i), 1.1, 0.4, 4, 0.03, 7, 5.2, 2.8, 2, 0.6, 0.12, SPARK_SHAPE.STREAK, SPARK_ADD);
-        }
-        this._spark(bx, 1.6, bz, Math.cos(heading) * 40, 0, Math.sin(heading) * 40, t, 0.7, 3 + rad * 0.2, 8 + rad * 0.4, 1.4, 0, 0.45, 0.4, 0.36, 0.3, 0.28, 0.26, SPARK_SHAPE.PUFF, 0.6);
-      }
       // Grit streaming forward through the wedge.
       for (let k = 0; k < 4; k++) {
         const a = heading + (unit(plow.seed, 5000 + plow.n * 13 + k) - 0.5) * half * 1.8;
         const r0 = R * 0.15 + R * 0.6 * unit(plow.seed, 6000 + plow.n * 13 + k);
         this._spark(x + Math.cos(a) * r0, 1.2, z + Math.sin(a) * r0, Math.cos(a) * 140, 0, Math.sin(a) * 140, t, 0.5, 1.0, 0.6, 1.2, 0.02, 0.9, 1.6, 1.8, 0.3, 0.5, 0.6, SPARK_SHAPE.STREAK, SPARK_ADD);
       }
+    }
+  }
+
+  _plowHeld(state, x, z, heading, t) {
+    const held = state && state.fields && state.fields.plow && state.fields.plow.held;
+    const rims = this._plowRims || (this._plowRims = new Map());
+    for (const v of rims.values()) v.seen = false;
+    if (Array.isArray(held) && state.entities && state.entities.get) {
+      const bx = x + Math.cos(heading) * 12;
+      const bz = z + Math.sin(heading) * 12;
+      this._frame = (this._frame || 0) + 1;
+      for (let i = 0; i < held.length && i < 25; i++) {
+        const h = held[i];
+        const e = h && state.entities.get(h.id);
+        if (!e || !e.pos || e.alive === false) continue;
+        const l = this._toLocal(e.pos.x, e.pos.z);
+        const ex = l.x; const ez = l.z;
+        const rad = Number.isFinite(e.radius) ? e.radius : 6;
+        const key = 'plow:rim:' + h.id;
+        let rim = rims.get(h.id);
+        if (!rim) { rim = { key, seen: true }; rims.set(h.id, rim); }
+        rim.seen = true;
+        Object.assign(this.s, { x: ex, y: 1.6, z: ez, from: rad * 1.15, to: rad * 1.15, halfWidth: Math.max(1.2, rad * 0.08), r: 2.6, g: 3.6, b: 4.4, alpha: 0.9, arcStart: 0, arcSpan: 0, seed: (h.id % 97) / 97 });
+        this.shells.hold(key, this.s);
+        if (this.reduced.motion && (this._frame & 3)) continue;
+        // A crackling arc: a jagged chain of short hot streaks, re-rolled every frame.
+        const dx = ex - bx; const dz = ez - bz;
+        const len = Math.hypot(dx, dz);
+        if (!(len > 2)) continue;
+        const ux = dx / len; const uz = dz / len;
+        const n = Math.max(4, Math.min(12, Math.round(len / 10)));
+        let px = bx; let pz = bz;
+        for (let k = 1; k <= n; k++) {
+          const f = k / n;
+          const jag = k === n ? 0 : (unit(this._frame * 131 + h.id, k) - 0.5) * Math.min(14, len * 0.18);
+          const qx = bx + dx * f - uz * jag;
+          const qz = bz + dz * f + ux * jag;
+          const sx = qx - px; const sz = qz - pz; const sl = Math.hypot(sx, sz) || 1;
+          this._spark((px + qx) / 2, 2.2, (pz + qz) / 2, sx / sl * 4, 0, sz / sl * 4, t, 0.05, 1.1, 1.1, 0, sl / 4,
+            3, 5, 7, 3, 5, 7, SPARK_SHAPE.STREAK, SPARK_ADD);
+          px = qx; pz = qz;
+        }
+      }
+    }
+    for (const [id, v] of rims) if (!v.seen) { this.shells.release(v.key); rims.delete(id); }
+  }
+
+  /** Plow launch: the captured load leaves with a bang and burning trails. */
+  plowLaunched(p, state) {
+    const me = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!me || !me.pos) return;
+    const { x, z } = this._toLocal(me.pos.x, me.pos.z);
+    const dir = p && p.dir ? Math.atan2(p.dir.z, p.dir.x) : (Number.isFinite(me.rot) ? me.rot : 0);
+    const t = this.time;
+    const seed = hashString('plowlaunch:' + Math.round(t * 1000));
+    const bx = x + Math.cos(dir) * 14; const bz = z + Math.sin(dir) * 14;
+    this._spark(bx, 2.6, bz, 0, 0, 0, t, 0.1, 18, 30, 0, 0, 7, 9, 10, 2, 3, 4, SPARK_SHAPE.GLOW, SPARK_ADD);
+    Object.assign(this.s, { x: bx, y: 1.6, z: bz, birth: t, from: 6, to: 90, life: 0.3, halfWidth: 4, r: 2.4, g: 3.6, b: 4.4, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: dir - 0.7, arcSpan: 1.4, seed: unit(seed, 1) });
+    this.shells.emit(this.s);
+    for (let i = 0; i < 30; i++) {
+      const a = dir + (unit(seed, 10 + i) - 0.5) * 1.1;
+      const v = 260 + 360 * unit(seed, 50 + i);
+      this._spark(bx, 2.2, bz, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.3, 2, 0.6, 3.5, 0.04, 6, 8, 10, 1, 2.4, 3.4, SPARK_SHAPE.STREAK, SPARK_ADD);
+    }
+    if (this.host.flashLight && this.host.flashLight(me.pos, '#9fe8ff', 8, 7, 160, 0.85)) this.stats.lights++;
+  }
+
+  /** Energised (launched) bodies burn a trail for as long as the sim says they are live. */
+  _energisedTrails(state) {
+    const list = state && state.entityList;
+    if (!Array.isArray(list) || this.reduced.motion) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    let n = 0;
+    for (let i = 0; i < list.length && n < 30; i++) {
+      const e = list[i];
+      const until = e && e.data && e.data.energisedUntil;
+      if (!(until > now) || !e.pos || e.alive === false) continue;
+      n++;
+      const l = this._toLocal(e.pos.x, e.pos.z);
+      const rad = Number.isFinite(e.radius) ? e.radius : 6;
+      const k = Math.min(1, (until - now) / 3);
+      this._spark(l.x, 1.8, l.z, 0, 0, 0, this.time, 0.3, rad * 0.9, rad * 0.3, 0, 0, 2 + 4 * k, 3 + 3 * k, 4, 0.6, 0.8, 1.2, SPARK_SHAPE.GLOW, SPARK_ADD);
     }
   }
 
@@ -888,6 +950,7 @@ export class PowerFx {
     this._sustainPin(state);
     this._sustainStakes(state);
     this._sustainPlow(state);
+    this._energisedTrails(state);
     const a = this.sparks.update(this.time, { reducedFlash: this.reduced.flash });
     const b = this.shells.update(this.time, { reducedFlash: this.reduced.flash });
     return a || b;

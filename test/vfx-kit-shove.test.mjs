@@ -192,3 +192,22 @@ test('Pin on a body: a bolt travels the real path, and a taut cable is redrawn f
   assert.ok(fx.stats.particles - before >= 6, 'the cable is drawn between the body and the stake point');
   fx.dispose();
 });
+
+test('Plow: true wedge contours, an arc and a hot rim on every captured rock, a bang on launch', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  const me = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10, rot: 0 };
+  const rock = { id: 5, type: 'asteroid', alive: true, pos: { x: 60, z: 10 }, radius: 8 };
+  const s = state({ entities: new Map([[1, me], [5, rock]]), entityList: [me, rock] });
+  s.fields.active = [{ id: 'cone', kind: 'cone', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 }, radius: 260, halfAngleRad: 0.56 }];
+  s.fields.plow = { held: [{ id: 5, f: 60, l: 10 }] };
+  fx.update(0.016, s);
+  assert.ok(fx.shells.held.has('plow:c'), 'the wedge tip contour sits at the true reach');
+  assert.ok(fx.shells.held.has('plow:rim:5'), 'the captured rock wears a hot rim');
+  s.fields.plow.held = []; s.fields.active = [];
+  s.simTime += 0.016; fx.update(0.016, s);
+  assert.equal(fx.shells.held.size, 0, 'closing the Plow retires contours and rims');
+  fx.plowLaunched({ count: 1, ids: [5], dir: { x: 1, z: 0 } }, s);
+  assert.equal(h.calls.light.length, 1, 'the launch is a bang with light');
+  fx.dispose();
+});
