@@ -693,10 +693,38 @@ export function announceTermBreak(bus, payload) {
   return true;
 }
 
+/** Strip stale baked-in distance suffixes ("Beacon 419 u", "Relay 1.2 km") so the objective
+ *  never prints two competing distance units alongside the live metric readout. */
+export function sanitizeObjectiveLabel(text) {
+  const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  const stripped = raw
+    .replace(/\s*(?:[·—–-]\s*)?\b\d+(?:\.\d+)?\s*(?:k?m|wu|u)\b\s*$/i, '')
+    .trim();
+  return stripped || raw;
+}
+
+const OBJECTIVE_ACTION_LEAD_VERB = /^(?:reach|fly|dock|deliver|recover|return|follow|escort|defend|clear|destroy|investigate|inspect|scan|mine|salvage|hail|open|enter|leave|head|approach|hold|break|collect|pick|bring|take|meet|find|track|tow|pull|catch|stop|protect|secure|assist|support|board|land|jump|cross|race|finish|check|visit|report|claim|build|repair|refit|buy|sell|trade|extract)\b/i;
+
+/** Ensure a navigation waypoint reads as a clear player verb ("Reach the beacon", "Fly to Helios
+ *  Station") rather than a bare noun with a stale unit ("Beacon 419 u"). */
+export function formatNavigationObjectiveAction(rawAction, wp = null) {
+  const clean = sanitizeObjectiveLabel(rawAction);
+  if (!clean) return 'Follow the marked route';
+  if (OBJECTIVE_ACTION_LEAD_VERB.test(clean)) return clean;
+  if (/^beacon$/i.test(clean)) return 'Reach the beacon';
+  if (/^(?:jump\s+gate|gate)$/i.test(clean)) return 'Reach the jump gate';
+  if (/^waypoint$/i.test(clean)) return 'Follow the marked route';
+  if (wp && wp.stationId && /station|hub|depot|yard|outpost|port/i.test(clean)) {
+    return `Fly to ${clean}`;
+  }
+  return `Fly to ${clean}`;
+}
+
 function mtObjectiveAction(action, wp) {
-  const verb = String(action || 'Open the Mission Log').trim();
+  const verb = sanitizeObjectiveLabel(action || 'Open the Mission Log') || 'Open the Mission Log';
   // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
-  const destination = String(wp && (wp.label || wp.mapLabel || wp.sectorName) || '').trim();
+  const destination = sanitizeObjectiveLabel(wp && (wp.label || wp.mapLabel || wp.sectorName) || '');
   if (!destination || /\b(to|at|near)\b/i.test(verb) || verb.toLowerCase().includes(destination.toLowerCase())) return verb;
   return `${verb} · ${destination}`;
 }
@@ -763,7 +791,7 @@ export function resolveFlightObjectiveCommand(
  * can be flown to. Owned here so the arrow, its label and its accessible name share one gate.
  */
 export function objectiveMarkerLabel(label) {
-  return String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+  return sanitizeObjectiveLabel(label).toUpperCase().slice(0, 28) || 'OBJECTIVE';
 }
 
 export function objectiveMarkerLine(state, label, travel) {
@@ -909,7 +937,10 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
     const displayFix = localLesson || wp;
     const travel = objectiveTravelReadout(state, displayFix);
     const routeGuide = mtRouteGuidance(state, wp);
-    const action = mtObjectiveAction(localLesson?.reason || (wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
+    const rawAction = localLesson?.reason || (wp && (wp.reason || wp.label)) || 'Follow the marked route';
+    const action = localLesson?.reason || (wp && wp.reason)
+      ? mtObjectiveAction(rawAction, wp)
+      : formatNavigationObjectiveAction(rawAction, wp);
     const readings = routeGuide
       ? [routeGuide.next, routeGuide.destination,
         `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
@@ -1547,12 +1578,40 @@ function rectsOverlap(a, b) {
     && a.y + a.height > b.y;
 }
 
+/** Return true when screen coordinate (x, y) falls inside any padded HUD panel rectangle. */
+export function pointInHudPanels(x, y, rects, pad = 12) {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Array.isArray(rects)) return false;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (!r) continue;
+    const left = Number(r.left ?? r.x);
+    const top = Number(r.top ?? r.y);
+    const right = Number.isFinite(r.right) ? r.right : left + Number(r.width ?? r.w ?? 0);
+    const bottom = Number.isFinite(r.bottom) ? r.bottom : top + Number(r.height ?? r.h ?? 0);
+    if (![left, top, right, bottom].every(Number.isFinite)) continue;
+    if (right <= left || bottom <= top) continue;
+    if (x >= left - pad && x <= right + pad && y >= top - pad && y <= bottom + pad) return true;
+  }
+  return false;
+}
+
 /**
  * Place one transient doctrine tell without covering the persistent objective/vitals/action/radar
  * anchors. `projected` is the authoritative worldToScreen result; the returned direction always
  * follows that original projection even when the chip yields to a reserved HUD rectangle.
+ * Pass `{ edgeAnchor: true, origin }` to pin the chip to the viewport edge in the threat's
+ * direction (no playfield wire across the ship).
  */
-export function resolveDoctrineTellPlacement(width, height, projected, slotIndex = 0, extraReserved = null, previousOffset = null, dimensions = null) {
+export function resolveDoctrineTellPlacement(
+  width,
+  height,
+  projected,
+  slotIndex = 0,
+  extraReserved = null,
+  previousOffset = null,
+  dimensions = null,
+  opts = null,
+) {
   const w = Math.max(320, Number(width) || 1280);
   const h = Math.max(240, Number(height) || 720);
   const px = Number(projected && projected.x);
@@ -1565,8 +1624,11 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   const halfH = chipHeight / 2;
   const centerX = w / 2;
   const centerY = h / 2;
-  let dx = px - centerX;
-  let dy = py - centerY;
+  const edgeAnchor = !!(opts && opts.edgeAnchor === true);
+  const originX = edgeAnchor && Number.isFinite(opts?.origin?.x) ? opts.origin.x : centerX;
+  const originY = edgeAnchor && Number.isFinite(opts?.origin?.y) ? opts.origin.y : centerY;
+  let dx = px - originX;
+  let dy = py - originY;
   const length = Math.hypot(dx, dy);
   if (length < 0.001) {
     dx = 0;
@@ -1581,19 +1643,21 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
     * (chipHeight + 6);
   let x;
   let y;
-  if (onScreen) {
+  if (onScreen && !edgeAnchor) {
     x = Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, px));
     y = Math.max(halfH + TELL_LAYOUT_GAP,
       Math.min(h - halfH - TELL_LAYOUT_GAP, py - 38 - stackOffset));
   } else {
-    const extentX = Math.max(1, centerX - halfW - TELL_LAYOUT_GAP);
-    const extentY = Math.max(1, centerY - halfH - TELL_LAYOUT_GAP);
+    const edgePad = edgeAnchor ? 16 : TELL_LAYOUT_GAP;
+    const extentX = Math.max(1, centerX - halfW - edgePad);
+    const extentY = Math.max(1, centerY - halfH - edgePad);
     const tx = Math.abs(dx) > 0.001 ? extentX / Math.abs(dx) : Infinity;
     const ty = Math.abs(dy) > 0.001 ? extentY / Math.abs(dy) : Infinity;
     const edgeDistance = Math.min(tx, ty);
     x = centerX + dx * edgeDistance;
     y = centerY + dy * edgeDistance - stackOffset;
-    y = Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, y));
+    x = Math.max(halfW + edgePad, Math.min(w - halfW - edgePad, x));
+    y = Math.max(halfH + edgePad, Math.min(h - halfH - edgePad, y));
   }
 
   const layout = resolveObjectiveHudLayout(w, h);
@@ -1612,12 +1676,12 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   // Retain a valid offset from this same projected body as it moves. This avoids
   // labels swapping sides on successive frames while still yielding immediately
   // to another label or a newly opened HUD/control region.
-  if (onScreen && previousOffset && Number.isFinite(previousOffset.x) && Number.isFinite(previousOffset.y)) {
+  if (onScreen && !edgeAnchor && previousOffset && Number.isFinite(previousOffset.x) && Number.isFinite(previousOffset.y)) {
     const priorX = px + previousOffset.x, priorY = py + previousOffset.y;
     if (priorX >= halfW + TELL_LAYOUT_GAP && priorX <= w - halfW - TELL_LAYOUT_GAP
       && priorY >= halfH + TELL_LAYOUT_GAP && priorY <= h - halfH - TELL_LAYOUT_GAP
       && reserved.every((anchor) => !rectsOverlap(asRect(priorX, priorY), anchor))) {
-      return { x: priorX, y: priorY, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+      return { x: priorX, y: priorY, width: chipWidth, height: chipHeight, onScreen, directionDeg, edgeAnchored: false };
     }
   }
   for (let pass = 0; pass < reserved.length; pass++) {
@@ -1654,7 +1718,7 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
     y = candidates[0].y;
   }
 
-  return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+  return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg, edgeAnchored: edgeAnchor };
 }
 
 // JS-side last-written cache — mirror setStyle. Reading el.textContent every call forces a
@@ -2255,6 +2319,15 @@ export function createHud(ctx, alerts) {
   // They are adopted into a quiet frequency tape at the head of the contextual column: one row,
   // a channel label, and the two live nodes re-parented rather than rebuilt. Re-parenting is the
   // same trick the feed above uses, and it keeps every listener those modules installed.
+  // HUD-2 Item 4: unified top-right calm utility bar. Adopts Field Build, compact Overhead,
+  // COMMS, HAIL, and RADIO into one aligned horizontal row right-aligned with the minimap.
+  const utilityRow = document.createElement('div');
+  utilityRow.id = 'sf-visor-utility-row';
+  utilityRow.className = 'sf-visor-utility-row';
+  utilityRow.setAttribute('role', 'toolbar');
+  utilityRow.setAttribute('aria-label', 'Flight utilities');
+  root.appendChild(utilityRow);
+
   const commsTape = document.createElement('div');
   commsTape.className = 'sf-commtape';
   commsTape.innerHTML = '<span class="sf-commtape__band">RADIO</span>'
@@ -2262,13 +2335,47 @@ export function createHud(ctx, alerts) {
     + '<span class="sf-commtape__slots"></span>';
   const newsTickerHost = commsTape.querySelector('#news-ticker');
   const commsTapeSlots = commsTape.querySelector('.sf-commtape__slots');
-  // Both modules mount into #ui-root during boot. If either has not arrived yet, adopt it on the
-  // next frame rather than leaving an empty housing behind (SCREENS_A 1.4: contextual surfaces
-  // never leave an empty housing).
+  // Order left-to-right inside the top-right utility row:
+  // Field Build · Overhead · COMMS · HAIL · RADIO
+  const UTILITY_ROW_SPECS = [
+    () => document.querySelector('.fb-pill-btn'),
+    () => {
+      const rt = document.getElementById('race-tape');
+      return rt && rt.dataset?.compact === 'true' ? rt : null;
+    },
+    () => document.getElementById('sf-comm-backlog-btn') || document.querySelector('.sf-comm-backlog-btn'),
+    () => document.getElementById('sf-contact-hail'),
+    () => document.getElementById('sf-comm-trace-host'),
+    () => {
+      const band = document.getElementById('sf-band-hud');
+      const dragged = !!(state.settings?.ui?.hudLayout?.band);
+      return band && !dragged ? band : null;
+    },
+  ];
   const adoptCommsChrome = () => {
-    for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail', 'sf-comm-trace-host']) {
-      const node = document.getElementById(id) || document.querySelector('.' + id);
-      if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
+    const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    const host = mobileFlight ? commsTapeSlots : utilityRow;
+    if (host === utilityRow) {
+      for (const resolve of UTILITY_ROW_SPECS) {
+        const node = resolve();
+        if (!node) continue;
+        if (node.parentNode !== utilityRow) utilityRow.appendChild(node);
+      }
+      // Keep the left-to-right order deterministic even when controls mount asynchronously.
+      let prev = null;
+      for (const resolve of UTILITY_ROW_SPECS) {
+        const node = resolve();
+        if (!node || node.parentNode !== utilityRow) continue;
+        if (prev && prev.nextSibling !== node) {
+          utilityRow.insertBefore(node, prev.nextSibling);
+        }
+        prev = node;
+      }
+    } else {
+      for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail', 'sf-comm-trace-host']) {
+        const node = document.getElementById(id) || document.querySelector('.' + id);
+        if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
+      }
     }
     if (!commsTapeSlots.childElementCount && (!newsTickerHost || newsTickerHost.hidden)) commsTape.setAttribute('hidden', '');
     else commsTape.removeAttribute('hidden');
@@ -3599,10 +3706,18 @@ export function createHud(ctx, alerts) {
         reserved.push(tellBlockerAt(reserved.length, label.x, label.y, label.w, label.h));
       }
     }
-    // Danger tier in a Swarm round: ONE line (20_THE_FIRST_HOUR rule 2). Live tells of one kind
-    // merge into the nearest carrier's chip with a count; of several kinds only the most urgent
-    // kind speaks (a thrown mass outranks a launch, which outranks the rest).
-    const lead = swarm ? pickLeadTell(tellSlots, state) : null;
+    // HUD-2 Item 9: ONE threat direction prompt at a time (most urgent kind, nearest carrier),
+    // anchored cleanly to the viewport edge in the threat's direction — never stacking multiple
+    // floating threat boxes and never drawing a red stabbing wire across the ship.
+    const lead = pickLeadTell(tellSlots, state);
+    const playerEnt = state.entities?.get?.(state.playerId);
+    let playerOrigin = null;
+    if (w2s && playerEnt && playerEnt.pos) {
+      tellProjectionWorld.x = playerEnt.pos.x;
+      tellProjectionWorld.z = playerEnt.pos.z;
+      const pp = w2s(tellProjectionWorld, { x: 0, y: 0, onScreen: false });
+      if (pp && Number.isFinite(pp.x) && Number.isFinite(pp.y)) playerOrigin = { x: pp.x, y: pp.y };
+    }
     for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
       const slot = tellSlots[slotIndex];
       if (slot.age >= Infinity) continue;
@@ -3645,28 +3760,20 @@ export function createHud(ctx, alerts) {
         placement = seat && seat.placement;
         setClass(slot.el, 'is-compact', !!(seat && seat.compact));
       } else {
-        placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, reserved, slot.layoutOffset, slot.geometry);
+        placement = resolveDoctrineTellPlacement(
+          w, h, proj, 0, reserved, null, slot.geometry,
+          { edgeAnchor: true, origin: playerOrigin },
+        );
       }
       if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
       reserved.push(tellBlockerAt(reserved.length,
         placement.x - placement.width / 2, placement.y - placement.height / 2,
         placement.width, placement.height));
-      slot.layoutOffset = placement.onScreen ? { x: placement.x - proj.x, y: placement.y - proj.y } : null;
+      slot.layoutOffset = null;
       setDisplay(slot.el, true, 'inline-flex');
-      setClass(slot.el, 'is-offscreen', !placement.onScreen);
+      setClass(slot.el, 'is-offscreen', !placement.onScreen || !!placement.edgeAnchored);
       setHudScreenTransform(slot.el, placement.x, placement.y, tellTransformCentered);
-      const anchorX = Math.max(0, Math.min(w, proj.x)), anchorY = Math.max(0, Math.min(h, proj.y));
-      const lineX = anchorX - placement.x, lineY = anchorY - placement.y;
-      const edge = Math.min(Math.abs(lineX) > .001 ? placement.width / 2 / Math.abs(lineX) : Infinity,
-        Math.abs(lineY) > .001 ? placement.height / 2 / Math.abs(lineY) : Infinity);
-      const startFraction = Math.min(1, edge);
-      const lineLength = Math.hypot(lineX, lineY) * (1 - startFraction);
-      slot.linkEl.hidden = !placement.onScreen || lineLength < 4;
-      if (!slot.linkEl.hidden) {
-        setStyle(slot.linkEl, 'width', `${lineLength.toFixed(1)}px`);
-        const startX = placement.x + lineX * startFraction, startY = placement.y + lineY * startFraction;
-        setStyle(slot.linkEl, 'transform', `translate(${startX.toFixed(1)}px,${startY.toFixed(1)}px) rotate(${Math.atan2(lineY, lineX)}rad)`);
-      }
+      slot.linkEl.hidden = true;
       if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
       setHidden(slot.el, false);
       setClass(slot.el, 'is-on', true);
@@ -5211,6 +5318,20 @@ export function createHud(ctx, alerts) {
     for (let j = from; j < contactMarkEls.length; j++) setClass(contactMarkEls[j], 'visible', false);
   }
 
+  // The Swarm round panel, resolved once and re-looked-up at most every 250 ms while absent
+  // (Adventure) instead of a document-wide querySelector on every frame.
+  let contactCrunEl = null;
+  let contactCrunQueriedAt = -Infinity;
+  function contactCrunElement() {
+    if (typeof document === 'undefined') return null;
+    if (contactCrunEl && contactCrunEl.isConnected) return contactCrunEl;
+    const now = performance.now();
+    if (now - contactCrunQueriedAt < 250) return null;
+    contactCrunQueriedAt = now;
+    contactCrunEl = document.querySelector?.('.sf-crun') || null;
+    return contactCrunEl;
+  }
+
   function updateContactMarks(p, selectedId, effectiveId) {
     if (!p || !p.pos || !helpers.worldToScreen) { hideContactMarks(0); return; }
     let n = 0;
@@ -5232,6 +5353,21 @@ export function createHud(ctx, alerts) {
       contactMarkNear[at].e = e;
       contactMarkNear[at].d2 = d2;
     }
+    const panelObstacles = objectiveEdgeObstacles();
+    const markClipRects = [];
+    if (panelObstacles.left) markClipRects.push(panelObstacles.left);
+    if (panelObstacles.right) markClipRects.push(panelObstacles.right);
+    if (panelObstacles.orrery) markClipRects.push(panelObstacles.orrery);
+    if (panelObstacles.rail && panelObstacles.rail !== panelObstacles.orrery) markClipRects.push(panelObstacles.rail);
+    const utilRect = utilityRow && utilityRow.style.display !== 'none' ? plateBox(utilityRow) : null;
+    if (utilRect) markClipRects.push(utilRect);
+    const deckEl = typeof document !== 'undefined' ? document.getElementById('sf-prompt-deck') : null;
+    const deckRect = deckEl && !deckEl.hidden ? plateBox(deckEl) : null;
+    if (deckRect) markClipRects.push(deckRect);
+    const crunEl = contactCrunElement();
+    const crunRect = crunEl && !crunEl.hidden && crunEl.style?.display !== 'none' ? plateBox(crunEl) : null;
+    if (crunRect) markClipRects.push(crunRect);
+
     let used = 0;
     for (let i = 0; i < n && used < CONTACT_MARK_POOL; i++) {
       const e = contactMarkNear[i].e;
@@ -5247,6 +5383,11 @@ export function createHud(ctx, alerts) {
       contactMarkEdgeWorld.x = anchor.x + (Number(e.radius) || 8); contactMarkEdgeWorld.y = 0; contactMarkEdgeWorld.z = anchor.z;
       const edge = helpers.worldToScreen(contactMarkEdgeWorld, contactMarkEdgeScreen);
       const px = edge.onScreen ? Math.max(1, Math.abs(edge.x - c.x)) : 0;
+      const markX = c.x;
+      const markY = c.y - px - 11;
+      // HUD-2 Item 1: world-space contact marks yield to live HUD panels so no diamond or arrow
+      // paints over the bottom power bar, ship vitals, objective box, target panel, or minimap.
+      if (pointInHudPanels(markX, markY, markClipRects, 14) || pointInHudPanels(c.x, c.y, markClipRects, 8)) continue;
       const mark = contactMark(contactMarkClass, px);
       if (!mark) continue;
       const el = contactMarkEls[used++];
@@ -5257,7 +5398,7 @@ export function createHud(ctx, alerts) {
       setAttr(el, 'data-variant', mark.variant);
       setAttr(el, 'data-relation', mark.relation);
       setClass(el, 'visible', true);
-      setHudScreenTransform(el, c.x, c.y - px - 11);
+      setHudScreenTransform(el, markX, markY);
     }
     hideContactMarks(used);
   }
@@ -6613,6 +6754,8 @@ export function createHud(ctx, alerts) {
         const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
         const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
         if (commsTape.style.display !== want) commsTape.style.display = want;
+        if (utilityRow.style.display !== want) utilityRow.style.display = want;
+        if (slow && !swarmRadioOff && !temporaryCircuit) adoptCommsChrome();
       }
       updateTetherFeedback(tether, latching, ml);
       const auto = !!(state.input && state.input.autoFire);
@@ -8033,28 +8176,58 @@ export function createHud(ctx, alerts) {
     write(el, 'transform', tracked ? `translate3d(${Math.round(rect.x)}px,${Math.round(rect.y)}px,0)` : 'none');
   }
 
+  // The dock alert element, looked up at most every 100 ms instead of two selector queries
+  // (one document-wide) on every frame; a live cached element is reused while it still is one.
+  let dockAlertCache = null;
+  let dockAlertQueriedAt = -Infinity;
+  function findDockAlert() {
+    const cached = dockAlertCache;
+    if (cached && cached.isConnected && cached.classList?.contains('sf-alert--dock')) return cached;
+    const now = performance.now();
+    if (now - dockAlertQueriedAt < 100) return null;
+    dockAlertQueriedAt = now;
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    dockAlertCache = alertsEl?.querySelector('.sf-alert--dock') || document.querySelector('.sf-alert--dock') || null;
+    return dockAlertCache;
+  }
   // Only the dock prompt needs a computed box; the Cluster owns its instrument layout.
   function placeFlightReadouts(w, h, followed = null) {
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
-    const dock = followed?.dock || alertsEl?.querySelector('.sf-alert--dock') || document.querySelector('.sf-alert--dock');
+    const dock = followed?.dock || findDockAlert();
     if (!dock?.isConnected || dock.hidden) { trackedDockCue = null; visorDockCue.hide(); return; }
     // Reuse the decision bounds between receipt placements so camera tracking requires no
     // layout measurement. Losing the anchor returns the chip to the ordinary alert seat.
     const deck = followed ? null : document.getElementById('sf-prompt-deck');
     const decision = followed ? followed.decision : deck && !deck.hidden ? readReceiptRect(deck) : null;
+    const resolveDockStation = (id) => {
+      if (id) return resolveHudNavStation(state, id);
+      const pilotEnt = state.entities?.get?.(state.playerId);
+      let nearest = null;
+      let bestD2 = Infinity;
+      for (const ent of state.entities?.values?.() || []) {
+        if (!ent || ent.alive === false || ent.type !== 'station' || ent.data?.isGate || !ent.pos) continue;
+        const d2 = pilotEnt?.pos
+          ? (ent.pos.x - pilotEnt.pos.x) ** 2 + (ent.pos.z - pilotEnt.pos.z) ** 2
+          : 0;
+        if (d2 < bestD2) { bestD2 = d2; nearest = ent; }
+      }
+      return nearest;
+    };
     const stationId = dock.getAttribute('data-dock-station');
-    if (stationId && w >= 840 && document.documentElement.dataset.sfMobileFlight !== '1') {
-      const station = followed?.station || resolveHudNavStation(state, stationId);
+    if (w >= 840 && document.documentElement.dataset.sfMobileFlight !== '1') {
+      const station = followed?.station || resolveDockStation(stationId);
       const pilot = state.entities?.get?.(state.playerId);
-      const at = visorDockCue.project(station, pilot, helpers.worldToScreen);
-      if (at && at.y >= 86 && at.y <= h * .74) {
+      const at = station ? visorDockCue.project(station, pilot, helpers.worldToScreen) : null;
+      if (at && at.y >= 64 && at.y <= h * .80) {
         const wide = w >= 1400 && h >= 680;
         const reach = wide ? 86 : 48;
         const width = Math.min(190, (wide ? 138 : 118) + 7 * Math.max(0, (dock.getAttribute('data-dock-key') || '').length - 1));
         const x = at.x + reach + width <= w - 18 ? at.x + reach : at.x - reach - width;
-        const anchorBox = { x, y: at.y - (wide ? 77 : 53), width, height: wide ? 38 : 34 };
-        const objective = objectiveEdgeObstacles()?.left;
-        const clear = x >= 18 && (!decision || !rectsOverlap(anchorBox, decision)) && (!objective || !rectsOverlap(anchorBox, objective));
+        const anchorBox = { x, y: Math.max(24, at.y - (wide ? 77 : 53)), width, height: wide ? 38 : 34 };
+        const obs = objectiveEdgeObstacles();
+        const blockers = [obs?.left, obs?.right, obs?.orrery, obs?.rail, decision,
+          utilityRow && utilityRow.style.display !== 'none' ? plateBox(utilityRow) : null].filter(Boolean);
+        const clear = x >= 18 && x + width <= w - 18 && blockers.every((b) => !rectsOverlap(anchorBox, b));
         if (clear) {
           if (!followed) trackedDockCue = { dock, station, decision };
           setAttr(dock, 'data-visor-anchored', 'true');

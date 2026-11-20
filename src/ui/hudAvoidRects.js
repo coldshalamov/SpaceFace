@@ -125,11 +125,21 @@ function readRectRows(doc, query, exclude) {
 const sharedHudSnapshots = new WeakMap();
 const docSnapshots = new WeakMap();
 
+// Layout-change invalidations arrive in bursts in a busy fight (every receipt card, caption and
+// alert re-announces). Each one used to force a fresh querySelectorAll + getBoundingClientRect
+// sweep on the next frame — the Swarm round-20 profile showed ~86 ms of forced layout per second.
+// An invalidation now re-reads on the next get() only once this long has passed since the last
+// read: at most ~7 reads a second, while a quiet HUD still follows a real change within a frame.
+export const AVOID_RECT_INVALIDATE_COALESCE_MS = 150;
+
 function createRectSnapshot(doc, query, ttl, exclude) {
   let rows = [];
   let at = -Infinity;
-  const invalidate = () => { at = -Infinity; };
-  doc?.defaultView?.addEventListener?.('resize', invalidate, { passive: true });
+  let dirty = false;
+  const invalidate = () => { dirty = true; };
+  // A viewport resize moves every panel at once: re-read on the very next get().
+  const invalidateNow = () => { at = -Infinity; };
+  doc?.defaultView?.addEventListener?.('resize', invalidateNow, { passive: true });
   if (doc) {
     let live = docSnapshots.get(doc);
     if (!live) docSnapshots.set(doc, live = new Set());
@@ -137,9 +147,10 @@ function createRectSnapshot(doc, query, ttl, exclude) {
   }
   return {
     get(t) {
-      if (t - at >= ttl) {
+      if (t - at >= ttl || (dirty && t - at >= AVOID_RECT_INVALIDATE_COALESCE_MS)) {
         rows = readRectRows(doc, query, exclude);
         at = t;
+        dirty = false;
       }
       return rows;
     },
@@ -196,6 +207,32 @@ export function createAvoidRects(doc, opts = {}) {
         found = [...found, ...extras].sort((a, b) => byDocumentOrder(a.el, b.el));
       }
       cache = found.map(({ rect }) => rect);
+      return cache;
+    },
+    invalidate: snapshot.invalidate,
+  };
+}
+
+/**
+ * Cached rects of an ad-hoc selector list for a per-frame placement pass: the same snapshot
+ * machinery (TTL, resize, invalidateAvoidRects) as the HUD avoid list, so the frame never queries
+ * the DOM or forces layout itself. Returns { get(): {x,y,w,h}[] , invalidate() }.
+ * @param {Document} doc
+ * @param {string} selectors comma list
+ * @param {{ ttlMs?: number, exclude?: (el: Element) => boolean, now?: () => number }} [opts]
+ */
+export function createSelectorRects(doc, selectors, opts = {}) {
+  const now = opts.now || (() => (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now()));
+  const snapshot = createRectSnapshot(doc, selectors, opts.ttlMs ?? 250, opts.exclude);
+  let source;
+  let cache = [];
+  return {
+    get() {
+      const rows = snapshot.get(now());
+      if (rows !== source) {
+        source = rows;
+        cache = rows.map(({ rect }) => rect);
+      }
       return cache;
     },
     invalidate: snapshot.invalidate,

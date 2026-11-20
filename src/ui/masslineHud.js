@@ -22,6 +22,7 @@
 // Reads only: state.massline2.*, state.player.tether, entities, helpers.worldToScreen. Writes
 // nothing but its own DOM. Runs late in UPDATE_ORDER; every update exits immediately when the
 // master flag is off or the DOM is absent (headless-safe by construction).
+import { createSelectorRects } from './hudAvoidRects.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   clearHudSignature,
@@ -411,8 +412,9 @@ function playerHullScreenRect(player, w2s) {
   return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
 }
 
-function pointUnderHud(x, y, rects) {
+function pointUnderHud(x, y, rects, pad = 16) {
   if (!Array.isArray(rects) && !(rects && typeof rects.length === 'number')) return false;
+  const p = Number.isFinite(pad) ? pad : 0;
   for (let i = 0; i < rects.length; i++) {
     const r = rects[i];
     const left = Number(r?.left ?? r?.x);
@@ -420,15 +422,58 @@ function pointUnderHud(x, y, rects) {
     const w = Number(r?.width ?? r?.w);
     const h = Number(r?.height ?? r?.h);
     if (![left, top, w, h].every(Number.isFinite) || !(w > 0) || !(h > 0)) continue;
-    if (x >= left && x <= left + w && y >= top && y <= top + h) return true;
+    if (x >= left - p && x <= left + w + p && y >= top - p && y <= top + h + p) return true;
   }
   return false;
 }
 
+/** Shared world-prompt priority gate (HUD-2 Item 7): Dock > Floor-shop pad > Line latch.
+ *  Never show two world prompts on screen at the same time. */
+function higherWorldPromptActive() {
+  if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return false;
+  const dock = document.querySelector('#alerts .sf-alert--dock');
+  if (dock && !dock.hidden && dock.isConnected !== false) {
+    const disp = dock.style?.display;
+    if (disp !== 'none') return true;
+  }
+  const pad = document.querySelector('#sf-floorpads .sf-fp[data-floor-quote]');
+  if (pad && !pad.hidden && pad.style?.display !== 'none' && !pad.classList?.contains?.('sf-fp--far')) {
+    return true;
+  }
+  return false;
+}
+
+const LIVE_HUD_PANEL_SELECTORS = '.orr-hud-cluster, .sf-rightdock, .sf-leftcontext, #sf-prompt-deck, .sf-visor-utility-row';
+
+// One cached snapshot of the live HUD panels (TTL, resize and HUD layout invalidation) per
+// document: the acquisition preview re-places every frame and used to query + measure the panels
+// each time (forced layout inside the frame).
+let liveHudPanelRects = null;
+let liveHudPanelDoc = null;
+function collectLiveHudPanelRects(baseObstacles) {
+  const out = Array.isArray(baseObstacles) ? baseObstacles.slice() : [];
+  if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return out;
+  if (!liveHudPanelRects || liveHudPanelDoc !== document) {
+    liveHudPanelDoc = document;
+    liveHudPanelRects = createSelectorRects(document, LIVE_HUD_PANEL_SELECTORS,
+      { exclude: (el) => el.style?.display === 'none' });
+  }
+  for (const r of liveHudPanelRects.get()) {
+    out.push({ left: r.x, top: r.y, width: r.w, height: r.h });
+  }
+  return out;
+}
+
 function placeHudBracketWords(owner, element, text, mark, player, w2s, viewport,
   obstacles = owner._flightTextObstacles, lifted = false) {
+  const padded = collectLiveHudPanelRects(obstacles).map((r) => ({
+    x: Number(r?.x ?? r?.left) - 8,
+    y: Number(r?.y ?? r?.top) - 8,
+    w: Number(r?.w ?? r?.width) + 16,
+    h: Number(r?.h ?? r?.height) + 16,
+  }));
   return placeBracketWords(mark, playerHullScreenRect(player, w2s),
-    bracketWordSize(element, text, viewport, lifted), viewport, obstacles, lifted);
+    bracketWordSize(element, text, viewport, lifted), viewport, padded, lifted);
 }
 
 // INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
@@ -1562,7 +1607,7 @@ export const masslineHud = {
     if (tethered && isAdventureFlight(state) && massline2Flag('throw') && isThrowArmPayload(state)) {
       return this._renderHeldThrowCue(dom, state, player, w2s);
     }
-    if (!selected || tethered) return this._hideAcquisitionPreview(dom);
+    if (!selected || tethered || higherWorldPromptActive()) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
     // The aim tag names a thing to grab: never the pilot's own hull, nor anything riding on it.
@@ -1582,10 +1627,10 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(targetScreen.x, targetScreen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : targetScreen.x;
     const cueY = pinned ? pinned.y : targetScreen.y;
-    // World markers stay out of HUD rects: a diamond under the action wheel, the radar or a card
-    // is not on the object any more, it is on the furniture. The mark waits for the cursor to
-    // leave (the aria state is simply not announced while hidden).
-    if (!offscreen && pointUnderHud(cueX, cueY, this._flightTextObstacles)) return this._hideAcquisitionPreview(dom);
+    // World markers stay out of HUD rects (including the power bar and vitals, padded for the
+    // 24px diamond so neither the mark nor the chip ever paints over a power tile).
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
+    if (!offscreen && pointUnderHud(cueX, cueY, liveObstacles, 18)) return this._hideAcquisitionPreview(dom);
     const ready = selected.status === 'ready';
     const readyDetonator = ready && target.alive === true && target.data?.lootTableId === 'detonator_dart'
       && selected.occupantGeneration != null && selected.occupantGeneration === target.occupantGeneration
@@ -1599,12 +1644,8 @@ export const masslineHud = {
     }
     const seedText = masslineSeedPreviewText(seedPreview);
     // F4: a latchable body with mass answers the swing question on the same caption line.
-    // The same body mass the hover tag reads (physics body, mirrored bodyMassT, then nominal), so both presenters agree.
     const playerMass = lineBodyMassT(player);
     const massRead = massPreviewRead(target, playerMass);
-    // R12: the quiet glass names the relationship with the live binding — `RMB · TOW`, `RMB · TUG`,
-    // `RMB · ANCHOR` — and never refuses. OPENING-1b's hush stays: until the first throw lands, a body you
-    // would only swing round (ANCHOR) stays unlabelled so the light lesson rock is the one thing that speaks.
     const relation = seedPreview ? '' : lineRelationWord(target, playerMass);
     const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true)
       && relation === 'ANCHOR' && !lineLessonBody(target);
@@ -1615,16 +1656,17 @@ export const masslineHud = {
       : '';
     const text = seedText || massText || bracketReadText(read);
     const paint = seedText || massText || bracketPaintText(read);
-    const visorLatch = ready && !offscreen && !seedText && massText && isAdventureFlight(state)
+    // HUD-2 Item 7: unify world-prompt styling across BOTH Adventure and Swarm under the visor skin.
+    const visorLatch = ready && !offscreen && !seedText && massText
       && typeof document !== 'undefined' && document.body?.dataset?.hudSkin === 'orrery'
       && document.documentElement?.dataset?.sfMobileFlight !== '1' && viewportWidth >= 840;
     resetPreviewStyles(dom, readyDetonator, visorLatch);
-    let obstacles = this._flightTextObstacles;
+    let obstacles = liveObstacles;
     const padRects = readyDetonator ? hud?.getFloorPadLabelRects?.() : null;
     if (padRects?.length) {
       obstacles = this._dartCaptionObstacles;
       obstacles.length = 0;
-      obstacles.push(...this._flightTextObstacles, ...padRects);
+      obstacles.push(...liveObstacles, ...padRects);
     }
     const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
       { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight }, obstacles, visorLatch);
@@ -1673,10 +1715,13 @@ export const masslineHud = {
     if (!held || !held.pos || held.id === state.playerId) return this._hideAcquisitionPreview(dom);
     const screen = projectWorld(w2s, held.pos.x, held.pos.z);
     if (!finiteProjection(screen) || !screen.onScreen) return this._hideAcquisitionPreview(dom);
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
+    if (pointUnderHud(screen.x, screen.y, liveObstacles, 16)) return this._hideAcquisitionPreview(dom);
     const text = throwActionCue(state);
     resetPreviewStyles(dom);
     const placed = placeHudBracketWords(this, dom.previewEl, text, { x: screen.x, y: screen.y }, player, w2s,
-      { w: viewportExtent('innerWidth', 'clientWidth', 1440), h: viewportExtent('innerHeight', 'clientHeight', 900) });
+      { w: viewportExtent('innerWidth', 'clientWidth', 1440), h: viewportExtent('innerHeight', 'clientHeight', 900) },
+      liveObstacles);
     setStyle(dom.previewMark, 'display', 'none');
     setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
@@ -1693,6 +1738,7 @@ export const masslineHud = {
   // VERB-25 — a mass seed under the cursor uses the same preview caption, not a second mark.
   // A locking seed is not an acquisition candidate; this reads the preview massSeed published.
   _renderSeedLatchPreview(dom, state, player, w2s, preview) {
+    if (higherWorldPromptActive()) return this._hideAcquisitionPreview(dom);
     const screen = projectWorld(w2s, preview.x, preview.z);
     if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
     const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
@@ -1703,9 +1749,11 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
+    if (!offscreen && pointUnderHud(cueX, cueY, liveObstacles, 18)) return this._hideAcquisitionPreview(dom);
     const text = masslineSeedPreviewText(preview);
     const placed = placeHudBracketWords(this, dom.previewEl, text,
-      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight }, liveObstacles);
     const holds = preview.isMassSeedTetherEligible === true;
     setStyle(dom.previewMark, 'display', 'block');
     setStyle(dom.previewSourceMark, 'display', 'none');
@@ -1754,15 +1802,17 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
     const read = resolveMasslineBracketRead('invalid', denial.reason);
     const text = bracketReadText(read);
     const paint = bracketPaintText(read);
     const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
-      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight }, liveObstacles);
     const labelX = placed.x;
     const labelY = placed.y;
-    setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
-    if (denied) {
+    const markClear = denied && !pointUnderHud(cueX, cueY, liveObstacles, 14);
+    setStyle(dom.previewMark, 'display', markClear ? 'block' : 'none');
+    if (markClear) {
       setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
       setClass(dom.previewMark, 'ml2-bridle-target', false);
       setClass(dom.previewMark, 'ml2-offscreen', offscreen);

@@ -13,8 +13,10 @@ import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 import { floatLedger, floatPriority, seatOutOfRects } from './floatingTextRules.js';
-import { createAvoidRects } from './hudAvoidRects.js';
+import { createAvoidRects, createSelectorRects } from './hudAvoidRects.js';
 import { loadingShellVisible } from '../localization/idleWarmPolicy.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
+import { swarmTapModById } from '../data/swarmMods.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { nearestSwarmFloorPad } from '../data/swarmFloor.js';
 import { getPromptDevice, promptLabel } from './bindings.js';
@@ -144,6 +146,101 @@ export function weakPointFloatingTextSpec(payload) {
   };
 }
 
+/** Plain-word display text for a Foundry floor-shop pad (HUD-2 Item 8: never prints "TAP · STRIPPED"). */
+export function formatFloorPadLabel(rec) {
+  if (!rec || typeof rec !== 'object') return { title: '', sub: '' };
+  if (rec.kind === 'tap') {
+    const mod = rec.modId ? swarmTapModById(rec.modId) : null;
+    if (mod) {
+      const priceStr = Number.isFinite(rec.price) ? rec.price.toLocaleString('en-US') : '';
+      return {
+        title: `${String(mod.plainName || mod.name).toUpperCase()}${priceStr ? ` · ${priceStr}` : ''}`,
+        sub: mod.shortText || mod.text || '',
+      };
+    }
+  }
+  let raw = typeof rec.label === 'string' ? rec.label.trim() : '';
+  if (/^TAP\s*·\s*SOLD OUT$/i.test(raw)) return { title: 'MODS SOLD OUT', sub: '' };
+  if (/^TAP\s*·\s*/i.test(raw)) {
+    const rest = raw.replace(/^TAP\s*·\s*/i, '');
+    const strippedMatch = /^STRIPPED\b/i.test(rest);
+    return {
+      title: strippedMatch ? rest.replace(/^STRIPPED\b/i, 'LIGHT FRAME') : rest,
+      sub: strippedMatch ? 'Faster turns & speed, lighter hull' : '',
+    };
+  }
+  if (/^THE CRATE\b/i.test(raw)) raw = raw.replace(/^THE CRATE\b/i, 'WEAPON CRATE');
+  if (/^THE FORGE\b/i.test(raw)) raw = raw.replace(/^THE FORGE\b/i, 'WEAPON FORGE');
+  return { title: raw, sub: '' };
+}
+
+export const FLOOR_PAD_UNDER_FIRE_WINDOW_S = 2.5;
+export const FLOOR_PAD_UNDER_FIRE_HOSTILE_WU = 210;
+
+/** True when the player recently took damage or has a live hostile close enough to fight. */
+export function isPlayerUnderFire(state, now = 0, lastPlayerDamageAt = -Infinity) {
+  if (Number.isFinite(now) && Number.isFinite(lastPlayerDamageAt)
+    && now >= lastPlayerDamageAt && (now - lastPlayerDamageAt) <= FLOOR_PAD_UNDER_FIRE_WINDOW_S) {
+    return true;
+  }
+  const player = state?.playerId != null ? state.entities?.get?.(state.playerId) : null;
+  if (!player || player.alive === false || !player.pos) return false;
+  const px = Number(player.pos.x);
+  const pz = Number(player.pos.z);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return false;
+  const maxSq = FLOOR_PAD_UNDER_FIRE_HOSTILE_WU * FLOOR_PAD_UNDER_FIRE_HOSTILE_WU;
+  const entities = state.entityIndex?.ships || (state.entities?.values ? state.entities.values() : []);
+  for (const e of entities) {
+    if (!e || e === player || e.alive === false || !e.pos) continue;
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= maxSq) return true;
+  }
+  return false;
+}
+
+/** Place an expanded floor-shop card strictly anchored to its pad (<= maxDisplacement px).
+ *  Returns `{ x, y }` center coordinates, or `null` to hide rather than float beside gauges. */
+export function seatPadCardNearAnchor(anchor, size, obstacles, bounds, maxDisplacement = 72) {
+  if (!anchor || !size || !(size.w > 0) || !(size.h > 0)) return null;
+  const vw = bounds?.w > 0 ? bounds.w : 1280;
+  const vh = bounds?.h > 0 ? bounds.h : 720;
+  const halfW = size.w / 2;
+  const halfH = size.h / 2;
+  const overlapsAny = (cx, cy) => {
+    const left = cx - halfW;
+    const top = cy - halfH;
+    const right = cx + halfW;
+    const bottom = cy + halfH;
+    if (left < 8 || top < 8 || right > vw - 8 || bottom > vh - 8) return true;
+    for (let i = 0; i < obstacles.length; i++) {
+      const o = obstacles[i];
+      const ox = Number(o?.x ?? o?.left);
+      const oy = Number(o?.y ?? o?.top);
+      const ow = Number(o?.w ?? o?.width);
+      const oh = Number(o?.h ?? o?.height);
+      if (![ox, oy, ow, oh].every(Number.isFinite) || !(ow > 0) || !(oh > 0)) continue;
+      if (left < ox + ow + 6 && right > ox - 6 && top < oy + oh + 6 && bottom > oy - 6) return true;
+    }
+    return false;
+  };
+  const candidates = [
+    { x: anchor.x, y: anchor.y - halfH - 22 },
+    { x: anchor.x, y: anchor.y + halfH + 22 },
+    { x: anchor.x + halfW + 18, y: anchor.y },
+    { x: anchor.x - halfW - 18, y: anchor.y },
+  ];
+  for (const c of candidates) {
+    const dx = c.x - anchor.x;
+    const dy = c.y - anchor.y;
+    if (dx * dx + dy * dy > maxDisplacement * maxDisplacement) continue;
+    if (!overlapsAny(c.x, c.y)) return c;
+  }
+  return null;
+}
+
 export function createFloatingText(ctx) {
   const { state, helpers, bus } = ctx;
   const ledger = ctx.floatLedger || floatLedger;
@@ -200,8 +297,9 @@ export function createFloatingText(ctx) {
   // the round panel or the radar never covers it; the floats keep the layer above.
   if (root && typeof root.insertBefore === 'function' && root.firstChild) root.insertBefore(padLayer, root.firstChild);
   else layer.appendChild(padLayer);
-  const PAD_TAG_REACH = 220;  // world units: show price before the shop approach
+  const PAD_TAG_REACH = 115;  // world units: expand a shop card only when flying close to the pad
   const PAD_NOTE_REACH = 50;  // ambient flavor labels, tighter
+  let lastPlayerDamageAt = -Infinity;
   const padNodes = new Map();   // entityId -> { el, lastText, denied }
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
@@ -210,6 +308,34 @@ export function createFloatingText(ctx) {
   const padLabelRects = [];
   const padBounds = { w: 0, h: 0 };
   const padBox = { x: 0, y: 0, w: 0, h: 0 };
+  // The pad tags' own panel list, read through the cached rect snapshot (TTL, resize and HUD
+  // layout invalidation) instead of a querySelectorAll + getBoundingClientRect sweep every frame.
+  const padPanelRects = typeof document !== 'undefined' && typeof document.querySelectorAll === 'function'
+    ? createSelectorRects(document,
+      '.orr-hud-cluster, .orr-cluster, .sf-leftcontext, .sf-rightdock, .sf-sj__col, .sf-sj__bossbar, #alerts, #sf-visor-utility-row, .sf-crun',
+      { exclude: (el) => el.style?.display === 'none' })
+    : null;
+  const collectPadHudObstacles = () => {
+    padObstacles.length = 0;
+    for (const rect of avoid.get()) padObstacles.push(rect);
+    if (padPanelRects) {
+      for (const r of padPanelRects.get()) {
+        if (r.w > 4 && r.h > 4) padObstacles.push(r);
+      }
+    }
+  };
+  const pointInsideObstacles = (px, py, pad = 10) => {
+    for (let i = 0; i < padObstacles.length; i++) {
+      const o = padObstacles[i];
+      const ox = Number(o?.x ?? o?.left);
+      const oy = Number(o?.y ?? o?.top);
+      const ow = Number(o?.w ?? o?.width);
+      const oh = Number(o?.h ?? o?.height);
+      if (![ox, oy, ow, oh].every(Number.isFinite) || !(ow > 0) || !(oh > 0)) continue;
+      if (px >= ox - pad && px <= ox + ow + pad && py >= oy - pad && py <= oy + oh + pad) return true;
+    }
+    return false;
+  };
   // The pad layer's box and the phone-deck flag move only on a viewport or deck change; reading
   // them inside the frame pass forced one layout per frame whenever a pad tag was on screen
   // (PERF-REG-01: get clientWidth was the profile's #2 leaf). The values are marked stale on
@@ -240,6 +366,43 @@ export function createFloatingText(ctx) {
     const player = state.playerId != null ? state.entities.get(state.playerId) : null;
     const selectedPad = nearestSwarmFloorPad(state);
     const inArena = state.run?.ruleset === 'swarm' || state.run?.kind === 'survival';
+    const underFire = isPlayerUnderFire(state, now, lastPlayerDamageAt);
+    const dockPromptLive = typeof document !== 'undefined'
+      && !!document.querySelector?.('#alerts .sf-alert--dock:not([hidden])');
+
+    // HUD-2 Item 8: at most ONE priced pad expands to a readable card at a time — the closest
+    // eligible pad within tight proximity (115 wu). While under fire or showing a dock prompt,
+    // only an actively armed or just-denied pad expands; everything else stays as a quiet world dot.
+    let expandedPadId = null;
+    let bestExpandDistSq = Infinity;
+    let bestExpandPriority = -1;
+    for (const e of state.entities.values()) {
+      const rec = e && e.data && e.data.swarmFloorPad;
+      if (!rec || e.alive === false || !e.pos) continue;
+      const priced = rec.kind != null || Number.isFinite(rec.price);
+      if (!priced) continue;
+      const armed = Number.isFinite(rec.armedUntil) && rec.armedUntil > now;
+      const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
+      const selected = e === selectedPad;
+      let d2 = 0;
+      if (player && player.pos) {
+        const dx = e.pos.x - player.pos.x;
+        const dz = e.pos.z - player.pos.z;
+        d2 = dx * dx + dz * dz;
+      }
+      const prevNode = padNodes.get(e.id);
+      const reach = PAD_TAG_REACH * (prevNode?.near ? 1.15 : 1);
+      const inRange = d2 <= reach * reach || selected;
+      if (!inRange && !armed && !denied) continue;
+      if ((underFire || dockPromptLive) && !armed && !denied) continue;
+      const prio = denied ? 3 : armed ? 2 : selected ? 1 : 0;
+      if (prio > bestExpandPriority || (prio === bestExpandPriority && d2 < bestExpandDistSq)) {
+        bestExpandPriority = prio;
+        bestExpandDistSq = d2;
+        expandedPadId = e.id;
+      }
+    }
+
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
@@ -261,14 +424,18 @@ export function createFloatingText(ctx) {
         const el = document.createElement('div');
         el.className = 'sf-fp';
         padLayer.appendChild(el);
-        node = { el, lastText: '', denied: null, w: 0, seat: { x: 0, y: 0, w: 0, h: 0 } };
+        node = { el, lastText: '', denied: null, w: 0, h: 0, seat: { x: 0, y: 0, w: 0, h: 0 } };
         padNodes.set(e.id, node);
       }
       node.seen = true;
-      const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
+      const formatted = formatFloorPadLabel(rec);
+      const text = formatted.title || (typeof rec.label === 'string' ? rec.label : '');
       const selected = e === selectedPad;
       const armed = Number.isFinite(rec.armedUntil) && rec.armedUntil > now;
-      const fit = (rec.kind === 'wall_gun' || rec.kind === 'crate') && typeof rec.fitPreview === 'string' ? rec.fitPreview : '';
+      const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
+      const fit = (rec.kind === 'wall_gun' || rec.kind === 'crate') && typeof rec.fitPreview === 'string'
+        ? rec.fitPreview
+        : (formatted.detail || '');
       const hint = armed ? 'Cross pad to buy' : selected
         ? (getPromptDevice() === 'touch' ? 'Tap Select' : `${promptLabel('dock')} Select`) : '';
       if (node.lastText !== text || node.lastFit !== fit || node.lastHint !== hint) {
@@ -281,20 +448,19 @@ export function createFloatingText(ctx) {
         node.w = 0;
         node.h = 0;
       }
-      // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
-      // refusedUntil in sim time, so the red reads exactly as long as the pad is lit denied.
-      const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
       _padWorld.x = e.pos.x; _padWorld.z = e.pos.z;
       const s = helpers.worldToScreen(_padWorld, _padScreen);
-      // A price tag is for the till you are standing at. Far away a priced pad is a small lit
-      // dot (the body itself carries the glow); an ambient flavor label shows only up close.
-      const reach = (priced ? PAD_TAG_REACH : PAD_NOTE_REACH) * (node.near ? 1.2 : 1);
-      let near = true;
-      if (player && player.pos) {
-        const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-        near = dx * dx + dz * dz <= reach * reach;
+      let near = false;
+      if (priced) {
+        near = e.id === expandedPadId;
+      } else {
+        const reach = PAD_NOTE_REACH * (node.near ? 1.2 : 1);
+        near = true;
+        if (player && player.pos) {
+          const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+          near = dx * dx + dz * dz <= reach * reach;
+        }
       }
-      if (denied || selected || armed) near = true;
       node.near = near;
       const far = !near && priced;
       const ambient = !priced;
@@ -303,9 +469,10 @@ export function createFloatingText(ctx) {
         node.el.className = 'sf-fp' + (ambient ? ' sf-fp--ambient' : '') + (denied ? ' sf-fp--deny' : '') + (far ? ' sf-fp--far' : '');
       }
       const quiet = !near && !priced;
+      const onScreen = s.onScreen !== false;
       const show = !quiet && Number.isFinite(s.x) && Number.isFinite(s.y)
-        && (s.onScreen !== false || s.x !== 0 || s.y !== 0);
-      const termsVisible = selected && show && s.onScreen !== false;
+        && (onScreen || (far && (s.x !== 0 || s.y !== 0)));
+      const termsVisible = selected && near && show && onScreen;
       if (node.termsVisible !== termsVisible) {
         node.termsVisible = termsVisible;
         if (termsVisible) node.el.setAttribute?.('data-floor-quote', String(e.id));
@@ -316,6 +483,8 @@ export function createFloatingText(ctx) {
       if (show) {
         node.x = s.x;
         node.y = s.y;
+        node.onScreen = onScreen;
+        node.priced = priced;
         visiblePads.push(node);
       }
     }
@@ -330,16 +499,51 @@ export function createFloatingText(ctx) {
     // before measuring the next can force the HUD to lay out repeatedly.
     if (padStatics.stale) refreshPadStatics();
     const padW = padStatics.w;
-    let hasMeasuredPad = false;
     for (const node of visiblePads) {
       if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
-      hasMeasuredPad ||= node.w > 0 && node.h > 0;
     }
-    padObstacles.length = 0;
-    if (hasMeasuredPad) for (const rect of avoid.get()) padObstacles.push(rect);
+    collectPadHudObstacles();
     const phoneDeck = padStatics.phoneDeck;
 
     for (const node of visiblePads) {
+      if (node.far) {
+        // Far pads render only as tiny world dots — hide if the dot itself falls inside a HUD panel.
+        if (!node.onScreen || pointInsideObstacles(node.x, node.y, 12)) {
+          if (node.el.style.display !== 'none') node.el.style.display = 'none';
+          continue;
+        }
+        const transform = `translate3d(${Math.round(node.x)}px,${Math.round(node.y)}px,0) translate(-50%,-50%)`;
+        if (node.transform !== transform) { node.transform = transform; node.el.style.transform = transform; }
+        if (node.op !== '') { node.op = ''; node.el.style.opacity = ''; }
+        continue;
+      }
+
+      // Expanded priced shop card: strictly anchor near its pad (<= 72 px displacement) and NEVER
+      // float beside the gauges or under headlines. If no clean seat exists near the pad, hide it.
+      if (node.priced && node.w > 0 && node.h > 0) {
+        const seat = node.onScreen
+          ? seatPadCardNearAnchor({ x: node.x, y: node.y }, { w: node.w, h: node.h }, padObstacles, padBounds, 72)
+          : null;
+        if (!seat) {
+          if (node.el.style.display !== 'none') node.el.style.display = 'none';
+          if (node.termsVisible) {
+            node.termsVisible = false;
+            node.el.removeAttribute?.('data-floor-quote');
+          }
+          continue;
+        }
+        node.seat.x = seat.x - node.w / 2;
+        node.seat.y = seat.y - node.h / 2;
+        node.seat.w = node.w;
+        node.seat.h = node.h;
+        padObstacles.push(node.seat);
+        padLabelRects.push(node.seat);
+        const transform = `translate3d(${Math.round(seat.x)}px,${Math.round(seat.y)}px,0) translate(-50%,-50%)`;
+        if (node.transform !== transform) { node.transform = transform; node.el.style.transform = transform; }
+        if (node.op !== '') { node.op = ''; node.el.style.opacity = ''; }
+        continue;
+      }
+
       const half = node.w / 2 + 6;
       let px = padW > half * 2 ? Math.min(Math.max(node.x, half), padW - half) : node.x;
       let py = Math.max(node.y - 26, 16);
@@ -353,17 +557,13 @@ export function createFloatingText(ctx) {
         px = seat.x + node.w / 2;
         py = seat.y + node.h / 2;
         fade = seat.fade;
-        // Earlier chips keep their seats without mutating cached HUD rectangles.
         node.seat.x = seat.x;
         node.seat.y = seat.y;
         node.seat.w = node.w;
         node.seat.h = node.h;
         padObstacles.push(node.seat);
-        if (!node.far && (phoneDeck ? fade === 1 : fade > 0)) padLabelRects.push(node.seat);
+        if (phoneDeck ? fade === 1 : fade > 0) padLabelRects.push(node.seat);
       }
-      // Integer px like the Swarm kill-popups: subpixel projection noise used to mint a
-      // new transform string (and a style mutation) every frame even when the chip held
-      // its seat. Same picture; unchanged frames now skip the write entirely.
       const transform = `translate3d(${Math.round(px)}px,${Math.round(py)}px,0) translate(-50%,-50%)`;
       if (node.transform !== transform) { node.transform = transform; node.el.style.transform = transform; }
       const opacity = fade < 1 ? (phoneDeck ? '0' : String(fade)) : '';
@@ -456,7 +656,10 @@ export function createFloatingText(ctx) {
     const amount = Number.isFinite(p?.applied) ? p.applied : Number(p?.amount) || 0;
     const playerCaused = p.attackerId === state.playerId
       || (p.provenance && p.provenance.actorId === state.playerId);
-    const onPlayer = p.targetId === state.playerId;
+    const onPlayer = p.targetId === state.playerId || p.isPlayer === true;
+    if (onPlayer && amount > 0 && Number.isFinite(state.simTime)) {
+      lastPlayerDamageAt = state.simTime;
+    }
     if (playerCaused && !onPlayer && p.targetId != null) {
       const layerWord = damageLayer(p) || (p.brokeShield ? 'shield' : null);
       if (layerWord && admitLayerVoice(pipBook, p.targetId, layerWord, (state.simTime || 0) * 1000)) {
@@ -598,7 +801,7 @@ export function createFloatingText(ctx) {
   // minted by the pre-save session — retire them rather than letting them finish their drift
   // over the restored scene at stale world anchors.
   for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
-    on(name, () => { for (const n of nodes) retire(n); });
+    on(name, () => { lastPlayerDamageAt = -Infinity; for (const n of nodes) retire(n); });
   }
 
   // Spawn-pop: numbers arrive on the system's snap spring (ORRERY §3.5 — stiffness 420, damping
