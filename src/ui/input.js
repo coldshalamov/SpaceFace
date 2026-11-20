@@ -388,16 +388,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // station, the interact key hands the approach to the autopilot, which flies the corridor
     // mouth and then the berth (the same berth plan the dock prompt uses); any flight key takes
     // the helm back. In range, the same key docks.
-    const berth = nearestDockableStation();
-    if (berth) {
-      bus.emit('ui:setCourse', { pos: { x: berth.pos.x, z: berth.pos.z }, targetEntityId: berth.id,
-        label: berth.name || berth.data?.name || 'Station berth', waypointKind: 'local', autopilot: true });
-      bus.emit('toast', { text: `Autopilot: flying to the ${berth.name || 'station'} berth — steer to take the helm back`, kind: 'info', ttl: 3 });
-      bus.emit('audio:cue', { id: 'ui_confirm' });
-      state.ui = state.ui || {};
-      state.ui.berthAutopilotStationId = berth.id;
-      return true;
-    }
+    // Any distance in the sector: the selected or tracked station first, else the nearest one.
+    const berth = chosenDockableStation() || nearestDockableStation();
+    if (berth) return flyToBerth(berth);
     const quote = swarmFloorPadQuote(nearestSwarmFloorPad(state));
     if (!quote) return false;
     const terms = document.querySelector(`#sf-floorpads [data-floor-quote="${quote.entityId}"]`);
@@ -406,17 +399,43 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     return true;
   }
 
-  // The nearest station the interact key can fly the ship to (published for the HUD's
-  // "[E] Fly to berth" prompt on state.ui.berthOfferStationId).
-  const BERTH_OFFER_RANGE_WU = 4000;
+  // The berth autopilot (2026-11-20): from the station's marker at any distance in the sector.
+  // The flight computer cruises there (it owns the boost while it flies), slows for the corridor
+  // mouth, rides the lane and parks at the berth; any steering or the brake takes the helm back.
+  function isDockableStation(e) {
+    return !!(e && e.alive !== false && e.type === 'station' && e.pos
+      && !(e.data && (e.data.hostile === true || e.data.dockable === false)));
+  }
+  function flyToBerth(berth) {
+    if (!isDockableStation(berth) || state.mode !== 'flight' || state.ui?.docked) return false;
+    bus.emit('ui:setCourse', { pos: { x: berth.pos.x, z: berth.pos.z }, targetEntityId: berth.id,
+      label: berth.name || berth.data?.name || 'Station berth', waypointKind: 'local', autopilot: true });
+    bus.emit('toast', { text: `Autopilot: flying to the ${berth.name || 'station'} berth — steer or brake to take the helm back`, kind: 'info', ttl: 3 });
+    bus.emit('audio:cue', { id: 'ui_confirm' });
+    state.ui = state.ui || {};
+    state.ui.berthAutopilotStationId = berth.id;
+    return true;
+  }
+  function chosenDockableStation() {
+    const get = (id) => (id != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null);
+    const picked = get(state.player && state.player.targetId);
+    if (isDockableStation(picked)) return picked;
+    const tracked = get(state.nav && state.nav.waypoint && state.nav.waypoint.targetEntityId);
+    return isDockableStation(tracked) ? tracked : null;
+  }
+  // The chart's place card asks for the same thing by station id: bus 'nav:flyToBerth' { stationId }.
+  unsubscribers.push(bus.on('nav:flyToBerth', (p) => {
+    const id = p && p.stationId;
+    const station = id != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+    if (!flyToBerth(station)) bus.emit('toast', { text: 'No berth to fly to from here', kind: 'warn', ttl: 2 });
+  }));
   function nearestDockableStation() {
     const me = state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
     if (!me || !me.pos) return null;
     let best = null;
-    let bestD = BERTH_OFFER_RANGE_WU;
+    let bestD = Infinity;
     for (const e of state.entityList || []) {
-      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
-      if (e.data && (e.data.hostile === true || e.data.dockable === false)) continue;
+      if (!isDockableStation(e)) continue;
       const d = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
       if (d < bestD) { bestD = d; best = e; }
     }

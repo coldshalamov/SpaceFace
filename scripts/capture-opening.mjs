@@ -626,13 +626,13 @@ async function stepDock(deadline) {
       if (s.docked) return 'docked';
       // R17 / capture finding: near a station a stranger presses E and the autopilot flies the
       // corridor and the berth. Try that first; the manual lane approach below is the fallback.
-      if (!askedAutopilot && !s.inRange && (s.d ?? Infinity) < 4000) {
+      if (!askedAutopilot && !s.inRange) {
         askedAutopilot = true;
         await hold('KeyW', false); await hold('KeyS', false);
         noteKey(page, 'KeyE');
         await page.keyboard.press('KeyE');
         const reached = await page.waitForFunction(() => !!window.SF?.state?.ui?.dockInRange || !!window.SF?.state?.ui?.docked,
-          null, { timeout: 90000 }).then(() => true, () => false);
+          null, { timeout: 140000 }).then(() => true, () => false);
         if (reached) { if (await tryDock()) return `docked on E after the E autopilot at ${s.name}`; }
         continue;
       }
