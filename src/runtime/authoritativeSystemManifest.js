@@ -821,7 +821,10 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   survivalWave: MODE_SCOPE_SWARM_ONLY,
   survivalRun: MODE_SCOPE_SWARM_ONLY,
   swarmChain: MODE_SCOPE_SWARM_ONLY,
-  killReplay: MODE_SCOPE_SWARM_ONLY,
+  // killReplay owns the Adventure pose tape too (trailer landmarks, one-off dressing, the worker
+  // pose mirror), so it runs wherever a pilot flies — E3's SWARM_ONLY scoping silently stopped
+  // Adventure recording.
+  killReplay: MODE_SCOPE_COMBAT_FLIGHT,
   killcamRecorder: MODE_SCOPE_SWARM_ONLY,
   swarmJuice: MODE_SCOPE_SWARM_ONLY,
   swarmElites: MODE_SCOPE_SWARM_ONLY,
