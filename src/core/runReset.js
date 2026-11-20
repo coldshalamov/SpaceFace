@@ -25,6 +25,15 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'salvage',
   // PORT-PRO-FIVE: a settled SWITCHBACK raid must not survive New Game.
   'convoyRaid',
+  // TOWJAW's cage/boss ownership is run-scoped; a finished or live fight cannot
+  // carry its bindings into a fresh run.
+  'towjaw',
+  // PORT-PRO-FIVE BLACKBOX RUNS: the wreck ledger/custody is run-scoped; an
+  // accepted or spent site must not leak into a fresh run.
+  'derelictExpedition',
+  // PORT-PRO-FIVE GLASSWAKE: an active or banked storm run cannot survive New Game.
+  'stormChase',
+  'kineticCatalysts',
   // Encounter-cover placement and spin use a private per-run stream. Reset it before
   // world/encounter owners can rematerialize content on a retained New Game instance.
   'terrainAnchors',

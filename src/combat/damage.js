@@ -32,6 +32,9 @@ import { crossfireDisciplineFor } from '../ai/temperament.js';
 import { ironKrakenCoreDamageMultiplier } from './ironKraken.js';
 import { pilotHas } from '../data/pilotTree.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+// PORT-PRO-FIVE TOWJAW: the active fight's bridge redirects shots into its real armor
+// plates and exposed mechanisms; every unrelated hit passes through unchanged.
+import { interceptTowjawDamage } from '../features/towjaw/damageBridge.js';
 
 /**
  * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
@@ -167,6 +170,7 @@ export function createDamageRouter(context, statusService, options = {}) {
   const ROUTE_SCRATCH = [{}, {}, {}, {}, {}, {}];
 
   function routeDamage(input) {
+    input = interceptTowjawDamage(state, input);
     const attacker = entity(input && input.attackerId);
     const aimed = entity(input && input.targetId);
     const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);

@@ -197,6 +197,10 @@ import { nemesisEncounter } from '../systems/nemesisEncounter.js'; // spawn-host
 import { nemesisSignals } from '../systems/nemesisSignals.js'; // event-only voice/toast router
 import { capitalBossEncounters } from '../systems/capitalBossRuntime.js'; // packet 09 authored capital scores
 import { createConvoyRaidProductionSystem } from '../features/convoyRaid/production.js'; // PORT-PRO-FIVE SWITCHBACK
+import { createTowjawSystem } from '../features/towjaw/index.js'; // PORT-PRO-FIVE TOWJAW
+import { createDerelictExpeditionSystem } from '../features/derelictExpedition/index.js'; // PORT-PRO-FIVE BLACKBOX RUNS
+import { createStormChaseSystem } from '../features/stormChase/index.js'; // PORT-PRO-FIVE GLASSWAKE
+import { createKineticCatalystsRuntime } from '../features/kineticCatalysts/runtime.js'; // PORT-PRO-FIVE KINETIC CATALYSTS
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js'; // M4 six causal POI behavior families
 import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B12 zone pirate rumors from real events
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
@@ -510,6 +514,10 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     // the tactical slot consumes the same fixed tick; routes all damage through the combat owner.
     ['capitalBossEncounters', capitalBossEncounters],
     ['convoyRaid', createConvoyRaidProductionSystem()],
+    ['towjaw', createTowjawSystem()],
+    ['derelictExpedition', createDerelictExpeditionSystem()],
+    ['stormChase', createStormChaseSystem()],
+    ['kineticCatalysts', createKineticCatalystsRuntime()],
     ['routeFollower', routeFollower],
     ['travelLanes', travelLanes],
     ['livingPoiBehaviors', livingPoiBehaviors],

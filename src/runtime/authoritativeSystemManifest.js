@@ -34,7 +34,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'heroManeuvers', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
+  'uniqueLootAbilities', 'fields', 'stormChase', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
@@ -45,7 +45,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'economy', 'automation', 'asteroidSites',
   'industrialDisasters',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'convoyRaid', 'rockCore', 'scissorwake',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'derelictExpedition', 'encounterDirector', 'convoyRaid', 'towjaw', 'kineticCatalysts', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
   // (nemesisEncounter) drains one spawn request per fixed step, and nemesisSignals routes
   // voice/toast receipts — event-only, registered but never ticked.
@@ -162,7 +162,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'swarmFortify', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'convoyRaid', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'swarmFortify', 'fields', 'stormChase', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'convoyRaid', 'towjaw', 'derelictExpedition', 'kineticCatalysts', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -621,11 +621,11 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Combat/contact owners and damage single-writers.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs',
   'emergentPrimitives', 'environmentMaterials', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
+  'uniqueLootAbilities', 'fields', 'stormChase', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket',
   // PORT-PRO-FIVE expeditions queue real physics impulses on the physics membrane every tick.
-  'convoyRaid',
+  'convoyRaid', 'towjaw', 'derelictExpedition', 'kineticCatalysts',
   // plants: the PL-101..PL-256 world-reacts bank. Per-tick pass-through (each plant
   // internally gates its scans to ~1 Hz), needed at table cadence for lamp timers,
   // tow latches and the Pit round seams.
@@ -858,6 +858,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   uniqueLootAbilities: MODE_SCOPE_COMBAT_FLIGHT,
   fields: MODE_SCOPE_COMBAT_FLIGHT,
   gyreSnare: MODE_SCOPE_COMBAT_FLIGHT,
+  stormChase: MODE_SCOPE_FLIGHT_ONLY,
   shieldPylons: MODE_SCOPE_COMBAT_FLIGHT,
   combat: MODE_SCOPE_COMBAT_FLIGHT,
   combatOutcome: MODE_SCOPE_COMBAT_FLIGHT,
@@ -956,6 +957,9 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   salvageTender: MODE_SCOPE_FLIGHT_ONLY,
   // PORT-PRO-FIVE: the authored physical expeditions fly only in Adventure.
   convoyRaid: MODE_SCOPE_FLIGHT_ONLY,
+  towjaw: MODE_SCOPE_FLIGHT_ONLY,
+  derelictExpedition: MODE_SCOPE_FLIGHT_ONLY,
+  kineticCatalysts: MODE_SCOPE_FLIGHT_ONLY,
   reactiveMatter: MODE_SCOPE_FLIGHT_ONLY,
   tetherGameplay: MODE_SCOPE_COMBAT_FLIGHT,
   surrenderRecovery: MODE_SCOPE_FLIGHT_ONLY,

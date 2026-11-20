@@ -1098,11 +1098,15 @@ export const save = {
       ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
+      ['kineticCatalysts', () => this._callSerialize('kineticCatalysts')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
       ['capitalBoss', () => this._callSerialize('capitalBossEncounters')],
       ['convoyRaid', () => this._callSerialize('convoyRaid')],
+      ['towjaw', () => this._callSerialize('towjaw')],
+      ['derelictExpedition', () => this._callSerialize('derelictExpedition')],
+      ['stormChase', () => this._callSerialize('stormChase')],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
       ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
@@ -1318,12 +1322,20 @@ export const save = {
     yield 'serialize:stunts';
     data.fields = this._callSerialize('fields');
     yield 'serialize:fields';
+    data.kineticCatalysts = this._callSerialize('kineticCatalysts');
+    yield 'serialize:kineticCatalysts';
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     yield 'serialize:missions';
     data.capitalBoss = this._callSerialize('capitalBossEncounters');
     yield 'serialize:capitalBoss';
     data.convoyRaid = this._callSerialize('convoyRaid');
     yield 'serialize:convoyRaid';
+    data.towjaw = this._callSerialize('towjaw');
+    yield 'serialize:towjaw';
+    data.derelictExpedition = this._callSerialize('derelictExpedition');
+    yield 'serialize:derelictExpedition';
+    data.stormChase = this._callSerialize('stormChase');
+    yield 'serialize:stormChase';
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     yield 'serialize:careerOrigins';
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
@@ -7281,6 +7293,18 @@ export const save = {
       // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
       this._callDeserialize('survivorPod', data.survivorPod);
       yield 'survivor-pods-restored';
+      // PORT-PRO-FIVE BLACKBOX RUNS: the wreck ledger/custody must restore before
+      // enterSector replans the site and before _spawnPersistentEntities reconstructs
+      // its saved bodies — a later call would let outgoing cleanup delete restored cargo.
+      // Absent slice (pre-feature saves) seeds an empty ledger via deserialize(undefined).
+      this._callDeserialize('derelictExpedition', data.derelictExpedition);
+      yield 'derelict-expedition-restored';
+      // PORT-PRO-FIVE GLASSWAKE: stage the storm ledger early; its own save:loaded
+      // listener consumes the envelope after persistent actors respawn, using
+      // sessionEntityIdRemap for generation-aware custody. Absent slice (old saves)
+      // stages an empty expedition.
+      this._callDeserialize('stormChase', data.stormChase);
+      yield 'storm-chase-restored';
       yield* this._callDeserializeChunked('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
       yield 'economy-contracts-restored';
@@ -7680,6 +7704,9 @@ export const save = {
       // PORT-PRO-FIVE SWITCHBACK: rebinding waits for save:loaded; absent slice (old saves)
       // stages an empty raid ledger.
       this._callDeserialize('convoyRaid', data.convoyRaid);
+      // PORT-PRO-FIVE TOWJAW: the adapter rebinding waits for the first fixed tick
+      // after native entity owners have restored their bodies; absent slice no-ops.
+      this._callDeserialize('towjaw', data.towjaw);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -7723,6 +7750,11 @@ export const save = {
         }
       }
       yield 'fields-restored';
+      try {
+        this.registry?.get?.('kineticCatalysts')?.deserialize?.(data.kineticCatalysts, entityIdRemap);
+      } catch (err) {
+        throw this._annotateRegion(err, 'kineticCatalysts');
+      }
       try {
         this.registry?.get?.('environmentMaterials')?.deserialize?.(data.environmentMaterials, entityIdRemap);
       } catch (err) {

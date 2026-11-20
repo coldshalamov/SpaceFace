@@ -187,6 +187,10 @@ import { nemesisEncounter } from '../systems/nemesisEncounter.js';
 import { nemesisSignals } from '../systems/nemesisSignals.js';
 import { capitalBossEncounters } from '../systems/capitalBossRuntime.js';
 import { createConvoyRaidProductionSystem } from '../features/convoyRaid/production.js';
+import { createTowjawSystem } from '../features/towjaw/index.js'; // PORT-PRO-FIVE TOWJAW
+import { createDerelictExpeditionSystem } from '../features/derelictExpedition/index.js'; // PORT-PRO-FIVE BLACKBOX RUNS
+import { createStormChaseSystem } from '../features/stormChase/index.js'; // PORT-PRO-FIVE GLASSWAKE
+import { createKineticCatalystsRuntime } from '../features/kineticCatalysts/runtime.js'; // PORT-PRO-FIVE KINETIC CATALYSTS
 import { createChronicler } from '../systems/chronicler.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
@@ -406,6 +410,10 @@ export function getNodeSystemFactoryTable(options = {}) {
     // registry) so Node runs the identical observe/spawnWing ports.
     ['capitalBossEncounters', capitalBossEncounters],
     ['convoyRaid', createConvoyRaidProductionSystem()],
+    ['towjaw', createTowjawSystem()],
+    ['derelictExpedition', createDerelictExpeditionSystem()],
+    ['stormChase', createStormChaseSystem()],
+    ['kineticCatalysts', createKineticCatalystsRuntime()],
     ['uniqueWrecks', uniqueWrecks],
     ['titles', titlesSystem],
     ['wingMorale', wingMorale],

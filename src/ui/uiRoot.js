@@ -43,6 +43,13 @@ import { createPhysicalJobsPrompt } from './physicalJobsPrompt.js';
 import { createBlackFlagPrompt } from './blackFlag.js';
 import { createLogbookRecap } from './logbookRecap.js';
 import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js';
+// PORT-PRO-FIVE TOWJAW: the fight's warning geometry overlay. In the worker lane the
+// runtime lives sim-side, so the mount is driven from the mirrored towjawView root.
+import { getActiveTowjawRuntime, mountTowjawPresentation } from '../features/towjaw/index.js';
+// PORT-PRO-FIVE BLACKBOX RUNS: the wreck instrument projects the authored body's
+// real positions through the shared worldToScreen helper; hud.js owns no timer.
+import { createDerelictExpeditionHud } from '../features/derelictExpedition/hud.js';
+import { BLACKBOX_RUNS_SITE } from '../features/derelictExpedition/site.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -2278,6 +2285,49 @@ export const ui = {
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
         this.capitalBossOverlay.draw(st);
       }
+      // TOWJAW's attack warnings project the fight's real danger geometry. Same-lane sims hand the
+      // runtime over directly; in the worker lane the bounded towjawView mirror drives a read-only
+      // adapter while the sim-side default presentation keeps owning audio/FX cues.
+      const towjawReal = getActiveTowjawRuntime(st);
+      const towjawRuntime = towjawReal || (st?.towjawView
+        ? (this._towjawMirrorRuntime ??= { getView: () => this.state?.towjawView || null })
+        : null);
+      if (towjawRuntime !== this._towjawRuntime) {
+        this.towjawOverlay?.destroy();
+        this._towjawRuntime = towjawRuntime;
+        this.towjawOverlay = towjawRuntime ? mountTowjawPresentation({
+          root: document.getElementById('ui-root'),
+          state: st, bus: this.bus, helpers: this.helpers, runtime: towjawRuntime,
+        }) : null;
+        if (this.towjawOverlay && towjawReal) towjawReal.setPresentation(this.towjawOverlay);
+      }
+      this.towjawOverlay?.draw();
+      // BLACKBOX RUNS: the low-chrome expedition instrument mounts once the
+      // registry can hand over its system (real same-lane, mirrored facade in
+      // the worker lane), then repaints at 8 Hz under the shared flight gate.
+      // Off-sector or behind chrome it hides on the very frame the gate closes.
+      if (!this.derelictExpeditionHud && !this._derelictHudFailed) {
+        const bbSystem = this.ctx?.registry?.get?.('derelictExpedition');
+        if (bbSystem) {
+          try {
+            this.derelictExpeditionHud = createDerelictExpeditionHud({
+              root: document.getElementById('ui-root'), system: bbSystem, helpers: this.helpers,
+            });
+          } catch (err) {
+            this._derelictHudFailed = true;
+            try { console.warn('[ui] BLACKBOX RUNS HUD mount failed:', err); } catch (_) {}
+          }
+        }
+      }
+      const derelictVisible = hudVisible && st.world?.currentSectorId === BLACKBOX_RUNS_SITE.sectorId;
+      this._derelictHudElapsed = (this._derelictHudElapsed || 0) + Math.max(0, Number.isFinite(dt) ? dt : 0);
+      if (!derelictVisible) {
+        this.derelictExpeditionHud?.update({ visible: false });
+        this._derelictHudElapsed = 0.125;
+      } else if (this._derelictHudElapsed >= 0.125) {
+        this._derelictHudElapsed = 0;
+        this.derelictExpeditionHud?.update({ visible: true });
+      }
       if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
@@ -2361,6 +2411,12 @@ export const ui = {
     this.nemesisComms = null;
     if (this.capitalBossOverlay && typeof this.capitalBossOverlay.destroy === 'function') this.capitalBossOverlay.destroy();
     this.capitalBossOverlay = null;
+    if (this.towjawOverlay && typeof this.towjawOverlay.destroy === 'function') this.towjawOverlay.destroy();
+    this.towjawOverlay = null;
+    this._towjawRuntime = null;
+    this._towjawMirrorRuntime = null;
+    this.derelictExpeditionHud?.dispose();
+    this.derelictExpeditionHud = null;
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
