@@ -143,6 +143,9 @@ function normalizeQueues(raw) {
   const queues = {};
   if (!raw || typeof raw !== 'object') return queues;
   for (const stationId in raw) {
+    // A crafted sid must never reach `queues[stationId] =` — the '__proto__' setter would
+    // replace the queue map's prototype instead of storing a job.
+    if (stationId === '__proto__' || stationId === 'constructor' || stationId === 'prototype') continue;
     const job = raw[stationId];
     if (!job || job.done) continue;
     const bpId = typeof job.bpId === 'string'
