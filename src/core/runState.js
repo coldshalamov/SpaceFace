@@ -88,11 +88,14 @@ export const RUN_PHASE_TRANSITIONS = Object.freeze({
 });
 
 // Run levelling (CRU-014, retuned OVH-01a / design/overhaul/04_SWARM.md §3 and 06 §2.3). XP per
-// level grows linearly — no curve table nobody can read — with the constants sized by the seeded
-// bot-free estimate in test/ovh-01a-pilot-tree.test.mjs: level 2 lands ≈25 s into round 1, ~6 by
-// round 3, ~14 by round 10. Pure: no state, no RNG.
-export const RUN_XP_LEVEL_BASE = 16;
-export const RUN_XP_LEVEL_STEP = 8;
+// level grows linearly — no curve table nobody can read. The constants are sized against the LIVE
+// award sites, not the older design figures: a Swarm kill pays 3 XP (`killXpFor(1)` in
+// survivalRewards) and a wave clear pays 40 + 14 × the wave (swarmRewards). With those payouts a
+// typical paced run reaches level 2 ≈25 s into round 1, level 6 at the end of round 3 and level 14
+// at the end of round 10 (04_SWARM §3), as pinned in test/ovh-01a-pilot-tree.test.mjs. Pure: no
+// state, no RNG.
+export const RUN_XP_LEVEL_BASE = 24;
+export const RUN_XP_LEVEL_STEP = 22;
 
 // The XP sources 04_SWARM.md §3 names, as one figure each (starting values; tune by play). The
 // award sites (kills, chains, round clears, bosses) wire these in the node-effects packets; the

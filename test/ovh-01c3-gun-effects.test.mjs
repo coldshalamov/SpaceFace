@@ -211,6 +211,58 @@ test('OVH-01c3 gunner_execution — a hull under 20 % dies to the next player hi
   }
 });
 
+test('OVH-01c3 gunner_execution — never executes the player, and never a non-combat hull', () => {
+  const hit = (originKind, { self = false, type = 'ship' } = {}) => {
+    const { state, bus } = makeState(['gunner_execution']);
+    const kills = [];
+    const { kernel } = makeCollisionCtx(state, bus, kills);
+    let target;
+    if (self) {
+      target = state.player;
+    } else {
+      target = makeBody({ id: 'victim', type, team: 1, hull: 50, hullMax: 100 });
+      state.entities.set(target.id, target);
+    }
+    target.hull = 19;
+    target.hullMax = 100;
+    kernel.routeDamage({
+      attackerId: 'player', targetId: target.id,
+      packet: scalarHitToDamagePacket({
+        damage: 5, damageType: 'kinetic', pos: { x: 0, z: 0 },
+        source: { kind: originKind },
+      }),
+      origin: { kind: originKind, id: 'test' },
+    });
+    return { target, kills };
+  };
+  // The Hot Core floor tap (playerModifiers) is player-on-player, non-weapon damage.
+  {
+    const { target, kills } = hit('swarm_tap_hot_core', { self: true });
+    assert.ok(target.hull > 0 && target.hull < 19, 'a self tap at 19 % hull wounds, it does not execute');
+    assert.equal(target.alive, true);
+    assert.equal(kills.length, 0);
+  }
+  // Self-splash is a weapon packet on the player's own hull — still not the node's shot.
+  {
+    const { target, kills } = hit('weapon', { self: true });
+    assert.ok(target.hull > 0 && target.hull < 19, 'a self weapon hit at 19 % hull does not execute the player');
+    assert.equal(target.alive, true);
+    assert.equal(kills.length, 0);
+  }
+  // A station is not a combat hull: Execution never spends on it.
+  {
+    const { target, kills } = hit('weapon', { type: 'station' });
+    assert.ok(target.hull > 0 && target.hull < 19, 'a non-ship target takes the ordinary hit');
+    assert.equal(kills.length, 0);
+  }
+  // Sanity: the same shot on an enemy ship still executes.
+  {
+    const { target, kills } = hit('weapon');
+    assert.equal(target.hull, 0, 'an enemy combat hull below 20 % still dies to the next hit');
+    assert.equal(kills[0] && kills[0].killerId, 'player');
+  }
+});
+
 // ---------------------------------------------------------------------------
 // weapon-service nodes
 

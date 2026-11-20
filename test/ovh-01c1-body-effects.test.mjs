@@ -7,6 +7,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
+import {
+  PILOT_BOSS_STRUCTURAL_CHUNK,
+  PILOT_KICK_MIN_IMPULSE,
+} from '../src/systems/collisionConsequences.js';
 import { weapons, applyProjectilePhysicalContact } from '../src/systems/weapons.js';
 import { maintainSwarmPlayerMods } from '../src/systems/playerModifiers.js';
 import { flightV3 } from '../src/systems/flightV3.js';
@@ -453,6 +457,53 @@ test('OVH-01c1 juggernaut_ram_plate — bow contact under 60% cruise pays nothin
   assert.ok(sideSlow > 0, 'a stern contact is outside the ±60° bow cone');
 });
 
+test('OVH-01c1 ram_plate / juggernaut — a shielded, armoured player pays nothing on any layer', () => {
+  const run = (nodes, { speed = 50, approach = { x: 1, z: 0 } } = {}) => {
+    const { state, bus } = makeState(nodes);
+    const kills = [];
+    const { kernel } = makeCollisionCtx(state, bus, kills);
+    const player = state.player;
+    player.combatSpeed = 200;
+    player.vel = { x: speed, z: 0 };
+    player.rot = 0;
+    player.shield = 220;
+    player.armorHp = 100;
+    player.armorMax = 100;
+    player.hull = 300;
+    player.lastDamageT = 7;
+    const packet = scalarHitToDamagePacket({
+      damage: 300, damageType: 'kinetic', approach,
+      source: { kind: 'collision_craft' },
+    });
+    packet.flags = { allowAnyTarget: true };
+    kernel.routeDamage({
+      attackerId: 'npc', targetId: 'player', packet,
+      origin: { kind: 'collision', id: 'craft' },
+    });
+    return {
+      shield: player.shield, armor: player.armorHp, hull: player.hull,
+      lastDamageT: player.lastDamageT,
+    };
+  };
+  // Baseline: the same contact strips every layer and stamps the damage clock.
+  const base = run([]);
+  assert.equal(base.shield, 0, 'baseline contact drains the shield');
+  assert.ok(base.armor < 100, 'the overflow strips armour');
+  assert.notEqual(base.lastDamageT, 7, 'baseline contact stamps lastDamageT');
+  // With the take-side node the whole packet is declined: no layer moves, and the quiet
+  // timer that shield regen / Thick Skin read is never reset.
+  for (const [nodes, opts, why] of [
+    [['juggernaut_ram_plate'], { speed: 50 }, 'Ram Plate bow contact below cruise'],
+    [['juggernaut_juggernaut'], { speed: 300 }, 'Juggernaut above cruise'],
+  ]) {
+    const r = run(nodes, opts);
+    assert.equal(r.shield, 220, `${why}: shield untouched`);
+    assert.equal(r.armor, 100, `${why}: armour untouched`);
+    assert.equal(r.hull, 300, `${why}: hull untouched`);
+    assert.equal(r.lastDamageT, 7, `${why}: lastDamageT not stamped`);
+  }
+});
+
 test('OVH-01c1 juggernaut_ballast — player hull mass and physics body +30%', () => {
   const run = (nodes) => {
     const { state } = makeState(nodes);
@@ -664,6 +715,157 @@ test('OVH-01c1 bruiser_newtons_cradle — stamped body gives all momentum to the
   assert.ok(Math.abs(go.impulses[0].x - 400) < 1e-6, 'receiver impulse equals striker momentum');
   const stamp = readKickStamp(receiver, state);
   assert.ok(stamp && stamp.kickHops === 1, 'receiver becomes player-stamped, one hop deeper');
+});
+
+test('OVH-01c1 contact order — one contact resolves the same with the ids swapped', () => {
+  // Newton's Cradle: a stamped striker hands its whole momentum to the receiver once. The
+  // result must not depend on which body physics names `a` (the lower id) — the second
+  // direction may not read the stamp the first direction just wrote.
+  const cradle = (strikerIsLow) => {
+    const { state, bus } = makeState(['bruiser_newtons_cradle']);
+    const kills = [];
+    makeCollisionCtx(state, bus, kills);
+    const mk = (id, vel) => makeBody({ id, team: 0, type: 'wreck', mass: 10, vel });
+    const striker = mk(strikerIsLow ? '10' : '20', { x: 40, z: 0 });
+    const receiver = mk(strikerIsLow ? '20' : '10', { x: -10, z: 0 });
+    const low = strikerIsLow ? striker : receiver;
+    const high = strikerIsLow ? receiver : striker;
+    state.entities.set(striker.id, striker);
+    state.entities.set(receiver.id, receiver);
+    stampKick(striker, state, { impulse: { x: 400, z: 0 } });
+    withCombatFlags(null, () => emitImpact(bus, low, high, { closing: 50 }));
+    const impulseX = (body) => {
+      const cmd = consumePhysicsCommand(body);
+      return cmd && cmd.impulses.length ? cmd.impulses.reduce((sum, i) => sum + i.x, 0) : 0;
+    };
+    return {
+      strikerX: impulseX(striker),
+      receiverX: impulseX(receiver),
+      strikerHops: readKickStamp(striker, state)?.kickHops ?? null,
+      receiverHops: readKickStamp(receiver, state)?.kickHops ?? null,
+    };
+  };
+  const lowFirst = cradle(true);
+  const highFirst = cradle(false);
+  assert.deepEqual(highFirst, lowFirst,
+    `the same collision with the ids swapped gives the same outcome (${JSON.stringify(highFirst)} vs ${JSON.stringify(lowFirst)})`);
+  assert.equal(lowFirst.strikerX, -400, 'the striker stops exactly once');
+  assert.equal(lowFirst.receiverX, 400, 'the receiver takes the kick exactly once');
+  assert.equal(lowFirst.strikerHops, 0, 'the striker keeps its own stamp');
+  assert.equal(lowFirst.receiverHops, 1, 'the receiver carries one hop');
+
+  // Billiards: a kicked hostile meeting a rock never dies merely because the rock's id is lower.
+  // (With pass_it_on the first direction stamps the rock; the second must not read that fresh
+  // stamp as the striker's.) A genuinely kicked rock still kills in both id orders.
+  const billiards = (stampedIsLow, stampedIsRock) => {
+    const { state, bus } = makeState(['bruiser_billiards', 'bruiser_pass_it_on']);
+    const kills = [];
+    makeCollisionCtx(state, bus, kills);
+    const foe = makeBody({
+      id: stampedIsLow || stampedIsRock ? '10' : '20', team: 1,
+      hull: 99999, hullMax: 99999, mass: 10, vel: { x: 40 },
+      extra: { data: { encounter: { id: 'enc' } } },
+    });
+    const rock = makeBody({
+      id: foe.id === '10' ? '20' : '10', team: 0, type: 'asteroid', mass: 40,
+      vel: { x: -5 }, extra: { data: { encounter: { id: 'enc' } } },
+    });
+    const low = foe.id === '10' ? foe : rock;
+    const high = foe.id === '10' ? rock : foe;
+    state.entities.set(foe.id, foe);
+    state.entities.set(rock.id, rock);
+    stampKick(stampedIsRock ? rock : foe, state, { impulse: { x: 900, z: 0 } });
+    withCombatFlags(null, () => emitImpact(bus, low, high, { closing: 50 }));
+    return { foeAlive: foe.alive !== false, kills: kills.length };
+  };
+  assert.deepEqual(billiards(false, false), { foeAlive: true, kills: 0 },
+    'kicked hostile + rock, hostile id high: the rock does not hand Billiards a kill');
+  assert.deepEqual(billiards(true, false), { foeAlive: true, kills: 0 },
+    'the same collision with the ids swapped: still no kill');
+  assert.deepEqual(billiards(false, true), { foeAlive: false, kills: 1 },
+    'a genuinely kicked rock still kills the hostile it meets');
+  assert.deepEqual(billiards(true, true), { foeAlive: false, kills: 1 },
+    'and does so in both id orders');
+});
+
+test('OVH-01c1 kick stamps — only heavy gun impulses qualify; a Pew/Hose-weight stamp does not', () => {
+  const run = (node, impulse, contact) => {
+    const { state, bus } = makeState([node]);
+    const kills = [];
+    makeCollisionCtx(state, bus, kills);
+    const stamped = makeBody({ id: 'stamped', team: 1, hull: 99999, hullMax: 99999, mass: 10,
+      vel: { x: 40, z: 0 }, extra: { data: { encounter: { id: 'enc' } } } });
+    const wall = makeBody({ id: 'wall', type: 'asteroid', team: 0, dynamic: false, mass: 1000 });
+    const foe = makeBody({ id: 'foe', team: 1, hull: 99999, hullMax: 99999,
+      extra: { data: { encounter: { id: 'enc' } } } });
+    state.entities.set(stamped.id, stamped);
+    state.entities.set(wall.id, wall);
+    state.entities.set(foe.id, foe);
+    stampKick(stamped, state, { impulse: { x: impulse, z: 0 } });
+    withCombatFlags(null, () => emitImpact(bus, stamped, contact === 'wall' ? wall : foe, { closing: 50 }));
+    const victim = contact === 'wall' ? stamped : foe;
+    return { alive: victim.alive !== false, kills: kills.length };
+  };
+  // Pew's heaviest round is impulse 126 — under the 140 family threshold.
+  assert.ok(PILOT_KICK_MIN_IMPULSE > 126 && PILOT_KICK_MIN_IMPULSE <= 150,
+    'the threshold sits between Pew (126) and Boom (150) / Needle (168)');
+  assert.deepEqual(run('bruiser_billiards', 126, 'foe'), { alive: true, kills: 0 },
+    'a Pew-weight stamp does not feed Billiards');
+  assert.deepEqual(run('bruiser_billiards', 168, 'foe'), { alive: false, kills: 1 },
+    'a Needle-weight stamp does');
+  assert.deepEqual(run('bruiser_wall_splat', 12, 'wall'), { alive: true, kills: 0 },
+    'a Hose-weight stamp does not splat on a wall');
+  assert.deepEqual(run('bruiser_wall_splat', 920, 'wall'), { alive: false, kills: 1 },
+    'a Thump-weight stamp does');
+});
+
+test('OVH-01c1 bosses — a Billiards / Wall Splat contact is a fixed chunk, never a one-shot', () => {
+  const run = (contact) => {
+    const { state, bus } = makeState(['bruiser_billiards', 'bruiser_wall_splat']);
+    const kills = [];
+    makeCollisionCtx(state, bus, kills);
+    const boss = makeBody({
+      id: 'boss', team: 1, hull: 6000, hullMax: 6000, mass: 500, vel: { x: 40, z: 0 },
+      extra: { data: { isBoss: true, encounter: { id: 'boss' } } },
+    });
+    const wall = makeBody({ id: 'wall', type: 'asteroid', team: 0, dynamic: false, mass: 1000 });
+    const foe = makeBody({ id: 'foe', team: 1, hull: 500, hullMax: 500,
+      extra: { data: { encounter: { id: 'enc' } } } });
+    state.entities.set(boss.id, boss);
+    state.entities.set(wall.id, wall);
+    state.entities.set(foe.id, foe);
+    stampKick(boss, state, { impulse: { x: 920, z: 0 } });
+    withCombatFlags(null, () => emitImpact(bus, boss, contact === 'wall' ? wall : foe, { closing: 50 }));
+    return { boss };
+  };
+  for (const contact of ['wall', 'foe']) {
+    const { boss } = run(contact);
+    const lost = 6000 - boss.hull;
+    assert.equal(boss.alive, true, `${contact}: the champion survives the structural hit`);
+    assert.ok(lost > 0 && lost <= PILOT_BOSS_STRUCTURAL_CHUNK + 1e-9,
+      `${contact}: the contact is capped at the fixed chunk (lost ${lost.toFixed(2)})`);
+  }
+});
+
+test('OVH-01c1 juggernaut_last_stand — a player-thrown body\'s collision repairs the player', () => {
+  const { state, bus } = makeState(['juggernaut_last_stand']);
+  const kills = [];
+  makeCollisionCtx(state, bus, kills);
+  state.player.hull = 40;   // 13 % of 300: below the node's 15 % line
+  const rock = makeBody({ id: 'rock', team: 0, type: 'asteroid', mass: 20,
+    hull: 500, hullMax: 500, vel: { x: 40, z: 0 } });
+  const foe = makeBody({ id: 'foe', team: 1, hull: 100000, hullMax: 100000,
+    extra: { data: { encounter: { id: 'enc' } } } });
+  state.entities.set(rock.id, rock);
+  state.entities.set(foe.id, foe);
+  // The player threw the rock: its impulse provenance is the player's, but the striking body
+  // (`other` on that contact) is NOT the player hull.
+  recordImpulseProvenance(rock, {
+    actorId: 'player', tag: 'weapon_hit', appliedTick: state.tick, magnitude: 900,
+  });
+  withCombatFlags(null, () => emitImpact(bus, rock, foe, { closing: 60, momentum: 900 }));
+  assert.ok(state.player.hull > 40, 'the damage dealt by the thrown body repairs the player');
+  assert.ok(state.player.hull <= 90 + 1e-9, 'never above the node\'s 30 % cap');
 });
 
 test('OVH-01c1 NPC exclusion — an NPC with the same contact/kick gets no pilot effect', () => {

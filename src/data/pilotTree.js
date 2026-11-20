@@ -72,6 +72,11 @@ export const PILOT_TIER_GATES = Object.freeze({ 1: 0, 2: 2, 3: 4, '2-3': 2, caps
 export const PILOT_EVOLUTION_TOTAL_POINTS_FLOOR = 8;
 export const PILOT_EVOLUTION_BRANCH_POINTS = 5;
 
+// OVH-01b: re-rolling the dealt hand costs Scrap from the run purse (04 §3, starting price;
+// tune by play). The constant lives here, not in the sim-side run owner, so the card UI can
+// price a re-roll without pulling the simulation bundle into the presentation layer.
+export const PILOT_REROLL_SCRAP = 150;
+
 const GUNNER = branchNodes('gunner', [
   [1, 'Steady Hands', 'Your fire does not spread while you move.'],
   [1, 'Quick Vent', 'The amber feathering band is twice as wide.'],
@@ -105,9 +110,9 @@ const RIGGER = branchNodes('rigger', [
   [2, 'Hummingbird', 'Orbiting an ANCHOR, you move and fire 30 % faster. (best on light hulls)'],
   [2, 'Crane', 'A body you tow hits as if it were twice as heavy. (best on heavy hulls)'],
   [2, 'Sweet Spot', 'The release window doubles; a perfect release adds a burst of speed to the thrown body.'],
-  [3, 'Second Line', 'Two lines at once (twin_bridle).'],
+  [3, 'Second Line', 'Two lines at once.'],
   [3, 'Whip Snap', 'Tap reel mid-swing to snap the line and fling the body at 1.5× without finishing the swing.'],
-  [3, 'Coupler', 'Your next latch ties two bodies together (the Coupler head, 03 §2.4).'],
+  [3, 'Coupler', 'Your next latch ties two bodies together.'],
   ['capstone', 'Untouchable / Wrecking Train', 'Light: shots that would hit you while you orbit an ANCHOR hit the anchor instead. Heavy: tow up to four bodies chained behind you.', { id: 'rigger_untouchable_wrecking_train' }],
 ]);
 

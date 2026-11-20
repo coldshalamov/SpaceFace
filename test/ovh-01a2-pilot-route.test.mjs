@@ -10,7 +10,7 @@ import { test } from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
-import { createRunState } from '../src/core/runState.js';
+import { createRunState, RUN_XP_LEVEL_BASE, RUN_XP_LEVEL_STEP } from '../src/core/runState.js';
 import { MAIN_TO_SIM_BUS_EVENTS } from '../src/core/mainToSimEventSurface.js';
 // The worker lane's read model — the canonical mirror src/core/simLaneMain.js applies on the
 // main side. Proven at the differ level, like test/domain-differ-node-lifecycle.test.mjs.
@@ -58,8 +58,8 @@ test('a level-up deals exactly once, with no offer open', () => withAllCardsLive
   beginSwarm(harness, 21);
   assert.equal(harness.state.run.pilot.offer, null, 'no offer before the first level');
 
-  // 16 xp is level 2 exactly (base 16): the commit banks a pick and the owner deals once.
-  harness.bus.emit('run:awardRequested', { xp: 16, reason: 'kill' });
+  // Exactly the level-2 threshold: the commit banks a pick and the owner deals once.
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, reason: 'kill' });
   assert.equal(harness.state.run.level, 2);
   assert.equal(harness.state.run.pilot.banked, 1);
   const offered = named(harness.emitted, 'run:pilotOffered');
@@ -68,8 +68,8 @@ test('a level-up deals exactly once, with no offer open', () => withAllCardsLive
   assert.equal(harness.state.run.pilot.offer.rerolls, 0);
   const dealtHand = harness.state.run.pilot.offer.cards;
 
-  // A second level while the hand stands banks another pick but deals nothing new.
-  harness.bus.emit('run:awardRequested', { xp: 24, reason: 'kill' });
+  // The rest of the level-3 cost: one more pick banked, no second deal.
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' });
   assert.equal(harness.state.run.level, 3);
   assert.equal(harness.state.run.pilot.banked, 2);
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 1, 'an open offer is not replaced');
@@ -83,8 +83,8 @@ test('a level-up deals exactly once, with no offer open', () => withAllCardsLive
 test('a second banked pick deals after the first choice', () => withAllCardsLive(() => {
   const harness = boot(22);
   beginSwarm(harness, 22);
-  // 40 xp is level 3: two picks banked, one hand dealt.
-  harness.bus.emit('run:awardRequested', { xp: 40, reason: 'kill' });
+  // Level 3 from scratch: two picks banked, one hand dealt.
+  harness.bus.emit('run:awardRequested', { xp: 2 * RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' });
   assert.equal(harness.state.run.pilot.banked, 2);
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 1);
   const firstHand = harness.state.run.pilot.offer.cards;
@@ -110,21 +110,21 @@ test('an empty live set opens no offer and keeps the pick banked', () => {
   const harness = boot(23);
   withPilotLiveNodesForTest([], () => {
   beginSwarm(harness, 23);
-  harness.bus.emit('run:awardRequested', { xp: 16, reason: 'kill' });
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, reason: 'kill' });
   assert.equal(harness.state.run.level, 2);
   assert.equal(harness.state.run.pilot.banked, 1, 'the pick stays banked');
   assert.equal(harness.state.run.pilot.offer, null, 'nothing live means no offer, ever');
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 0);
 
   // A later level tries again — the next deal moment is the retry.
-  harness.bus.emit('run:awardRequested', { xp: 24, reason: 'kill' });
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' });
   assert.equal(harness.state.run.pilot.banked, 2);
   assert.equal(harness.state.run.pilot.offer, null);
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 0);
   });
   // And once nodes go live, the very next deal moment deals.
   withAllCardsLive(() => {
-    harness.bus.emit('run:awardRequested', { xp: 32, reason: 'kill' });
+    harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + 2 * RUN_XP_LEVEL_STEP, reason: 'kill' });
   });
   assert.equal(harness.state.run.pilot.banked, 3);
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 1);
@@ -136,7 +136,7 @@ test('only live nodes are ever dealt — draw, re-roll and choose', () => {
   withPilotLiveNodesForTest(live, () => {
     const harness = boot(24);
     beginSwarm(harness, 24);
-    harness.bus.emit('run:awardRequested', { xp: 16, credits: 1000, reason: 'kill' });
+    harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, credits: 1000, reason: 'kill' });
     const hand = harness.state.run.pilot.offer.cards;
     assert.equal(hand.length, 3);
     for (const id of hand) assert.ok(live.includes(id), `dealt ${id} is live`);
@@ -161,7 +161,7 @@ test('only live nodes are ever dealt — draw, re-roll and choose', () => {
 test('the two intents route to the owner, and refusals are said in words', () => withAllCardsLive(() => {
   const harness = boot(25);
   beginSwarm(harness, 25);
-  harness.bus.emit('run:awardRequested', { xp: 16, credits: 1000, reason: 'kill' });
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, credits: 1000, reason: 'kill' });
   assert.equal(harness.state.run.pilot.offer.cards.length, 3, 'a hand waits');
 
   // The reroll intent reaches the owner's purse and redraws.
@@ -188,7 +188,7 @@ test('the two intents route to the owner, and refusals are said in words', () =>
   assert.equal(named(harness.emitted, 'run:pilotRerollRejected').at(-1).payload.reason, 'no_offer');
 
   // An out-of-range index on a live hand is its own refusal.
-  harness.bus.emit('run:awardRequested', { xp: 24, reason: 'kill' });
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' });
   harness.bus.emit('run:pilotCardRequested', { index: 7 });
   assert.equal(named(harness.emitted, 'run:pilotCardRejected').at(-1).payload.reason, 'invalid_index');
   assert.equal(named(harness.emitted, 'run:pilotCardChosen').length, 1, 'nothing was applied');
@@ -211,10 +211,10 @@ test('two runs with the same seed and inputs deal identical hands', () => withAl
     beginSwarm(harness, 4242);
     const hands = [];
     const awards = [
-      { xp: 16, credits: 400, reason: 'kill' },
-      { xp: 24, reason: 'kill' },
+      { xp: RUN_XP_LEVEL_BASE, credits: 400, reason: 'kill' },
+      { xp: RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' },
       { credits: 150, reason: 'purse' },
-      { xp: 40, reason: 'kill' },
+      { xp: RUN_XP_LEVEL_BASE + 2 * RUN_XP_LEVEL_STEP, reason: 'kill' },
     ];
     for (const award of awards) {
       harness.bus.emit('run:awardRequested', award);

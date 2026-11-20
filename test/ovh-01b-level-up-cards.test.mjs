@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
-import { PILOT_REROLL_SCRAP } from '../src/systems/runSession.js';
+import { createUiInput } from '../src/ui/input.js';
+import { PILOT_REROLL_SCRAP } from '../src/data/pilotTree.js';
 import {
   PILOT_BREATH_MAX_S,
   PILOT_CARD_INTENT,
@@ -93,6 +94,46 @@ function fakeBus() {
     emit(event, payload) { events.push({ event, payload }); for (const fn of subs[event] || []) fn(payload); },
     on(event, fn) { (subs[event] ||= []).push(fn); return () => { subs[event] = subs[event].filter((f) => f !== fn); }; },
     of(event) { return events.filter((e) => e.event === event).map((e) => e.payload); },
+  };
+}
+
+// The document/window surface src/ui/input.js attaches to. Dispatch runs capture listeners
+// before the bubble ones, exactly like a browser (the screen key trap is capture).
+class FakeEventTarget {
+  constructor() { this.listeners = new Map(); }
+  addEventListener(type, fn, options = false) {
+    if (!this.listeners.has(type)) this.listeners.set(type, []);
+    this.listeners.get(type).push({ fn, capture: options === true || Boolean(options && options.capture) });
+  }
+  removeEventListener(type, fn, options = false) {
+    const capture = options === true || Boolean(options && options.capture);
+    const rows = this.listeners.get(type) || [];
+    this.listeners.set(type, rows.filter((row) => row.fn !== fn || row.capture !== capture));
+  }
+  dispatch(type, event) {
+    const rows = [...(this.listeners.get(type) || [])].sort((a, b) => Number(b.capture) - Number(a.capture));
+    for (const row of rows) row.fn(event);
+  }
+}
+
+function fakeEventDoc() {
+  const doc = new FakeEventTarget();
+  doc.create = () => null;
+  doc.body = new FakeEl('body', doc);
+  doc.head = new FakeEl('head', doc);
+  doc.documentElement = new FakeEl('html', doc);
+  doc.activeElement = doc.body;
+  doc.getElementById = () => null;
+  return doc;
+}
+
+function inputKeyEvent(k) {
+  return {
+    key: k, code: k, target: null, shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+    stopImmediatePropagation() {},
   };
 }
 
@@ -263,9 +304,10 @@ test('reduced motion has no rise animation', () => {
   assert.equal(reducedMotionOn(doc), true);
 });
 
-test('the screen is a locked modal that answers 1/2/3, R and Esc through onKey', () => {
+test('the cards screen is not locked: Esc through the real input route dismisses and banks the pick', () => {
   assert.equal(pilotCardsScreen.id, PILOT_CARDS_SCREEN_ID);
-  assert.equal(pilotCardsScreen.data.locked, true);
+  assert.notEqual(pilotCardsScreen.data.locked, true, 'a locked screen never reaches onEscape');
+  assert.equal(typeof pilotCardsScreen.onEscape, 'function');
   const state = runState();
   const doc = fakeDoc();
   const bus = fakeBus();
@@ -276,9 +318,40 @@ test('the screen is a locked modal that answers 1/2/3, R and Esc through onKey',
   assert.equal(pilotCardsScreen.onKey(key('x')), false);
   pilotCardsScreen.onPadButton('x', { pressed: true });
   assert.equal(bus.of(PILOT_REROLL_INTENT).length, 0, 'a pick is pending, so the pad re-roll waits');
-  pilotCardsScreen.onKey(key('Escape'));
-  assert.deepEqual(bus.of('ui:closeScreen'), [{ id: PILOT_CARDS_SCREEN_ID }]);
-  pilotCardsScreen.dispose();
+
+  // The real modal route, in src/ui/input.js order: a modal is open, Escape is intercepted
+  // before onKey, and an unlocked screen's onEscape gets first refusal (line 562-577).
+  const priorDocument = globalThis.document;
+  const priorWindow = globalThis.window;
+  const inputDoc = fakeEventDoc();
+  const inputWindow = new FakeEventTarget();
+  globalThis.document = inputDoc;
+  globalThis.window = inputWindow;
+  let popped = 0;
+  const manager = {
+    isOpen: () => true,
+    locked: () => false,
+    top: () => PILOT_CARDS_SCREEN_ID,
+    getActiveScreenDef: () => pilotCardsScreen,
+    popScreen: () => { popped += 1; },
+    hasScreen: () => true,
+    pushScreen: () => {},
+  };
+  let input;
+  try {
+    input = createUiInput({ state, bus }, manager);
+    const ev = inputKeyEvent('Escape');
+    inputDoc.dispatch('keydown', ev);
+    assert.equal(ev.prevented, true, 'Escape is owned, not passed to flight');
+    assert.deepEqual(bus.of('ui:closeScreen'), [{ id: PILOT_CARDS_SCREEN_ID }]);
+    assert.equal(popped, 0, 'the screen dismissed itself; the manager did not pop it out from under the pick');
+    assert.equal(state.run.pilot.banked, 1, 'Later leaves the pick banked');
+  } finally {
+    if (input) input.dispose();
+    pilotCardsScreen.dispose();
+    globalThis.document = priorDocument;
+    globalThis.window = priorWindow;
+  }
 });
 
 test('the round-end breath is pushed over the draft once, never while a hand is absent', () => {
@@ -367,6 +440,87 @@ test('Pick at once raises the cards over the fight and slows the presented clock
   const ctl2 = createPilotBreathController({ state: off, bus: fakeBus(), doc: fakeDoc(), timeEffects: createTimeEffects(off) });
   ctl2.tick(off);
   assert.equal(ctl2.overlayOpen, false);
+});
+
+test('Pick at once closes on pause, a pushed screen, the draft and run end — no key handler or slow clock leaks', () => {
+  const mk = () => {
+    const state = runState();
+    state.settings.gameplay.pilotPickAtOnce = true;
+    const effects = createTimeEffects(state);
+    const bus = fakeBus();
+    const doc = fakeDoc();
+    const ctl = createPilotBreathController({ state, bus, doc, timeEffects: effects });
+    ctl.tick(state);
+    assert.equal(ctl.overlayOpen, true, 'sanity: the fight overlay is up');
+    assert.equal(ctl.slowed, true);
+    return { state, bus, doc, ctl };
+  };
+  const closedClean = (c, why) => {
+    assert.equal(c.ctl.overlayOpen, false, why);
+    assert.equal(c.ctl.slowed, false, `${why}: the 15 % clock is released`);
+    assert.equal(c.state.timeScale, 1, `${why}: the presented clock is back to 1`);
+    assert.equal((c.doc.listeners.keydown || []).length, 0, `${why}: the capture key handler is gone`);
+    assert.equal(c.doc.body.children.length, 0, `${why}: the overlay DOM is gone`);
+    c.ctl.destroy();
+  };
+  {
+    const c = mk();
+    c.bus.emit('sim:pause', {});
+    closedClean(c, 'a pausing screen');
+  }
+  {
+    const c = mk();
+    c.bus.emit('ui:pushScreen', { id: 'map' });
+    closedClean(c, 'another screen pushed');
+  }
+  {
+    const c = mk();
+    c.state.ui.screenStack = ['crucibleDraft'];
+    c.bus.emit('run:draftOffered', { wave: c.state.run.wave });
+    closedClean(c, 'the round ended into the draft');
+  }
+  {
+    const c = mk();
+    c.bus.emit('run:ended', {});
+    closedClean(c, 'the run ended');
+  }
+  // Victory is terminal: no hand is live even if the old offer/bank is still on the run.
+  {
+    const state = runState();
+    state.settings.gameplay.pilotPickAtOnce = true;
+    state.run.phase = 'victory';
+    const bus = fakeBus();
+    const ctl = createPilotBreathController({ state, bus, doc: fakeDoc() });
+    ctl.tick(state);
+    assert.equal(ctl.overlayOpen, false, 'a victory run raises no pick overlay');
+    state.ui.screenStack = ['crucibleDraft'];
+    ctl.tick(state);
+    assert.equal(bus.of('ui:pushScreen').length, 0, 'and no breath over the draft');
+    ctl.destroy();
+  }
+});
+
+test('a re-shown breath resets its deadline instead of closing on the first frame', () => {
+  const realNow = Date.now;
+  let now = 100000;
+  Date.now = () => now;
+  const state = runState({ banked: 2 });
+  const bus = fakeBus();
+  const doc = fakeDoc();
+  const root = doc.createElement('div');
+  try {
+    pilotCardsScreen.mount(root, { state, bus });
+    pilotCardsScreen.onShow({ state, bus });
+    // Hidden by an external stack pop, never through view.close(): the hand is still banked.
+    now += 5900;
+    pilotCardsScreen.onShow({ state, bus });
+    now += 200;
+    pilotCardsScreen.onShow({ state, bus });
+    assert.equal(bus.of('ui:closeScreen').length, 0, 'the re-shown hand is still open');
+  } finally {
+    Date.now = realNow;
+    pilotCardsScreen.dispose();
+  }
 });
 
 test('level-up: LEVEL n rides the bar for ~1.2 s, the bar flashes once, a chime plays, nothing pauses', () => {

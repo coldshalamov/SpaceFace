@@ -12,6 +12,7 @@ import {
   validateRunState,
 } from '../core/runState.js';
 import {
+  PILOT_REROLL_SCRAP,
   deepestPilotBranch,
   eligiblePilotCards,
   getPilotCard,
@@ -30,9 +31,9 @@ import { swarmPilotHasActed } from './swarmSafety.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
 const PURCHASE_RECEIPT_LIMIT = 64;
-// OVH-01a (04 §3): re-rolling the pilot offer costs Scrap from the run purse. Starting price;
-// tune by play.
-export const PILOT_REROLL_SCRAP = 150;
+// OVH-01a (04 §3): re-rolling the pilot offer costs Scrap from the run purse. The price is
+// owned by the tree's data (src/data/pilotTree.js) so the card UI shares it without importing
+// this sim-side module.
 // Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
 // unrelated replacement cannot inherit a pending armory action merely by reusing its seed.
 const RUN_LIFETIMES = new WeakMap();

@@ -16,8 +16,7 @@
 //                            end and, for the "Pick at once" setting, raises the same cards over
 //                            the fight with the presented clock at 15 %.
 
-import { getPilotCard, PILOT_BRANCHES, pilotPoints } from '../data/pilotTree.js';
-import { PILOT_REROLL_SCRAP } from '../systems/runSession.js';
+import { getPilotCard, PILOT_BRANCHES, PILOT_REROLL_SCRAP, pilotPoints } from '../data/pilotTree.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { dpIcon } from './deckplate/icons.js';
 import { cue } from './kit/index.js';
@@ -261,6 +260,17 @@ export function createPilotCardsView({ state, bus, host, doc = globalThis.docume
     lastFillPct = -1;
   }
 
+  /**
+   * Give the still-standing hand a full breath again. A screen can be hidden by an external
+   * stack pop (never through its own close), which leaves the old wall-clock deadline in the
+   * past; re-showing must not then close the cards on their first tick.
+   */
+  function restartBreath(hand0 = current) {
+    if (mode !== 'screen' || closed || !hand0) return false;
+    startBreath(hand0);
+    return true;
+  }
+
   function render() {
     if (closed) return false;
     const next = readPilotHand(state);
@@ -406,7 +416,7 @@ export function createPilotCardsView({ state, bus, host, doc = globalThis.docume
 
   render();
   return {
-    root, render, tick, choose, reroll: doReroll, dismiss, key, destroy, focusIndex,
+    root, render, tick, choose, reroll: doReroll, dismiss, key, destroy, focusIndex, restartBreath,
     get cards() { return cards; },
     get hand() { return current; },
     get closed() { return closed; },
@@ -421,8 +431,9 @@ let screenState = null;
 
 export const pilotCardsScreen = {
   id: PILOT_CARDS_SCREEN_ID,
-  // Locked: Esc is this screen's own "Later" (it leaves the pick banked), not the manager's pop.
-  data: { locked: true },
+  // Not a locked surface: Esc is this screen's own "Later" (it leaves the pick banked), so the
+  // input owner must reach onEscape instead of trapping the key.
+  data: {},
 
   mount(rootEl, ctx) {
     this.dispose();
@@ -454,7 +465,7 @@ export const pilotCardsScreen = {
     if (ctx) s.ctx = ctx;
     // A screen re-shown after being hidden gets a fresh breath and a fresh read of the run.
     if (s.view && s.view.closed) this._build();
-    else if (s.view) s.view.render();
+    else if (s.view) { s.view.render(); s.view.restartBreath(); }
     cue('open');
     if (s.timer) clearInterval(s.timer);
     s.timer = setInterval(() => { if (s.view) s.view.tick(Date.now()); }, 50);
@@ -473,6 +484,18 @@ export const pilotCardsScreen = {
     const s = screenState;
     if (!s || !s.view) return false;
     return s.view.key(ev) === true;
+  },
+
+  /**
+   * Esc is this screen's own "Later": src/ui/input.js intercepts Escape before onKey, so the
+   * dismissal must live here. Returning true keeps the manager from popping the screen itself
+   * and stops the same key reaching flight.
+   */
+  onEscape() {
+    const s = screenState;
+    if (!s || !s.view) return false;
+    s.view.dismiss('later');
+    return true;
   },
 
   /** Pad: X re-rolls, Y sends the breath away (A / D-pad are the shared focus layer). */
@@ -497,7 +520,8 @@ export const pilotCardsScreen = {
 
 function liveSurvival(state) {
   const run = state && state.run;
-  return run && run.kind === 'survival' && run.phase !== 'inactive' && run.phase !== 'ended' ? run : null;
+  return run && run.kind === 'survival' && run.phase !== 'inactive' && run.phase !== 'ended'
+    && run.phase !== 'victory' ? run : null;
 }
 
 function screenStackOf(state) {
@@ -543,6 +567,9 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
     const key = `${run.seed}:${run.wave}`;
     if (breathKey === key) return true;
     breathKey = key;
+    // "Pick at once" must not leave its document-capture keys and 15 % clock over a screen the
+    // breath is about to push (or hand its keys to the breath's own cards).
+    closeOverlay();
     if (bus && typeof bus.emit === 'function') bus.emit('ui:pushScreen', { id: PILOT_CARDS_SCREEN_ID });
     return true;
   }
@@ -558,8 +585,16 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
   }
   if (bus && typeof bus.on === 'function') {
     const listen = (event, fn) => { const off = bus.on(event, fn); if (typeof off === 'function') offs.push(off); };
-    listen('run:draftOffered', () => startBreathPoll());
-    listen('ui:pushScreen', (p) => { if (p && p.id === 'crucibleDraft') startBreathPoll(); });
+    // A pausing screen, a round end or any pushed screen ends the slowed fight overlay at
+    // once: its tick stops with the simulation, so a tick-only check would leave the capture
+    // key handler, the timer and the 15 % clock pinned over the next screen.
+    listen('sim:pause', () => closeOverlay());
+    listen('run:ended', () => closeOverlay());
+    listen('run:draftOffered', () => { closeOverlay(); startBreathPoll(); });
+    listen('ui:pushScreen', (p) => {
+      closeOverlay();
+      if (p && p.id === 'crucibleDraft') startBreathPoll();
+    });
   }
 
   function setSlow(on) {

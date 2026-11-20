@@ -12,7 +12,6 @@ import { test } from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
-import { mulberry32 } from '../src/core/rng.js';
 import {
   RUN_XP_LEVEL_BASE,
   RUN_XP_LEVEL_STEP,
@@ -23,7 +22,8 @@ import {
   runXpForLevel,
   validateRunState,
 } from '../src/core/runState.js';
-import { SURVIVAL_WAVES } from '../src/data/survivalWaves.js';
+import { swarmCourseQuota, swarmLevel, swarmRewards } from '../src/data/swarmMode.js';
+import { killXpFor } from '../src/systems/survivalRewards.js';
 import { withPilotLiveNodesForTest } from '../src/data/pilotLive.js';
 import {
   PILOT_BEND_GROUPS,
@@ -32,6 +32,7 @@ import {
   PILOT_EVOLUTION_BRANCH_POINTS,
   PILOT_EVOLUTION_TOTAL_POINTS_FLOOR,
   PILOT_NODES,
+  PILOT_REROLL_SCRAP,
   PILOT_TIER_GATES,
   eligiblePilotCards,
   getPilotCard,
@@ -43,7 +44,6 @@ import {
   pilotPoints,
 } from '../src/data/pilotTree.js';
 import {
-  PILOT_REROLL_SCRAP,
   choosePilotCard,
   drawPilotOffer,
   rerollPilotOffer,
@@ -438,7 +438,7 @@ test('choose applies an evolution without granting branch points, and refuses a 
 test('reroll costs Scrap from the run purse, redraws, and refuses when broke', () => withAllCardsLive(() => {
   const harness = boot(13);
   beginSwarm(harness, 13);
-  harness.bus.emit('run:awardRequested', { credits: 1000, xp: 16, reason: 'test' });
+  harness.bus.emit('run:awardRequested', { credits: 1000, xp: RUN_XP_LEVEL_BASE, reason: 'test' });
   assert.equal(harness.state.run.pilot.banked, 1);
   // The level-up already dealt a hand (OVH-01a2); a direct owner draw replaces it.
   drawPilotOffer(harness.state);
@@ -494,7 +494,7 @@ test('level-ups bank one pick each, and only runs that can level carry a pilot',
   assert.deepEqual(harness.state.run.pilot, createPilotProgress(), 'a begun Swarm run carries a fresh pilot record');
   assert.equal(validateRunState(harness.state.run).ok, true);
 
-  harness.bus.emit('run:awardRequested', { xp: 16, reason: 'kill' });
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, reason: 'kill' });
   assert.equal(harness.state.run.level, 2);
   assert.equal(harness.state.run.pilot.banked, 1);
   const levelUps = named(harness.emitted, 'run:levelUp');
@@ -502,13 +502,13 @@ test('level-ups bank one pick each, and only runs that can level carry a pilot',
   assert.equal(levelUps[0].payload.banked, 1);
 
   // No new level, no new bank.
-  harness.bus.emit('run:awardRequested', { xp: 16, reason: 'kill' });
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, reason: 'kill' });
   assert.equal(harness.state.run.level, 2);
   assert.equal(harness.state.run.pilot.banked, 1);
   assert.equal(named(harness.emitted, 'run:levelUp').length, 1);
 
-  // A big award crossing two levels banks both picks at once.
-  harness.bus.emit('run:awardRequested', { xp: 40, reason: 'boss' });
+  // A big award crossing two levels banks both picks at once (level 4 costs 138 total).
+  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE * 2 + RUN_XP_LEVEL_STEP * 3, reason: 'boss' });
   assert.equal(harness.state.run.level, 4);
   assert.equal(harness.state.run.pilot.banked, 3);
   assert.equal(named(harness.emitted, 'run:levelUp').length, 2);
@@ -579,6 +579,15 @@ test('query API: pilotHas / pilotPoints are the only way systems read the tree',
   assert.equal(pilotDoorForRun(createRunState()), 'adventure');
 });
 
+test('card sentences are player language: no internal ids or document references', () => {
+  for (const node of PILOT_NODES) {
+    assert.doesNotMatch(node.text, /twin_bridle|§|\b03\s*§|\bhead,?\s*\d/i,
+      `${node.id} leaks an internal name or doc reference: ${node.text}`);
+  }
+  assert.equal(getPilotCard('rigger_second_line').text, 'Two lines at once.');
+  assert.equal(getPilotCard('rigger_coupler').text, 'Your next latch ties two bodies together.');
+});
+
 test('the swarm door never offers Industry or the Adventure-only Ghost nodes; Adventure offers all', () => withAllCardsLive(() => {
   const swarmPilot = { points: {}, nodes: [], banked: 0, offer: null };
   for (const card of eligiblePilotCards(swarmPilot, 'swarm')) {
@@ -594,117 +603,95 @@ test('the swarm door never offers Industry or the Adventure-only Ghost nodes; Ad
 }));
 
 // ---------------------------------------------------------------------------
-// The XP curve (04 §3): gun kill 1, room kill 2.5, each chain link +0.5 rising, round cleared
-// 10 × round, boss 100 — carried over a seeded, bot-free estimate of a fair-paced run and
-// checked against the packet's targets. Every number below is deterministic for seed 4242.
+// The XP curve against the LIVE payouts (OVH-01a #2). RUN_XP_SOURCES above is the design's
+// starting table, but the shipped Swarm award sites pay more: survivalRewards awards
+// killXpFor(victim.data.level), which is 3 XP on every Swarm body because swarmLevel() is 1 at
+// every wave, and swarmMode's swarmRewards pays 40 + 14 × wave for the clear. The curve must
+// hold 04_SWARM §3's checkpoints against THAT income, not the unwired table.
 // ---------------------------------------------------------------------------
 
-const ESTIMATE_SEED = 4242;
-const ESTIMATE_ROUND_SECONDS = 40; // a good run lasts 20–25 min across thirty rounds (04 §1)
-const ESTIMATE_FIRST_KILL_S = 2;
-const ESTIMATE_SPREAD_S = 30; // kills land between 2 s and 32 s of their round
-const ESTIMATE_ROOM_KILL_CHANCE = 0.6; // the room build is the owner's frame; the room pays 2.5×
-const ESTIMATE_STYLE_ON_KILLS = 1.5; // the style meter multiplies XP (04 §4); 1.5 models a mid meter
-const ESTIMATE_BOSS_ROUNDS = new Set([5, 15, 25]); // 04 §2's loop table
+const LIVE_ROUND_SECONDS = 40; // 04 §1: thirty rounds inside 20–25 min
+const LIVE_FIRST_KILL_S = 2;
+const LIVE_LAST_KILL_S = 32; // the last body of a round lands by 32 s
 
-function estimateBodiesPerRound() {
-  // Authored Foundry (helios_core) waves 1–10 from SURVIVAL_WAVES; the authored thirty repeats
-  // as the room changes each decade.
-  const bodies = [];
-  for (let wave = 1; wave <= 10; wave++) {
-    const recipe = SURVIVAL_WAVES.find((row) => row.arenaId === 'helios_core' && row.wave === wave);
-    bodies.push(recipe.packages.reduce((sum, pkg) => sum + pkg.count, 0));
-  }
-  return bodies;
+/** What one round pays on the live Swarm route: its quota in kills, then the clear purse. */
+function liveRoundIncome(wave) {
+  const kills = swarmCourseQuota(wave);
+  return { kills, killXp: kills * killXpFor(swarmLevel(wave)), clearXp: swarmRewards(wave).xp };
 }
 
-function estimateCumulativeXp(seed = ESTIMATE_SEED) {
-  const bodies = estimateBodiesPerRound();
-  const rng = mulberry32(seed);
+/** The moments the round's quota bodies die: evenly paced between 2 s and 32 s. */
+function liveKillTimes(wave) {
+  const { kills } = liveRoundIncome(wave);
+  const out = [];
+  for (let k = 0; k < kills; k += 1) {
+    out.push(LIVE_FIRST_KILL_S + (kills <= 1 ? 0
+      : (LIVE_LAST_KILL_S - LIVE_FIRST_KILL_S) * k / (kills - 1)));
+  }
+  return out;
+}
+
+/** Cumulative-XP events [seconds, total] for a run of `rounds`, from the live award amounts. */
+function liveXpEvents(rounds) {
   const events = [];
-  let roomKills = 0;
-  for (let round = 1; round <= 30; round++) {
-    const t0 = (round - 1) * ESTIMATE_ROUND_SECONDS;
-    const kills = bodies[(round - 1) % 10];
-    for (let k = 0; k < kills; k++) {
-      const t = t0 + ESTIMATE_FIRST_KILL_S
-        + (kills === 1 ? 0 : (ESTIMATE_SPREAD_S - ESTIMATE_FIRST_KILL_S) * k / (kills - 1));
-      const isRoom = rng() < ESTIMATE_ROOM_KILL_CHANCE;
-      let xp = isRoom ? RUN_XP_SOURCES.ROOM_KILL : RUN_XP_SOURCES.GUN_KILL;
-      if (isRoom) {
-        roomKills += 1;
-        // every third room kill rides a two-link chain: +0.5 then +1.0 ("+0.5 rising")
-        if (roomKills % 3 === 0) xp += RUN_XP_SOURCES.CHAIN_LINK_STEP * 1 + RUN_XP_SOURCES.CHAIN_LINK_STEP * 2;
-      }
-      events.push([t, xp * ESTIMATE_STYLE_ON_KILLS]);
-    }
-    if (ESTIMATE_BOSS_ROUNDS.has(round)) events.push([t0 + ESTIMATE_ROUND_SECONDS - 1, RUN_XP_SOURCES.BOSS]);
-    events.push([t0 + ESTIMATE_ROUND_SECONDS, RUN_XP_SOURCES.ROUND_CLEAR_PER_ROUND * round]);
-  }
-  events.sort((a, b) => a[0] - b[0]);
-  const cumulative = [];
   let total = 0;
-  for (const [t, xp] of events) {
-    total += xp;
-    cumulative.push([t, total]);
+  for (let round = 1; round <= rounds; round += 1) {
+    const t0 = (round - 1) * LIVE_ROUND_SECONDS;
+    const income = liveRoundIncome(round);
+    for (const t of liveKillTimes(round)) events.push([t0 + t, (total += killXpFor(swarmLevel(round)))]);
+    events.push([t0 + LIVE_ROUND_SECONDS, (total += income.clearXp)]);
   }
-  return cumulative;
+  return events;
 }
 
-function estimateXpAt(cumulative, t) {
-  let value = 0;
-  for (const [time, xp] of cumulative) {
-    if (time <= t) value = xp;
+function liveXpAt(events, time) {
+  let xp = 0;
+  for (const [t, total] of events) {
+    if (t <= time) xp = total;
     else break;
   }
-  return value;
+  return xp;
 }
 
-function estimateLevelAt(cumulative, t) {
-  const xp = estimateXpAt(cumulative, t);
-  let level = 1;
-  while (runXpForLevel(level + 1) <= xp) level += 1;
-  return level;
-}
-
-function estimateCrossingSeconds(cumulative, level) {
-  const need = runXpForLevel(level);
-  for (const [t, xp] of cumulative) {
-    if (xp >= need) return t;
-  }
-  return Infinity;
-}
-
-test('XP sources and curve: the 04 §3 figures, retuned so the estimate hits the targets', (t) => {
+test('XP curve holds the 04 §3 checkpoints against the LIVE award sites', (t) => {
   assert.deepEqual(RUN_XP_SOURCES, {
     GUN_KILL: 1, ROOM_KILL: 2.5, CHAIN_LINK_STEP: 0.5, ROUND_CLEAR_PER_ROUND: 10, BOSS: 100,
-  });
-  assert.equal(RUN_XP_LEVEL_BASE, 16);
-  assert.equal(RUN_XP_LEVEL_STEP, 8);
-  assert.deepEqual(estimateBodiesPerRound(), [6, 10, 9, 10, 7, 9, 10, 14, 14, 7],
-    'the estimate tracks the authored helios_core wave bodies');
+  }, 'the design starting table is unchanged (its award sites are another packet)');
+  assert.equal(RUN_XP_LEVEL_BASE, 24);
+  assert.equal(RUN_XP_LEVEL_STEP, 22);
 
-  const cumulative = estimateCumulativeXp();
-  const round = (r) => estimateLevelAt(cumulative, r * ESTIMATE_ROUND_SECONDS - 1e-9);
-  const crossing = estimateCrossingSeconds(cumulative, 2);
+  // The live income itself, pinned so a later award-site change cannot silently break the curve.
+  assert.equal(swarmLevel(1), 1);
+  assert.equal(killXpFor(1), 3, 'a Swarm body pays killXpFor(1)');
+  const round1 = liveRoundIncome(1);
+  assert.equal(round1.kills, 10, 'round 1 fields its cast of ten');
+  assert.equal(round1.killXp, 30, 'ten bodies × 3 XP');
+  assert.equal(round1.clearXp, 54, 'swarmRewards(1) = 40 + 14');
+  assert.equal(liveRoundIncome(2).kills, swarmCourseQuota(2));
+  assert.equal(liveRoundIncome(10).clearXp, 40 + 14 * 10);
+
+  const events = liveXpEvents(30);
+  const atRoundEnd = (round) => liveXpAt(events, round * LIVE_ROUND_SECONDS);
+  const levelAt = (round) => runLevelForXp(atRoundEnd(round));
+  const crossing = events.find(([, xp]) => xp >= runXpForLevel(2))[0];
 
   // The arithmetic, printed for the receipt.
   t.diagnostic(`level 2 crossing: ${crossing.toFixed(2)} s into round 1 (target ≈25 s)`);
-  for (const r of [1, 3, 10, 20, 30]) {
-    const xp = estimateXpAt(cumulative, r * ESTIMATE_ROUND_SECONDS - 1e-9);
-    t.diagnostic(`round ${r}: cumulative ${xp.toFixed(1)} xp -> level ${round(r)}`
-      + ` (targets: ~6 by 3, ~14 by 10, ~26 by 20, ~32 by 30)`);
+  for (const round of [1, 3, 10, 20, 30]) {
+    t.diagnostic(`round ${round}: cumulative ${atRoundEnd(round).toFixed(0)} xp -> level ${levelAt(round)}`
+      + ' (targets: ~6 by 3, ~14 by 10, ~26 by 20, ~32 by 30)');
   }
-  t.diagnostic(`level costs: 2=${runXpForLevel(2)}, 6=${runXpForLevel(6)}, 14=${runXpForLevel(14)},`
-    + ` 26=${runXpForLevel(26)}, 32=${runXpForLevel(32)} xp (base ${RUN_XP_LEVEL_BASE}, step ${RUN_XP_LEVEL_STEP})`);
+  t.diagnostic(`end of round 10 income: ${atRoundEnd(10)} xp; level 14 costs ${runXpForLevel(14)}`
+    + ` (base ${RUN_XP_LEVEL_BASE}, step ${RUN_XP_LEVEL_STEP})`);
 
-  // The packet's three required checkpoints (04 §3's later targets ride along as diagnostics).
-  assert.ok(crossing >= 20 && crossing <= 30, `level 2 ≈ 25 s into round 1 (got ${crossing.toFixed(1)} s)`);
-  assert.equal(Math.round(crossing * 100) / 100, 24.4, 'the seeded estimate is pinned: 24.40 s');
-  assert.ok(Math.abs(round(3) - 6) <= 1, `~6 by round 3 (got ${round(3)})`);
-  assert.equal(round(3), 5, 'seeded estimate pinned: level 5 at end of round 3');
-  assert.ok(Math.abs(round(10) - 14) <= 1, `~14 by round 10 (got ${round(10)})`);
-  assert.equal(round(10), 14, 'seeded estimate pinned: level 14 at end of round 10');
+  // 04 §3's checkpoints, against the live payouts.
+  assert.ok(crossing >= 20 && crossing <= 30, `level 2 ≈ 25 s into round 1 (got ${crossing.toFixed(2)} s)`);
+  assert.equal(Number(crossing.toFixed(2)), 25.33, 'pinned: the eighth body (8 × 3 XP = the level-2 price)');
+  assert.ok(Math.abs(levelAt(3) - 6) <= 1, `~6 by round 3 (got ${levelAt(3)})`);
+  assert.equal(levelAt(3), 6, 'pinned: level 6 at the end of round 3');
+  assert.ok(Math.abs(levelAt(10) - 14) <= 1, `~14 by round 10 (got ${levelAt(10)})`);
+  assert.equal(levelAt(10), 14, 'pinned: level 14 at the end of round 10');
+  assert.equal(atRoundEnd(10), 2052, 'pinned live income through round 10');
 
   // Sanity for the curve function itself under the retuned constants.
   assert.equal(runLevelForXp(runXpForLevel(9)), 9);
