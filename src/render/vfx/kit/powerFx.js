@@ -315,8 +315,11 @@ export class PowerFx {
     const { x, z } = this._toLocal(gx, gz);
     const t0 = this.time;
     const seed = hashString('bomb:' + String(id) + ':' + Math.round(t0 * 1000));
-    const R = Math.max(70, Math.min(180, (Number(radius) || 30) * 2.5));
-    const scale = this.reduced.motion ? 0.5 : 1;
+    // Kills reuse this grammar at a lighter cost (many die at once in a Swarm wave): half the
+    // matter and a smaller fire, so a wipe never spends the fill-rate budget of eight Bombs.
+    const kill = !!(opts && opts.cast === false);
+    const R = kill ? Math.max(40, Math.min(110, (Number(radius) || 12) * 2.2)) : Math.max(70, Math.min(180, (Number(radius) || 30) * 2.5));
+    const scale = (this.reduced.motion ? 0.5 : 1) * (kill ? 0.45 : 1);
     if (!opts || opts.cast !== false) this.stats.casts++;
     this._spark(x, 2.8, z, 0, 0, 0, t0, 0.28, R * 0.28, R * 0.14, 0, 0, 9, 6, 2.5, 3, 1, 0.2, SPARK_SHAPE.GLOW, SPARK_ADD);
     this._spark(x, 3, z, 0, 0, 0, t0, 0.1, R * 0.35, R * 0.5, 0, 0, 12, 11, 9.5, 6, 4, 2, SPARK_SHAPE.GLOW, SPARK_ADD);
