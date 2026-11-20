@@ -2240,8 +2240,28 @@ export const input = {
     // even when the new attachment becomes active before the mouse lifts.
     // Both pointer edges can reach the worker before the next tick. The pending press keeps
     // that click actionable for snap/off without pretending the button is still held for arm.
-    const mouseHeld = this._m2 === true;
-    const throwLine = mouseHeld ? this._throwLineAtPress : this._pendingThrowLineAtPress;
+    // R17: F and the right mouse button are the same button. The keyboard Line key stamps the line
+    // it was pressed on exactly like an RMB press, so a tap while latched throws the body toward the
+    // cursor (or, on an anchor, lets you go) from either input — "F frees YOU, RMB throws THEM" is gone.
+    const tetherEdge = takeOldestTetherEdge(this, state);
+    const keyLineHeld = tetherEdge
+      ? (tetherEdge.pressed || (tetherEdge.source === 'touch'
+        ? input._held.call(this, state, 'tether')
+        : this._heldExcept(state, 'tether', tetherEdge.code)))
+      : this._held(state, 'tether');
+    if (tetherEdge && tetherEdge.pressed && tetherEdge.source !== 'touch') {
+      this._keyThrowLineAtPress = tether?.active && tether.targetId != null
+        ? { targetId: tether.targetId, attachmentId: tether.attachmentId } : null;
+    }
+    let keyPendingThrowLine = null;
+    if (!keyLineHeld && this._keyThrowLineAtPress !== undefined) {
+      keyPendingThrowLine = this._keyThrowLineAtPress;
+      this._keyThrowLineAtPress = undefined;
+    }
+    const keyLineStamped = keyLineHeld && this._keyThrowLineAtPress !== undefined;
+    const mouseHeld = this._m2 === true || keyLineStamped;
+    const throwLine = this._m2 === true ? this._throwLineAtPress
+      : (keyLineStamped ? this._keyThrowLineAtPress : (this._pendingThrowLineAtPress || keyPendingThrowLine));
     const currentMouseLine = isCurrentMouseLine(throwLine, tether);
     // An entire tap between ticks still feeds the ordinary latch/cut grammar for one
     // step. A tap stamped for an older attachment cannot start a gesture on its replacement.
@@ -2357,15 +2377,9 @@ export const input = {
       // One press per update. A second press sampled in the same gap stays queued.
       return sampled || (held && !was);
     };
-    const tetherEdge = takeOldestTetherEdge(this, state);
-    // One alias releasing (F or 3) must not drop a second held seat while it is still down.
-    // The edge's own code is excluded, so a same-key re-press still counts as a release.
-    // The right mouse button, tether key and pad trigger share the same hold/release grammar.
-    const tetherHeld = mouseLineHeld || (tetherEdge
-      ? (tetherEdge.pressed || (tetherEdge.source === 'touch'
-        ? input._held.call(this, state, 'tether')
-        : this._heldExcept(state, 'tether', tetherEdge.code)))
-      : this._held(state, 'tether'));
+    // One alias releasing must not drop a second held seat while it is still down (the edge's own
+    // code is excluded above). RMB, the Line key and the pad trigger share one hold/release grammar.
+    const tetherHeld = mouseLineHeld || keyLineHeld;
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
@@ -2380,7 +2394,9 @@ export const input = {
     const reelOutHeld = applyHoldToggle(holdLatches, holdEdges, 'reelOut',
       this._held(state, 'reelOut'), toggleLive('reelOut')) || wheelOn('reelOut');
     const dedicatedLineLength = (reelOutHeld ? 1 : 0) - (reelInHeld ? 1 : 0);
-    const rawLineLength = dedicatedLineLength || -inp.moveZ;
+    // R17: holding the Line reels in. Hold it and press S (reverse) to pay out instead. W stays
+    // ordinary full thrust while you hold — the old W/S hijack to 25 % thrust is gone.
+    const rawLineLength = dedicatedLineLength || (inp.moveZ < -0.1 ? 1 : -1);
     // In twin-stick, strafe is the orbit direction analog of the drive scheme's yaw stick.
     const rawOrbitDirection = kbdLineOrbit || gpTurn || gpMoveX || tpTurn;
     const masslineCommand = masslineGrammar.step(dt, {
@@ -2398,14 +2414,18 @@ export const input = {
     if (!mouseLineHeld) this._m2PressS = null;
     if (!mouseLineHeld) {
       const sampled = this._sampledMouseCutLine;
-      if (masslineCommand.cut && tetherEdge?.pressed !== false
-          && (this._throwTapGuard || (sampled && !isCurrentMouseLine(sampled, tether)))) {
+      // R17: a Line-key release that armed a throw is the throw, exactly like RMB — never a cut.
+      if (masslineCommand.cut && ((tetherEdge?.pressed !== false
+          && (this._throwTapGuard || (sampled && !isCurrentMouseLine(sampled, tether))))
+          || (keyPendingThrowLine && this._throwTapGuard))) {
         masslineCommand.cut = false;
       }
       this._throwTapGuard = null;
       this._sampledMouseCutLine = null;
     }
-    const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
+    // R17: no hidden modifier. The Line always picks what the cursor is on (the old Ctrl = nearest
+    // switch is gone; acquisition's own fallback still helps a near miss).
+    const nearestTetherMode = false;
     acts.massline = masslineCommand;
     acts.tetherFire = masslineCommand.latch;
     acts.tetherCut = masslineCommand.cut;
@@ -2522,12 +2542,11 @@ export const input = {
     acts.jettisonLotAll = jettisonEdge && boostHeldRaw;
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
-    // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
-    // not also fire full thrust against the reel. Scale the flight channel to 25 % so the line
-    // grammar wins the axis and the ship keeps a finesse whisper instead of a second opposed force.
+    // R17: while you hold the Line, S pays out instead of reversing (so the two never fight);
+    // W is untouched full thrust.
     let lineOwnsTravelAxis = false;
-    if (masslineCommand.lineControl) {
-      inp.moveZ *= 0.25;
+    if (masslineCommand.lineControl && inp.moveZ < 0) {
+      inp.moveZ = 0;
       if (!(kbdBrakeHeld || gpBrake)) lineOwnsTravelAxis = true;
     }
     // The Massline key adds reel/orbit intent; it does not replace the flight controls. The same

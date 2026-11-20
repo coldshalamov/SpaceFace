@@ -8,7 +8,7 @@ import {
   bootstrapProfileSettingsBeforeRegistry,
 } from '../src/core/graphicsProfileBootstrap.js';
 import { save } from '../src/save/saveSystem.js';
-import { input, DEFAULTS, domMouseDownEvent, domMouseUpEvent } from '../src/systems/input.js';
+import { input, DEFAULTS, applyFlightKeyEvent, domMouseDownEvent, domMouseUpEvent } from '../src/systems/input.js';
 import { createGamepad } from '../src/systems/gamepad.js';
 import { createLaneTouchReducer } from '../src/systems/mobile/laneTouchReducer.js';
 
@@ -271,6 +271,48 @@ test('worker touch tap survives when press and neutral arrive before the same si
   assert.equal(state.input.actions.tetherCut, false, 'a cancelled contact cannot cut the Line');
 });
 
+test('R17: F and the right mouse button are the same button — a tap of F on a held body throws it, never just drops it', (t) => {
+  const saved = { ...MASSLINE2_FLAGS };
+  t.after(() => Object.assign(MASSLINE2_FLAGS, saved));
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  for (const device of ['F', 'RMB']) {
+    const host = makeInput();
+    const state = makeState();
+    host.state = state;
+    state.entities.get('rock').data = { isChunk: true };
+    Object.assign(state.player.tether, { active: true, targetId: 'rock', attachmentId: 8 });
+    const down = () => (device === 'F' ? applyFlightKeyEvent(host, { code: 'KeyF', pressed: true })
+      : domMouseDownEvent(host, { button: 2, clientX: 40, clientY: 40 }));
+    const up = () => (device === 'F' ? applyFlightKeyEvent(host, { code: 'KeyF', pressed: false })
+      : domMouseUpEvent(host, { button: 2, clientX: 40, clientY: 40 }));
+    down(); step(host, state);
+    assert.equal(state.input.actions.throwArm, true, `${device}: the press on a held body arms the throw`);
+    up(); step(host, state);
+    let cut = state.input.actions.tetherCut === true;
+    step(host, state);
+    cut = cut || state.input.actions.tetherCut === true;
+    assert.equal(cut, false, `${device}: the tap throws through the throw owner; it never drops the body in place`);
+  }
+});
+
+test('R17: holding the Line reels in, and holding it with S pays out instead of reversing', () => {
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  Object.assign(state.player.tether, { active: true, targetId: 'rock', attachmentId: 8 });
+  host._m2 = true;
+  step(host, state, 20);
+  assert.ok(state.input.actions.reelDelta < 0, 'hold = reel in');
+  host._keys.KeyS = true;
+  step(host, state, 2);
+  assert.ok(state.input.actions.reelDelta > 0, 'hold + S = pay out');
+  assert.ok(!(state.input.moveZ < 0), 'S is the pay-out while the Line is held, not a reverse burn');
+  host._keys.KeyS = false;
+  host._keys.KeyW = true;
+  step(host, state, 2);
+  assert.ok(state.input.moveZ > 0.9, 'W stays full thrust while you hold the Line (no 25 % hijack)');
+});
+
 test('one RMB press can grab a throwable body without immediately throwing it', (t) => {
   const saved = { ...MASSLINE2_FLAGS };
   t.after(() => Object.assign(MASSLINE2_FLAGS, saved));
@@ -372,7 +414,8 @@ test('CADENCE: a motionless hold past the tap window never cuts on release (hold
   // neutral — not a silent entry into some other control mode; no reel/orbit axis is commanded.
   assert.equal(state.input.actions.massline.lineControl, true,
     'a motionless hold is line control holding position: mode entered, axes neutral');
-  assert.equal(state.input.actions.massline.lineLength, 0, 'no reel axis was commanded');
+  assert.equal(state.input.actions.massline.lineLength, -1,
+    'R17: "hold = reel in" — holding the Line winds it in with no axis pressed');
   assert.equal(state.input.actions.massline.orbitDirection, 0, 'no orbit axis was commanded');
   host._m2 = false;
   step(host, state);
