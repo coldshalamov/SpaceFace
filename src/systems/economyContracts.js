@@ -248,7 +248,8 @@ export const economyContracts = {
     this.bus.on('dock:docked', this._onDocked);
     // Only the market writer's acknowledgement can restore a parts counter. An intent,
     // a wrong lot, or a rejected freight transaction must never announce a repair.
-    this.bus.on('economy:freightAccepted', (p) => this._onShortageRepairFreight(p));
+    this._onFreightAccepted = (p) => this._onShortageRepairFreight(p);
+    this.bus.on('economy:freightAccepted', this._onFreightAccepted);
     // Fresh runs reset dedupe. Loads restore it through deserialize before save:loaded fires.
     this._onStarted = () => this.newGame();
     this.bus.on('game:started', this._onStarted);
@@ -1539,6 +1540,7 @@ export const economyContracts = {
   destroy() {
     if (this.bus && this.bus.off && this._onOfferBoarded) this.bus.off('mission:offerBoarded', this._onOfferBoarded);
     if (this.bus && this.bus.off && this._onDocked) this.bus.off('dock:docked', this._onDocked);
+    if (this.bus && this.bus.off && this._onFreightAccepted) this.bus.off('economy:freightAccepted', this._onFreightAccepted);
     if (this.bus && this.bus.off && this._onRouteLegDue) this.bus.off('fence:routeLegDue', this._onRouteLegDue);
     this._onRouteLegDue = null;
     if (this.bus && this.bus.off && this._onMassWeighed) this.bus.off('tether:massWeighed', this._onMassWeighed);
@@ -1558,6 +1560,7 @@ export const economyContracts = {
     this._deniableLatch = null;
     this._onStarted = null;
     this._onDocked = null;
+    this._onFreightAccepted = null;
   },
 };
 
