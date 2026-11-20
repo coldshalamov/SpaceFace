@@ -1222,9 +1222,16 @@ export const lawSecurity = {
     }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const key = String(victimId);
+    // The victim id can recycle: a row is only this victim's harm while its occupant
+    // generation still matches. A different occupant starts a fresh window, never
+    // inheriting harm it did not suffer.
+    const victimEntity = entityById(state, victimId);
+    const victimGeneration = victimEntity ? occupantGenerationOf(victimEntity) : null;
     let row = own.harmWindows[key];
+    if (row && row.victimGeneration != null && victimGeneration != null
+      && row.victimGeneration !== victimGeneration) row = null;
     if (!row) {
-      row = { lastT: now, events: [] };
+      row = { lastT: now, events: [], victimGeneration };
       own.harmWindows[key] = row;
     }
     row.lastT = now;
@@ -1250,6 +1257,14 @@ export const lawSecurity = {
     const own = state && state.lawSecurity;
     const row = own && own.harmWindows && own.harmWindows[String(victimId)];
     if (!row || !Array.isArray(row.events)) return 0;
+    // A live occupant whose generation differs from the recorded victim's is a different
+    // ship on a recycled id — the dead victim's harm events do not transfer.
+    const occupant = entityById(state, victimId);
+    if (occupant && row.victimGeneration != null
+      && occupantGenerationOf(occupant) !== row.victimGeneration) {
+      delete own.harmWindows[String(victimId)];
+      return 0;
+    }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const cutoff = now - Math.max(0, Number(windowS) || 0);
     let write = 0;
@@ -1607,6 +1622,9 @@ export const lawSecurity = {
       startedAt: state.simTime || 0,
       lastDamageAt: state.simTime || 0,
       responderIds: [],
+      // id → occupantGeneration at dispatch: ids recycle, so a live-responder check must
+      // verify the entity at the id is still the dispatched hull, not a recycled occupant.
+      responderGenerations: {},
       nextReserveOrdinal: 0,
       status: 'distress',
       victimAnchor: null,
@@ -2030,10 +2048,15 @@ export const lawSecurity = {
         continue;
       }
       incident.responderIds.push(responder.id);
+      if (incident.responderGenerations && typeof incident.responderGenerations === 'object') {
+        incident.responderGenerations[responder.id] = occupantGenerationOf(responder);
+      }
       dispatched.push(responder);
     }
     const hasLiveResponse = incident.responderIds.some((id) => {
-      const responder = entityById(this.state, id);
+      // Legacy incidents carry no generation map — incidentOccupant fails open for those.
+      const responder = incidentOccupant(this.state, id,
+        incident.responderGenerations ? incident.responderGenerations[id] : null);
       return responder && responder.alive !== false;
     });
     if (incident.spawnBudgetDeferred) {
@@ -6616,6 +6639,7 @@ export const lawSecurity = {
     own.playerSurrender = {
       phase: 'holding',
       responderId: responder.id,
+      responderGeneration: occupantGenerationOf(responder),
       priceCr,
       causeId,
       heldS: 0,
@@ -6678,7 +6702,7 @@ export const lawSecurity = {
       this._cancelPlayerSurrender('moving');
       return;
     }
-    const responder = entityById(state, hold.responderId);
+    const responder = incidentOccupant(state, hold.responderId, hold.responderGeneration);
     if (!responder || responder.alive === false || !playerInLawfulCone(responder, player)) {
       this._cancelPlayerSurrender('no_responder');
       return;
@@ -6700,7 +6724,8 @@ export const lawSecurity = {
       amountCr: hold.priceCr,
       label: 'surrender',
     });
-    const responder = entityById(state, hold.responderId);
+    // Generation-verified: a recycled occupant at the id is never pacified by this hold.
+    const responder = incidentOccupant(state, hold.responderId, hold.responderGeneration);
     if (responder && responder.data) {
       const ai = responder.data.ai || (responder.data.ai = {});
       ai.roe = RulesOfEngagement.HOLD_FIRE;
