@@ -50,6 +50,8 @@ import * as THREE from 'three';
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from './uiStage.js';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
+import { createOpaqueStateSort } from './opaqueStateSort.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import {
   _bandArgsFor,
   _residencyLookDelta,
@@ -10008,8 +10010,12 @@ export const render = {
     // The station depth prepass (partsLibrary.js) also relies on this: prepass meshes are
     // PREPENDED and must draw before their sources, which only holds while opaque draw order is
     // scene-traversal order. Re-enabling material/depth sorting needs that owner reworked first.
+    // 2026-11-20 (render lead): traversal order is kept only around order-sensitive draws (depth
+    // prepass, no-depth overlays); the ordinary opaque draws between them are grouped by shader
+    // program and material so three stops re-binding programs and re-sending light/camera blocks
+    // on almost every draw (opaqueStateSort.js). ?rfx=-sort restores the raw traversal order.
     if (typeof renderer.setOpaqueSort === 'function') {
-      renderer.setOpaqueSort(() => 0);
+      renderer.setOpaqueSort(frameCostFixOn('sort') ? createOpaqueStateSort(renderer) : () => 0);
     }
     this._opaqueBatchSupported = false;
     try {
@@ -21110,7 +21116,8 @@ export const render = {
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         const shadowSettingWasOff = this._shadowSettingOn !== true;
-        const nextShadowSetting = !!this._foundrySet || vd.shadows !== false;
+        // The player's Shadows setting is final everywhere, the Foundry included.
+        const nextShadowSetting = vd.shadows !== false;
         const shadowSettingChanged = this._shadowSettingOn !== nextShadowSetting;
         this._shadowSettingOn = nextShadowSetting;
         // A whole-settings re-emit carrying no shadows delta must not mark the
@@ -31550,7 +31557,9 @@ export const render = {
       this._foundrySet = null;
       this._keyLightOffset = null;
     }
-    this._shadowSettingOn = active || this.state.settings?.video?.shadows !== false;
+    // Entering the Foundry used to force the sun shadow on over a Shadows Off setting. The set is
+    // lit by its own practicals; the shadow map follows the player's choice like every sector.
+    this._shadowSettingOn = this.state.settings?.video?.shadows !== false;
     this._markShadowReceiversDirty();
     this._ensureKeyLightShadows();
     this._syncShadowMapEnabled();
@@ -33351,7 +33360,15 @@ export const render = {
       const sample = this._adaptiveSample;
       sample.eligible = eligible;
       sample.targetMs = adaptiveFrameBudgetMs(adaptiveState.render, video);
+      // Main-thread time of the last completed frame callback: lets the controller tell a
+      // CPU-bound frame (resolution cannot help) from a GPU-bound one before it trials a band.
+      const perfRt = adaptiveState && adaptiveState.perfRuntime;
+      if (perfRt && typeof perfRt.readFrameSample === 'function') {
+        const frameSample = perfRt.readFrameSample(this._adaptivePerfSample || (this._adaptivePerfSample = {}));
+        sample.cpuMs = frameSample.callbackMs;
+      }
       tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
+      if (adaptiveState.render) adaptiveState.render.dynResBound = this._adaptive.getBound?.().bound;
     }
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
     // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full

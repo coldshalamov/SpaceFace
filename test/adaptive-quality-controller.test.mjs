@@ -280,3 +280,33 @@ test('isolated 330 ms stalls are ignored but sustained 330 ms frames adapt and r
   feed(sustained, 0.33, 35, { eligible: true, targetMs: 1000 / 60 });
   assert.equal(sustained.getScale(), 1, 'a non-beneficial lower band is restored after its trial');
 });
+
+test('a CPU-bound frame never trials a lower resolution band; a GPU-bound one still does', () => {
+  // Main thread busy for the whole 26 ms interval: resolution cannot help, so no pop.
+  const cpuBound = createAdaptiveResolution({ floor: 0.5 });
+  feed(cpuBound, 0.026, 400, { eligible: true, targetMs: 1000 / 60, cpuMs: 25 });
+  assert.equal(cpuBound.getScale(), 1, 'a busy main thread keeps native resolution');
+  assert.equal(cpuBound.getBound().bound, 'cpu');
+
+  // Main thread idle for most of the interval: the wait is the GPU, so the band is trialled.
+  const gpuBound = createAdaptiveResolution({ floor: 0.5 });
+  feed(gpuBound, 0.026, 130, { eligible: true, targetMs: 1000 / 60, cpuMs: 9 });
+  assert.equal(gpuBound.getScale(), 0.9);
+  assert.equal(gpuBound.getBound().bound, 'gpu');
+
+  // A GPU timer sample overrides the CPU-share guess.
+  const timed = createAdaptiveResolution({ floor: 0.5 });
+  feed(timed, 0.026, 130, { eligible: true, targetMs: 1000 / 60, cpuMs: 24, gpuMs: 25 });
+  assert.equal(timed.getScale(), 0.9, 'GPU time as the longer pole admits the trial');
+});
+
+test('fruitless trials back off so an unhelpful band stops reappearing', () => {
+  const scales = [];
+  const controller = createAdaptiveResolution({ floor: 0.5, apply: (s) => scales.push(s) });
+  // No CPU sample (old callers): every trial fails to improve the 26 ms frame.
+  feed(controller, 0.026, 60 * 120, { eligible: true, targetMs: 1000 / 60 });
+  const trials = scales.filter((s) => s < 1).length;
+  // Without backoff a 15 s cooldown + 2.5 s trial would retry ~7 times in 120 s.
+  assert.ok(trials <= 4, `trials in 120 s: ${trials}`);
+  assert.equal(controller.getScale(), 1);
+});

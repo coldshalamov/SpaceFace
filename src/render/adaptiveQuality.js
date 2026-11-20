@@ -625,6 +625,28 @@ export function createAdaptiveResolution(opts = {}) {
   let trial = null;
   let noBenefitCooldown = 0;
   let slowFrameStreak = 0;
+  // Who is the long pole? Lowering resolution only relieves the GPU. When the main thread is busy
+  // for (nearly) the whole frame interval the frame is CPU-bound: a trial would drop the picture to
+  // a lower band for 2.5 s, measure no benefit, restore it and try again 15 s later — a visible
+  // resolution pop every ~17 s that buys nothing. With a CPU sample the controller only trials when
+  // the main thread leaves a real share of the interval idle (the wait is the GPU or compositor);
+  // with a GPU-time sample (async timer queries) it trials when the GPU is the longer pole.
+  let cpuEmaMs = null;
+  let gpuEmaMs = null;
+  let noBenefitStreak = 0;
+  let bound = 'unknown';
+  const CPU_BOUND_SHARE = clamp(Number(opts.cpuBoundShare) || 0.8, 0.5, 0.98);
+
+  function resolutionCanHelp(targetMs) {
+    if (gpuEmaMs != null) {
+      bound = gpuEmaMs >= (cpuEmaMs ?? 0) * 0.9 && gpuEmaMs > targetMs * 0.6 ? 'gpu' : 'cpu';
+    } else if (cpuEmaMs != null) {
+      bound = cpuEmaMs >= emaMs * CPU_BOUND_SHARE ? 'cpu' : 'gpu';
+    } else {
+      bound = 'unknown';
+    }
+    return bound !== 'cpu';
+  }
 
   function set(next) {
     const s = clamp(next, floor, 1);
@@ -643,6 +665,9 @@ export function createAdaptiveResolution(opts = {}) {
       trial = null;
       noBenefitCooldown = 0;
       slowFrameStreak = 0;
+      cpuEmaMs = null;
+      gpuEmaMs = null;
+      noBenefitStreak = 0;
       if (!enabled) set(1); // restore full internal resolution when disabled
     },
     syncScale(value) {
@@ -673,6 +698,14 @@ export function createAdaptiveResolution(opts = {}) {
       const boundedDt = Math.min(dt, maxAcceptedMs / 1000);
       const ms = boundedDt * 1000;
       emaMs += (ms - emaMs) * SMOOTH;
+      const cpuMs = Number(sample.cpuMs);
+      if (Number.isFinite(cpuMs) && cpuMs >= 0) {
+        cpuEmaMs = cpuEmaMs == null ? cpuMs : cpuEmaMs + (Math.min(cpuMs, maxAcceptedMs) - cpuEmaMs) * SMOOTH;
+      }
+      const gpuMs = Number(sample.gpuMs);
+      if (Number.isFinite(gpuMs) && gpuMs >= 0) {
+        gpuEmaMs = gpuEmaMs == null ? gpuMs : gpuEmaMs + (Math.min(gpuMs, maxAcceptedMs) - gpuEmaMs) * SMOOTH;
+      }
       if (lowerCooldown > 0) lowerCooldown -= boundedDt;
       if (noBenefitCooldown > 0) noBenefitCooldown -= boundedDt;
       raiseTimer += boundedDt;
@@ -684,7 +717,12 @@ export function createAdaptiveResolution(opts = {}) {
           const improved = emaMs <= trial.baselineMs * (1 - MIN_BENEFIT);
           if (!improved) {
             set(trial.previousScale);
-            noBenefitCooldown = noBenefitCooldownS;
+            // Back off: every consecutive fruitless trial doubles the wait (15 s, 30, 60, 120), so a
+            // frame that resolution cannot help stops showing the player a lower-res band at all.
+            noBenefitCooldown = noBenefitCooldownS * (2 ** Math.min(noBenefitStreak, 3));
+            noBenefitStreak++;
+          } else {
+            noBenefitStreak = 0;
           }
           trial = null;
           slowTimer = 0;
@@ -695,7 +733,8 @@ export function createAdaptiveResolution(opts = {}) {
 
       // A small sustained miss moves down one resolution band. The step is retained only when
       // the observed frame time improves; CPU/simulation bottlenecks restore the prior band.
-      if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0) {
+      if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0
+        && resolutionCanHelp(targetMs)) {
         const nextScale = Math.max(floor, scale - step);
         // Depth gate: the deeper the candidate band, the worse the sustained miss must be.
         // Without it a borderline load walked every band on the same mild miss and the
@@ -726,5 +765,7 @@ export function createAdaptiveResolution(opts = {}) {
       }
     },
     getScale() { return scale; },
+    /** Diagnostics: 'cpu' | 'gpu' | 'unknown' as of the last lowering decision, plus the EMAs. */
+    getBound() { return { bound, frameMs: emaMs, cpuMs: cpuEmaMs, gpuMs: gpuEmaMs }; },
   };
 }

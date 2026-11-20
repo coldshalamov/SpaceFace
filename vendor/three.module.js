@@ -8559,7 +8559,14 @@ function WebGLRenderList() {
 
 	function sort( customOpaqueSort, customTransparentSort ) {
 
-		if ( opaque.length > 1 ) opaque.sort( customOpaqueSort || painterSortStable );
+		// SpaceFace: a sorter flagged sortsWholeList reorders the list itself (segmented state sort,
+		// src/render/opaqueStateSort.js) instead of acting as an Array#sort comparator.
+		if ( opaque.length > 1 ) {
+
+			if ( customOpaqueSort && customOpaqueSort.sortsWholeList === true ) customOpaqueSort( opaque );
+			else opaque.sort( customOpaqueSort || painterSortStable );
+
+		}
 		if ( transmissive.length > 1 ) transmissive.sort( customTransparentSort || reversePainterSortStable );
 		if ( transparent.length > 1 ) transparent.sort( customTransparentSort || reversePainterSortStable );
 

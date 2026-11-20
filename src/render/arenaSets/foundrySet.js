@@ -97,7 +97,11 @@ function buildDeck(root, planeMaterial, steel, box, plateGeometry) {
   foundation.rotation.x = -Math.PI / 2;
   foundation.position.y = FOUNDRY_DECK_Y - 1.25;
   foundation.receiveShadow = true;
-  root.add(foundation);
+  // The grout plane lies under ~95 % of the screen, beneath the steel plates. Drawn first it shaded
+  // every deck pixel twice; drawn after them, early depth rejects all but the visible joints. The
+  // opaque state sort (opaqueStateSort.js) orders by renderOrder first, and it is also mounted after
+  // the plates for the raw traversal order (?rfx=-sort).
+  foundation.renderOrder = 1;
 
   const plate = [], runners = [], insets = [];
   const finishes = [0x454743, 0x494945, 0x464946, 0x484b48, 0x444644];
@@ -129,6 +133,8 @@ function buildDeck(root, planeMaterial, steel, box, plateGeometry) {
   blocks(root, 'Foundry steel plating', plateGeometry, steel, plate);
   blocks(root, 'Foundry rail beds', box, steel, runners);
   blocks(root, 'Foundry access grilles', box, steel, insets);
+  root.add(foundation);
+  return foundation;
 }
 
 function buildMachinery(root, steel, box, fixtures) {
@@ -248,8 +254,7 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
   plateGeometry.computeVertexNormals();
   plateGeometry.computeBoundingBox();
   plateGeometry.computeBoundingSphere();
-  buildDeck(root, grout, floor, box, plateGeometry);
-  own(root.children[0].geometry);
+  own(buildDeck(root, grout, floor, box, plateGeometry).geometry);
   buildMachinery(root, steel, box, fixtures);
   for (const object of root.children) if (object.isInstancedMesh) own(object);
 

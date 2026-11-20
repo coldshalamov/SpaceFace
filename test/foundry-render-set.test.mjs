@@ -30,11 +30,31 @@ test('Foundry scenery mounts exclusively on Swarm Foundry entry and retires with
   assert.equal(owner._syncFoundrySet('swarm:arenaEntered', run), true);
   assert.equal(owner._syncFoundrySet('swarm:arenaEntered', run), false);
   assert.equal(owner.scene.children.length, 1);
-  assert.equal(owner._shadowSettingOn, true);
+  // Owner release checklist 2026-11-20: Shadows Off must mean off in the Foundry too. The set
+  // used to force the sun shadow map on over the player's setting.
+  assert.equal(owner._shadowSettingOn, false, 'the Foundry honours Shadows Off');
   assert.deepEqual([...entities], [[1, player]]);
   assert.equal(owner._syncFoundrySet('sector:enter', run), true);
   assert.equal(owner.scene.children.length, 0);
   assert.equal(owner._shadowSettingOn, false);
+});
+
+test('the Foundry keeps shadows when the player turns them on', () => {
+  const run = Object.freeze({ arenaId: FOUNDRY_ARENA_ID });
+  const state = Object.freeze({ run, entities: new Map(), playerId: 1,
+    settings: Object.freeze({ video: Object.freeze({ shadows: true }) }) });
+  const owner = {
+    state,
+    scene: new THREE.Scene(),
+    _markShadowReceiversDirty() {},
+    _ensureKeyLightShadows() {},
+    _syncShadowMapEnabled() {},
+    _updateShadowFollow() {},
+    _syncFoundrySet: render._syncFoundrySet,
+  };
+  assert.equal(owner._syncFoundrySet('swarm:arenaEntered', run), true);
+  assert.equal(owner._shadowSettingOn, true);
+  owner._syncFoundrySet('sector:enter', run);
 });
 
 test('bank foundations use the existing contact footprint and follow the render origin', () => {
