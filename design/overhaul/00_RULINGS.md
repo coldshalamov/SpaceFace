@@ -170,6 +170,82 @@ Authority, highest first:
 
 ---
 
+## Rulings of 2026-11-20 (the owner's words that day, and what follows from them)
+
+### R13 — One rule, and no rule may block work
+
+- **Owner:** "We have one rule: make a good game… I just don't want any agent ever deciding there's a
+  blocker, or leaving work behind without finishing it."
+- **Ruling:** the root `AGENTS.md` is the only rulebook. Every review-before-landing step, hold,
+  parked state, lane, claim and ordering rule in this folder and elsewhere is void, including the
+  Codex-review steps written in `11_ORDER_OF_WORK.md` and the older rows of `12_PIPELINE.md`. Work
+  is reviewed after it lands and fixed forward.
+
+### R14 — Built the way a game released today would be
+
+- **Owner:** performance fixes "shouldn't be nuked to the stone age… make sure we have an appropriate
+  modern solution for everything… you know what techniques wouldn't be caught dead in a modern
+  A-list game."
+- **Ruling:** slowness is fixed with architecture (data layout, shared queries, batching,
+  time-slicing, streaming, prediction), never by making the game dumber, uglier or emptier. Every
+  technique is chosen by asking what a current release does for that problem.
+
+### R15 — Swarm is a horde; nothing holds enemies back
+
+- **Owner:** "This is supposed to be a swarm shoot-em-up dogfight game, kind of like a spaceship
+  Crimsonland… a lot of enemies are supposed to be able to attack at once." "In regular Adventure
+  combat there's a radius that the enemies can even see… but in a mode like Swarm you'd want heat to
+  be on the entire level… there just shouldn't be rules that only allow like 5 enemies to attack
+  while the others are frozen."
+- **Ruling:**
+  - **Swarm:** every enemy in the arena knows where the player is and comes for them. No limit on
+    simultaneous attackers, no attack permission, no spectators. The engine, enemy brains and
+    drawing are sized for 200–300 attackers on screen.
+  - **Adventure:** enemies have senses (a perception radius, an alert state, allies called within
+    earshot, a leash back to their post). Whoever is engaged fights; whoever has not noticed the
+    player does not.
+  - **Everywhere:** if an enemy is not attacking, the reason is visible in the world (it has not
+    seen you, it is out of range, reloading, fleeing, blocked). Group coordination shapes where a
+    crowd comes from; it never restrains the crowd.
+  - Fairness comes from numbers: fodder hits lightly and dies quickly; the dangerous attacks keep a
+    readable wind-up.
+
+### R16 — Life near the player, calm at the start, no silent respawn
+
+- **Owner:** "Some places feel overcrowded, not like a real place… agents would find weird proxies for
+  'action in the first 30 seconds', which apparently just means to flood units into the first sector."
+  And: sectors "too empty or too crowded"; rocks should "respawn at logical times" without a
+  depopulated galaxy and without the "move a bit to the left and it respawns brand new" feel.
+- **Ruling:** one owner decides who is in a sector, from a cast sheet with roles and doors. The
+  opening is a working harbour seen at a distance; the player chooses the first fight. Killed ships
+  stay dead until a replacement arrives through a gate. Worked rocks look worked and recover over
+  hours of play; a belt never falls under about 40 % stock; rocks the player built in never change.
+  This replaces both "Helios needs more density" (older plans) and "no new world content" (2026-11-19).
+
+### R17 — The powers and the Line say what they do
+
+- **Owner:** "I can't tell what any of the powers do." "My actions don't do what I'd expect."
+- **Ruling:**
+  - The five powers are **Pull, Shove, Pin, Bomb, Plow** on 1–5, and the **Line** on right mouse and
+    F. One name each, everywhere.
+  - Every power acts **on press, at the cursor**. "Aim first" (hold to preview, release to fire) is
+    a Settings option, off by default.
+  - **Pin** nails a point in space: cast on a body it stakes that body for a few seconds; cast on
+    empty space it plants a post the Line can swing on.
+  - **Bomb:** press 4 again to detonate. Shove does not detonate by rule.
+  - **Plow** never changes mode silently.
+  - The Line's two buttons are one button with one grammar (tap to latch, tap to throw, hold to reel).
+  - Nothing steals keys 1–5 in flight. Esc never starts a round. No prompt prints a blank or the
+    word "unbound".
+  - State lives on the power's tile and in the effect itself, never in a floating status chip.
+
+### R18 — Plain words and human units
+
+- **Owner:** "the UI is often filled with gibberish language."
+- **Ruling:** `08_INTERFACE.md` §5's banned list stands and grows (Massline, Mass Seed, Gyre, Well,
+  Repulsor, Cone and Rig as player-facing names are added). Distances read `m` and `km`, speeds
+  `m/s`. US spelling. A check (`npm run check:plain-words`) fails on a banned word.
+
 ## Decisions the director made that the owner may want to overrule
 
 These are judgment calls inside the owner's vision, made so work can proceed. Each is easy to flip.
