@@ -155,3 +155,31 @@ export const GUN_FAMILY_BY_WEAPON_ID = Object.freeze({
 export function gunFamilyOf(weaponId) {
   return GUN_FAMILY_BY_WEAPON_ID[weaponId] || null;
 }
+
+// Owner polish list: the shop shows rate, punch, reach and kick, plus how long the gun fires
+// before it overheats. One pure read the shop screen and the draft cards can share. Heat pacing
+// mirrors src/systems/weapons.js (player dissipation runs 15 % hot). `sustainS` is null for a
+// gun that never overheats when held (the reason is `sustainReason`).
+const PLAYER_HEAT_PACING = 1.15;
+export function weaponShopFigures(def) {
+  if (!def || typeof def !== 'object') return null;
+  const n = (v) => (Number.isFinite(v) ? v : 0);
+  const rof = n(def.rof);
+  const continuous = def.continuous === true;
+  const rate = continuous ? null : rof;
+  const punch = n(def.dmg);
+  const dps = continuous ? punch : n(def.dps) || punch * rof;
+  const reach = n(def.range);
+  const kick = n(def.impulsePerHit);
+  const heatMax = n(def.heatMax);
+  const heatIn = continuous ? n(def.heatPerSec) : n(def.heatPerShot) * rof;
+  const heatOut = n(def.heatDissip) * PLAYER_HEAT_PACING;
+  let sustainS = null;
+  let sustainReason = null;
+  if (!(heatMax > 0) || !(heatIn > 0)) sustainReason = 'no heat';
+  else if (heatIn <= heatOut) sustainReason = 'cools faster than it heats';
+  else sustainS = Math.round((heatMax / (heatIn - heatOut)) * 10) / 10;
+  return Object.freeze({
+    family: gunFamilyOf(def.id), rate, punch, dps: Math.round(dps * 10) / 10, reach, kick, sustainS, sustainReason,
+  });
+}
