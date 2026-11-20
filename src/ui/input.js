@@ -30,6 +30,7 @@ import { createDockIntent } from '../core/dockIntent.js';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
 import { isSwarmControls } from '../data/swarmControls.js';
 import { contextUiAllowed } from '../data/inputContexts.js';
+import { nearestSwarmFloorPad, swarmFloorPadQuote, SWARM_FLOOR_ARM_REQUEST } from '../data/swarmFloor.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -380,6 +381,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     bus.emit('audio:cue', { id: 'ui_dock' });
   }
 
+  function doFlightInteract() {
+    if (isUiInteractionFenced(state) || state.mode !== 'flight' || state.ui?.docked) return false;
+    if (dockInRange) { doDock(); return true; }
+    const quote = swarmFloorPadQuote(nearestSwarmFloorPad(state));
+    if (!quote) return false;
+    const terms = document.querySelector(`#sf-floorpads [data-floor-quote="${quote.entityId}"]`);
+    if (!terms?.getClientRects().length || Number(getComputedStyle(terms).opacity) < 0.5) return false;
+    bus.emit(SWARM_FLOOR_ARM_REQUEST, quote);
+    return true;
+  }
+
   function matchesBinding(ev, binding) {
     const k = ev && ev.key;
     const code = ev && ev.code;
@@ -462,6 +474,16 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   function onFlightHudFocusKeyDown(ev) {
     if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()
         || isUiInteractionFenced(state) || isTextEntryTarget(ev.target)) return;
+    if (ev.key === 'Escape') {
+      const details = document.getElementById('sf-objective-details');
+      const closeDetails = details && !details.hidden && details.querySelector('.sf-mt-details-close');
+      if (closeDetails) {
+        closeDetails.click();
+        ev.preventDefault();
+        ev.stopPropagation?.();
+        return;
+      }
+    }
     const control = flightHudControl(ev.target) || flightHudControl(document.activeElement);
     const shortcut = flightHudFocusShortcut(state);
     const focusShortcut = shortcut.available && (ev.key === shortcut.code || ev.code === shortcut.code)
@@ -538,6 +560,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       bus.emit('ui:closeCargo');
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
+        if (ev.repeat) return;
         ev.preventDefault();
         // A screen mid-gesture gets first refusal before the generic back/pop (J6): the chart's
         // laid line / filling hold cancels here, so the first Escape undoes the player's current
@@ -629,8 +652,8 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         return;
       }
       // global quick-save/load still work over a modal
-      if (key === 'F5') { ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return; }
-      if (key === 'F9') { ev.preventDefault(); bus.emit('game:load', { slot: 'quick' }); return; }
+      if (key === 'F5') { ev.preventDefault(); if (ev.repeat) return; bus.emit('game:save', { slot: 'quick' }); return; }
+      if (key === 'F9') { ev.preventDefault(); if (ev.repeat) return; bus.emit('game:load', { slot: 'quick' }); return; }
       return;
     }
 
@@ -651,6 +674,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // codex, find, fleet, photo, debug overlays) is inert while the run is live.
     if (isSwarmControls(state)) {
       if (key === 'Escape' || key === 'p' || key === 'P') {
+        if (ev.repeat) return;
         ev.preventDefault();
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
@@ -667,10 +691,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         bus.emit('swarm:scoreboardToggle', {});
         return;
       }
-      if (matchesBinding(ev, BINDINGS.dock) && !ev.repeat && dockInRange) {
+      if (matchesBinding(ev, BINDINGS.dock) && !ev.repeat && doFlightInteract()) {
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-        doDock();
       }
       return;
     }
@@ -688,6 +711,13 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('race:restart', { source: 'keyboard' });
+      return;
+    }
+    if (matchesBinding(ev, BINDINGS.fieldBuild)) {
+      if (!contextUiAllowed(state, 'fieldBuild')) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('ui:toggleFieldBuild', { source: 'keyboard' });
       return;
     }
     if (matchesBinding(ev, BINDINGS.band)) {
@@ -730,6 +760,13 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
 
     switch (key) {
       case 'Escape':
+        if (ev.repeat) return;
+        if (state.ui && state.ui.fieldBuildActive) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('ui:closeFieldBuild');
+          return;
+        }
         if (shipScreenRequest.isShipScreenRequestPending?.()) {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -751,6 +788,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         // fall through to Pause when no flight overlay owns Escape
       case 'p': case 'P':
         ev.preventDefault();
+        if (ev.repeat) return;
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
@@ -911,12 +949,14 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         return;
       case 'F5':
         if (!contextUiAllowed(state, 'save')) return;
+        if (ev.repeat) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('game:save', { slot: 'quick' });
         return;
       case 'F9':
         if (!contextUiAllowed(state, 'load')) return;
+        if (ev.repeat) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('game:load', { slot: 'quick' });
@@ -1259,9 +1299,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     return clickStationTab(tabs[next]);
   }
 
-  function moveFocus(dir) {
-    const root = activeScreenEl();
-    const items = focusableInside(root);
+  function moveFocus(dir, root = activeScreenEl(), items = focusableInside(root)) {
     if (!items.length) return;
     const active = document.activeElement;
     document.documentElement.classList.add('sf-gamepad-focus');
@@ -1279,6 +1317,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         if (typeof nextTab.click === 'function') nextTab.click();
         return;
       }
+    }
+    // A roving group (a kit listbox, a vertical tablist) keeps its inactive rows at tabindex -1,
+    // which spatial targeting cannot see — a pad could enter such a ladder but never walk it.
+    // Hand the press to the group's own arrow handling, exactly as the keyboard gets it; if the
+    // group moved focus the press is spent, otherwise spatial targeting carries on below.
+    if (active && typeof KeyboardEvent === 'function' && active.closest('[role="listbox"], [role="radiogroup"], [role="tablist"]')) {
+      const arrow = dir === 'left' ? 'ArrowLeft' : dir === 'right' ? 'ArrowRight' : dir === 'up' ? 'ArrowUp' : 'ArrowDown';
+      const before = active;
+      active.dispatchEvent(new KeyboardEvent('keydown', { key: arrow, code: arrow, bubbles: true, cancelable: true }));
+      const landed = document.activeElement;
+      if (landed && landed !== before && (!root || root.contains(landed))) return;
     }
     if (!items.includes(active)) {
       try { items[0].focus(); } catch (e) {}
@@ -1307,8 +1356,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     if (next) { try { next.focus(); } catch (e) {} }
   }
 
-  function activateFocused() {
-    const root = activeScreenEl();
+  function activateFocused(root = activeScreenEl()) {
     const active = document.activeElement;
     if (!active || !root || !root.contains(active)) return;
     document.documentElement.classList.add('sf-gamepad-focus');
@@ -1360,15 +1408,11 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     }
     if (state.mode !== 'flight') return false;
     if (action === 'dock') {
-      if (dockInRange && !state.ui.docked) {
-        doDock();
-        return true;
-      }
+      if (doFlightInteract()) return true;
       bus.emit('toast', { text: 'No dock prompt active', kind: 'info', ttl: 2 });
       return false;
     }
-    // Every device path asks the SAME interface gate as the keyboard: a touch fight cannot
-    // open the chart or the codex through the overlay's own buttons.
+    // Touch shares the keyboard's interface gate, including navigation during combat.
     if (!contextUiAllowed(state, action)) return false;
     if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
     // Touch Local / Star keep product labels on the overlay but open the unified map with focus.
@@ -1441,6 +1485,30 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // highlight. Nothing below (dock, map, cycleTarget) may fire through a live decision.
     // A modal screen above the deck keeps input (the decision is hidden under it anyway).
     const promptDeck = getPromptDeck();
+    const cargoPanel = !modalOpen && state.ui?.cargoPanelOpen
+      ? document.querySelector('#hud .sf-cargo-panel.open') : null;
+    if (cargoPanel) {
+      if (gp.actions.cancel?.pressed) {
+        bus.emit('ui:closeCargo');
+        return;
+      }
+      const deck = promptDeck?.el && !promptDeck.el.hidden ? promptDeck.el : null;
+      const active = document.activeElement;
+      const root = deck?.contains(active) ? deck : cargoPanel;
+      if (gp.actions.accept?.pressed) {
+        activateFocused(root);
+        bus.emit('ui:confirm', {});
+      }
+      for (const dir of ['up', 'down', 'left', 'right']) {
+        if (navNow[dir] && !_nav[dir]) {
+          moveFocus(dir, root, [...focusableInside(cargoPanel), ...focusableInside(deck)]);
+          bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
+        }
+        _nav[dir] = navNow[dir];
+      }
+      return;
+    }
     if (!modalOpen && promptDeck && promptDeck.size > 0 && promptDeck.gamepadCapture(gp.actions)) {
       let deckNav = false;
       for (const d of ['up', 'down', 'left', 'right']) {
@@ -1540,9 +1608,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         && state.entities?.get?.(state.playerId)?.alive !== false) {
         bus.emit('race:toggleView', { source: 'gamepad' });
       }
-      if (gp.actions.dock && gp.actions.dock.pressed && dockInRange) {
-        doDock();
-      }
+      if (gp.actions.dock && gp.actions.dock.pressed) doFlightInteract();
       if (gp.actions.pause && gp.actions.pause.pressed) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });

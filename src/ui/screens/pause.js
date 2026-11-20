@@ -1448,7 +1448,7 @@ export const pauseScreen = {
     // Esc route returns here. Photo mode owns the keys while it is up, so a live session ignores it.
     if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       pausePhotoKeyHandler = (ev) => {
-        if (photo || !isPhotoBindingKey(ev)) return;
+        if (photo || ev.repeat || !isPhotoBindingKey(ev)) return;
         const target = ev.target;
         const tag = target && typeof target.tagName === 'string' ? target.tagName.toLowerCase() : '';
         if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return;
