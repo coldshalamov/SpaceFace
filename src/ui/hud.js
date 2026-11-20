@@ -2074,6 +2074,12 @@ function injectTravelTapeStyle() {
       .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .85)); }
     #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .85)); }
   }
+  /* ui-polish-540: the text is counter-scaled to stay 12px on screen, so the box must be too, or the
+     head and the stop/arrival line wrap ("ARRIVAL 421 / u · BRAKE" at 960x540). The box keeps its
+     312px on screen, capped to the band right of the cluster's ordnance column. */
+  @media (min-width: 641px) and (max-width: 1279px), (min-width: 641px) and (max-height: 719px) {
+    #hud[data-hud="orrery"] > .sf-vtape { width:calc(max(212px, min(312px, 100vw - var(--sf-dock-w, 236px) - 36px - 300px)) / var(--sf-vtape-fit, .85)); }
+  }
   /* Phone band: the dock-anchored row collapses onto the ORRERY cluster, so the tape
      moves into the open lane directly above the cluster (left-anchored like it).
      The bottom offset tracks the cluster's own scaled height, not a magic band. */
