@@ -255,6 +255,7 @@ export const stationContacts = {
       this._recordFreight(payload, 'arrival');
       this._noteYuneCleanArrival(payload);
     });
+    on('mission:completed', (payload = {}) => this._noteYuneNyxFreight(payload));
     on('freight:loss', (payload = {}) => {
       this._recordFreight(payload, 'loss');
       this._recordVonnFreightLoss(payload);
@@ -641,6 +642,28 @@ export const stationContacts = {
       : null;
     if (!tally || tally.disposition !== 'counted') return false;
     return this._applyCounterDelta('yune.trust', 1, `helios-freight-clean:${manifestId}`);
+  },
+
+  /**
+   * BUG-SWEEP-1: Yune keeps her desk at the Nyx Fence (the canon placement her resident card
+   * ships), so clean freight that LANDS there is hers to weigh too — the Helios weigh-point
+   * above is one sealed ledger she reads, not her only window. The mission owner files the
+   * receipt before `mission:completed` runs, so the receipt is the evidence: a 'completed'
+   * cargo or smuggling contract whose destination is her own station. Scanned-out, failed and
+   * abandoned runs settle under other outcomes and stay off her books. Deduped per mission by
+   * the cast-deed flag, like every other observed-event counter here. Record-only.
+   */
+  _noteYuneNyxFreight(payload) {
+    const missionId = payload && payload.missionId != null ? String(payload.missionId) : '';
+    if (!missionId) return false;
+    const receipts = this.state && this.state.missions && Array.isArray(this.state.missions.receipts)
+      ? this.state.missions.receipts : [];
+    const receipt = receipts.find((row) => row && row.missionId === missionId
+      && row.outcome === 'completed'
+      && row.destStationId === 'station_nyx_march'
+      && (row.type === 'cargo_delivery' || row.type === 'smuggling_run'));
+    if (!receipt) return false;
+    return this._rememberCastDeed('yune.trust', `nyx-freight:${missionId}`, 1);
   },
 
   /**
