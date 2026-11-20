@@ -45,6 +45,7 @@ import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 import { LAGRANGE_ARENA_ID } from '../systems/lagrangeCrucible.js';
 import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
 import { MILL_ARENA_ID, MILL_GRIND_STRENGTH } from '../systems/asteroidMillArena.js';
+import { HIVE_ARENA_ID } from '../systems/theHiveArena.js';
 import { presentedAdvanceRatio } from './presentedClock.js';
 import {
   STORM_ARENA_ID,
@@ -57,7 +58,7 @@ import {
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 import { addHazardBand, addWorkLamp, arenaMaterials, machinedBoxGeometry } from './arenaFinish.js';
 
-const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID]);
+const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID]);
 const BOSS_DRESSING_KINDS = new Set([
   'tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant', 'seam_crusher', 'queen_warden',
 ]);
@@ -87,6 +88,8 @@ const GRIND_RATE = 0.55;          // normal turn for room grinders and seam_crus
 const GRIND_RATE_REDUCED = 0.14;
 const BROOD_ORBIT_RATE = 0.4;     // queen_warden attendant ring
 const BROOD_ORBIT_RATE_REDUCED = 0.1;
+const HIVE_BREATH_RATE = 0.7;     // one hive-heart inhale per wall-growth cadence (~9 s)
+const HIVE_SEETHE_RATE = 5.5;     // the hot fields cannot sit still
 const SAC_PULSE_RATE = 1.6;       // queen_warden sac bellows cadence (rad·s⁻¹ of the seethe)
 const BUILD_S = 0.9;
 const RELEASE_S = 0.55;
@@ -461,6 +464,78 @@ function buildGrindMouth(field, sink) {
       wheels[0].rotation.y += step;
       wheels[1].rotation.y -= step;
       seam.emissiveIntensity = calmFlash ? 0.8 : 0.55 + pulse * 0.45;
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The Hive's living anchor — where the other law rooms stand machines, this one grows an organ.
+// ---------------------------------------------------------------------------
+
+/**
+ * Hive heart: the breath made visible. A brood-green pod clutch on a flesh mound that inhales
+ * on the room's own cadence, so the pull reads as something alive rather than a waypoint marker.
+ * Hot fields (the seething heart chamber, the queen's repulsor berm) ripen to ember — same
+ * drags-cold/shoves-hot read as every pylon — and the pheromone cone is a smaller vent on the
+ * lane. No hazard bands or work lamps here: those are industrial tells, and this room is alive.
+ */
+function buildHiveHeart(field, sink) {
+  const shared = sharedAssets();
+  const hot = field && field.kind === 'repulsor';
+  const vent = field && field.kind === 'cone';
+  const seam = cloneEmissive(hot ? shared.emberMat : shared.broodMat, sink);
+  const scale = vent ? 0.55 : 1;
+  const root = new THREE.Group();
+  root.name = 'hive_heart';
+  root.position.set(field.center.x, 0, field.center.z);
+  if (vent) {
+    const dir = field.dir ?? { x: 1, z: 0 };
+    root.rotation.y = -Math.atan2(dir.z, dir.x); // local +X runs with the current
+  }
+
+  // Flesh mound: stacked squashed drums — a growth off the floor, not terrain.
+  for (let i = 0; i < 3; i++) {
+    const drum = mesh(shared.cylGeo, i === 1 ? shared.metalMat : shared.darkMat, 'hive_heart_flesh');
+    const r = (26 - i * 7) * scale;
+    drum.scale.set(r, 5 * scale, r);
+    drum.position.y = (3 + i * 4.5) * scale;
+    root.add(drum);
+  }
+
+  // The pod clutch: organ pods on a slow collar — the room's heart, breathing.
+  const collar = new THREE.Group();
+  collar.name = 'hive_heart_collar';
+  collar.position.y = 15 * scale;
+  const pods = [];
+  for (let i = 0; i < 3; i++) {
+    const pod = mesh(shared.cylGeo, seam, 'hive_heart_pod');
+    pod.scale.set(6.5 * scale, 11 * scale, 6.5 * scale);
+    const angle = (i / 3) * Math.PI * 2;
+    pod.position.set(Math.cos(angle) * 9 * scale, 5 * scale, Math.sin(angle) * 9 * scale);
+    pod.rotation.z = 0.18 * Math.cos(angle);
+    pod.rotation.x = 0.18 * Math.sin(angle);
+    collar.add(pod);
+    pods.push(pod);
+  }
+  root.add(collar);
+
+  // Vein ring on the floor: the breath's reach, drawn once and pulsed with it.
+  const vein = mesh(shared.torusGeo, seam, 'hive_heart_vein');
+  vein.rotation.x = Math.PI / 2; // torus plane -> XZ
+  vein.scale.setScalar(20 * scale);
+  vein.position.y = 1.5 * scale;
+  root.add(vein);
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
+      // The inhale: pods swell on the breath rate; hot fields shiver — they cannot sit still.
+      const rate = hot ? HIVE_SEETHE_RATE : HIVE_BREATH_RATE;
+      const swell = reduced ? 0 : Math.sin(simNow * rate) * (hot ? 0.08 : 0.15);
+      for (let i = 0; i < pods.length; i++) {
+        pods[i].scale.y = (11 + 11 * swell) * scale;
+      }
+      collar.rotation.y += (reduced ? BROOD_ORBIT_RATE_REDUCED : BROOD_ORBIT_RATE) * 0.25 * dt;
+      seam.emissiveIntensity = calmFlash ? 0.8 : (hot ? 1.15 : 0.95) + pulse * 0.4;
     },
   };
 }
@@ -1654,7 +1729,9 @@ export function createLawArenaDressing() {
       }
       const part = arenaId === MILL_ARENA_ID && field.kind === 'cone'
         ? buildGrindMouth(field, clones)
-        : buildFieldAnchor(field, clones);
+        : arenaId === HIVE_ARENA_ID
+          ? buildHiveHeart(field, clones)
+          : buildFieldAnchor(field, clones);
       parts.push(part);
       root.add(part.root);
     }
