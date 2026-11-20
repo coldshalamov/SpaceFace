@@ -313,13 +313,9 @@ export const bulletTime = {
       this.bus.emit(MOMENT_EVENT, record);
       this.bus.emit('audio:cue', { id: MOMENT_AUDIO_CUE, importance: 0.9, duck: true });
     }
-    // Arm (or extend) the pulse only outside the cooldown — inside it the running pulse and
-    // the bus record already carry the burst. Go through the edge latch so _updateMomentPulse
-    // still clears the request on the next tick if the live condition isn't met.
-    if (!motionReduced(state) && stuntAssistProfile(state)==='cinematic' && this.timeEffects) {
-      this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
-      this._momentPulseLive = true;
-    }
+    // R23 (2026-11-20): nothing slows time unless the player asked for it. The moment stays a
+    // bus record and an audio stinger; the automatic slow-motion pulse is gone. Bullet Time held
+    // by the player is the only slow motion.
   },
 
   _visibleMoment(trick) {
