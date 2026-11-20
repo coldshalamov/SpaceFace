@@ -86,3 +86,44 @@ test('a 400 ms delivery burst is caught up, not re-seated or leapt', () => {
   assert.ok(r.maxShock < 4, `worst per-frame jump beyond continuation ${r.maxShock.toFixed(2)} wu`);
   assert.equal(r.gapResets, 0);
 });
+
+// ENGINE slice 3 — the player's ship (the lead body) is drawn at the stream's estimated now, a
+// whole playout delay ahead of the interpolated world, and still never holds or leaps.
+test('the lead body plays ahead of the delayed world by about the playout delay, smoothly', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  fence.setLeadEntity(ID);
+  const OTHER = 9;
+  let sim = 0;
+  const pack = () => {
+    const s = fence.beginPack(2, sim, 0);
+    s.write(ID, 0, SPEED * sim, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0);
+    s.write(OTHER, 0, SPEED * sim, 0, 50, 0, 0, 0, 1, 1, 1, 1, 0);
+    fence.commit();
+  };
+  const wdt = 1 / FPS;
+  let prev = null;
+  let maxStillMs = 0;
+  let still = 0;
+  let lead = [];
+  for (let frame = 0; frame < FPS * 6; frame++) {
+    const silent = frame >= FPS * 3 && frame < FPS * 3 + 15; // a 500 ms worker silence
+    if (!silent) { sim += 2 * DT; pack(); }
+    fence.samplePresentationAlpha(wdt, 0, DT, 1, wdt);
+    fence.beginBlendFrame(wdt);
+    const me = fence.presentedRawPose(ID, {});
+    const other = fence.presentedRawPose(OTHER, {});
+    assert.ok(fence.leadActive(ID) && !fence.leadActive(OTHER));
+    const d = fence.blendDrawnPose(ID, 0, me.x, me.z, me.rot, {});
+    if (frame > FPS * 2 && !silent) lead.push(me.x - other.x);
+    if (prev !== null && frame > FPS) {
+      if (d.x - prev < 0.01) { still += wdt * 1000; maxStillMs = Math.max(maxStillMs, still); } else still = 0;
+      assert.ok(d.x - prev > -1e-6, `the lead body never steps back (frame ${frame})`);
+    }
+    prev = d.x;
+  }
+  lead.sort((a, b) => a - b);
+  const p50 = lead[lead.length >> 1];
+  const delayMs = fence.getPlayoutDiagnostics().playoutDelayMs;
+  assert.ok(p50 > SPEED * 0.02, `the lead body plays ahead of the world (${p50.toFixed(1)} wu, delay ${delayMs.toFixed(0)} ms)`);
+  assert.ok(maxStillMs < 100, `held ${maxStillMs} ms`);
+});

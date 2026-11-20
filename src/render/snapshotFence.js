@@ -44,6 +44,8 @@ export const PLAYOUT_CATCHUP_RATE_MAX = 2.0;
 /** Phase error at which catch-up starts to exceed the ordinary +20 % servo, and where it saturates. */
 const PLAYOUT_CATCHUP_START_S = 0.08;
 const PLAYOUT_CATCHUP_FULL_S = 0.4;
+/** The player's ship plays this far behind the stream's estimated now (one tick of reserve). */
+const PLAYER_LEAD_RESERVE_S = 1 / 60;
 /** How fast the widened catch-up/settle share may change (rate units per second). */
 const PLAYOUT_CATCHUP_SLEW_PER_S = 1.5;
 /** Ahead of target (after a coast), the clock may slow to this rate as the error grows to FULL. */
@@ -537,7 +539,7 @@ export function createSnapshotFence(options = {}) {
 
   function presentedPoseInto(entityId, out, slotHint = -1) {
     if (!presentedValid) return null;
-    const pose = rawPoseForPair(presentedPair, entityId, out, slotHint);
+    const pose = rawPoseForPair(pairFor(entityId >>> 0), entityId, out, slotHint);
     if (!pose) return null;
     // The drawn pose carries this frame's correction offset (ENGINE slice 1), so every anchor
     // (tether, beam, trail, VFX) and every "what the player saw" reader agrees with the mesh.
@@ -643,6 +645,17 @@ export function createSnapshotFence(options = {}) {
   let blendSeenSequence = -1;
   let blendPrevValid = false;
   const blendPrevPair = { a: -1, b: -1, alpha: 1 };
+  // Player lead (ENGINE slice 3): the body the camera rides is drawn at the stream's estimated
+  // "now" instead of now − playout delay, so the ship and the view answer the stick a whole playout
+  // delay sooner. Every other body keeps the delayed, interpolated presentation.
+  let leadEntityId = -1;
+  let leadValid = false;
+  let leadTimeS = NaN;
+  let blendPrevLeadS = NaN;
+  let blendPrevLeadValid = false;
+  const leadPair = { a: -1, b: -1, alpha: 1 };
+  const blendPrevLeadPair = { a: -1, b: -1, alpha: 1 };
+  const pairFor = (id) => (leadValid && id === leadEntityId ? leadPair : presentedPair);
   const blendScratch = { x: 0, y: 0, z: 0, qy: 0, qw: 1, rot: 0, t: 1, index: -1, prev: -1 };
   function blendDrawnPoseInto(entityId, generation, x, z, yaw, out, slotHint) {
     const id = entityId >>> 0;
@@ -658,7 +671,9 @@ export function createSnapshotFence(options = {}) {
       rec.gen = gen; rec.ox = 0; rec.oz = 0; rec.oyaw = 0; rec.wx = 0; rec.wz = 0; rec.wyaw = 0;
     } else if (rec.frame !== blendFrame) {
       if (blendHistoryChanged && blendPrevValid) {
-        const was = rawPoseForPair(blendPrevPair, id, blendScratch, slotHint);
+        const was = id === leadEntityId
+          ? (blendPrevLeadValid ? rawPoseForPair(blendPrevLeadPair, id, blendScratch, slotHint) : null)
+          : rawPoseForPair(blendPrevPair, id, blendScratch, slotHint);
         if (was) {
           const dx = was.x - rec.rx;
           const dz = was.z - rec.rz;
@@ -715,6 +730,9 @@ export function createSnapshotFence(options = {}) {
       blendPrevValid = blendHistoryChanged && presentedValid && Number.isFinite(blendPrevPresentedS)
         && resolveBracketInto(blendPrevPresentedS, 1, blendPrevPair) !== undefined
         && blendPrevPair.b >= 0;
+      blendPrevLeadValid = blendHistoryChanged && leadValid && Number.isFinite(blendPrevLeadS)
+        && resolveBracketInto(blendPrevLeadS, 1, blendPrevLeadPair) !== undefined
+        && blendPrevLeadPair.b >= 0;
       if ((blendFrame & 255) === 0) {
         for (const [id, rec] of drawnRecords) if (rec.frame < blendFrame - 256) drawnRecords.delete(id);
       }
@@ -729,10 +747,15 @@ export function createSnapshotFence(options = {}) {
     /** The presented pose WITHOUT the correction offset — what applySnapshotPoseToMesh writes raw. */
     presentedRawPose(entityId, out = {}, slotHint = -1) {
       if (!presentedValid) return null;
-      const pose = rawPoseForPair(presentedPair, entityId, out, slotHint);
+      const pose = rawPoseForPair(pairFor(entityId >>> 0), entityId, out, slotHint);
       if (pose) pose.valid = true;
       return pose;
     },
+    /** The body drawn at the stream's "now" (the player's ship); -1 disables the lead. */
+    setLeadEntity(entityId) { leadEntityId = Number.isFinite(entityId) && entityId >= 0 ? (entityId >>> 0) : -1; },
+    get leadEntityId() { return leadEntityId; },
+    /** True when the lead body is drawn from the lead pair this frame. */
+    leadActive(entityId) { return leadValid && (entityId >>> 0) === leadEntityId; },
     /** Forget every drawn record (epoch change, session reset). */
     clearDrawnPoses() { drawnRecords.clear(); },
     /** Current correction offset magnitude for an id (tests/probes). */
@@ -903,6 +926,8 @@ export function createSnapshotFence(options = {}) {
      */
     presentedSampleToken(slot, entityId) {
       if (!presentedValid || !presentedPair || presentedPair.b < 0) return 0;
+      // The lead body moves on its own clock every frame: always re-pose it.
+      if (leadValid && (entityId >>> 0) === leadEntityId) return ((blendFrame * 2654435761) >>> 0) || 1;
       const b = buffers[presentedPair.b];
       if (!b || !b.sealed) return 0;
       const rowB = slot >= 0
@@ -1215,6 +1240,27 @@ export function createSnapshotFence(options = {}) {
       presentedSnapshotTime = current.simTime;
       presentedValid = true;
       const alpha = this.resolvePresentedBracket(presentedTime, fallbackAlpha);
+      // Player lead: the wall-paced estimate of the newest moment, never behind the presented
+      // clock, never more than the coast window past the newest pack. Monotone: it never rewinds.
+      blendPrevLeadS = leadValid ? leadTimeS : NaN;
+      leadValid = false;
+      if (leadEntityId >= 0 && (reset || gapReset)) leadTimeS = NaN;
+      if (leadEntityId >= 0 && Number.isFinite(presentedTime)) {
+        let target = estimatedSimNowS(current) - PLAYER_LEAD_RESERVE_S;
+        if (target < presentedTime) target = presentedTime;
+        const prevLead = Number.isFinite(leadTimeS) ? leadTimeS : target;
+        // Its own wall-paced clock: the measured stream rate with a bounded servo toward the target
+        // (0.5x..2x), so a reply landing early or late bends its speed instead of holding it.
+        const err = target - prevLead;
+        const corr = Math.max(-0.5, Math.min(1, err / PLAYOUT_CORRECTION_TAU_S));
+        let next = prevLead + elapsed * presentationRate * (1 + corr);
+        if (next < presentedTime) next = presentedTime;
+        if (next < prevLead) next = prevLead;
+        if (next > current.simTime + PRESENTATION_EXTRAPOLATION_S) next = Math.max(prevLead, current.simTime + PRESENTATION_EXTRAPOLATION_S);
+        leadTimeS = next;
+        resolveBracketInto(leadTimeS, 1, leadPair);
+        leadValid = leadPair.b >= 0;
+      }
       // The fence's sequence reads as the PRESENTED bracket's commit sequence while a
       // presented sample is active: the pose-apply compares this against the served
       // snapshot's sequence to choose the presented alpha (renderer contract, unchanged).
