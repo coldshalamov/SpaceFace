@@ -34,7 +34,7 @@ const perpendicular = (speedWuS) => Object.freeze({ kind: 'perpendicular', speed
 export const POWER_SITUATIONS = Object.freeze([
   Object.freeze({
     power: 'pull',
-    line: 'A loose pack drifts ahead. Pull gathers it — hold Pull.',
+    line: 'A loose pack drifts ahead. Press Pull on it to gather it.',
     props: Object.freeze([
       prop(-7, 150, 10, 80, still),
       prop(4, 178, 11, 85, still),
@@ -50,14 +50,14 @@ export const POWER_SITUATIONS = Object.freeze([
   }),
   Object.freeze({
     power: 'pin',
-    line: 'A pod tumbling free. Pin holds it — hold Pin.',
+    line: 'A pod tumbling free. Press Pin on it to stake it still.',
     props: Object.freeze([
       prop(-9, 120, 7, 40, perpendicular(10)),
     ]),
   }),
   Object.freeze({
     power: 'bomb',
-    line: 'A knot of scrap ahead. Bomb breaks packs — hold Bomb.',
+    line: 'Scrap knot ahead. Press Bomb to throw, Bomb again to blow.',
     props: Object.freeze([
       prop(0, 150, 12, 150, still),
       prop(2, 168, 13, 160, still),
@@ -67,7 +67,7 @@ export const POWER_SITUATIONS = Object.freeze([
   }),
   Object.freeze({
     power: 'rig',
-    line: 'Debris ahead. Tap Rig once, then fly through.',
+    line: 'Debris ahead. Tap Plow once, then fly through.',
     props: Object.freeze([
       prop(-16, 100, 5, 25, still),
       prop(-8, 120, 5, 25, still),

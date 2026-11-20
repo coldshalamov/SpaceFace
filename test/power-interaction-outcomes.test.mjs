@@ -250,7 +250,8 @@ test('only aimed powers obey the existing release-preview preference, including 
   for (const verb of ['pull', 'pin', 'bomb', 'deployWell', 'deployMassSeed', 'chargeThrow']) {
     assert.equal(powerUsesReleasePreview(state, verb), true, verb);
   }
-  for (const verb of ['rig', 'shove', 'toggleClearingCone', 'toggleSkimCollector', 'deployRepulsor', 'chargeDetonate']) {
+  assert.equal(powerUsesReleasePreview(state, 'chargeDetonate'), true, 'R17: Detonate is the second press of Bomb');
+  for (const verb of ['rig', 'shove', 'toggleClearingCone', 'toggleSkimCollector', 'deployRepulsor']) {
     assert.equal(powerUsesReleasePreview(state, verb), false, verb);
   }
   state.settings.gameplay.powerFire = 'press';

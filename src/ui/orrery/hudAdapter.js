@@ -61,9 +61,9 @@ const PRESENTED_ID = Object.freeze({ 0: 'travel', 1: 'pull', 2: 'shove', 3: 'pin
 const VERB_TO_SLOT = Object.freeze({
   travel: 0, travelBurn: 0,
   pull: 1, deployWell: 1,
-  shove: 2, deployRepulsor: 2, chargeDetonate: 2,
+  shove: 2, deployRepulsor: 2,
   pin: 3, deployMassSeed: 3,
-  bomb: 4, chargeThrow: 4, dropBomb: 4, swarmBombThrow: 4,
+  bomb: 4, chargeThrow: 4, dropBomb: 4, swarmBombThrow: 4, chargeDetonate: 4,
   rig: 5, plow: 5, toggleClearingCone: 5, toggleSkimCollector: 5,
   line: 6, tether: 6,
   gyre: 7, gyreSnare: 7,
@@ -269,9 +269,9 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
 
     const isFiring = slot.index !== 5 && ((firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
       || (slot.index === 1 && (acts?.pull?.pressed === true || acts?.deployWell === true))
-      || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true || acts?.chargeDetonate === true))
+      || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true))
       || (slot.index === 3 && (acts?.pin?.pressed === true || acts?.deployMassSeed === true))
-      || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true))
+      || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true || acts?.chargeDetonate === true))
       || (slot.index === 6 && (acts?.tetherFire === true || acts?.massline?.latch === true))
       || (slot.index === 7 && acts?.gyreSnare === true)
       || (slot.index === 8 && acts?.cloakToggle === true));
@@ -689,9 +689,9 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       const nowPressed = new Set();
       if (acts) {
         if (acts.pull?.pressed || acts.deployWell) { firingUntil.set(1, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(1); }
-        if (acts.shove?.pressed || acts.deployRepulsor || acts.chargeDetonate) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(2); }
+        if (acts.shove?.pressed || acts.deployRepulsor) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(2); }
         if (acts.pin?.pressed || acts.deployMassSeed) { firingUntil.set(3, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(3); }
-        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(4); }
+        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow || acts.chargeDetonate) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(4); }
         if (acts.rig?.pressed || acts.toggleClearingCone || acts.toggleSkimCollector) { firingUntil.set(5, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(5); }
         if (acts.tetherFire || acts.massline?.latch) { firingUntil.set(6, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(6); }
         if (acts.gyreSnare) { firingUntil.set(7, nowWall + FLASH_DURATION_MS); firingEdge = true; }

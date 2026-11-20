@@ -43,7 +43,7 @@ export const POWER_INTERACTIONS = Object.freeze({
 export const POWER_VERB_ALIASES = Object.freeze({
   deployWell: 'pull',
   deployRepulsor: 'shove',
-  chargeDetonate: 'shove',
+  chargeDetonate: 'bomb',   // R17: the second press of 4 detonates
   deployMassSeed: 'pin',
   dropBomb: 'bomb',
   chargeThrow: 'bomb',
@@ -54,9 +54,9 @@ export const POWER_VERB_ALIASES = Object.freeze({
 /** Power → the old action names whose saved custom bindings it inherits, in priority order. */
 export const POWER_LEGACY_ACTIONS = Object.freeze({
   pull: Object.freeze(['deployWell']),
-  shove: Object.freeze(['deployRepulsor', 'chargeDetonate']),
+  shove: Object.freeze(['deployRepulsor']),
   pin: Object.freeze(['deployMassSeed']),
-  bomb: Object.freeze(['dropBomb', 'chargeThrow']),
+  bomb: Object.freeze(['dropBomb', 'chargeThrow', 'chargeDetonate']),
   rig: Object.freeze(['toggleClearingCone', 'toggleSkimCollector']),
 });
 

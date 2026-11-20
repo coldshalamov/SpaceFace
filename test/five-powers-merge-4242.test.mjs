@@ -82,9 +82,11 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.equal(savedCodesForPower(null, 'pull'), undefined);
   // Two old verbs merged into one power keep both custom keys; an old verb the player explicitly
   // unbound leaves the power unbound unless another merged verb still carries a custom key.
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV', 'KeyB']);
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'shove'), []);
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: [] }), 'shove'), ['KeyV']);
+  // R17: detonation moved from Shove to the second press of Bomb, so the old Detonate key follows it.
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeThrow: ['KeyT'], chargeDetonate: ['KeyB'] }), 'bomb'), ['KeyT', 'KeyB']);
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'bomb'), []);
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV'],
+    'R17: Shove no longer inherits the Detonate key');
   // Pad: defaults and an old remap. G18-02: bumpers pull/shove, d-pad pin/bomb, B rigs,
   // hold-Y owns the wheel the old power chords used to ride.
   assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['r1']);
