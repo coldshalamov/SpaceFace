@@ -108,14 +108,6 @@ jobs:
         if: ${{ !cancelled() && matrix.shard == 1 }}
         run: npm run check:ceres-presentation
 
-      - name: Validate program control plane
-        if: matrix.shard == 1
-        run: |
-          node scripts/check-program-docs.mjs
-          node --test test/program-control-tools.test.mjs
-          node scripts/check-inference-control.mjs
-          node --test test/inference-control.test.mjs
-
       # The static group is ~3/4 of the matrix, so it is split across several runners. Round-robin by
       # position, so the shards take roughly the same wall time. The shard COUNT lives in exactly one
       # place — `strategy.matrix.shard` above — and `strategy.job-total` reads it back, so adding a

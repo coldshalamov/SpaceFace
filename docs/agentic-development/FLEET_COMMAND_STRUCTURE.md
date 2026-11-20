@@ -15,7 +15,8 @@ agents. Nobody round-robins by hand. Isolate by **file**, never by worktree.
 | **Occasional / eyes** | Clinepass `kimi-k3`; Z.ai `glm-5.3-flash` (vision, refreshes ~5h) | Scoped 3D, visual, frontend look |
 
 Do not use Cursor Agent or Codex until quota returns. Do not invent a second queue. Live work is
-`node scripts/program-dispatch.mjs --ready` plus player-visible brokenness that has no packet.
+on [`design/overhaul/12_PIPELINE.md`](../../design/overhaul/12_PIPELINE.md) plus player-visible
+brokenness that has no packet.
 
 ## Routing
 

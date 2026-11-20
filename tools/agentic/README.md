@@ -1,7 +1,7 @@
 # Agentic quality tools
 
-The canonical work queue and default route remain `node scripts/program-dispatch.mjs --next`.
-These tools advise on that existing queue; they do not admit a parallel backlog.
+The live board for current work is `design/overhaul/12_PIPELINE.md`. These tools are advisory
+helpers; they do not admit a parallel backlog.
 
 Additional existing tools recovered from PR #108's index:
 
@@ -14,25 +14,8 @@ Additional existing tools recovered from PR #108's index:
 The architecture and plans are under [`docs/agentic-development/`](../../docs/agentic-development/),
 with their current canonical integration in [`CENTRAL_BRAIN.md`](../../design/program/CENTRAL_BRAIN.md).
 
-These tools support `design/program/CENTRAL_BRAIN.md`. They do not replace `program-dispatch`, the deterministic lab,
-the validation broker, `NOW.md`, or packet receipts.
-
-## Next-N dispatch pipeline (build well → one teammate look → close)
-
-The live queue stays `node scripts/program-dispatch.mjs --ready`. This runner snapshots that list,
-serializes overlapping write-sets, and is the only writer that may flip a dispatch unit to `done`.
-
-Build the thing as production. Have one teammate look at the actual work for unfinished bits,
-bugs, and improvements. Fix what is real. Close when you would ship it. Do not store stills or
-write review files.
-
-```bash
-node tools/agentic/next20_pipeline.mjs --run --count 20
-node tools/agentic/next20_pipeline.mjs --schedule --count 20
-node --test test/next20-pipeline-selector.test.mjs
-```
-
-Workflow: `.grok/workflows/next20-dispatch.rhai`. Do not pass `isolation_worktree` — those edits never merge.
+These tools support `design/program/CENTRAL_BRAIN.md`. They do not replace the deterministic lab,
+the validation broker, or packet receipts.
 
 ## Rank current work
 

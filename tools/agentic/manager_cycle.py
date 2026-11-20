@@ -207,7 +207,7 @@ PARENT: {parent}
 WORKSTREAM: {c.workstream} — {c.workstreamTitle}
 WHY NOW: {c.reason}
 
-Start at build_map.md and design/program/CENTRAL_BRAIN.md. Re-read NOW.md immediately before mutation. Run `node scripts/program-dispatch.mjs --id {parent}` and open the exact unit/packet. Do not create a second queue or framework.
+Start at build_map.md and design/program/CENTRAL_BRAIN.md (history). Open the exact unit/packet under design/program/roadmap/active/. Do not create a second queue or framework.
 
 Before mutation, characterize the player-visible defect with: {scenario_text}. Reuse src/testing/lab, runtimeWitness and src/observability before adding instrumentation. Name one causal hypothesis.
 
