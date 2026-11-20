@@ -1474,6 +1474,10 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
   o.unvectoredCruiseSteering = undefined;
+  // Ruling 2026-11-20: in the Standard scheme the nose follows the cursor and comes round as fast
+  // with W held as without. The input owner marks an aim-steered turn; the kernel then skips the
+  // nose-follows-path bound and the coast-helm bonus (mass and size alone set the turn rate).
+  o.aimSteered = isPlayer && raw.turnIntentFromAim === true;
   // Job guidance uses the existing bounded moving-frame controller, never a pose writer.
   o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
   o.manualReverse = false;

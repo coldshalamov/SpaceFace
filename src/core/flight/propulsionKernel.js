@@ -1226,6 +1226,8 @@ function vectoringIdle(reason) {
  * 90-degree lead allowance: no extra force, just a held turn that cannot repeatedly retro-burn.
  */
 function assistedTurnBound(body, input, profile, accel, dt) {
+  // Standard scheme (nose follows the cursor): thrust never slows the turn — ruling 2026-11-20.
+  if (input.aimSteered === true) return null;
   const tuning = input.velocityVectoring;
   if (!tuning && !input.unvectoredCruiseSteering) return null;
   const settings = profile.assist || {};
@@ -1293,6 +1295,9 @@ function normalizeVelocityVectoring(raw, out = null) {
  * whether the burn is lit or the tank is dry.
  */
 function coastHelmYawMultiplier(input, profile) {
+  // Aim-steered turns get the coast-helm authority whether or not the drive is lit, so holding W
+  // never makes the nose slower (ruling 2026-11-20).
+  if (input.aimSteered === true) return COAST_HELM_YAW_MULT;
   const dead = positive(profile.assist && profile.assist.deadInput, 0.025);
   if (Math.abs(finite(input.throttle, 0)) > dead) return 1;
   return COAST_HELM_YAW_MULT;
@@ -1676,6 +1681,9 @@ function normalizeInput(input = {}, out = null, subs = null) {
   // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
   o.velocityVectoring = normalizeVelocityVectoring(input.velocityVectoring, subs && subs.velocityVectoring);
   o.unvectoredCruiseSteering = input.unvectoredCruiseSteering === true;
+  // Standard scheme: the nose follows the cursor and thrust never slows the turn (listed here so
+  // the rebuilt packet keeps it).
+  o.aimSteered = input.aimSteered === true;
   return o;
 }
 
