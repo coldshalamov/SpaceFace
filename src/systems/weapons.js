@@ -3203,7 +3203,8 @@ export function applyProjectilePhysicalContact(host, payload) {
       const kickMagnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
       const bossData = target.data;
       const bossTarget = !!(bossData && (bossData.isBoss === true || bossData.bossId != null
-        || bossData.missionTag === 'capital_boss' || bossData.bossDressing != null));
+        || bossData.missionTag === 'capital_boss' || bossData.bossDressing != null
+        || bossData.swarmChampion === true)); // Swarm bosses (champions) are never stun-locked either
       if (playerKick && pilotHas(state, 'bruiser_stagger')
         && kickMagnitude >= STAGGER_MIN_KICK_IMPULSE && !bossTarget
         && (target.type === 'ship' || target.type === 'drone')) {
