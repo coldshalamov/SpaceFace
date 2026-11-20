@@ -40,8 +40,9 @@ function rig({ motionReduce = false, flashReduce = false } = {}) {
   host._updateSpeedLines = () => {};
   const edge = { style: {}, isConnected: true };
   host._ensureEdge = () => edge;
-  host._edgeEl = edge;
   host.init({ state, bus, timeEffects: effects });
+  // After init: init() re-enters via destroy(), which clears the cached element refs.
+  host._edgeEl = edge;
   const gate = state.render.cameraGate;
   const count = (kind, ok = true) => gate.events().filter((e) => e.kind === kind && e.ok === ok).length;
   return { state, bus, host, gate, edge, count, ctrl: state.render.cameraCtrl };
