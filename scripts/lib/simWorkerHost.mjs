@@ -2712,10 +2712,18 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       ? msg.workBudgetMs * 1e6
       : null;
     let stepsExecuted = 0;
+    // Catch-up policy (src/core/catchupPolicy.js), the same convention as the in-process
+    // SimulationRunner: step k of one batch runs with simCatchupIndex = k, so the extra steps of
+    // a behind-schedule batch run the table owners (physics, flight, aiPorts' maneuver replay)
+    // and skip the near owners (tactical AI, NPC jobs, traffic, law) plus HUD/voice. The worker
+    // never set it, so every step paid every system and a behind worker fell further behind.
+    // Production only: the legacy 47-A scenario path keeps its exact per-step schedule.
+    if (production) state.simCatchupIndex = 0;
     for (let s = 0; s < steps; s++) {
       if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
         host.stepper.step(SIM_DT, host.tickBoundary);
+        state.simCatchupIndex = (state.simCatchupIndex | 0) + 1;
       } else {
         update47aScenarioActorIntents(state);
         sim.step(SIM_DT);
@@ -2736,6 +2744,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       if (workBudgetNs != null && s + 1 < steps
           && (nowNs() - workStart) >= workBudgetNs) break;
     }
+    // Between batches nothing is a catch-up step (save capture, RPCs, the reply tail).
+    if (production) state.simCatchupIndex = 0;
     // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
     // drive non-coalescible append churn beyond ring capacity.
     // Aux-row probe (stage 3 gate exercise): scripted live→shelve→promote
