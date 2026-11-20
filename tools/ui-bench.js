@@ -1834,6 +1834,22 @@ async function mountFlightHud(opts = {}) {
       { id: 314, x: -85, z: -290, r: 16 },
     ];
     const rockScale = preset === 'fight' ? 0.72 : 2.1;
+    if (preset !== 'fight') {
+      // Two dense belts (what a sector's field really looks like), deterministic.
+      let seed = 1337;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      const belts = [
+        { x: -620, z: -420, rx: 420, rz: 230, n: 46, id: 400 },
+        { x: 720, z: -760, rx: 260, rz: 300, n: 30, id: 460 },
+      ];
+      for (const b of belts) {
+        for (let i = 0; i < b.n; i += 1) {
+          const a = rnd() * Math.PI * 2;
+          const d = Math.sqrt(rnd());
+          rocks.push({ id: b.id + i, x: (b.x + Math.cos(a) * b.rx * d) / rockScale, z: (b.z + Math.sin(a) * b.rz * d) / rockScale, r: 9 + rnd() * 16, isMonolith: rnd() < 0.08 });
+        }
+      }
+    }
     for (const rk of rocks) {
       addEntity({
         id: rk.id, type: 'asteroid', alive: true, team: 0, radius: rk.r,
@@ -1899,6 +1915,9 @@ async function mountFlightHud(opts = {}) {
         { id: 335, x: -95, z: -165, vx: 72, vz: 95, rot: 0.9, enemyTypeId: 'detonator_dart', name: 'Detonator Dart' },
         { id: 336, x: 115, z: -225, vx: -42, vz: 14, rot: 2.8, enemyTypeId: 'mine_layer_jackal', name: 'Mine-Layer Jackal' },
         { id: 337, x: -330, z: -90, vx: 20, vz: 14, rot: 0.6, enemyTypeId: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', isBoss: true },
+        { id: 347, x: 250, z: 210, vx: -30, vz: -40, rot: -2.2, enemyTypeId: 'tether_control_raider', name: 'Tether Raider' },
+        { id: 348, x: -60, z: 300, vx: 6, vz: -10, rot: -1.6, enemyTypeId: 'nest_carrier', name: 'Nest Carrier' },
+        { id: 349, x: 380, z: -40, vx: -48, vz: 30, rot: 2.6, enemyTypeId: 'corsair_raider', name: 'Corsair Raider' },
         // Off-edge reinforcements (proximity-sized rim pins)
         { id: 338, x: 860, z: 240, vx: -40, vz: -10, rot: 3.0, enemyTypeId: 'wasp_swarmer', name: 'Flanker' },
         { id: 339, x: -1450, z: 980, vx: 30, vz: -20, rot: -0.5, enemyTypeId: 'corsair_raider', name: 'Far Raider' },
@@ -2122,6 +2141,10 @@ async function mountFlightHud(opts = {}) {
       kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
     });
   }
+  // MAPS-1: `?minimapT=<seconds>` advances the clock so a short sequence of shots proves the
+  // minimap's sensor ping moves (and, with --reduced-motion=reduce, that it does not).
+  const minimapT = Number(params.get('minimapT'));
+  if (Number.isFinite(minimapT) && minimapT !== 0) state.simTime += minimapT;
   try {
     if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
     if (typeof hud.frame === 'function') {

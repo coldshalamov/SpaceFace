@@ -834,19 +834,25 @@ export function resolveMinimapTargetRange(state, {
   expanded = false,
   speed = 0,
   maxSpeed = 180,
+  gunRange = 0,
 } = {}) {
   const sensorRange = state?.ui?.radarRange;
   const shipRange = Number.isFinite(sensorRange) && sensorRange > 0 ? sensorRange : 4000;
   const speedRatio = Math.max(0, Math.min(1, (Number(speed) || 0) / Math.max(80, Number(maxSpeed) || 180)));
+  // A fight is read at the ship's own gun range: the gun ring sits near the scope's edge, so the
+  // cast spreads across the instrument instead of clumping on the ship, and a Reach enemy beyond
+  // the guns still shows in the frame's wide flanks or pins to the rim.
+  const gun = Number(gunRange) > 0 ? Number(gunRange) : DEFAULT_GUN_RANGE_WU;
+  const fightRange = Math.max(340, Math.min(760, gun * 1.06));
   if (isSwarmGlass(state)) {
     if (expanded) return Math.round(Math.min(shipRange, 1120 + speedRatio * 240));
-    return Math.round(Math.min(shipRange, 560 + speedRatio * 180));
+    return Math.round(Math.min(shipRange, fightRange + speedRatio * 120));
   }
   if (expanded) {
     return Math.round(Math.min(Math.max(shipRange, 2800) * 1.5, 6000));
   }
   if (attention === 'fight') {
-    return Math.round(Math.min(shipRange, 920 + speedRatio * 340));
+    return Math.round(Math.min(shipRange, fightRange + speedRatio * 160));
   }
   const calmFloor = Math.min(shipRange, 1450);
   const calmCeil = Math.min(shipRange, 3400);
@@ -2339,6 +2345,7 @@ export function createRadar(ctx) {
         expanded,
         speed,
         maxSpeed: Number(player.maxSpeed) || 180,
+        gunRange: gunRangeForEntity(player),
       });
       const simS = Number.isFinite(state.simTime) ? state.simTime : 0;
       const dtS = lastRangeStepSimS != null ? simS - lastRangeStepSimS : 0;
@@ -2481,6 +2488,7 @@ export function createRadar(ctx) {
         expanded,
         stanceOf: (entity) => shipState(entity, playerTeam, state, hostileOf),
         colorOf: (entity) => contactColor(entity, playerTeam, colorblindMode, state, hostileOf),
+        jobColors: colorblindMode === 'none',
       });
 
       const cue = target ? {

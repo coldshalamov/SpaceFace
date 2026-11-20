@@ -1,5 +1,7 @@
 // MAPS-1 — unified tactical flight minimap contracts:
-//   - 12 data-driven role glyphs (new enemy kinds classify by role/doctrine/archetype, never an ID switch)
+//   - one glyph per enemy JOB (03_COMBAT 9A: Rush, Burst, Reach, Wall, Skirmish, Deny, Seize, Source),
+//     read from src/data/enemyJobs.js; kinds the table does not list classify from their own data
+//   - labels fit whole or become a role word, never clipped, never an ellipsis
 //   - breathing range (tightens in fight, eases wider with speed, tactical/survey toggle in both modes)
 //   - live gun range and Line reach rings
 //   - human m/km units only (no 'u')
@@ -10,55 +12,84 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  CONTACT_JOB_ORDER,
+  CONTACT_JOB_PALETTE,
   CONTACT_ROLE_GLYPHS,
+  TACTICAL_MAP_PALETTE,
   classifyContactRole,
   drawRoleGlyph,
   formatMinimapDistance,
+  isBossContact,
+  sanitizeMapLabel,
   solveMinimapLabelPlacement,
 } from '../src/ui/map/tacticalMapGrammar.js';
-import { createFlightMinimap, intersectChamferRim } from '../src/ui/map/flightMinimap.js';
+import { ENEMY_JOBS } from '../src/data/enemyJobs.js';
+import { contactDisplayName, createFlightMinimap, intersectChamferRim, isRockRecord } from '../src/ui/map/flightMinimap.js';
 import {
   gunRangeForEntity,
   lineReachForEntity,
   resolveMinimapTargetRange,
 } from '../src/ui/radar.js';
 
-test('all 12 contact role glyphs are defined and data-driven classification covers real and future kinds', () => {
-  const expectedRoles = [
-    'light_fighter', 'heavy', 'support', 'sniper', 'rammer', 'minelayer',
-    'boss', 'civilian', 'station', 'gate', 'loot', 'wreck',
-  ];
-  for (const role of expectedRoles) {
-    assert.ok(CONTACT_ROLE_GLYPHS[role], `missing role glyph descriptor: ${role}`);
+test('every fighting kind draws by its job, with a distinct hue per job off the reserved channels', () => {
+  for (const job of CONTACT_JOB_ORDER) {
+    assert.ok(CONTACT_ROLE_GLYPHS[job], `missing glyph for job ${job}`);
+    assert.match(CONTACT_JOB_PALETTE[job], /^#[0-9a-f]{6}$/i, `job ${job} has a hue`);
+  }
+  for (const role of ['civilian', 'station', 'gate', 'loot', 'wreck']) assert.ok(CONTACT_ROLE_GLYPHS[role]);
+  const hues = CONTACT_JOB_ORDER.map((job) => CONTACT_JOB_PALETTE[job].toLowerCase());
+  assert.equal(new Set(hues).size, hues.length, 'each job has its own hue');
+  for (const reserved of ['objective', 'station', 'gate', 'friendly', 'wreck']) {
+    assert.ok(!hues.includes(TACTICAL_MAP_PALETTE[reserved].toLowerCase()), `a job hue reuses the ${reserved} channel`);
   }
 
-  // Real authored enemies resolve cleanly from src/data/enemies.js & packArchetypes.js
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'wasp_swarmer' } }), 'light_fighter');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'bruiser_brawler' } }), 'heavy');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'warden_escort' } }), 'support');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'pd_screen_escort' } }), 'support');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'choir_zealot' } }), 'support');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'lancer_sniper' } }), 'sniper');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'quiet_ghost' } }), 'sniper');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'detonator_dart' } }), 'rammer');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'mine_layer_jackal' } }), 'minelayer');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'dreadnought_boss' } }), 'boss');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'mirrorjaw_foreman' } }), 'boss');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'mule_trader' } }), 'civilian');
+  // Every row of the job table resolves to that job (law ships and traders are traffic).
+  for (const [enemyId, row] of Object.entries(ENEMY_JOBS)) {
+    const role = classifyContactRole({ type: 'ship', data: { enemyTypeId: enemyId } });
+    assert.equal(role, row.job || 'civilian', `${enemyId} should draw as ${row.job || 'civilian'}`);
+  }
 
-  // Non-ship world entities
+  // Kinds the table does not list still classify from their own data, never an id switch.
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_x', aiArchetype: 'sniper' } }), 'reach');
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_x', combatDoctrineId: 'escort_screen' } }), 'deny');
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_x', detonator: { blastRadius: 80 } } }), 'burst');
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_x', role: 'disruptor' } }), 'deny');
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_x', role: 'heavy' } }), 'wall');
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_x', combatJob: 'seize' } }), 'seize');
+  assert.equal(classifyContactRole({ type: 'ship', data: { defId: 'ship_kestrel', trafficRole: 'raider' } }), 'skirmish');
+  assert.equal(classifyContactRole({ type: 'ship', data: { trafficRole: 'hauler' } }), 'civilian');
+
+  // A boss is its job drawn larger with brackets, not a ninth kind.
+  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'mirrorjaw_foreman' } }), 'wall');
+  assert.equal(isBossContact({ type: 'ship', data: { enemyTypeId: 'mirrorjaw_foreman' } }), true);
+  assert.equal(isBossContact({ type: 'ship', data: { enemyTypeId: 'wasp_swarmer' } }), false);
+  assert.equal(isBossContact({ type: 'ship', data: { enemyTypeId: 'future_x', isBoss: true } }), true);
+
   assert.equal(classifyContactRole({ type: 'station', data: {} }), 'station');
   assert.equal(classifyContactRole({ type: 'station', data: { isGate: true } }), 'gate');
   assert.equal(classifyContactRole({ type: 'pickup', data: {} }), 'loot');
   assert.equal(classifyContactRole({ type: 'wreck', data: {} }), 'wreck');
+});
 
-  // Future unknown enemy IDs still classify purely by their role/doctrine/archetype fields
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_sniper_x', aiArchetype: 'sniper' } }), 'sniper');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_shield_x', combatDoctrineId: 'escort_screen' } }), 'support');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_ram_x', detonator: { blastRadius: 80 } } }), 'rammer');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_mine_x', role: 'disruptor' } }), 'minelayer');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_boss_x', isBoss: true } }), 'boss');
-  assert.equal(classifyContactRole({ type: 'ship', data: { enemyTypeId: 'future_heavy_x', role: 'heavy' } }), 'heavy');
+test('labels fit whole or become a plain role word; nothing is clipped or ends in an ellipsis', () => {
+  const freighter = { type: 'ship', data: { callsign: 'Relief-Freighter Charon Nine', trafficRole: 'hauler' } };
+  assert.equal(contactDisplayName(freighter, 'civilian'), 'Freighter');
+  assert.equal(contactDisplayName({ type: 'ship', data: { callsign: 'Bruiser Brawler' } }, 'wall'), 'Bruiser Brawler');
+  assert.equal(contactDisplayName({ type: 'ship', data: {} }, 'reach'), 'Sniper');
+  assert.equal(contactDisplayName({ type: 'station', data: { name: 'Helios Station' } }, 'station'), 'Helios Station');
+  for (const label of [contactDisplayName(freighter, 'civilian'), sanitizeMapLabel('Recover the mass sample from the marked rock', 22)]) {
+    assert.doesNotMatch(label, /…|\.\.\./);
+  }
+  assert.equal(sanitizeMapLabel('Helios Trade Hub', 22), 'HELIOS TRADE HUB');
+  assert.equal(sanitizeMapLabel('Recover the mass sample from the marked rock', 22), 'OBJECTIVE');
+  assert.equal(sanitizeMapLabel('Tala Rook · Receiving cargo at the dock', 22), 'TALA ROOK');
+});
+
+test('the room only draws rocks: ships returned by a spatial query never become rock marks', () => {
+  assert.equal(isRockRecord({ type: 'asteroid', alive: true, pos: { x: 1, z: 2 } }), true);
+  assert.equal(isRockRecord({ fieldResident: true, pos: { x: 1, z: 2 } }), true);
+  assert.equal(isRockRecord({ type: 'ship', alive: true, pos: { x: 1, z: 2 } }), false);
+  assert.equal(isRockRecord({ type: 'asteroid', alive: false, pos: { x: 1, z: 2 } }), false);
 });
 
 test('minimap distances print strictly in m or km and never u', () => {
@@ -87,12 +118,19 @@ test('minimap breathing range tightens in fight, widens with speed, and toggles 
   assert.ok(advFightFast > advFightSlow, 'fight range still breathes wider with speed');
   assert.ok(advSurvey > advCalmFast, 'survey toggle widens past standard range');
 
+  // A fight is read at the ship's own gun range: the gun ring lands just inside the scope ring.
+  for (const gunRange of [420, 650]) {
+    const fight = resolveMinimapTargetRange(advState, { attention: 'fight', speed: 0, gunRange });
+    assert.ok(gunRange / fight > 0.85 && gunRange / fight <= 1, `gun ring sits near the scope edge (gun ${gunRange}, range ${fight})`);
+  }
+
   const swarmState = { ui: { radarRange: 4000 }, run: { kind: 'survival', ruleset: 'swarm', phase: 'active' } };
-  const swarmTactical = resolveMinimapTargetRange(swarmState, { attention: 'fight', expanded: false, speed: 0, maxSpeed: 180 });
-  const swarmFast = resolveMinimapTargetRange(swarmState, { attention: 'fight', expanded: false, speed: 180, maxSpeed: 180 });
+  const swarmTactical = resolveMinimapTargetRange(swarmState, { attention: 'fight', expanded: false, speed: 0, maxSpeed: 180, gunRange: 420 });
+  const swarmFast = resolveMinimapTargetRange(swarmState, { attention: 'fight', expanded: false, speed: 180, maxSpeed: 180, gunRange: 420 });
   const swarmSurvey = resolveMinimapTargetRange(swarmState, { attention: 'fight', expanded: true, speed: 0, maxSpeed: 180 });
 
-  assert.ok(swarmTactical <= 600, `Swarm tactical stays tight (${swarmTactical})`);
+  // Swarm is always a fight: its tactical range is the gun range, so a 420 m gun reads under 600 m.
+  assert.ok(swarmTactical <= 600, `Swarm tactical follows the gun range (${swarmTactical})`);
   assert.ok(swarmFast > swarmTactical, 'Swarm range eases wider with speed');
   assert.ok(swarmSurvey >= swarmTactical * 1.8, 'Swarm survey toggle expands cleanly');
 });
@@ -176,7 +214,7 @@ test('flightMinimap caches static and room offscreen layers across steady draws 
     offRangeHostiles: [],
     ghosts: [],
     courses: [],
-    rocks: [{ id: 10, pos: { x: 80, z: -40 }, radius: 28, alive: true }],
+    rocks: [{ id: 10, type: 'asteroid', pos: { x: 80, z: -40 }, radius: 28, alive: true }],
     roomWalls: [],
     mines: [],
     activeFields: [],

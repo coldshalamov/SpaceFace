@@ -2,20 +2,29 @@ import { resolveCollisionProxyManifest, proxyWorldPrimitives, resolveDockAnchor 
 import { canvasFont } from '../canvasFonts.js';
 import { drawTradeHubPlan, tradeHubPlan } from './harborPlan.js';
 import {
+  CONTACT_JOB_PALETTE,
   TACTICAL_MAP_PALETTE,
   classifyContactRole,
+  contactJobCost,
+  contactRoleWord,
   drawRoleGlyph,
   formatMinimapDistance,
+  isBossContact,
   sanitizeMapLabel,
   solveMinimapLabelPlacement,
 } from './tacticalMapGrammar.js';
 
 const TAU = Math.PI * 2;
-const SWEEP_PERIOD_MS = 4600;
-const SWEEP_TRAIL_RAD = (54 * Math.PI) / 180;
+// Sensor ping: a thin ring leaves the ship every PING_PERIOD_MS, crosses the scope in the first
+// PING_TRAVEL_FRAC of the period, then rests. Contacts brighten as it passes and settle back.
+export const PING_PERIOD_MS = 3800;
+const PING_TRAVEL_FRAC = 0.62;
+const PING_DECAY_MS = 760;
 const ARRIVAL_PING_S = 0.65;
 const HIT_FLASH_MS = 560;
-const MAX_ROCK_OUTLINES = 52;
+const MAX_ROCK_MARKS = 64;
+const ROOM_FIELD_REFRESH_MS = 1500;
+const CONTACT_NAME_MAX = 22;
 const MAX_RIM_HOSTILES = 6;
 const HOVER_HIT_RADIUS_PX = 14;
 const VELOCITY_MIN_SPEED = 8;
@@ -31,8 +40,18 @@ const COLOR_WALL_FILL = 'rgba(116, 178, 202, 0.28)';
 const COLOR_ROCK_MONOLITH_STROKE = 'rgba(178, 222, 240, 0.68)';
 const COLOR_ROCK_MONOLITH_FILL = 'rgba(98, 148, 174, 0.24)';
 const COLOR_ROCK_AMMO_STROKE = 'rgba(172, 220, 238, 0.50)';
-const COLOR_ROCK_STIPPLE = 'rgba(160, 210, 232, 0.34)';
-const COLOR_ROCK_PATCH = 'rgba(104, 152, 178, 0.085)';
+const COLOR_ROCK_AMMO_FILL = 'rgba(190, 226, 240, 0.78)';
+
+/** A rock the room layer may draw: a field record or a live asteroid entity, never a ship. */
+export function isRockRecord(rock) {
+  return !!(rock && rock.pos && rock.alive !== false
+    && (rock.type === 'asteroid' || rock.fieldResident === true)
+    && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z));
+}
+
+function isMonolithRock(rock) {
+  return (Number(rock.radius) || 0) >= 24 || !!(rock.data && (rock.data.isMonolith || rock.data.hiveWall));
+}
 
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
@@ -501,24 +520,25 @@ function drawFrameBezel(ctx, width, height, cut) {
   ctx.restore();
 }
 
-function contactDisplayName(entity, role) {
+/**
+ * The name a contact label shows: its own name when that fits whole, otherwise its plain role word
+ * ("Freighter", "Sniper", "Station"). Never clipped, never "…".
+ */
+export function contactDisplayName(entity, role) {
   const data = entity && entity.data;
-  const raw = (data && (data.name || data.callsign || data.enemyName || data.label))
-    || entity?.name
-    || (role === 'station' ? 'Station'
-      : role === 'gate' ? 'Jump Gate'
-        : role === 'wreck' ? 'Wreck'
-          : role === 'loot' ? 'Salvage'
-            : role === 'boss' ? 'Boss'
-              : role === 'sniper' ? 'Sniper'
-                : role === 'rammer' ? 'Rammer'
-                  : role === 'support' ? 'Support'
-                    : role === 'minelayer' ? 'Minelayer'
-                      : role === 'heavy' ? 'Heavy'
-                        : role === 'civilian' ? 'Traffic'
-                          : 'Contact');
-  const cleaned = String(raw).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').trim();
-  return cleaned.length > 20 ? `${cleaned.slice(0, 19)}…` : cleaned;
+  const word = role === 'civilian' ? civilianWord(entity) : contactRoleWord(role);
+  const raw = (data && (data.name || data.callsign || data.enemyName || data.label)) || entity?.name || '';
+  const cleaned = String(raw).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/[…]+/g, '').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return word;
+  return cleaned.length <= CONTACT_NAME_MAX ? cleaned : word;
+}
+
+function civilianWord(entity) {
+  const r = String(entity?.data?.trafficRole || entity?.data?.role || '').toLowerCase();
+  if (/freight|hauler|carrier|trader|courier/.test(r)) return 'Freighter';
+  if (/min(er|ing)|tug|tender/.test(r)) return 'Miner';
+  if (/patrol|law|escort|customs/.test(r)) return 'Patrol';
+  return 'Traffic';
 }
 
 const ROOM_SCROLL_PAD = 48;
@@ -542,12 +562,12 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   const staticCtx = staticCanvas.getContext('2d');
   const roomCanvas = doc.createElement('canvas');
   const roomCtx = roomCanvas.getContext('2d');
-  const sweepCanvas = doc.createElement('canvas');
-  const sweepCtx = sweepCanvas.getContext('2d');
+  // Scratch for the rock-field contour (outer outline of the union of rock discs).
+  const contourCanvas = doc.createElement('canvas');
+  const contourCtx = contourCanvas.getContext('2d');
 
   let width = 360;
   let height = 204;
-  let sweepRadius = 220;
   let projection = null;
   let pickedCourses = [];
   const footprints = new WeakMap();
@@ -566,6 +586,8 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   let roomAnchorX = NaN;
   let roomAnchorZ = NaN;
   let roomScale = NaN;
+  let roomFieldVersion = NaN;
+  let roomFieldAtMs = -Infinity;
   let staticRebuilds = 0;
   let roomRebuilds = 0;
   let drawCalls = 0;
@@ -658,39 +680,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       g.stroke();
       g.restore();
     }
-
-    // 2. Resize-only pre-baked conic sweep wedge sprite (rotated & blitted at 20 Hz; zero per-frame gradient allocs)
-    if (sweepCtx) {
-      const r = sweepRadius;
-      const sg = sweepCtx;
-      sg.clearRect(0, 0, r * 2, r * 2);
-      sg.save();
-      sg.translate(r, r);
-      sg.beginPath();
-      sg.moveTo(0, 0);
-      sg.arc(0, 0, r, -SWEEP_TRAIL_RAD, 0);
-      sg.closePath();
-      let grad = null;
-      if (typeof sg.createConicGradient === 'function') {
-        grad = sg.createConicGradient(-SWEEP_TRAIL_RAD, 0, 0);
-      }
-      if (grad && typeof grad.addColorStop === 'function') {
-        grad.addColorStop(0, 'rgba(130, 224, 242, 0)');
-        grad.addColorStop(SWEEP_TRAIL_RAD / TAU, 'rgba(138, 228, 244, 0.11)');
-        grad.addColorStop(1, 'rgba(130, 224, 242, 0)');
-        sg.fillStyle = grad;
-      } else {
-        sg.fillStyle = 'rgba(138, 228, 244, 0.045)';
-      }
-      sg.fill();
-      sg.strokeStyle = 'rgba(182, 242, 250, 0.30)';
-      sg.lineWidth = 1;
-      sg.beginPath();
-      sg.moveTo(0, 0);
-      sg.lineTo(r, 0);
-      sg.stroke();
-      sg.restore();
-    }
   };
 
   const syncLayerSizes = () => {
@@ -698,8 +687,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     const ph = Math.max(1, Math.round(height * dpr));
     const rw = Math.max(1, Math.round((width + ROOM_SCROLL_PAD * 2) * dpr));
     const rh = Math.max(1, Math.round((height + ROOM_SCROLL_PAD * 2) * dpr));
-    sweepRadius = Math.ceil(Math.hypot(width * 0.55, height * 0.55));
-    const sw = Math.max(4, Math.round(sweepRadius * 2 * dpr));
 
     canvas.width = pw;
     canvas.height = ph;
@@ -719,10 +706,10 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       roomCanvas.height = rh;
       roomCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    if (sweepCtx) {
-      sweepCanvas.width = sw;
-      sweepCanvas.height = sw;
-      sweepCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (contourCtx) {
+      contourCanvas.width = rw;
+      contourCanvas.height = rh;
+      contourCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     paintWellAndSweepSprites();
     staticKey = '';
@@ -860,6 +847,202 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     g.restore();
   }
 
+  let stipplePattern = null;
+  function ensureStipple(targetCtx) {
+    if (stipplePattern || !doc || typeof doc.createElement !== 'function') return stipplePattern;
+    const c = doc.createElement('canvas');
+    c.width = 9;
+    c.height = 9;
+    const sg = c.getContext('2d');
+    if (!sg) return null;
+    sg.fillStyle = 'rgba(176, 218, 236, 0.42)';
+    sg.fillRect(1, 1, 1, 1);
+    sg.fillRect(5, 3, 1, 1);
+    sg.fillRect(3, 6, 1, 1);
+    sg.fillRect(7, 7, 1, 1);
+    stipplePattern = typeof targetCtx.createPattern === 'function' ? targetCtx.createPattern(c, 'repeat') : null;
+    return stipplePattern;
+  }
+
+  /**
+   * One soft region per rock field: the union of a disc around every rock (padded so neighbours in
+   * a field merge), filled with a quiet stipple and edged by its outer contour only.
+   */
+  function paintRockFieldRegion(g, rocks, project, scale, rw, rh) {
+    const padPx = clamp(70 * scale, 3, 14);
+    const candidates = rockDiscScratch;
+    candidates.length = 0;
+    for (let i = 0; i < rocks.length && candidates.length < 1800; i += 1) {
+      const rock = rocks[i];
+      if (!isRockRecord(rock)) continue;
+      const at = project(rock.pos.x, rock.pos.z);
+      const r = clamp((Number(rock.radius) || 12) * scale + padPx, 5, 34);
+      if (at.x + r < -4 || at.x - r > rw + 4 || at.y + r < -4 || at.y - r > rh + 4) continue;
+      candidates.push(at.x, at.y, r);
+    }
+    if (!candidates.length) return;
+    // A field is where rocks cluster: a rock joins the region only when at least two other rocks'
+    // discs overlap its own, so the region is one merged shape. A lone rock is drawn live as a chip.
+    let maxR = 0;
+    for (let i = 2; i < candidates.length; i += 3) if (candidates[i] > maxR) maxR = candidates[i];
+    const cellPx = Math.max(8, maxR * 2);
+    const cols = Math.ceil(rw / cellPx) + 3;
+    const rows = Math.ceil(rh / cellPx) + 3;
+    const buckets = new Map();
+    const cellOf = (x, y) => (clamp(Math.floor(y / cellPx) + 1, 0, rows - 1) * cols) + clamp(Math.floor(x / cellPx) + 1, 0, cols - 1);
+    for (let i = 0; i < candidates.length; i += 3) {
+      const c = cellOf(candidates[i], candidates[i + 1]);
+      let list = buckets.get(c);
+      if (!list) { list = []; buckets.set(c, list); }
+      list.push(i);
+    }
+    const discs = fieldDiscScratch;
+    discs.length = 0;
+    for (let i = 0; i < candidates.length; i += 3) {
+      const x = candidates[i];
+      const y = candidates[i + 1];
+      const r = candidates[i + 2];
+      const c = cellOf(x, y);
+      const cxCell = c % cols;
+      const cyCell = (c - cxCell) / cols;
+      let n = 0;
+      for (let oy = -1; oy <= 1 && n < 2; oy += 1) {
+        for (let ox = -1; ox <= 1 && n < 2; ox += 1) {
+          const list = buckets.get((cyCell + oy) * cols + cxCell + ox);
+          if (!list) continue;
+          for (let k = 0; k < list.length && n < 2; k += 1) {
+            const j = list[k];
+            if (j === i) continue;
+            const link = (r + candidates[j + 2]) * 0.92;
+            const ddx = candidates[j] - x;
+            const ddy = candidates[j + 1] - y;
+            if (ddx * ddx + ddy * ddy <= link * link) n += 1;
+          }
+        }
+      }
+      if (n >= 2) discs.push(x, y, r);
+    }
+    if (!discs.length) return;
+    const unionPath = (grow) => {
+      g.beginPath();
+      for (let i = 0; i < discs.length; i += 3) {
+        const r = Math.max(1, discs[i + 2] + grow);
+        g.moveTo(discs[i] + r, discs[i + 1]);
+        g.arc(discs[i], discs[i + 1], r, 0, TAU);
+      }
+    };
+    g.save();
+    unionPath(0);
+    g.fillStyle = 'rgba(96, 146, 172, 0.13)';
+    g.fill();
+    const stipple = ensureStipple(g);
+    if (stipple) {
+      g.fillStyle = stipple;
+      g.fill();
+    }
+    g.restore();
+    if (contourCtx) {
+      const c = contourCtx;
+      c.save();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, contourCanvas.width, contourCanvas.height);
+      c.restore();
+      c.save();
+      c.beginPath();
+      for (let i = 0; i < discs.length; i += 3) {
+        c.moveTo(discs[i] + discs[i + 2], discs[i + 1]);
+        c.arc(discs[i], discs[i + 1], discs[i + 2], 0, TAU);
+      }
+      c.strokeStyle = 'rgba(168, 214, 234, 0.46)';
+      c.lineWidth = 2.2;
+      c.stroke();
+      c.globalCompositeOperation = 'destination-out';
+      c.beginPath();
+      for (let i = 0; i < discs.length; i += 3) {
+        const r = Math.max(1, discs[i + 2] - 1.1);
+        c.moveTo(discs[i] + r, discs[i + 1]);
+        c.arc(discs[i], discs[i + 1], r, 0, TAU);
+      }
+      c.fillStyle = '#000';
+      c.fill();
+      c.restore();
+      g.save();
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.drawImage(contourCanvas, 0, 0);
+      g.restore();
+    }
+  }
+
+  const rockDiscScratch = [];
+  const fieldDiscScratch = [];
+  const liveRockScratch = [];
+  const hostileOrderScratch = [];
+  const labelObstacles = [];
+
+  /**
+   * Individual rocks, drawn live from their current positions: cover monoliths as outlined
+   * polygons, throwable rocks as bright chips, a rock in flight with a short tail.
+   */
+  function drawLiveRocks(rocks, project, scale, cut, cx, cy) {
+    const picks = liveRockScratch;
+    picks.length = 0;
+    for (let i = 0; i < rocks.length; i += 1) {
+      const rock = rocks[i];
+      if (!isRockRecord(rock)) continue;
+      const at = project(rock.pos.x, rock.pos.z);
+      if (!pointInsideChamfer(at.x, at.y, width, height, 6, cut)) continue;
+      picks.push({ rock, x: at.x, y: at.y, d2: (at.x - cx) ** 2 + (at.y - cy) ** 2 });
+      if (picks.length > MAX_ROCK_MARKS * 4) break;
+    }
+    if (!picks.length) return;
+    if (picks.length > MAX_ROCK_MARKS) picks.sort((a, b) => a.d2 - b.d2);
+    const n = Math.min(picks.length, MAX_ROCK_MARKS);
+    // Monoliths (cover): outlined polygons.
+    ctx.save();
+    ctx.fillStyle = COLOR_ROCK_MONOLITH_FILL;
+    ctx.strokeStyle = COLOR_ROCK_MONOLITH_STROKE;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    let any = false;
+    for (let i = 0; i < n; i += 1) {
+      const p = picks[i];
+      const r = Number(p.rock.radius) || 12;
+      if (!isMonolithRock(p.rock)) continue;
+      any = true;
+      drawDeterministicRockPolygon(ctx, p.x, p.y, clamp(r * scale, 3.4, 13), p.rock.id, 6);
+    }
+    if (any) { ctx.fill(); ctx.stroke(); }
+    // Throwable rocks: small bright chips.
+    ctx.fillStyle = COLOR_ROCK_AMMO_FILL;
+    ctx.strokeStyle = 'rgba(6, 16, 24, 0.85)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    any = false;
+    for (let i = 0; i < n; i += 1) {
+      const p = picks[i];
+      if (isMonolithRock(p.rock)) continue;
+      any = true;
+      drawDeterministicRockPolygon(ctx, p.x, p.y, clamp((Number(p.rock.radius) || 12) * scale, 1.9, 3.6), p.rock.id, 5);
+    }
+    if (any) { ctx.fill(); ctx.stroke(); }
+    // A rock in flight (thrown, shoved, towed) carries a tail so the throw reads.
+    ctx.strokeStyle = COLOR_ICE;
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < n; i += 1) {
+      const v = picks[i].rock.vel;
+      const sp = v ? Math.hypot(v.x || 0, v.z || 0) : 0;
+      if (!(sp > 30)) continue;
+      const len = clamp(sp * scale * 0.5, 5, 14);
+      ctx.moveTo(picks[i].x, picks[i].y);
+      // Screen axes are the world's mirrored (see `project`), so heading on screen is -vel.
+      ctx.lineTo(picks[i].x - (v.x / sp) * len, picks[i].y - (v.z / sp) * len);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function paintRoomLayer({
     project, scale, rotation, rocks, roomWalls, staticHazards, infrastructure, harbor, plan,
   }) {
@@ -895,104 +1078,11 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       }
     }
 
-    // 2. Rock fields: soft stippled cluster patches + crisp rock outlines for cover & ammo
+    // 2. Rock fields: the region the rocks occupy, drawn as one soft stippled area with a quiet
+    // contour (the outer outline of the union of a disc around every rock). Individual rocks are
+    // drawn live each frame on top (they are ammunition and move); this cached layer is the field.
     if (Array.isArray(rocks) && rocks.length > 0) {
-      // Soft stippled density patches across a coarse grid
-      const cellPx = 24;
-      const cols = Math.ceil(rw / cellPx);
-      const rows = Math.ceil(rh / cellPx);
-      const cellCounts = new Uint16Array(cols * rows);
-      const visibleRocks = [];
-      for (let i = 0; i < rocks.length; i += 1) {
-        const rock = rocks[i];
-        if (!rock || !rock.pos || rock.alive === false) continue;
-        const at = project(rock.pos.x, rock.pos.z);
-        if (at.x < -16 || at.x > rw + 16 || at.y < -16 || at.y > rh + 16) continue;
-        const gx = clamp(Math.floor(at.x / cellPx), 0, cols - 1);
-        const gy = clamp(Math.floor(at.y / cellPx), 0, rows - 1);
-        cellCounts[gy * cols + gx] += 1;
-        visibleRocks.push({
-          rock,
-          x: at.x,
-          y: at.y,
-          radius: Number(rock.radius) || 14,
-          isMonolith: (Number(rock.radius) || 0) >= 24 || !!(rock.data && (rock.data.isMonolith || rock.data.hiveWall)),
-          distCenterSq: (at.x - rw * 0.5) ** 2 + (at.y - rh * 0.5) ** 2,
-        });
-      }
-
-      // Soft stippled rock-field patches where rocks cluster
-      g.fillStyle = COLOR_ROCK_PATCH;
-      g.beginPath();
-      for (let gy = 0; gy < rows; gy += 1) {
-        for (let gx = 0; gx < cols; gx += 1) {
-          const count = cellCounts[gy * cols + gx];
-          if (count < 1) continue;
-          const cx0 = (gx + 0.5) * cellPx;
-          const cy0 = (gy + 0.5) * cellPx;
-          const patchR = cellPx * (count >= 2 ? 0.72 : 0.48);
-          g.moveTo(cx0 + patchR, cy0);
-          g.arc(cx0, cy0, patchR, 0, TAU);
-        }
-      }
-      g.fill();
-
-      g.fillStyle = COLOR_ROCK_STIPPLE;
-      g.beginPath();
-      for (let gy = 0; gy < rows; gy += 1) {
-        for (let gx = 0; gx < cols; gx += 1) {
-          const count = cellCounts[gy * cols + gx];
-          if (count < 1) continue;
-          const bx = gx * cellPx;
-          const by = gy * cellPx;
-          const dots = Math.min(8, count * 2 + 2);
-          for (let d = 0; d < dots; d += 1) {
-            const h = ((gx * 73856093) ^ (gy * 19349663) ^ (d * 83492791)) >>> 0;
-            const px = bx + 2 + (h % (cellPx - 4));
-            const py = by + 2 + ((h >>> 8) % (cellPx - 4));
-            g.rect(px, py, 1.45, 1.45);
-          }
-        }
-      }
-      g.fill();
-
-      // Nearest individual rocks: crisp polygonal outlines for cover monoliths & throwable boulders
-      if (visibleRocks.length > MAX_ROCK_OUTLINES) {
-        visibleRocks.sort((a, b) => Number(b.isMonolith) - Number(a.isMonolith) || a.distCenterSq - b.distCenterSq);
-      }
-      const limit = Math.min(visibleRocks.length, MAX_ROCK_OUTLINES);
-
-      // Batch monolith cover rocks
-      g.fillStyle = COLOR_ROCK_MONOLITH_FILL;
-      g.strokeStyle = COLOR_ROCK_MONOLITH_STROKE;
-      g.lineWidth = 1.1;
-      g.beginPath();
-      let hasMonolith = false;
-      for (let i = 0; i < limit; i += 1) {
-        const item = visibleRocks[i];
-        if (!item.isMonolith) continue;
-        hasMonolith = true;
-        const rPx = clamp(item.radius * scale, 3.2, 13);
-        drawDeterministicRockPolygon(g, item.x, item.y, rPx, item.rock.id, 6);
-      }
-      if (hasMonolith) {
-        g.fill();
-        g.stroke();
-      }
-
-      // Batch throwable ammo rocks
-      g.strokeStyle = COLOR_ROCK_AMMO_STROKE;
-      g.lineWidth = 0.95;
-      g.beginPath();
-      let hasAmmo = false;
-      for (let i = 0; i < limit; i += 1) {
-        const item = visibleRocks[i];
-        if (item.isMonolith) continue;
-        hasAmmo = true;
-        const rPx = clamp(item.radius * scale, 1.8, 4.2);
-        drawDeterministicRockPolygon(g, item.x, item.y, rPx, item.rock.id, 5);
-      }
-      if (hasAmmo) g.stroke();
+      paintRockFieldRegion(g, rocks, project, scale, rw, rh);
     }
 
     // 3. Trade hub architectural plan + station collision footprints (crisp lines)
@@ -1079,6 +1169,8 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     roomAnchorX = NaN;
     roomAnchorZ = NaN;
     roomScale = NaN;
+    roomFieldVersion = NaN;
+    roomFieldAtMs = -Infinity;
   }
 
   function paint({
@@ -1111,6 +1203,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     expanded = false,
     stanceOf = null,
     colorOf = null,
+    jobColors = true,
   }) {
     const t0 = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
     const cut = chamferSize(width);
@@ -1174,13 +1267,19 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
 
     // 2. Oversized world-anchored scrolling & softly-scalable Room Layer.
     // Rebuilt only on sector/geometry change, >10% zoom shift, or flying past the ±42px scroll pad.
+    // The rock FIELD (a soft region) follows rock motion lazily: a changed field version refreshes it
+    // at most every ROOM_FIELD_REFRESH_MS. Individual rocks are drawn live, so a thrown rock is never
+    // shown where it used to be.
     const wallSig = roomWalls.length ? `${roomWalls.length}:${Math.round(roomWalls[0]?.pos?.x || 0)}:${Math.round(roomWalls[0]?.pos?.z || 0)}` : '0';
-    const nextRoomBaseKey = `${width}|${height}|${dpr}|${sectorId}|${asteroidVersion}|${wallSig}|${staticHazards.length}|${plan ? 1 : 0}`;
+    const nextRoomBaseKey = `${width}|${height}|${dpr}|${sectorId}|${wallSig}|${staticHazards.length}|${plan ? 1 : 0}`;
+    const fieldStale = asteroidVersion !== roomFieldVersion && !(nowMs - roomFieldAtMs < ROOM_FIELD_REFRESH_MS && nowMs >= roomFieldAtMs);
     const zoomRatio = Number.isFinite(roomScale) && roomScale > 0 ? scale / roomScale : Infinity;
     const driftPx = Number.isFinite(roomAnchorX) ? Math.abs((originX - roomAnchorX) * scale) : Infinity;
     const driftPy = Number.isFinite(roomAnchorZ) ? Math.abs((originZ - roomAnchorZ) * scale) : Infinity;
     const zoomDirty = !(zoomRatio > 0.90 && zoomRatio < 1.11);
-    if (nextRoomBaseKey !== roomBaseKey || zoomDirty || driftPx > ROOM_SCROLL_PAD - 6 || driftPy > ROOM_SCROLL_PAD - 6) {
+    if (nextRoomBaseKey !== roomBaseKey || fieldStale || zoomDirty || driftPx > ROOM_SCROLL_PAD - 6 || driftPy > ROOM_SCROLL_PAD - 6) {
+      roomFieldVersion = asteroidVersion;
+      roomFieldAtMs = nowMs;
       roomAnchorX = originX;
       roomAnchorZ = originZ;
       roomScale = scale;
@@ -1216,6 +1315,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       const blitY = cy + (originZ - roomAnchorZ) * scale - (cy + ROOM_SCROLL_PAD) * k;
       ctx.drawImage(roomCanvas, blitX, blitY, drawW, drawH);
     }
+    drawLiveRocks(rocks, project, scale, cut, cx, cy);
 
     // 3. Dynamic hazards (hatched): heat zones, furnaces/crushers, active force fields, mines
     if (heatZone && heatZone.active && heatZone.radius > 0 && heatZone.center) {
@@ -1315,23 +1415,36 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       ctx.restore();
     }
 
-    // 4. Slow meaningful sensor sweep (pre-baked sprite rotated & blitted; omitted under reduced-motion)
-    const sweepAngle = reducedMotion
-      ? -Math.PI / 2
-      : (((nowMs % SWEEP_PERIOD_MS) / SWEEP_PERIOD_MS) * TAU - Math.PI / 2);
-    if (!reducedMotion && sweepCtx) {
+    // 4. Sensor ping: one thin ring leaves the ship, crosses the scope, then the scope rests. Each
+    // contact brightens as the ring reaches it and settles back. Off under reduced motion: contacts
+    // simply update at a steady brightness.
+    const pingMaxR = Math.hypot(width * 0.5, height * 0.5);
+    const pingPhase = reducedMotion ? 0 : (((nowMs % PING_PERIOD_MS) + PING_PERIOD_MS) % PING_PERIOD_MS) / PING_PERIOD_MS;
+    if (!reducedMotion && pingPhase < PING_TRAVEL_FRAC) {
+      const t = pingPhase / PING_TRAVEL_FRAC;
+      const r = 6 + t * (pingMaxR - 6);
+      const fade = (1 - t) * (1 - t);
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(sweepAngle);
-      ctx.drawImage(sweepCanvas, -sweepRadius, -sweepRadius, sweepRadius * 2, sweepRadius * 2);
+      ctx.strokeStyle = `rgba(150, 232, 246, ${(0.34 * fade + 0.04).toFixed(3)})`;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, TAU);
+      ctx.stroke();
+      if (r > 14) {
+        ctx.strokeStyle = `rgba(150, 232, 246, ${(0.07 * fade).toFixed(3)})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 3, 0, TAU);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
     const sweepFreshness = (x, y) => {
       if (reducedMotion) return 0;
-      const theta = Math.atan2(y - cy, x - cx);
-      const lag = (((sweepAngle - theta) % TAU) + TAU) % TAU;
-      return Math.exp(-lag * 1.45);
+      const reachFrac = (Math.hypot(x - cx, y - cy) / pingMaxR) * PING_TRAVEL_FRAC;
+      const sincePass = (((pingPhase - reachFrac) % 1) + 1) % 1;
+      return Math.exp(-(sincePass * PING_PERIOD_MS) / PING_DECAY_MS);
     };
 
     const noteArrival = (id, x, y, color) => {
@@ -1499,15 +1612,28 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     const visibleHostiles = [];
     const rimHostileCandidates = [];
     const hostileCells = new Set();
-    const selectedHostile = targetId != null ? hostile.find((m) => m.entity?.id === targetId) : null;
-    const orderedHostiles = selectedHostile
-      ? [selectedHostile, ...hostile.filter((m) => m !== selectedHostile)]
-      : hostile;
+    // Selected first, then by job cost, so when two marks share a cell the one that matters (the
+    // sniper, the carrier) is the one drawn, never hidden behind fodder.
+    const orderedHostiles = hostileOrderScratch;
+    orderedHostiles.length = 0;
+    for (let i = 0; i < hostile.length; i += 1) {
+      const mark = hostile[i];
+      const entity = mark && mark.entity;
+      if (!entity) continue;
+      const classified = classifyContactRole(entity);
+      // A ship that is hostile to you fights: one the data calls traffic is drawn as a skirmisher.
+      const role = classified === 'civilian' ? 'skirmish' : classified;
+      orderedHostiles.push({
+        mark, role, boss: isBossContact(entity),
+        rank: (entity.id === targetId ? 1e6 : 0) + contactJobCost(entity, role),
+      });
+    }
+    orderedHostiles.sort((a, b) => b.rank - a.rank);
 
     for (let i = 0; i < orderedHostiles.length; i += 1) {
-      const mark = orderedHostiles[i];
-      const entity = mark && mark.entity;
-      if (!entity || !entity.pos) continue;
+      const { mark, role, boss: isBoss } = orderedHostiles[i];
+      const entity = mark.entity;
+      if (!entity.pos) continue;
       const at = project(entity.pos.x, entity.pos.z);
       const distW = Math.sqrt(mark.distanceSq || 0);
       const selected = entity.id === targetId;
@@ -1515,13 +1641,11 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         rimHostileCandidates.push({ entity, at, distW, selected });
         continue;
       }
-      const role = classifyContactRole(entity);
-      const isBoss = role === 'boss';
-      const cell = `${Math.floor(at.x / 10)}:${Math.floor(at.y / 10)}`;
-      if (!selected && !isBoss && (hostileCells.size >= 24 || hostileCells.has(cell))) continue;
+      const cell = `${Math.floor(at.x / 9)}:${Math.floor(at.y / 9)}`;
+      if (!selected && !isBoss && (hostileCells.size >= 32 || hostileCells.has(cell))) continue;
       hostileCells.add(cell);
 
-      const color = colorOf ? colorOf(entity) : TACTICAL_MAP_PALETTE.hostile;
+      const color = (jobColors && CONTACT_JOB_PALETTE[role]) || (colorOf ? colorOf(entity) : TACTICAL_MAP_PALETTE.hostile);
       const fresh = sweepFreshness(at.x, at.y);
       const alpha = (selected || isBoss ? 0.96 : 0.78) + 0.22 * fresh;
 
@@ -1547,6 +1671,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         color,
         alpha,
         selected,
+        boss: isBoss,
       });
 
       if (selected) {
@@ -1627,7 +1752,9 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       usedHostileAngles.push(ang);
       const rimPt = intersectChamferRim(cx, cy, dx, dy, width, height, 7.5, cut);
       const closeness = clamp(1 - Math.max(0, item.distW - range) / (range * 2.5), 0.35, 1.0);
-      const color = colorOf ? colorOf(item.entity) : TACTICAL_MAP_PALETTE.hostile;
+      const rimClassified = classifyContactRole(item.entity);
+      const rimRole = rimClassified === 'civilian' ? 'skirmish' : rimClassified;
+      const color = (jobColors && CONTACT_JOB_PALETTE[rimRole]) || (colorOf ? colorOf(item.entity) : TACTICAL_MAP_PALETTE.hostile);
       drawOffEdgeRimPin(ctx, rimPt, 'hostile', color, closeness, item.selected);
       if (!edgeBearing) edgeBearing = { x: dx, y: dy };
       registerHoverable(item.entity, classifyContactRole(item.entity), rimPt.x, rimPt.y, color, item.distW);
@@ -1643,9 +1770,11 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       const distPx = Math.hypot(dx, dy);
       const distWorld = distance2d(player.pos, target);
       const onChart = pointInsideChamfer(projT.x, projT.y, width, height, 13, cut);
+      // The notch's tip points outward 7.5 px from its anchor; an inset of 14 keeps the whole notch
+      // inside the frame with a clear gap to the bezel.
       const rimPt = distPx > 1e-3
-        ? intersectChamferRim(cx, cy, dx, dy, width, height, 6.5, cut)
-        : { x: cx, y: 10, angle: -Math.PI / 2 };
+        ? intersectChamferRim(cx, cy, dx, dy, width, height, 14, cut)
+        : { x: cx, y: 16, angle: -Math.PI / 2 };
 
       // Subtle dashed amber course corridor from ship to objective/rim
       const lineEnd = onChart ? projT : rimPt;
@@ -1688,8 +1817,12 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         objectiveAnchor = projT;
       }
 
-      const cleanTitle = sanitizeMapLabel(objective?.label || 'Objective', 16);
+      // The objective's name fits whole or reads "OBJECTIVE"; the full line is in the mission card.
       const distStr = formatMinimapDistance(distWorld);
+      const budgetPx = width - 2 * (cut + 14) - 22;
+      let cleanTitle = sanitizeMapLabel(objective?.label || 'Objective', 26);
+      ctx.font = canvasFont(650, 12, 'read');
+      if (ctx.measureText(distStr ? `${cleanTitle} · ${distStr}` : cleanTitle).width > budgetPx) cleanTitle = 'OBJECTIVE';
       objectiveText = distStr ? `${cleanTitle} · ${distStr}` : cleanTitle;
     }
 
@@ -1729,13 +1862,19 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       const padX = tagged ? 7 : 4;
       const boxH = tagged ? 20 : 17;
       const boxW = tw + padX * 2;
-      const placed = solveMinimapLabelPlacement(anchor, boxW, boxH, occupiedRects, {
-        width,
-        height,
-        margin: 8,
-        chamfer: cut,
-        markRadius,
-      });
+      // Prefer a slot that covers no contact; only if none exists, accept covering contacts (never
+      // another label or the frame).
+      const solveOpts = { width, height, margin: 8, chamfer: cut, markRadius };
+      labelObstacles.length = 0;
+      for (let i = 0; i < occupiedRects.length; i += 1) labelObstacles.push(occupiedRects[i]);
+      for (let i = 0; i < hoverTargets.length; i += 1) {
+        const h = hoverTargets[i];
+        if (Math.abs(h.x - anchor.x) < 0.5 && Math.abs(h.y - anchor.y) < 0.5) continue;
+        labelObstacles.push({ x: h.x - 6, y: h.y - 6, w: 12, h: 12 });
+      }
+      let placed = solveMinimapLabelPlacement(anchor, boxW, boxH, labelObstacles, solveOpts);
+      if (placed) occupiedRects.push(placed);
+      else placed = solveMinimapLabelPlacement(anchor, boxW, boxH, occupiedRects, solveOpts);
       if (!placed) return false;
 
       ctx.save();

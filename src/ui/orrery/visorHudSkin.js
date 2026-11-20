@@ -57,9 +57,11 @@ ${S} #hud .sf-radar-wrap--chart .sf-radar-objective-key {
   clip-path:inset(50%); height:1px; width:1px; position:absolute; overflow:hidden; margin:0;
 }
 ${S} #hud .sf-radar-wrap--chart .sf-radar-objective-key[data-mode="legend"] { display:none; }
-.sf-flight-chart__footer { display:flex; width:100%; justify-content:center; align-items:center; gap:8px; margin-top:6px; }
+/* The instrument's foot: one hairline from the frame's left edge into two keys seated at its right
+   edge, a clear 9px below the bezel, so nothing touches the frame. */
+.sf-flight-chart__footer { display:flex; width:100%; justify-content:flex-end; align-items:center; gap:6px; margin-top:9px; }
 .sf-flight-chart__footer[hidden], .sf-flight-chart[hidden] { display:none !important; }
-.sf-flight-chart__footer::before, .sf-flight-chart__footer::after { content:""; height:1px; flex:1 1 12px; background:var(--visor-rule); opacity:.68; }
+.sf-flight-chart__footer::before { content:""; height:1px; flex:1 1 12px; margin-right:4px; background:var(--visor-rule); opacity:.55; }
 .sf-flight-chart__open, .sf-flight-chart__range {
   display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:3px 9px;
   border:1px solid rgb(188 222 234 / .38); border-radius:3px;

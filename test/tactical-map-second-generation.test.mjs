@@ -92,7 +92,8 @@ test('objective guidance degrades gracefully under threat and general contact de
   });
   assert.equal(cue.offRange, true);
   assert.equal(cue.corridorMode, 'terminal');
-  assert.equal(cue.label, 'RECOVER THE MASS SAMPL');
+  // A label fits whole or becomes the role word; it is never clipped mid-name ("MASS SAMPL").
+  assert.equal(cue.label, 'OBJECTIVE');
   assert.ok(cue.start.x > cue.end.x, 'corridor follows mirrored east bearing');
 
   const unresolved = planUnresolvedObjectiveCue({ label: 'Ceres transfer' });
