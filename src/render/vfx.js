@@ -12799,6 +12799,10 @@ export const vfx = {
         this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
     }
     if (!this._energy) this._initEnergy();
+    // The cause-marks layer mints lazily on the first wound/scar event; ensure it now so its
+    // sf-cause-marks material joins the first-flight cohort instead of linking on the first
+    // scar inside a presented frame.
+    this._ensureCauseMarks();
     const energy = this._energy;
     if (!energy) return { skipped: true, reason: 'no-energy' };
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -12915,6 +12919,25 @@ export const vfx = {
         }
         ribbons += 1;
       }
+    }
+    // Warm-minted trails still retire behind the shell: their material dispose releases the
+    // shared ribbon program's last reference, so the first live mint relinks it inside a
+    // presented frame either way (PERF-04 late key 86,87). Mount the same hidden exemplar the
+    // software-route subset uses even when live trails exist — its parked material pins the
+    // program across every live trail's lifetime, and restLiveFlightEffectsAfterCook detaches
+    // it without disposing.
+    if (!this._openingRibbonExemplar) {
+      this._openingRibbonExemplar = createRibbonTrail(this._scene,
+        (player && this._engineColor(player)) || '#88AAFF', NPC_RIBBON_SEGMENTS, 1.45);
+    }
+    const exemplarMesh = this._openingRibbonExemplar
+      && typeof this._openingRibbonExemplar.getMesh === 'function'
+      ? this._openingRibbonExemplar.getMesh() : null;
+    if (exemplarMesh) {
+      if (!exemplarMesh.parent) this._scene.add(exemplarMesh);
+      // Non-empty range for the cohort touch draw (zeroed positions: nothing visible).
+      exemplarMesh.geometry.setDrawRange(0, 6);
+      ribbons += 1;
     }
     const plumeOpts = { boost: 0.4, a11y };
     const fleetPlumes = new Set();
@@ -13134,6 +13157,16 @@ export const vfx = {
     // re-lights whatever the ship actually commands.
     if (this._energy) this._hideEnergyPlumes();
     if (this._overflowJets) this._overflowJets.reset();
+    // Park the cohort ribbon exemplar the same way releaseOpeningEffectSubset does: detach, do
+    // not dispose — releasing its material frees the linked program the first live NPC trail
+    // would otherwise relink inside a presented frame.
+    const exemplar = this._openingRibbonExemplar;
+    const exemplarMesh = exemplar && typeof exemplar.getMesh === 'function' ? exemplar.getMesh() : null;
+    if (exemplarMesh) {
+      exemplarMesh.geometry.setDrawRange(0, 0);
+      exemplarMesh.visible = false;
+      if (exemplarMesh.parent) exemplarMesh.parent.remove(exemplarMesh);
+    }
     return { skipped: false };
   },
 

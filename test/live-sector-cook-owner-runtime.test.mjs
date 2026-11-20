@@ -124,6 +124,7 @@ function bindRendererOwnerMethods(owner) {
   owner._shadowDepthLight = rendererMethods._shadowDepthLight.bind(owner);
   owner._shadowDepthEnabled = rendererMethods._shadowDepthEnabled.bind(owner);
   owner.prepareOpeningFirstPicture = rendererMethods.prepareOpeningFirstPicture.bind(owner);
+  owner._runRigidOpaqueBatchSpecimenWarm = async () => {};
 }
 const withSubjectGeometryCpuLease = new Function('retainPackageGeometryCpu', 'collectStartupGeometries',
   `return (${source.slice(geometryLeaseNode.start, geometryLeaseNode.end)});`)(retainPackageGeometryCpu, collectStartupGeometries);
@@ -750,6 +751,12 @@ function fixture(providers = []) {
     armSectorArrivalPublishRelease: () => marks.push('release'),
     SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS: 2, FIRST_FLIGHT_DEFERRED_HOLD_SECONDS: 20,
     warmNearbyLedgerRows: noop, makeHoldExemptScanContext: () => ({}),
+    collectPreparedAuthoredCompileRoots: () => [], renderResidencyRadius: () => 0,
+    isEntityRenderRelevant: () => false, entityWithinPlayerRadiusScan: () => false,
+    isHoldExemptMeshBuildCore: () => false, entityIsOnReadableGlassScan: () => false,
+    resolveWorldPresentationEntity: () => null, stormWarn: noop,
+    warmAsteroidInstanceKeys: () => 0, collectAsteroidInstancePoolLeafResources: () => [],
+    requestAuthoredUpgrade: async () => ({ status: 'no-authored-upgrade' }),
     exactSectorId: 'ceres', sector: { id: 'ceres' }, continuous: false, enterEpoch: 7,
     // Ledger consults inside the cook's slice clocks: a never-spent wallet keeps
     // the fixture on the private-clock path it asserts (ordering, cancellation).

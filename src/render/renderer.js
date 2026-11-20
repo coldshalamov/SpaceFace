@@ -36,7 +36,11 @@ import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPl
 import { createVeilSettle } from './veilSettle.js';
 import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
-import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
+import { ceresWorkfleetRole, isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
+import { isCeresShipbreakSection, CERES_SHIPBREAK_FILES } from './ceresShipbreakVisuals.js';
+import { CERES_WORKFLEET_CONTRACT } from '../data/ceresWorkfleet.js';
+import { ASTEROIDS } from '../data/mining.js';
+import { rockSubstanceForSlot, ROCK_PLACE_SUBSTANCES, ROCK_SIZE_CLASSES } from '../data/rockSubstances.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
@@ -165,7 +169,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryEventBus, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, optimizeStaticBatchesForRoot, setEnvMapForShips, setFactoryEventBus, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -230,6 +234,9 @@ import {
   rosterPoolWitnessFilePalettes,
   swarmRosterShipExemplarSpecs,
   paletteWarmSubjectsForRecord,
+  buildPlacePropRootSteps,
+  disposeDetachedObject,
+  disposeDetachedObjectSteps,
   spawnableShipArchetypePrewarmUrls,
   residentAuthoredRecordForFile,
   residentWholeShipStandInRecord,
@@ -274,6 +281,7 @@ import {
   resolveAsteroidInstanceEntityId,
   translateAsteroidInstancePool,
   syncAsteroidInstancePool,
+  collectAsteroidInstancePoolLeafResources,
   warmAsteroidInstanceKeys,
   warmAsteroidInstanceVariants,
 } from './asteroidInstancePool.js';
@@ -14177,6 +14185,12 @@ export const render = {
             } finally { steps.return?.(); }
           };
           const warmPlayerPlasma = state.render.warmupOpeningEffectSubset;
+          // Collected once here so the post-picture admit loop and specimen/leaf
+          // lanes below see the same held authored roots.
+          const preparedOpeningRoots = collectPreparedAuthoredCompileRoots(scene);
+          // The warm owner itself is released inside the actor lane; only the root
+          // outlives it, for the post-picture admission-coverage set below.
+          let openingPlayerPlasmaRoot = null;
           if (firstFlightActors.length > 0 || immediatePoolRoots.length > 0
               || typeof warmPlayerPlasma === 'function') {
             assertExactActive();
@@ -14239,6 +14253,7 @@ export const render = {
               if (typeof warmPlayerPlasma === 'function') {
                 assertExactActive();
                 playerPlasmaWarm = warmPlayerPlasma({ playerPlasmaOnly: true });
+                openingPlayerPlasmaRoot = playerPlasmaWarm?.plasmaRoot ?? null;
                 if (playerPlasmaWarm?.skipped !== true) {
                   const root = playerPlasmaWarm?.plasmaRoot;
                   if (!root || playerPlasmaWarm.plasma !== true) {
@@ -14283,6 +14298,521 @@ export const render = {
             drawLeaves: admitted.plan.drawLeaves.length,
             materials: admitted.submission.materials,
           });
+          // PERF-04 post-picture lanes — the cohort the pre-seal comment lists, placed
+          // after the picture seals on purpose: the delta census already froze, and
+          // specimen/exemplar twins stay detached, so nothing below adds a leaf or a
+          // material to any census. The mesh drain paces over the post-picture legs
+          // and every program link rides the paced admission lane — the seal→
+          // submission→residency legs that still own the shell pump that queue long
+          // enough for the issued work to link inside loading instead of inside the
+          // +0.5 s/+28 s presented-pass links. Settle guards cut over to reject once
+          // firstPlayableFrameAt mints — a real presented paint — so whatever cannot
+          // make the held window degrades to its old first-draw cost instead of
+          // landing as an in-flight link.
+          {
+              // PERF-04 — first-flight warm, not first-picture work. This block used to
+              // run ahead of the census inside the picture leg: the synchronous effect
+              // build + admit issue measured +2-3 s of requiredFirstPicture. Behind the
+              // seal the same work rides the paced admission lane to the same pre-flight
+              // guarantee — the pending ledger, not the picture, holds their links until
+              // flight presents. The cohort:
+              //  * live first-flight effect systems (fleet plume/RCS families, retro
+              //    jets, massline, ribbon trails, cause marks, the comet sprite) — the
+              //    +4 s/+9 s late links — built by the same loading warm the broad
+              //    cook runs, admitted, then parked back to their pre-lift idle;
+              //  * held authored roots whose mid-flight swap compiled on a detached
+              //    owner (the ownerless +0.5 s links);
+              //  * first-flight-relevant entities still without meshes — the +0.5 s
+              //    first-flight builds — enqueued ahead of the deferred tail and
+              //    drained while the window allows;
+              //  * detached specimen/exemplar twins — keyed instancing per authored
+              //    leaf pair, one rigid opaque batch specimen per group key, and the
+              //    lane-freighter spawn family — the USE_INSTANCING / USE_BATCHING /
+              //    mule variants behind the +1 s/+28-30 s late links.
+              const attachedToScene = (candidate) => {
+                for (let node = candidate; node; node = node.parent) {
+                  if (node === scene) return true;
+                }
+                return false;
+              };
+              const admittedOpeningRoots = new Set(immediatePoolRoots);
+              if (openingPlayerPlasmaRoot) admittedOpeningRoots.add(openingPlayerPlasmaRoot);
+              // A root's admission compiles its whole subtree — a flagged descendant of an
+              // already-admitted cohort member adds no program.
+              const admissionCovered = (candidate) => {
+                for (let node = candidate; node; node = node.parent) {
+                  if (admittedOpeningRoots.has(node)) return true;
+                }
+                return false;
+              };
+              // Settle-lifetime, not window-lifetime: entries still queued when the
+              // shell lifts must keep compiling through the pending-ledger hold —
+              // firstPlayableFrameAt only mints on a real presented paint, so this
+              // guard stays true while the hold covers their links and rejects
+              // leftovers exactly when a compile would land inside a presented pass.
+              const openingWarmSettle = () => !recookStale() && (state.mode === 'loading'
+                || !Number.isFinite(state.render && state.render.firstPlayableFrameAt));
+              try {
+                if (typeof state.render.warmupLiveFlightEffects === 'function') {
+                  state.render.warmupLiveFlightEffects();
+                }
+              } catch (warmError) {
+                stormWarn('openingLiveEffectWarm', '[render] opening live-effect warm failed', warmError);
+              }
+              const collectedEffectRoots = collectFirstFlightEffectRoots(scene);
+              // Admits below are fire-and-forget by design: every admitSubjectPipelines
+              // call registers its own pending handle, and the first presented frame is
+              // refused until the ledger drains — so issuing them behind the seal and
+              // letting the paced lane link them through the remaining legs keeps the
+              // same pre-flight guarantee without serializing the picture. Scene
+              // attachment gates the ISSUE only: rest() parks the ribbon exemplar off
+              // the graph, and a parked twin's linked program is still the live
+              // family's — an attach check at settle would reject the warm it bought.
+              for (const effectRoot of collectedEffectRoots) {
+                if (recookStale()) break;
+                if (admissionCovered(effectRoot) || !attachedToScene(effectRoot)) continue;
+                void admitSubjectPipelines(effectRoot, {
+                  openingRequired: true, urgent: true, joinOutstanding: true,
+                  isActive: () => openingWarmSettle(),
+                });
+                admittedOpeningRoots.add(effectRoot);
+              }
+              try {
+                if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
+                  state.render.restLiveFlightEffectsAfterCook();
+                }
+              } catch (restError) {
+                stormWarn('openingLiveEffectRest', '[render] opening live-effect park failed', restError);
+              }
+              for (const preparedRoot of preparedOpeningRoots) {
+                if (recookStale()) break;
+                void admitSubjectPipelines(preparedRoot, {
+                  openingRequired: true, urgent: true, joinOutstanding: true,
+                  isActive: () => openingWarmSettle(),
+                });
+              }
+              const firstFlightBuiltRoots = [];
+              {
+                const widenScan = makeHoldExemptScanContext(state);
+                const widenOpts = { bypassShellGates: true, scan: widenScan };
+                const prefetchRadius = widenScan && Number.isFinite(widenScan.prefetchRadius)
+                  ? widenScan.prefetchRadius : renderResidencyRadius(state, 'prefetch');
+                // The +0.9 s builds are not render-relevant yet — they are the first-flight
+                // HOLD-EXEMPT set (rescue set piece, focus, glass, approach) the +20 s
+                // streaming hold drains anyway. Enrol them by the same predicate.
+                const widenFrame = state.render && state.render.activityFrame;
+                const widenGlassIds = widenFrame && widenFrame.renderGlassIds;
+                const holdExempt = (entity) => isHoldExemptMeshBuildCore(entity, state,
+                  widenGlassIds,
+                  (e) => entityIsOnReadableGlassScan(e, state, widenScan),
+                  () => widenScan && widenScan.env);
+                const immediateEntities = [];
+                for (const entity of state.entityList || []) {
+                  if (!entity || entity.id == null || entity.alive === false) continue;
+                  if (actorIds.has(entity.id) || this._meshes.get(entity.id)) continue;
+                  if (!isEntityRenderRelevant(entity, state, null, widenOpts)
+                      && !entityWithinPlayerRadiusScan(entity, state, prefetchRadius, widenScan)
+                      && !holdExempt(entity)) continue;
+                  immediateEntities.push(entity);
+                }
+                if (immediateEntities.length > 0 && actorBudget.check() && !recookStale()) {
+                  // Optional lane: a window spent by the required lanes must degrade
+                  // to the ordinary first-flight queue, not fail the opening.
+                  try {
+                  await driveActors(enqueueMissingMeshBuildsSteps(immediateEntities,
+                    this._meshes, this._meshBuildQueuedIds, this._meshBuildQueue));
+                  const immediateIds = new Set(immediateEntities.map((entity) => entity.id));
+                  // Membership like the actor lane: under liveSectorGpuAdmission the
+                  // drain's per-row isEntityRenderRelevant re-check refuses anything not
+                  // in this set — un-stamped immediate rows were drained and skipped.
+                  const firstFlightIds = state.render.liveSectorFirstFlightIds || new Set();
+                  for (const id of immediateIds) firstFlightIds.add(id);
+                  state.render.liveSectorFirstFlightIds = firstFlightIds;
+                  // The actor lane's front-splice: a spent window must be spent on the
+                  // visible-first set, not the deferred tail behind it.
+                  const deferredTail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+                  this._meshBuildQueue.splice(this._meshBuildQueueHead, deferredTail.length,
+                    ...deferredTail.filter((id) => immediateIds.has(id)),
+                    ...deferredTail.filter((id) => !immediateIds.has(id)));
+                  while (this._meshBuildQueueHead < this._meshBuildQueue.length
+                      && immediateIds.has(this._meshBuildQueue[this._meshBuildQueueHead])
+                      && actorBudget.check() && !recookStale()) {
+                    const builtId = this._meshBuildQueue[this._meshBuildQueueHead];
+                    const drainSteps = this._drainMeshBuildQueueSteps(1);
+                    const headBefore = this._meshBuildQueueHead;
+                    try { for (;;) { if (drainSteps.next().done) break; await yieldToBrowser(); } }
+                    finally { drainSteps.return?.(); }
+                    // A drain that exits without consuming its head row would spin this
+                    // lane forever — consume the row ourselves and move on.
+                    if (this._meshBuildQueueHead === headBefore) this._meshBuildQueueHead += 1;
+                    const builtRoot = this._meshes.get(builtId);
+                    if (builtRoot) firstFlightBuiltRoots.push({ id: builtId, root: builtRoot });
+                  }
+                  } catch (enqueueError) {
+                    if (actorBudget.check() && !recookStale()) throw enqueueError;
+                  }
+                }
+              }
+              // The mount path already self-admits every built root
+              // (compileObjectPipelines + queueOrRequestAuthoredUpgrade on _meshes.set),
+              // so the collected roots only feed the specimen-warm census below —
+              // awaiting the serial upgrade lane here measured ~31 s of dead queue
+              // wait (exact.current-sector 40064 ms against a 40 s window).
+              // Synthetic warm cohort, all detached and fire-and-forget: the programs
+              // these mint are keyed to object type + material, never to scene
+              // membership, so specimen/exemplar twins compile the live variants on the
+              // paced admission lane without joining the exact-picture census (the
+              // census would serialize ~80 extra program links inside the window).
+              // Two predicates, different lifetimes. optionalWarmActive bounds the
+              // ISSUE of new work to this window's leftover budget — past it, minting
+              // another detached twin can only push a link into flight. But every
+              // admit already issued must keep compiling through the remaining
+              // loading legs: entryInactive REJECTS a queued compile whose isActive
+              // flips false (exactActive dies the moment this block returns), which
+              // would leave the family cold exactly as if it was never warmed.
+              // optionalWarmSettle therefore lives until the sector recooks or the
+              // first paint lands — a still-queued entry then rejects instead of
+              // linking inside a presented pass. Both sides ride the same latch:
+              // new mints stay useful while the first-frame hold is still covering
+              // the queue, and compiles settle through it too.
+              const optionalWarmActive = () => !recookStale() && actorBudget.check()
+                && (state.mode === 'loading'
+                  || !Number.isFinite(state.render && state.render.firstPlayableFrameAt));
+              const optionalWarmSettle = () => !recookStale() && (state.mode === 'loading'
+                || !Number.isFinite(state.render && state.render.firstPlayableFrameAt));
+              if (this._asteroidInstancePool && optionalWarmActive()
+                  && typeof this._runKeyedAsteroidSpecimenWarm === 'function') {
+                const leafWarmRoots = [];
+                for (const meshRoot of this._meshes.values()) if (meshRoot) leafWarmRoots.push(meshRoot);
+                for (const preparedRoot of preparedOpeningRoots) leafWarmRoots.push(preparedRoot);
+                for (const built of firstFlightBuiltRoots) leafWarmRoots.push(built.root);
+                // Roster-prewarm exemplars mount stamped asteroid leaves outside
+                // _meshes — their keyed pairs mint the same buckets a live rock would.
+                for (const rosterRoot of this._rosterPrewarmRoots || []) {
+                  if (rosterRoot) leafWarmRoots.push(rosterRoot);
+                }
+                const keyedLeafPairs = collectAsteroidInstancePoolLeafResources(leafWarmRoots);
+                if (keyedLeafPairs.length > 0) {
+                  void this._runKeyedAsteroidSpecimenWarm(keyedLeafPairs, {
+                    isActive: optionalWarmActive, compileActive: optionalWarmSettle,
+                  }).catch((keyedWarmError) => {
+                    stormWarn('openingKeyedPoolWarm', '[render] opening keyed-instance warm failed', keyedWarmError);
+                  });
+                }
+              }
+              // Batch-specimen variants of the authored/prepared leaves — the first live
+              // wreck's USE_BATCHING link was one of the +1 s stragglers.
+              if (optionalWarmActive()) {
+                void this._runRigidOpaqueBatchSpecimenWarm([
+                  ...preparedOpeningRoots,
+                  ...firstFlightBuiltRoots.map((built) => built.root),
+                ], { isActive: optionalWarmActive, compileActive: optionalWarmSettle, mountToScene: false }).catch((specimenError) => {
+                  stormWarn('openingBatchSpecimen', '[render] opening batch specimen warm failed', specimenError);
+                });
+              }
+              // Lane-freighter spawn family the census can never see — travelLanes
+              // mints the mule on its first flight tick (the +1.1 s PHYSICAL/uv
+              // triple); the onboarding roster emit scopes the generic exemplar
+              // catalog out. mountToScene:false keeps the invisible twins out of the
+              // delta census too.
+              if (optionalWarmActive()
+                  && typeof combatSpawnableExemplarSpecs === 'function'
+                  && typeof this._drainRosterPrewarmCohort === 'function') {
+                const spawnSpecs = combatSpawnableExemplarSpecs('opening-spawn-warm:')
+                  .filter((spec) => spec && spec.data && spec.data.laneVariant != null);
+                void this._drainRosterPrewarmCohort(spawnSpecs, [],
+                  (subject) => (optionalWarmActive()
+                      && state.render && typeof state.render.compileObjectPipelines === 'function'
+                    ? state.render.compileObjectPipelines(subject, { explicit: true, isActive: optionalWarmSettle })
+                    : Promise.resolve({ skipped: true, reason: 'opening-spawn-warm-expired' })),
+                  this._rosterPrewarmRunSeq | 0, false,
+                  { shouldContinue: optionalWarmActive, mountToScene: false })
+                  .catch((spawnWarmError) => {
+                    stormWarn('openingSpawnWarm', '[render] opening spawn-family warm failed', spawnWarmError);
+                  });
+              }
+              // Deferred-mount place props — ceres freighters, shipbreak sections,
+              // lane dressing — mount inside the first flight seconds by design;
+              // their authored records already sit in the sector's settled decode
+              // set long before that. Compose each unbuilt place entity's authored
+              // subtree detached and compile it: sharedMaterialFor mints the live
+              // material clones from the same cache the mount will read, so the
+              // specimen's programs are the live variants and the link lands
+              // behind the shell instead of inside the +0.3 s build.
+              if (optionalWarmActive()
+                  && typeof buildPlacePropRootSteps === 'function'
+                  && typeof state.render.compileObjectPipelines === 'function') {
+                void (async () => {
+                  // The +0.3 s mounts are ledger-row entities — ceres freighters and
+                  // shipbreak sections reach the build queue by id, never through
+                  // entityList. Census from the deferred build queue itself (the
+                  // mount-order truth) plus the entity map, resolving every id to
+                  // the full row the mount will use.
+                  const scanEntities = [];
+                  const scannedIds = new Set();
+                  const getEntity = (id) => {
+                    try {
+                      return state.entities && typeof state.entities.get === 'function'
+                        ? state.entities.get(id) : null;
+                    } catch (_) { return null; }
+                  };
+                  if (Array.isArray(this._meshBuildQueue)) {
+                    for (let i = this._meshBuildQueueHead | 0; i < this._meshBuildQueue.length; i += 1) {
+                      const queuedEntity = getEntity(this._meshBuildQueue[i]);
+                      if (queuedEntity && !scannedIds.has(queuedEntity.id)) {
+                        scannedIds.add(queuedEntity.id);
+                        scanEntities.push(queuedEntity);
+                      }
+                    }
+                  }
+                  if (state.entities && typeof state.entities.values === 'function') {
+                    for (const queuedEntity of state.entities.values()) {
+                      if (queuedEntity && queuedEntity.id != null && !scannedIds.has(queuedEntity.id)) {
+                        scannedIds.add(queuedEntity.id);
+                        scanEntities.push(queuedEntity);
+                      }
+                    }
+                  }
+                  const fileForEntity = new Map();
+                  let resolvedCount = 0;
+                  for (const entity of scanEntities) {
+                    if (!entity || entity.id == null || entity.alive === false) continue;
+                    if (this._meshes.get(entity.id)) continue;
+                    let placeFile = null;
+                    try { placeFile = resolvePlaceFileForEntity(entity); } catch (_) { placeFile = null; }
+                    if (!placeFile || fileForEntity.has(placeFile)) continue;
+                    // The measured offenders sort first — ceres mounts are the +0.3 s
+                    // builds — so a truncated window still spends itself on them.
+                    const ceres = isCeresWorkfleetPlace(entity) || isCeresShipbreakSection(entity);
+                    fileForEntity.set(placeFile, { entity, ceres });
+                    resolvedCount += 1;
+                  }
+                  // The measured offenders do not exist at cook time: the ceres
+                  // freighter/wreck rows materialize at the loading→flight seam and
+                  // mount ~0.3 s later, so no entity census can ever reach them. The
+                  // file set they draw from is static data though — warm it with
+                  // synthetic rows carrying the exact placeId/role/record fields the
+                  // build predicates read.
+                  const explicit = [];
+                  // Sections first: the wreck offender resolves through
+                  // isCeresShipbreakSection, whose placeId is never the site root —
+                  // order the three structural sections ahead of it.
+                  const shipbreakPlaceIds = Object.keys(CERES_SHIPBREAK_FILES)
+                    .sort((a, b) => (a === 'place_ceres_second_measure' ? 1 : 0)
+                      - (b === 'place_ceres_second_measure' ? 1 : 0));
+                  for (const placeId of shipbreakPlaceIds) {
+                    explicit.push([CERES_SHIPBREAK_FILES[placeId], {
+                      entity: { id: `warm:${placeId}`, type: 'wreck',
+                        data: { placeId, worldSiteStructural: true } },
+                      ceres: true,
+                    }]);
+                  }
+                  for (const role of ['cradle', 'cutterHead']) {
+                    const asset = CERES_WORKFLEET_CONTRACT && CERES_WORKFLEET_CONTRACT.assets
+                      && CERES_WORKFLEET_CONTRACT.assets[role];
+                    if (!asset || !asset.file) continue;
+                    explicit.push([asset.file, {
+                      // ceresWorkfleetHardware stamps team 2 + faction_free on the
+                      // live rows; paletteFor resolves the faction branch and its
+                      // decalId — a different shared material than the civilian
+                      // fallback, which is exactly the variant that linked late.
+                      entity: { id: `warm:${role}`, type: 'wreck', team: 2,
+                        factionId: 'faction_free',
+                        data: {
+                          ceresWorkfleetRole: role,
+                          worldRecordId: CERES_WORKFLEET_CONTRACT.identities
+                            && CERES_WORKFLEET_CONTRACT.identities[role],
+                          placeId: asset.id,
+                        } },
+                      ceres: true,
+                    }]);
+                  }
+                  const explicitFiles = new Set(explicit.map(([file]) => file));
+                  // The measured late COLLISION_HULL links were authored-geology
+                  // rocks (boundary placeId 'place_rock_silicate_pebble'): each
+                  // rock-typed field's index-0 scatter body wears
+                  // place_rock_<substance>_<sizeClass>. The substance is a pure
+                  // (seed, fieldId) hash; only the size class rides the spawn rng,
+                  // so cover every class the def's sizeRange can reach. The rocks
+                  // materialize at the loading→flight seam, unreachable by census.
+                  const geoSector = (state.world && state.world.sectors
+                      && state.world.sectors[state.world.currentSectorId])
+                    || (state.world && state.world.currentSector) || null;
+                  const geoSeed = state.meta && state.meta.seed;
+                  for (const fdef of (geoSector && geoSector.fields) || []) {
+                    const def = fdef && ASTEROIDS.find((a) => a && a.id === fdef.type);
+                    if (!def || !def.authoredPlaceId) continue;
+                    const substance = rockSubstanceForSlot(geoSeed, fdef.id, 0);
+                    if (!ROCK_PLACE_SUBSTANCES.includes(substance)) continue;
+                    const [szLo, szHi] = def.sizeRange || [6, 14];
+                    const classes = new Set();
+                    // authoredRockPlaceId: r<14 pebble, r<24 boulder, else monolith.
+                    if (szLo < 14) classes.add('pebble');
+                    if (szLo < 24 && szHi >= 14) classes.add('boulder');
+                    if (szHi >= 24) classes.add('monolith');
+                    for (const sizeClass of classes) {
+                      const placeId = `place_rock_${substance}_${sizeClass}`;
+                      const file = `places/${placeId}.glb`;
+                      if (explicitFiles.has(file)) continue;
+                      explicitFiles.add(file);
+                      explicit.push([file, {
+                        entity: { id: `warm:geo:${placeId}`, type: 'asteroid',
+                          radius: ROCK_SIZE_CLASSES[sizeClass].radius,
+                          placeTargetRadius: ROCK_SIZE_CLASSES[sizeClass].radius,
+                          data: { authoredGeologySkin: true, placeId,
+                            placeTargetRadius: ROCK_SIZE_CLASSES[sizeClass].radius } },
+                        ceres: true,
+                      }]);
+                    }
+                  }
+                  const entries = explicit.concat(
+                    [...fileForEntity.entries()]
+                      .filter(([file]) => !explicitFiles.has(file))
+                      .sort((a, b) => (b[1].ceres === true ? 1 : 0) - (a[1].ceres === true ? 1 : 0)),
+                  ).slice(0, 14);
+                  // Kick every decode up front — the mounts pay the same GLB decode at
+                  // +0.3 s regardless, and overlapped fetches leave only the compile.
+                  const decodes = new Map();
+                  for (const [placeFile] of entries) {
+                    decodes.set(placeFile, Promise.resolve()
+                      .then(() => residentAuthoredRecordForFile(placeFile, { renderer: this.renderer })
+                        || loadAuthoredPart(
+                          `assets/ships/release/parts/${placeFile}`,
+                          { renderer: this.renderer, slot: 'place', optional: true }))
+                      .catch(() => null));
+                  }
+                  // Issue gate is the settle predicate, not the mint budget: the
+                  // builds are browser-yield paced, and a compile still queued when
+                  // the shell lifts is rejected by entryInactive rather than linked
+                  // inside a presented pass — overshoot can only spend leftover
+                  // loading legs, never push a link into flight.
+                  const compileFlights = [];
+                  for (const [placeFile, entry] of entries) {
+                    if (!optionalWarmSettle()) break;
+                    const entity = entry.entity;
+                    const record = await decodes.get(placeFile);
+                    if (!record) {
+                      try { console.log('[render] place-prop warm skip: no record', placeFile); } catch (_) {}
+                      continue;
+                    }
+                    const specimen = new THREE.Group();
+                    specimen.name = 'SF_PlacePropSpecimenWarm';
+                    let root = null;
+                    // Mirror upgradePlaceBoundary: shared package geometries lose
+                    // their CPU attributes between mounts (detach/retire), and a
+                    // compile over a detached attribute set mints a variant the
+                    // +0.3 s mount never draws — the missing-uv flag bit that kept
+                    // this family late. Refill first, release after the build.
+                    const sourceGeometries = [record].filter(Boolean)
+                      .flatMap((source) => (source.primitives || []).map((primitive) => primitive.geometry));
+                    const releaseSpecimenCpu = retainPackageGeometryCpu(sourceGeometries);
+                    try {
+                      await rehydrateDetachedGeometries(sourceGeometries);
+                    } catch (_) { /* a refill failure still yields the detached-state build */ }
+                    const steps = buildPlacePropRootSteps(entity, record, this.scene, specimen,
+                      { layoutEntity: entity });
+                    try {
+                      for (;;) {
+                        const step = steps.next();
+                        if (step.done) {
+                          // The generator returns {root, authoredParts, authoredSlots} —
+                          // the compile subject is the object tree inside it.
+                          root = (step.value && step.value.root) || null;
+                          break;
+                        }
+                        if (!optionalWarmSettle()) break;
+                        await yieldToBrowser();
+                      }
+                    } catch (buildError) {
+                      try { console.log('[render] place-prop warm build failed', placeFile, String(buildError && buildError.message || buildError)); } catch (_) {}
+                    }
+                    finally {
+                      try { steps.return?.(); } catch (_) { /* generator teardown is best-effort */ }
+                      try { releaseSpecimenCpu(); } catch (_) { /* CPU release is best-effort */ }
+                    }
+                    try { console.log('[render] place-prop warm built', placeFile, 'root:', !!root, 'meshes:', root ? (() => { let n = 0; root.traverse(() => { n += 1; }); return n; })() : 0); } catch (_) {}
+                    if (root && root.isObject3D !== true) root = null;
+                    if (root && root !== specimen && !root.parent) specimen.add(root);
+                    const warmRoot = root && root.parent === specimen ? specimen : (root || specimen);
+                    // The mount path runs optimizeStaticBatchesForRoot on the placed
+                    // tree: rigid opaque leaves merge into batch meshes whose
+                    // normalized geometry drops conflicting attributes (tangent
+                    // among them). A specimen that skips the merge mints the
+                    // per-mesh variant (vertexTangents on) while the live draw goes
+                    // through the merged batch (vertexTangents off) — one packed
+                    // flag apart, still late. Merge before compile so the specimen
+                    // links the exact programs the mount draws. Runs while the
+                    // specimen is still at origin so baked transforms stay
+                    // root-relative exactly like the live boundary's merge.
+                    try { optimizeStaticBatchesForRoot(warmRoot); } catch (_) { /* merge is best-effort for warm purposes */ }
+                    try {
+                      warmRoot.traverse((n) => {
+                        if (n.isMesh && String(n.name || '').includes('COLLISION_HULL')) {
+                          console.log('[render] place-prop warm hull', placeFile,
+                            'attrs:', Object.keys(n.geometry?.attributes || {}).sort().join(','),
+                            'merged:', !!(n.userData && (n.userData.sfStaticMerge || n.userData.spacefaceStaticBatch)),
+                            'matName:', String(n.material && n.material.name || ''));
+                        }
+                      });
+                    } catch (_) {}
+                    // Two compile-time state catches a detached twin cannot fake:
+                    // renderer.compile walks traverseVisible, so authored COLLISION_HULLs
+                    // and dormant LOD alternates (visible:false) stay cold; and a root
+                    // outside the scene resolves no scene.environment, minting a
+                    // non-env variant the live mount never draws. Mount the specimen far
+                    // under the frustum for the compile so both resolve exactly like the
+                    // +0.3 s mount's own link — zero rasterized pixels, same programs.
+                    warmRoot.traverse((node) => {
+                      if (node && node.visible === false) node.visible = true;
+                    });
+                    specimen.position.set(0, -1e9, 0);
+                    specimen.updateMatrixWorld(true);
+                    this.scene.add(specimen);
+                    // The paced lane serializes the links itself — queue every
+                    // specimen back-to-back so issue order (offenders first) is the
+                    // link order, instead of serializing build N+1 behind link N.
+                    compileFlights.push(Promise.resolve(state.render.compileObjectPipelines(warmRoot, {
+                      explicit: true,
+                      joinOutstanding: true,
+                      openingRequired: state.mode === 'loading',
+                      debugBy: 'place-prop-specimen',
+                      isActive: optionalWarmSettle,
+                    })).catch(() => { /* specimen compile is best-effort */ })
+                      .finally(() => {
+                        try { this.scene.remove(specimen); } catch (_) { /* detach is best-effort */ }
+                        try {
+                          if (!queuePacedDetachedTeardown(specimen, disposeDetachedObjectSteps(specimen, state))) {
+                            disposeDetachedObject(specimen, state);
+                          }
+                        } catch (_) { /* specimen teardown is best-effort */ }
+                      }));
+                  }
+                  await Promise.allSettled(compileFlights);
+                })().catch((placeWarmError) => {
+                  stormWarn('openingPlacePropWarm', '[render] opening place-prop specimen warm failed', placeWarmError);
+                });
+              }
+              // Pump the paced lane behind the shell: the lanes above settle their
+              // compiles through the ambient queue, and on a slow host auto-flush
+              // alone can leave a tail that links inside the first presented pass.
+              // Repeated bounded captures keep the queue ahead of the shell; two
+              // consecutive empty captures mean issued and late-arriving work both
+              // drained. The loop dies at flight — leftovers reject there rather
+              // than linking inside a presented pass.
+              void (async () => {
+                let emptyCaptures = 0;
+                for (let i = 0; i < 8 && optionalWarmSettle() && emptyCaptures < 2; i++) {
+                  try {
+                    const drained = await Promise.resolve(
+                      typeof state.render.drainPendingPipelineAdmissions === 'function'
+                        ? state.render.drainPendingPipelineAdmissions({ timeoutMs: 4000 })
+                        : null);
+                    emptyCaptures = (!drained || drained.skipped === true
+                      || drained.pendingCount === 0) ? emptyCaptures + 1 : 0;
+                  } catch (_) { break; }
+                }
+              })();
+          }
           return { skipped: false, exactFirstPicture: true, mobileFirstPicture, ...admitted };
         } catch (error) {
           if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
@@ -17304,6 +17834,10 @@ export const render = {
             ? [
               ...openingRoots,
               ...firstFlightRoots,
+              // Authored roots decoded and compiled but not yet swapped in still carry the
+              // shadowless menu variant (or no armed variant at all): the rescue/freighter
+              // physical links at +0.6 s were exactly these relinking for the armed state.
+              ...preparedRoots,
               ...cookPoolRoots.filter(isAsteroidInstancePoolRoot),
             ]
             : [
@@ -17375,13 +17909,36 @@ export const render = {
         // by the opening submission plan so the exact first-picture leaves (player, background,
         // visible entities, pools) warm before any beyond-runway subject — a timed-out pass then
         // leaves first-draw pipeline cost only on objects that cannot be on screen yet.
+        // PERF-04: the exact-picture pass already linked most opening materials, so a hard-capped
+        // cook used to expire inside already-resident re-issues and never reach the effect/pool
+        // tail (the late plume/ribbon/comet links). Give every subject carrying a never-compiled
+        // material tier 0, lit-but-resident subjects tier 1 (they can still owe the armed shadow
+        // variant), and unlit-resident subjects tier 2 — a truncated pass then forfeits only
+        // work whose programs are already resident either way.
+        const subjectProgramTier = (subject) => {
+          const materials = Array.isArray(subject && subject.material)
+            ? subject.material
+            : [subject && subject.material];
+          let lit = false;
+          for (const material of materials) {
+            if (!material) continue;
+            let program = null;
+            try { program = renderer.properties.get(material).currentProgram || null; } catch { program = null; }
+            if (!program) return 0;
+            if (materialNeedsShadowVariant(material)) lit = true;
+          }
+          return lit ? 1 : 2;
+        };
         const firstPictureOrder = new Map(openingSubjects.map((subject, index) => [subject, index]));
-        if (firstPictureOrder.size > 0) {
-          units.programSubjects.sort((a, b) => (
-            (firstPictureOrder.has(a) ? firstPictureOrder.get(a) : openingSubjects.length)
-            - (firstPictureOrder.has(b) ? firstPictureOrder.get(b) : openingSubjects.length)
-          ));
+        const cohortTier = new Map();
+        for (const subject of units.programSubjects) {
+          cohortTier.set(subject, subjectProgramTier(subject));
         }
+        units.programSubjects.sort((a, b) => (
+          (cohortTier.get(a) - cohortTier.get(b))
+          || ((firstPictureOrder.has(a) ? firstPictureOrder.get(a) : openingSubjects.length)
+            - (firstPictureOrder.has(b) ? firstPictureOrder.get(b) : openingSubjects.length))
+        ));
         const touch = (subject) => (
           this.bloom && typeof this.bloom.touchScenePipelines === 'function'
             ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
@@ -18034,9 +18591,17 @@ export const render = {
           // stamped detail children — sized by the same field census.
           warmAsteroidInstanceKeys(this._asteroidInstancePool,
             asteroidPoolWarmResources(), requiredByKey);
+          // Authored geology leaves and held live builds carry (geometry, material) pairs the
+          // procedural resource table cannot name — but minting real pool chunks for them here
+          // attaches ~80 fresh roots ahead of the exact-picture census and serializes their links
+          // inside the picture leg (PERF-04: 8.9 s -> 16.1 s). The same pairs now compile as
+          // detached 1-instance twins on the paced admission lane in the post-picture block of
+          // prepareOpeningFirstPicture; the first live registration still mints its bucket,
+          // just never its program, mid-flight.
         } catch (error) {
           stormWarn('asteroid-instance-pool-warm-failed', '[render] asteroid instance pool warm failed', error);
         }
+
         // Finish the bounded warm LAST before the compile-root snapshot: the census of decoded
         // authored records is a snapshot, and upgrade-queue jobs still decoding during the cook
         // only become warmable once this runs (the +21 s site/wreck links were mid-cook decodes
@@ -22174,7 +22739,7 @@ export const render = {
     }
   },
 
-  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq, includeGenericWarm = true) {
+  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq, includeGenericWarm = true, controls = null) {
     // Yield the browser only once a slice of cohort work actually cost ~8ms —
     // big rosters pace across gaps while a small emit (or a CLI driver) still
     // mints the whole cohort inside its own task.
@@ -22194,9 +22759,18 @@ export const render = {
     // mounting hidden exemplars into the next run's roots/ids ledgers.
     const staleRun = () => runSeq !== undefined
       && (this._rosterPrewarmRunSeq | 0) !== runSeq;
+    // Optional caller stop predicate: a deadline-windowed drain bails at the next
+    // spec instead of minting hidden exemplars into flight. Work already issued
+    // settles through its own admission scopes.
+    const drainContinue = () => !(controls && typeof controls.shouldContinue === 'function'
+      && controls.shouldContinue() === false);
+    // mountToScene:false keeps the exemplar twins off the graph: their programs are
+    // keyed to the material, not to scene membership, and a census never enumerates a
+    // detached root — the paced lane does the whole warm in the post-picture gaps.
+    const drainMountToScene = !(controls && controls.mountToScene === false);
     for (let ei = 0; ei < exemplarSpecs.length; ei++) {
       const spec = exemplarSpecs[ei];
-      if (staleRun()) return;
+      if (staleRun() || !drainContinue()) return;
       if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
       if (this._rosterPrewarmIds.has(spec.id)
           || (this._meshes && this._meshes.has(spec.id))) continue;
@@ -22242,11 +22816,13 @@ export const render = {
             stormWarn('credit-chip-batch-warm-failed', '[render] credit chip batch warm failed', error);
           }
         }
-        this.scene.add(boundary);
-        // Cohort-batched tally: one dirty mark per mount instead of a
-        // synchronous countShadowReceivers walk per exemplar — the paced
-        // recount absorbs the whole cohort in one walk.
-        this._markShadowReceiversDirty?.();
+        if (drainMountToScene) {
+          this.scene.add(boundary);
+          // Cohort-batched tally: one dirty mark per mount instead of a
+          // synchronous countShadowReceivers walk per exemplar — the paced
+          // recount absorbs the whole cohort in one walk.
+          this._markShadowReceiversDirty?.();
+        }
         this._rosterPrewarmRoots.push(boundary);
         try {
           const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
@@ -22267,8 +22843,12 @@ export const render = {
             upgradeJobKey: witness > 0 ? `rosterPrewarm:${spec.id}:w${witness}` : undefined,
             residencyRole: 'survival-roster-prewarm',
             sectorId: (this.state && this.state.world && this.state.world.currentSectorId) || null,
+            // Detached (mountToScene:false) exemplars never take scene parentage —
+            // the id-retention check alone is the owner liveness there. Requiring
+            // the parent anyway would mark the upgrade's consumer dead on arrival
+            // and the authored body would never attach.
             isResidencyOwnerActive: () => this._rosterPrewarmIds.has(spec.id)
-              && boundary.parent === this.scene,
+              && (!drainMountToScene || boundary.parent === this.scene),
           });
           // Track the full admission→compile chain so the cook can hold the shell until the
           // cohort has actually settled — a job that finishes after the last ambient drain would
@@ -28695,6 +29275,11 @@ export const render = {
           type: e.type,
           typeId: e.data && e.data.typeId || null,
           name: m.name || null,
+          place: typeof resolvePlaceFileForEntity === 'function' ? resolvePlaceFileForEntity(e) : null,
+          placeId: e.data && e.data.placeId || null,
+          team: e.team ?? null,
+          factionId: e.factionId || null,
+          ceresRole: e.data && e.data.ceresWorkfleetRole || null,
         });
       }
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
@@ -30954,12 +31539,26 @@ export const render = {
   // the paced admission lane inside flight — the SF_RigidOpaqueBatch_* link events.
   // Group keys dedupe across re-drains; a reskinned material keys differently and gets
   // a fresh specimen on the next drain.
-  async _runRigidOpaqueBatchSpecimenWarm(roots) {
+  async _runRigidOpaqueBatchSpecimenWarm(roots, options = null) {
     const state = this.state;
     if (!this._meshes || !this.scene) return;
     if (this._opaqueBatchSupported !== true) return;
     const liveScene = this.scene;
-    const stillLive = () => !!(this._meshes && this.scene === liveScene);
+    // Optional caller window (isActive): the specimen mint itself is cheap, but the
+    // compile leg must not start — or continue — after a deadline-bounded opening
+    // window dies, or the specimen group's program links land inside first flight.
+    const callerActive = options && typeof options.isActive === 'function' ? options.isActive : null;
+    // compileActive is the longer settle-lifetime guard for the queued compile
+    // entries: a windowed caller dies at return and would otherwise reject every
+    // link it just queued, leaving the warmed family's programs cold.
+    const compileActive = options && typeof options.compileActive === 'function'
+      ? options.compileActive : callerActive;
+    // mountToScene:false keeps the specimen group off the scene graph entirely —
+    // exact-picture windows compile it on the paced lane without the group's leaves
+    // swelling the delta census.
+    const mountToScene = !(options && options.mountToScene === false);
+    const stillLive = () => !!(this._meshes && this.scene === liveScene)
+      && !(callerActive && callerActive() === false);
     const compile = state && state.render && state.render.compileObjectPipelines;
     if (typeof compile !== 'function') return;
     // Per-admission twins (mountRigidOpaqueBatchSpecimenTwins) cover every ship family at
@@ -30981,19 +31580,22 @@ export const render = {
     for (const group of plan.groups) {
       // Shared with per-admission twins: a key warmed by either path needs no second mint.
       if (!group || isRigidOpaqueBatchProgramWarmed(group.key)) continue;
+      if (!stillLive()) return;
       const mesh = mintRigidOpaqueBatchSpecimen(group);
       if (mesh) {
         specimens.push(mesh);
         noteRigidOpaqueBatchProgramWarmed(group.key);
       }
     }
-    if (specimens.length === 0) return;
+    if (specimens.length === 0 || !stillLive()) return;
     const warmRoot = new THREE.Group();
     warmRoot.name = 'SF_RigidOpaqueBatchSpecimenWarm';
     warmRoot.visible = false;
     for (const mesh of specimens) warmRoot.add(mesh);
-    liveScene.add(warmRoot);
-    this._noteShadowMeshAdded?.(warmRoot);
+    if (mountToScene) {
+      liveScene.add(warmRoot);
+      this._noteShadowMeshAdded?.(warmRoot);
+    }
     try {
       try {
         await Promise.resolve(compile.call(state.render, warmRoot, {
@@ -31001,6 +31603,7 @@ export const render = {
           joinOutstanding: true,
           openingRequired: state.mode === 'loading',
           debugBy: 'rigid-opaque-batch-specimen',
+          isActive: compileActive || undefined,
         }));
       } catch (_) { /* batch specimen compile is best-effort */ }
       await yieldToBrowser();
@@ -31037,6 +31640,67 @@ export const render = {
           }
         }
       } catch (_) { /* best effort */ }
+    }
+  },
+
+  // Detached keyed-instancing specimen warm. The live keyed bucket binds a shared
+  // (geometry, material) pair onto an InstancedMesh; its USE_INSTANCING program key
+  // is a function of the pair, not the bucket — so a 1-instance twin off the scene
+  // graph links the exact program the first live registration would otherwise pay
+  // inside flight (the +28 s keyed-bucket link). The bucket's own mesh mint, matrix
+  // and buffer upload still happen at registration — none of those are program
+  // links — while never touching pool state or any census.
+  async _runKeyedAsteroidSpecimenWarm(resources, options = null) {
+    const state = this.state;
+    if (!this._meshes || !this.scene) return;
+    const callerActive = options && typeof options.isActive === 'function' ? options.isActive : null;
+    // Same split as the batch warm: isActive gates minting; compileActive is the
+    // longer settle-lifetime guard handed to the queued compile entries.
+    const compileActive = options && typeof options.compileActive === 'function'
+      ? options.compileActive : callerActive;
+    const stillLive = () => !!(this._meshes && this.scene)
+      && !(callerActive && callerActive() === false);
+    const compile = state && state.render && state.render.compileObjectPipelines;
+    if (typeof compile !== 'function') return;
+    const warmRoot = new THREE.Group();
+    warmRoot.name = 'SF_KeyedInstancingSpecimenWarm';
+    warmRoot.visible = false;
+    const specimens = [];
+    for (const res of Array.isArray(resources) ? resources : []) {
+      if (!stillLive()) break;
+      if (!res || !res.geometry || !res.material || Array.isArray(res.material)) continue;
+      // createKeyedBucket defaults undefined flags to true (castShadow !== false);
+      // a === true twin minted a cold false-flag variant the live bucket never uses.
+      const castShadow = res.castShadow !== false;
+      const receiveShadow = res.receiveShadow !== false;
+      const mesh = new THREE.InstancedMesh(res.geometry, res.material, 1);
+      mesh.count = 0;
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = receiveShadow;
+      warmRoot.add(mesh);
+      specimens.push(mesh);
+      // A bucket still behind the admission latch draws its leaves directly — the
+      // non-instanced twin covers the plain-mesh variant (the Asteroid_5 late link).
+      const direct = new THREE.Mesh(res.geometry, res.material);
+      direct.castShadow = castShadow;
+      direct.receiveShadow = receiveShadow;
+      warmRoot.add(direct);
+      specimens.push(direct);
+    }
+    if (specimens.length === 0 || !stillLive()) return;
+    try {
+      await Promise.resolve(compile.call(state.render, warmRoot, {
+        explicit: true,
+        joinOutstanding: true,
+        openingRequired: state.mode === 'loading',
+        debugBy: 'keyed-instancing-specimen',
+        isActive: compileActive || undefined,
+      }));
+    } catch (_) { /* keyed-instancing specimen compile is best-effort */ }
+    finally {
+      for (const mesh of specimens) {
+        try { warmRoot.remove(mesh); mesh.dispose?.(); } catch (_) { /* best effort */ }
+      }
     }
   },
 
