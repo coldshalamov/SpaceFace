@@ -89,38 +89,17 @@ export function powersFireOnPress(state) {
 
 // The held-key preview's read seam (row 493): which power the pilot is gripping right now, keyed
 // by the simulation state it belongs to. input.js writes it; the preview reads it. Presentation
-// and the Deep Cast depth read (below) — never on `state`, so it cannot enter a save, a replay or
-// a determinism hash: the grip is a pure function of the input event sequence.
+// only — never on `state`, so it cannot enter a save, a replay or a determinism hash. The Deep
+// Cast depth does NOT read this grip: the sim reads the hold measured in the recorded input
+// command (see pilotPowerDepthScale below), so the worker lane and replays agree with live play.
 const heldPowers = new WeakMap();
 export function setHeldPower(state, power) {
   if (!state || typeof state !== 'object') return;
-  const now = Number.isFinite(state.simTime) ? state.simTime
-    : (Number.isFinite(state.tick) ? state.tick / 60 : 0);
-  const tick = Number.isFinite(state.tick) ? Math.trunc(state.tick) : 0;
-  let grip = heldPowers.get(state);
-  if (!grip) grip = { power: null, since: 0, releases: null };
-  if (POWER_VERBS.includes(power)) {
-    if (grip.power !== power) {
-      if (grip.power != null) noteGripRelease(grip, grip.power, now, tick);
-      grip.power = power;
-      grip.since = now;
-    }
-  } else if (grip.power != null) {
-    // A release (or a newer grip displacing the tracked one) records how long the key was held,
-    // stamped with the tick so a deploy reads only its own power's release on its own fire tick.
-    noteGripRelease(grip, grip.power, now, tick);
-    grip.power = null;
-    grip.since = 0;
-  }
-  heldPowers.set(state, grip);
-}
-function noteGripRelease(grip, power, now, tick) {
-  const releases = grip.releases || (grip.releases = Object.create(null));
-  releases[power] = { tick, heldS: Math.max(0, now - grip.since) };
+  if (POWER_VERBS.includes(power)) heldPowers.set(state, power);
+  else heldPowers.delete(state);
 }
 export function heldPower(state) {
-  const grip = state && typeof state === 'object' ? heldPowers.get(state) : null;
-  return (grip && grip.power) || null;
+  return (state && typeof state === 'object' && heldPowers.get(state)) || null;
 }
 
 /** Impulse charges the player carries (cargo owns the count). */
@@ -199,17 +178,33 @@ export const PILOT_ECHO_STRENGTH = 0.5;
 
 // conjurer_deep_cast — hold a power key before release to deepen it: strength ×1 at 0.4 s of
 // hold rising to ×1.5 at 1.2 s. A tap (or a press-mode fire, which never opens a grip) is ×1.
-// Built on the held-key grip above: the release tick's record is the only input.
+// The hold is measured by the input layer and carried IN THE RECORDED COMMAND (integer sim
+// ticks beside the one-shot action it deepens), so the worker lane, replays and the live sim
+// all read the same depth. The fields exist on the deploy tick only; any other tick is ×1.
 export const POWER_DEPTH_HOLD_MIN_S = 0.4;
 export const POWER_DEPTH_HOLD_MAX_S = 1.2;
 export const POWER_DEPTH_MAX_MULT = 1.5;
+const SIM_TICKS_PER_S = 60;
+const POWER_DEPTH_HOLD_TICKS = Object.freeze({
+  pull: Object.freeze(['deployWellHoldTicks']),
+  shove: Object.freeze(['deployRepulsorHoldTicks']),
+  pin: Object.freeze(['deployMassSeedHoldTicks']),
+  bomb: Object.freeze(['chargeThrowHoldTicks', 'dropBombHoldTicks', 'swarmBombThrowHoldTicks']),
+});
 export function pilotPowerDepthScale(state, power) {
   if (!power || !pilotHas(state, 'conjurer_deep_cast')) return 1;
-  const grip = state && typeof state === 'object' ? heldPowers.get(state) : null;
-  const rec = grip && grip.releases ? grip.releases[powerVerbFor(power)] : null;
-  if (!rec || rec.tick !== Math.trunc(Number.isFinite(state.tick) ? state.tick : 0)) return 1;
-  if (!(rec.heldS > POWER_DEPTH_HOLD_MIN_S)) return 1;
-  const span = POWER_DEPTH_HOLD_MAX_S - POWER_DEPTH_HOLD_MIN_S;
-  const t = Math.min(1, (rec.heldS - POWER_DEPTH_HOLD_MIN_S) / span);
+  const fields = POWER_DEPTH_HOLD_TICKS[powerVerbFor(power)];
+  if (!fields) return 1;
+  const actions = state && state.input && state.input.actions;
+  if (!actions) return 1;
+  let holdTicks = 0;
+  for (let i = 0; i < fields.length; i++) {
+    const value = Number(actions[fields[i]]);
+    if (Number.isFinite(value) && value > holdTicks) holdTicks = value;
+  }
+  const minTicks = POWER_DEPTH_HOLD_MIN_S * SIM_TICKS_PER_S;
+  const spanTicks = (POWER_DEPTH_HOLD_MAX_S - POWER_DEPTH_HOLD_MIN_S) * SIM_TICKS_PER_S;
+  if (holdTicks <= minTicks) return 1;
+  const t = Math.min(1, (holdTicks - minTicks) / spanTicks);
   return 1 + (POWER_DEPTH_MAX_MULT - 1) * t;
 }

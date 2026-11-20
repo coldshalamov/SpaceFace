@@ -1637,11 +1637,16 @@ export const input = {
     const fire = this._powerFire || (this._powerFire = { pull: false, shove: false, pin: false, bomb: false, rig: false });
     const holds = this._powerHolds || (this._powerHolds = Object.create(null));
     const instant = powersFireOnPress(state);
+    // OVH-01c2 conjurer_deep_cast — the measured hold of the grip a release fires, in integer
+    // sim ticks. It rides the recorded command beside the action it deepens (see the act writes
+    // below), never a presentation seam, so replays and the worker lane read the same depth.
+    const holdTicks = this._powerHoldTicks || (this._powerHoldTicks = { pull: 0, shove: 0, pin: 0, bomb: 0, rig: 0 });
     const sector = state.world ? state.world.currentSectorId : null;
     let newest = null;
     let newestPower = null;
     for (const power of POWER_VERBS) {
       fire[power] = false;
+      holdTicks[power] = 0;
       const press = presses[power] === true;
       const keyHeld = this._held(state, power);
       const padHeld = this._padHeld(gp, power);
@@ -1683,13 +1688,19 @@ export const input = {
         this._powerGripSeq = (this._powerGripSeq || 0) + 1;
         hold = holds[power] = { since: state.simTime, sector, pad: padHeld && !keyHeld, order: this._powerGripSeq };
       }
-      if (hold && !held) { fire[power] = true; delete holds[power]; continue; } // let go: use it
+      if (hold && !held) { // let go: use it
+        fire[power] = true;
+        holdTicks[power] = Math.max(0, Math.round((state.simTime - hold.since) * 60));
+        delete holds[power];
+        continue;
+      }
       if (hold) {
         if (padHeld && !keyHeld) hold.pad = true;
         if (!newest || hold.order > newest.order) { newest = hold; newestPower = power; }
       }
     }
     setHeldPower(state, newestPower);
+    fire.holdTicks = holdTicks;
     return fire;
   },
 
@@ -1815,6 +1826,9 @@ export const input = {
       jettisonLotAll: false, gyreSnare: false, deployShieldPylon: false,
       // The five powers' read surface ({ held, pressed } once sampled; null = untouched).
       pull: null, shove: null, pin: null, bomb: null, rig: null,
+      // OVH-01c2 — the deep-cast hold measured at the release fire, in sim ticks (0 = tap).
+      deployWellHoldTicks: 0, deployRepulsorHoldTicks: 0, deployMassSeedHoldTicks: 0,
+      chargeThrowHoldTicks: 0, swarmBombThrowHoldTicks: 0, dropBombHoldTicks: 0,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     const touchThrow = this._touchThrow;
@@ -1845,6 +1859,8 @@ export const input = {
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
       acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.jettisonLotAll = false;
+      acts.deployWellHoldTicks = 0; acts.deployRepulsorHoldTicks = 0; acts.deployMassSeedHoldTicks = 0;
+      acts.chargeThrowHoldTicks = 0; acts.swarmBombThrowHoldTicks = 0; acts.dropBombHoldTicks = 0;
       // A screen, dock or death over a power grip cancels it: the key-up afterwards fires nothing.
       this._cancelPowerHolds(state);
       // The power read slots neutralize with the rest of the contract — a key still physically
@@ -2364,6 +2380,17 @@ export const input = {
     acts.deployMassSeed = fire.pin;
     acts.deployWell = fire.pull;
     acts.deployRepulsor = fire.shove;
+    // OVH-01c2 conjurer_deep_cast — the measured hold rides the one-shot command itself (integer
+    // sim ticks beside the action it deepens), so the recorded snapshot, the worker lane and
+    // replays all carry the depth the live sim reads. 0 on a press-mode fire, a whole tap between
+    // updates, or any tick the action is not raised: a tap stays ×1.
+    const holdTicks = fire.holdTicks;
+    acts.deployWellHoldTicks = fire.pull ? holdTicks.pull : 0;
+    acts.deployRepulsorHoldTicks = fire.shove ? holdTicks.shove : 0;
+    acts.deployMassSeedHoldTicks = fire.pin ? holdTicks.pin : 0;
+    acts.chargeThrowHoldTicks = bombThrowsCharge ? holdTicks.bomb : 0;
+    acts.swarmBombThrowHoldTicks = acts.swarmBombThrow ? holdTicks.bomb : 0;
+    acts.dropBombHoldTicks = acts.dropBomb ? holdTicks.bomb : 0;
     const rigTarget = fire.rig ? resolveRigTarget(state) : null;
     acts.toggleClearingCone = rigTarget === 'cone';
     acts.toggleSkimCollector = rigTarget === 'skim';

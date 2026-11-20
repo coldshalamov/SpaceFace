@@ -34,18 +34,19 @@ export const PILOT_LIVE_NODE_IDS = Object.freeze(new Set([
   'gunner_execution',
   'gunner_ricochet',
   // OVH-01c2 (director review 2026-11-19): the rope and the powers. Left out: rigger_free_hand (no
-  // latched aim penalty exists to remove) and conjurer_deep_cast (its hold is read from the
-  // presentation grip, not the recorded input — the fix carries the hold time in the input command).
+  // latched aim penalty exists to remove) and rigger_second_line (its twin bridle REPLACES the
+  // player's line instead of adding a second one — a trap card until a true second rope exists).
+  // conjurer_deep_cast is live: its hold now rides the recorded input command (OVH-01c2b).
   'rigger_long_reel',
   'rigger_quick_latch',
   'rigger_sweet_spot',
   'rigger_crane',
-  'rigger_second_line',
   'rigger_whip_snap',
   'conjurer_quick_cast',
   'conjurer_wide_bore',
   'conjurer_echo',
   'conjurer_combo',
+  'conjurer_deep_cast',
 ]));
 
 let liveOverride = null;

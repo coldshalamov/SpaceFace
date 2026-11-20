@@ -1021,7 +1021,9 @@ export const impulseCharges = {
       impulse: def.impulse * 0.6,
       damage: def.damage * 0.6,
       chargeId: null,
-      excludeId: null,
+      // PT-FIX-C item 3 — the player's own combination never blasts the player: Pull+Shove at
+      // close range used to self-launch and self-damage through the excludeId hole.
+      excludeId: playerId,
       sourceId: null,
       trigger: opts.trigger || 'pilot_combo',
       link: 1,
@@ -1261,7 +1263,9 @@ export const impulseCharges = {
       queue.splice(i, 1);
       if (!player || player.alive === false || (player.flags && player.flags.docked)) continue;
       if (state.ui && state.ui.screenStack && state.ui.screenStack.length > 0) continue;
-      if (removeCargo(state, CHARGE_COMMODITY, 1) <= 0) continue;
+      // PT-FIX-C item 5 — the echo is the power firing again, not the pilot paying again: no
+      // second cargo charge (a player holding ONE charge still gets their echo, matching the
+      // free Pull/Shove echoes). The live-charge capacity cap still bounds the field.
       const active = activeCharges(state, player.id);
       const capacity = resolveImpulseChargeCapacity(state);
       while (active.length >= capacity) {
@@ -1299,7 +1303,7 @@ export const impulseCharges = {
           pilotEcho: true,
         },
       });
-      if (!charge) { addCargo(state, CHARGE_COMMODITY, 1); continue; }
+      if (!charge) continue;
       this.bus.emit('charge:thrown', {
         chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z }, echo: true,
       });

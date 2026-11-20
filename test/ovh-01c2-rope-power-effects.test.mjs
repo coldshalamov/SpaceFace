@@ -23,6 +23,7 @@ import { MASS_SEED_DEF } from '../src/data/massSeed.js';
 import { BOMB_DEFS } from '../src/data/bombs.js';
 import { IMPULSE_CHARGES } from '../src/data/impulseCharges.js';
 import { fields } from '../src/systems/fields.js';
+import { PILOT_COMBO_MAX_BLASTS_PER_TICK } from '../src/systems/fields.js';
 import { massSeed, massSeedLaunchPlan } from '../src/systems/massSeed.js';
 import { bombs } from '../src/systems/bombs.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
@@ -34,8 +35,11 @@ import {
   pilotPowerCooldownScale,
   pilotPowerDepthScale,
   pilotPowerReachScale,
-  setHeldPower,
 } from '../src/systems/powerVerbs.js';
+import {
+  createInputCommandSnapshotQueue,
+  createInputCommandSnapshotRecord,
+} from '../src/core/inputCommandSnapshot.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 
 const DT = 1 / 60;
@@ -116,7 +120,7 @@ function ropeHarness({ pilotNodes = null, headFitted = false } = {}) {
   const system = Object.create(tetherGameplay);
   system.init({ state, bus, helpers: { combatPhysics: physics }, registry });
   return {
-    state, bus, events, attachments, system, registry, player,
+    state, bus, events, attachments, system, registry, player, physics,
     spawn(id, type, x, z, overrides = {}) {
       const e = {
         id, type, alive: true, collides: true, pos: { x, z }, vel: { x: 0, z: 0 }, rot: 0,
@@ -215,6 +219,119 @@ test('rigger_long_reel: a body at 1.3× the base reach latches with the node, no
   assert.ok(latched, 'with the node the same body is inside the line');
   assert.equal(latched.payload.targetId, farToo.id);
   assert.equal(pilotHas(withNode.state, 'rigger_long_reel'), true);
+});
+
+test('rigger_long_reel: the physics joint keeps the latch\'s length — one scaled number, no 390 clamp', () => {
+  // PT-FIX-C item 2 — through the REAL attachment service: the policy maxLength (and through it
+  // the Rapier joint's rest-length clamp) carries the pilot's reach, so a 500 WU latch is not
+  // yanked back to 390 on tick 0.
+  const node = ropeHarness({ pilotNodes: ['rigger_long_reel'] });
+  const nodeFar = node.spawn(2, 'asteroid', 500, 0);
+  node.step({ aim: nodeFar.pos, latch: true });
+  assert.ok(node.events.some((e) => e.type === 'tether:latched'), 'the 500 WU latch lands');
+  const nodeCreate = node.physics.creates[node.physics.creates.length - 1];
+  assert.ok(nodeCreate, 'the real service created a physics joint');
+  assert.ok(nodeCreate.restLength > 480 && nodeCreate.restLength <= 585,
+    `the joint keeps the latch's length (got ${nodeCreate.restLength}), not the 390 clamp`);
+  const nodeAtt = Object.values(node.state.combat.attachments.byId)
+    .find((entry) => entry.state === 'active');
+  assert.ok(Math.abs(nodeAtt.tetherPolicy.maxLength - 390 * 1.5) < 1e-6,
+    `policy maxLength is the one scaled number (585), got ${nodeAtt.tetherPolicy.maxLength}`);
+
+  // The direct create pins both ends of the contract exactly: worlds 500 apart.
+  const plain = ropeHarness({ pilotNodes: null });
+  const plainFar = plain.spawn(2, 'asteroid', 500, 0);
+  const forced = plain.attachments.create({
+    defId: 'tether_standard', ownerId: plain.player.id, targetId: plainFar.id,
+    sourceWorld: { x: 0, y: 0, z: 0 }, targetWorld: { x: 500, y: 0, z: 0 },
+  });
+  assert.ok(forced.ok, 'a direct create without the node still builds');
+  const clamped = plain.physics.creates[plain.physics.creates.length - 1];
+  assert.ok(Math.abs(clamped.restLength - 390) < 1e-6,
+    `without the node the joint clamps to the authored 390 (got ${clamped.restLength})`);
+
+  const forcedNode = node.attachments.create({
+    defId: 'tether_standard', ownerId: node.player.id, targetId: 3,
+    sourceWorld: { x: 0, y: 0, z: 0 }, targetWorld: { x: 500, y: 0, z: 0 },
+  });
+  if (forcedNode.ok) {
+    const kept = node.physics.creates[node.physics.creates.length - 1];
+    assert.ok(Math.abs(kept.restLength - 500) < 1e-6,
+      `with the node the same 500 WU request keeps its length (got ${kept.restLength})`);
+  }
+});
+
+test('conjurer_echo: a rack bomb echoes past the bay cooldown at half strength, once, quietly', () => {
+  const boot = (pilotNodes) => {
+    const state = createGameState(47);
+    state.mode = 'flight';
+    state.simTime = 1;
+    state.tick = 60;
+    state.playerId = 1;
+    const player = {
+      id: 1, type: 'ship', alive: true, team: 0, rot: 0, mass: 32, radius: 6,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    };
+    state.entities.set(1, player);
+    state.entityList = [player];
+    state.run = runWithPilot(pilotNodes);
+    const bus = createBus();
+    const toasts = [];
+    const denied = [];
+    bus.on('toast', (p) => toasts.push(p));
+    bus.on('bombs:denied', (p) => denied.push(p));
+    let nextId = 50;
+    const system = Object.create(bombs);
+    system.init({
+      state, bus,
+      helpers: {
+        spawnEntity(spec) {
+          const e = { id: nextId++, alive: true, ...spec };
+          state.entities.set(e.id, e);
+          state.entityList.push(e);
+          return e;
+        },
+        routeCombatDamage() { return { ok: true }; },
+        combatPhysics: { applyImpulse() { return true; } },
+      },
+    });
+    const rt = state.bombs;
+    rt.rack.cells[0] = { id: 'bomb_frag', count: BOMB_DEFS.bomb_frag.magazine };
+    rt.selectedId = 'bomb_frag';
+    const dropped = [];
+    bus.on('bombs:dropped', (p) => dropped.push(p));
+    return {
+      state, bus, rt, dropped, toasts, denied,
+      tick(n = 1) {
+        for (let i = 0; i < n; i++) {
+          state.simTime += DT;
+          state.tick += 1;
+          system.update(DT, state);
+        }
+      },
+    };
+  };
+
+  // PT-FIX-C item 1 — the review's failure: every bomb cooldown (≥ 1.2 s, ×0.75 quick cast ≥ 0.9 s)
+  // outlives the 0.5 s echo delay, so the echo used to die as a spurious "Bomb bay cycling".
+  const h = boot(['conjurer_echo']);
+  h.state.input.actions = { dropBomb: true };
+  h.tick(1);
+  assert.equal(h.dropped.length, 1, 'the key press drops the first bomb');
+  const cooldownAfterFirst = h.rt.cooldowns.bomb_frag;
+  assert.ok(cooldownAfterFirst > h.state.simTime + 0.4, 'the bay cooldown outlives the echo delay');
+
+  h.tick(31); // 0.5 s + one tick of sim time
+  assert.equal(h.dropped.length, 2, `the echo drops a second bomb (got ${h.dropped.length})`);
+  assert.ok(!h.toasts.some((t) => /cycling/i.test(String(t.text))),
+    'no spurious "Bomb bay cycling" toast');
+  assert.equal(h.denied.length, 0, 'no bombs:denied refusals');
+  const echoBomb = h.state.entities.get(h.dropped[1].bombId);
+  assert.ok(Math.abs(echoBomb.data.strengthScale - 0.5) < 1e-9, 'the echo spawns at half strength');
+  assert.equal(h.rt.cooldowns.bomb_frag, cooldownAfterFirst,
+    'the echo never overwrites or restarts the bay cooldown');
+  h.tick(31);
+  assert.equal(h.dropped.length, 2, 'exactly one echo per fire');
 });
 
 test('rigger_quick_latch: a challenger inside 120 WU takes the selection the tick it appears', () => {
@@ -476,42 +593,88 @@ test('conjurer_wide_bore: every power\'s radius or reach is ×1.4', () => {
 });
 
 test('conjurer_deep_cast: hold deepens the release from ×1 at 0.4 s to ×1.5 at 1.2 s; a tap is unchanged', () => {
-  const gripState = (pilotNodes, holdS) => {
-    const state = { tick: 10, simTime: 1, playerId: 1, run: runWithPilot(pilotNodes) };
-    setHeldPower(state, 'pull');
-    state.simTime += holdS;
-    state.tick += Math.round(holdS / DT);
-    setHeldPower(state, null); // the release tick
-    return state;
-  };
+  // The hold rides the recorded input command itself (input.js measures the grip at the release
+  // fire and writes integer sim ticks beside the action); the sim reads only that field.
+  const depthState = (pilotNodes, holdTicks, field = 'deployWellHoldTicks') => ({
+    tick: 10,
+    playerId: 1,
+    run: runWithPilot(pilotNodes),
+    input: { actions: { [field]: holdTicks } },
+  });
   const NODE = ['conjurer_deep_cast'];
-  assert.equal(pilotPowerDepthScale(gripState(NODE, 0.1), 'pull'), 1, 'a tap is unchanged');
-  assert.equal(pilotPowerDepthScale(gripState(NODE, 0.4), 'pull'), 1, '0.4 s of hold is still ×1');
-  assert.ok(Math.abs(pilotPowerDepthScale(gripState(NODE, 0.8), 'pull') - 1.25) < 1e-9,
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 0), 'pull'), 1, 'no measured hold is a tap');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 6), 'pull'), 1, 'a tap is unchanged');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 24), 'pull'), 1, '0.4 s of hold is still ×1');
+  assert.ok(Math.abs(pilotPowerDepthScale(depthState(NODE, 48), 'pull') - 1.25) < 1e-9,
     'halfway through the ramp');
-  assert.equal(pilotPowerDepthScale(gripState(NODE, 1.2), 'pull'), 1.5, '×1.5 at 1.2 s');
-  assert.equal(pilotPowerDepthScale(gripState(NODE, 3), 'pull'), 1.5, 'and never deeper');
-  assert.equal(pilotPowerDepthScale(gripState(null, 1.2), 'pull'), 1, 'no node, no depth');
-  const stale = gripState(NODE, 1.2);
-  stale.tick += 1;
-  assert.equal(pilotPowerDepthScale(stale, 'pull'), 1, 'a later tick does not read a stale grip');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 72), 'pull'), 1.5, '×1.5 at 1.2 s');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 400), 'pull'), 1.5, 'and never deeper');
+  assert.equal(pilotPowerDepthScale(depthState(null, 72), 'pull'), 1, 'no node, no depth');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 0), 'shove'), 1,
+    'a press-fired verb carries no hold');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 72, 'dropBombHoldTicks'), 'bomb'), 1.5,
+    'the Bomb verb reads the action it fired');
+  assert.equal(pilotPowerDepthScale(depthState(NODE, 72, 'deployMassSeedHoldTicks'), 'pin'), 1.5,
+    'so does Pin');
 
-  // The deploy the grip deepens: the real well deploy carries the strength.
-  const deploy = (pilotNodes, holdS) => {
+  // The deploy the hold deepens: the real well deploy carries the strength.
+  const deploy = (pilotNodes, holdTicks) => {
     const h = fieldsHarness({ pilotNodes });
-    setHeldPower(h.state, 'pull');
-    h.state.simTime += holdS;
-    h.state.tick += Math.round(holdS / DT);
-    setHeldPower(h.state, null);
+    h.state.input.actions.deployWell = true;
+    h.state.input.actions.deployWellHoldTicks = holdTicks;
     h.system._deployRadial(h.state, fieldsRuntimeOf(h), 'well');
     const fieldId = Object.keys(fieldsRuntimeOf(h).deployed)[0];
     return h.system._kernel.get(fieldId);
   };
-  assert.equal(deploy(null, 1.2).strength, FIELD_DEFS.well.strength, 'authored strength without the node');
-  assert.ok(Math.abs(deploy(['conjurer_deep_cast'], 1.2).strength - FIELD_DEFS.well.strength * 1.5) < 1e-9,
+  assert.equal(deploy(null, 72).strength, FIELD_DEFS.well.strength, 'authored strength without the node');
+  assert.ok(Math.abs(deploy(['conjurer_deep_cast'], 72).strength - FIELD_DEFS.well.strength * 1.5) < 1e-9,
     'a 1.2 s hold deepens the well to ×1.5');
-  assert.equal(deploy(['conjurer_deep_cast'], 0.1).strength, FIELD_DEFS.well.strength,
+  assert.equal(deploy(['conjurer_deep_cast'], 6).strength, FIELD_DEFS.well.strength,
     'a tapped deploy is unchanged');
+  // The command is one tick deep: the next tick's neutral command reads ×1 again.
+  const h = fieldsHarness({ pilotNodes: NODE });
+  h.state.input.actions.deployWell = true;
+  h.state.input.actions.deployWellHoldTicks = 72;
+  h.system._deployRadial(h.state, fieldsRuntimeOf(h), 'well');
+  h.state.input.actions.deployWell = false;
+  h.state.input.actions.deployWellHoldTicks = 0;
+  assert.equal(pilotPowerDepthScale(h.state, 'pull'), 1, 'a later tick does not read a stale hold');
+});
+
+test('conjurer_deep_cast: the measured hold survives the input command snapshot round trip', () => {
+  const queue = createInputCommandSnapshotQueue(2);
+  const record = createInputCommandSnapshotRecord();
+  const input = {
+    moveX: 0, moveZ: 0, turnIntent: 0,
+    aimWorld: { x: 300, z: 0 }, aimAngle: 0,
+    mouseNdc: { x: 0, y: 0 }, pointerScreen: { x: 0, y: 0, active: false },
+    actions: {
+      deployWell: true,
+      deployWellHoldTicks: 72,
+      dropBomb: true,
+      dropBombHoldTicks: 48,
+      deployMassSeedHoldTicks: 0,
+      chargeThrow: false,
+    },
+    massline: null,
+    travelDrive: null,
+    autoTargetVector: null,
+    autoTargetPath: null,
+  };
+  queue.reserve(1, 42, 3);
+  queue.capture(1, input, 42);
+  input.actions.deployWellHoldTicks = -999; // the snapshot is detached, not a live view
+  queue.consume(1, (reader, token) => reader.copyTo(token, record));
+  assert.equal(record.actions.deployWell, true, 'the one-shot action survived');
+  assert.equal(record.actions.deployWellHoldTicks, 72, 'the measured hold survived');
+  assert.equal(record.actions.dropBombHoldTicks, 48, 'the Bomb hold survived');
+  assert.equal(record.actions.deployMassSeedHoldTicks, 0, 'an unset hold is 0, not undefined');
+
+  // The depth the sim reads from the consumed record is the depth the pilot earned.
+  const state = { tick: 42, playerId: 1, run: runWithPilot(['conjurer_deep_cast']), input: { actions: record.actions } };
+  assert.equal(pilotPowerDepthScale(state, 'pull'), 1.5, 'a 72-tick Pull hold reads ×1.5 off the record');
+  assert.equal(pilotPowerDepthScale(state, 'bomb'), 1.25, 'a 48-tick Bomb hold reads ×1.25 off the record');
+  assert.equal(pilotPowerDepthScale(state, 'pin'), 1, 'Pin fired as a tap on the same record');
 });
 
 test('conjurer_echo: the power fires twice — the second at half strength, 0.5 s later, same aim', () => {
@@ -553,9 +716,11 @@ test('conjurer_echo: the power fires twice — the second at half strength, 0.5 
 test('conjurer_combo: two different powers on one body within 2 s detonate the Bomb at 60%, once per body', () => {
   const CHARGE = IMPULSE_CHARGES.charge_standard;
   const run = (pilotNodes) => {
-    const h = fieldsHarness({ pilotNodes, aim: { x: 300, z: 0 } });
-    const enemy = h.spawn(2, 'ship', 300, 0, {
-      hull: 150, hullMax: 150, shield: 0, shieldMax: 0, prevPos: { x: 300, z: 0 }, angVel: 0,
+    // Close range on purpose: the enemy sits 40 WU off the player's bow, inside the blast's
+    // 84 WU radius — so a combo that failed to exclude the player would show here immediately.
+    const h = fieldsHarness({ pilotNodes, aim: { x: 40, z: 0 } });
+    const enemy = h.spawn(2, 'ship', 40, 0, {
+      hull: 150, hullMax: 150, shield: 0, shieldMax: 0, prevPos: { x: 40, z: 0 }, angVel: 0,
       // The full body spec the physics authority resolves (the chain tests' ship fixture shape).
       physicsBody: {
         schemaVersion: 1, radius: 8, mass: 16, inertiaY: 40, dynamic: true, ccd: false,
@@ -582,8 +747,10 @@ test('conjurer_combo: two different powers on one body within 2 s detonate the B
     h.system._deployRadial(h.state, fieldsRuntimeOf(h), 'well');
     const fieldId = Object.keys(fieldsRuntimeOf(h).deployed)[0];
     h.system._noteFieldComboTouches(h.state, fieldsRuntimeOf(h), enemy, [h.system._kernel.get(fieldId)]);
-    // A Bomb touch: the real detonation receipt the ledger subscribes to.
-    h.bus.emit('charge:detonated', { ownerId: h.player.id, hits: [enemy.id], pos: { x: 300, z: 0 }, trigger: 'manual' });
+    // A Bomb touch: the real detonation receipt the ledger subscribes to. PT-FIX-C: the touch
+    // only queues — the blast fires from the drain the force pass calls.
+    h.bus.emit('charge:detonated', { ownerId: h.player.id, hits: [enemy.id], pos: { x: 40, z: 0 }, trigger: 'manual' });
+    h.system._drainComboQueue(h.state);
     const firstHits = damage.filter((req) => req.targetId === enemy.id).length;
     const combo = h.events.find((e) => e.type === 'pilot:comboDetonated') || null;
 
@@ -591,7 +758,8 @@ test('conjurer_combo: two different powers on one body within 2 s detonate the B
     h.state.simTime += 0.5;
     h.state.tick += 30;
     h.system._notePowerComboTouch(h.state, enemy, 'pull');
-    h.bus.emit('charge:detonated', { ownerId: h.player.id, hits: [enemy.id], pos: { x: 300, z: 0 }, trigger: 'manual' });
+    h.bus.emit('charge:detonated', { ownerId: h.player.id, hits: [enemy.id], pos: { x: 40, z: 0 }, trigger: 'manual' });
+    h.system._drainComboQueue(h.state);
     const secondHits = damage.filter((req) => req.targetId === enemy.id).length;
     return { damage, impulses, firstHits, secondHits, combo };
   };
@@ -606,11 +774,140 @@ test('conjurer_combo: two different powers on one body within 2 s detonate the B
   assert.ok(Math.abs(routed - CHARGE.damage * 0.6) < 1e-9,
     `60% of the plate's damage (${CHARGE.damage}) at the body, got ${routed}`);
   assert.equal(combo.damage[0].attackerId, 1, 'credited to the player');
+  assert.equal(combo.damage[0].targetId, 2, 'at that body');
+  assert.ok(!combo.damage.some((req) => req.targetId === 1),
+    'PT-FIX-C: the combination never blasts the player');
   assert.ok(combo.impulses.some((req) => Math.hypot(req.impulse?.x ?? req.x ?? 0, req.impulse?.z ?? req.z ?? 0) > 0),
     'the blast shoves');
   assert.ok(combo.combo, 'the detonation publishes its receipt');
   assert.deepEqual([...combo.combo.payload.powers].sort(), ['bomb', 'pull']);
   assert.equal(combo.secondHits, 1, 'once per body per 2 s');
+});
+
+test('conjurer_combo: a 40-body pack detonates at most the per-tick cap, without recursion', () => {
+  const run = (pilotNodes) => {
+    const h = fieldsHarness({ pilotNodes, aim: { x: 300, z: 0 } });
+    const bodies = [];
+    for (let i = 0; i < 40; i++) {
+      const angle = (i / 40) * Math.PI * 2;
+      const x = 300 + Math.cos(angle) * 24;
+      const z = Math.sin(angle) * 24;
+      bodies.push(h.spawn(100 + i, 'ship', x, z, {
+        hull: 150, hullMax: 150, shield: 0, shieldMax: 0, prevPos: { x, z }, angVel: 0,
+        physicsBody: {
+          schemaVersion: 1, radius: 8, mass: 16, inertiaY: 40, dynamic: true, ccd: false,
+          material: 'ship', revision: 0,
+        },
+        data: { derived: { propulsion: { combatSpeed: 105 } } },
+      }));
+    }
+    const damage = [];
+    const blast = Object.create(impulseCharges);
+    blast.init({
+      state: h.state, bus: h.bus,
+      helpers: {
+        combatPhysics: { applyImpulse() { return true; } },
+        queryRadius: null,
+        routeCombatDamage(req) { damage.push(req); return { ok: true }; },
+      },
+      registry: { get() { return null; } },
+    });
+    h.system.registry = { get(id) { return id === 'impulseCharges' ? blast : null; } };
+
+    // The whole pack sits in the deployed Pull well this force pass, then Shove's detonation
+    // receipt touches every one of them.
+    h.system._deployRadial(h.state, fieldsRuntimeOf(h), 'well');
+    const fieldId = Object.keys(fieldsRuntimeOf(h).deployed)[0];
+    const field = h.system._kernel.get(fieldId);
+    for (const body of bodies) h.system._noteFieldComboTouches(h.state, fieldsRuntimeOf(h), body, [field]);
+    h.bus.emit('charge:detonated', {
+      ownerId: h.player.id, hits: bodies.map((b) => b.id), pos: { x: 300, z: 0 }, trigger: 'manual',
+    });
+    // The force pass ends: the drain fires iteratively.
+    h.system._drainComboQueue(h.state);
+    const detonations = h.events.filter((e) => e.type === 'pilot:comboDetonated').length;
+    const queueAfterDrain = h.system._comboQueue.length;
+
+    // A second identical wave inside the 2 s window: every row is closed — nothing refires.
+    h.state.simTime += 0.5;
+    h.state.tick += 30;
+    for (const body of bodies) h.system._noteFieldComboTouches(h.state, fieldsRuntimeOf(h), body, [field]);
+    h.bus.emit('charge:detonated', {
+      ownerId: h.player.id, hits: bodies.map((b) => b.id), pos: { x: 300, z: 0 }, trigger: 'manual',
+    });
+    h.system._drainComboQueue(h.state);
+    return { detonations, queueAfterDrain, second: h.events.filter((e) => e.type === 'pilot:comboDetonated').length - detonations };
+  };
+
+  const plain = run(null);
+  assert.equal(plain.detonations, 0, 'no node, no combos');
+
+  const combo = run(['conjurer_combo']);
+  assert.equal(combo.detonations, PILOT_COMBO_MAX_BLASTS_PER_TICK,
+    `at most ${PILOT_COMBO_MAX_BLASTS_PER_TICK} blasts that tick (no 40-deep recursive cascade)`);
+  assert.equal(combo.queueAfterDrain, 0, 'the drain leaves nothing queued — nothing re-entered');
+  assert.equal(combo.second, 0, 'once per body per window: the second wave refires nothing');
+});
+
+test('conjurer_echo: the Bomb charge echo is free — one charge aboard still echoes', () => {
+  // PT-FIX-C item 5 — the echo is the power firing again, not the pilot paying again. The real
+  // throw path spends the ONE charge the pilot holds; half a second later the echo spawns at
+  // half strength from an empty hold, like Pull/Shove.
+  const events = [];
+  const listeners = new Map();
+  const bus = {
+    emit(name, payload) { events.push({ name, payload }); for (const fn of listeners.get(name) || []) fn(payload); },
+    on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); return () => {}; },
+  };
+  const player = {
+    id: 1, type: 'ship', alive: true, team: 0, rot: 0, radius: 6, mass: 32,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, flags: {},
+    data: { impulseCharges: { throwCdT: 0 } },
+  };
+  const state = {
+    mode: 'flight', tick: 10, simTime: 0.2, playerId: 1,
+    input: { actions: { chargeThrow: true }, aimWorld: { x: 100, z: 0 }, aimAngle: 0 },
+    ui: { screenStack: [] },
+    runtime: { features: PRODUCTION_FEATURES },
+    world: { currentSectorId: 'sector_test' },
+    player: { cargo: { items: { cmdty_impulse_charge: 1 }, capVolume: 100, usedVolume: 0, usedMass: 0 } },
+    entities: new Map([[1, player]]),
+    entityList: [player],
+    run: runWithPilot(['conjurer_echo']),
+  };
+  let nextId = 60;
+  const system = Object.create(impulseCharges);
+  system.init({
+    state, bus,
+    helpers: {
+      spawnEntity(spec) {
+        const e = { id: nextId++, alive: true, ...spec, pos: { ...spec.pos }, vel: { ...spec.vel } };
+        state.entities.set(e.id, e);
+        state.entityList.push(e);
+        return e;
+      },
+      combatPhysics: { applyImpulse() { return true; } },
+      queryRadius: null,
+      routeCombatDamage() { return { ok: true }; },
+    },
+    registry: { get() { return null; } },
+  });
+
+  system.update(DT, state); // the key press throws the pilot's only charge
+  const thrown = events.filter((e) => e.name === 'charge:thrown');
+  assert.equal(thrown.length, 1, 'the one charge aboard is thrown');
+  assert.ok(!(state.player.cargo.items.cmdty_impulse_charge > 0), 'the hold is empty');
+
+  state.simTime += 0.5 + 1e-6;
+  state.tick += 31;
+  system.update(DT, state); // the echo drains
+  const echoes = events.filter((e) => e.name === 'charge:thrown' && e.payload.echo === true);
+  assert.equal(echoes.length, 1, 'the echo fires from the empty hold — free, like Pull/Shove');
+  const echoCharge = state.entities.get(echoes[0].payload.chargeId);
+  assert.ok(echoCharge, 'the echoed charge is a real entity');
+  assert.ok(Math.abs(echoCharge.data.strengthScale - 0.5) < 1e-9, 'at half strength');
+  assert.equal(echoCharge.data.pilotEcho, true, 'and marked as the echo');
+  assert.ok(!(state.player.cargo.items.cmdty_impulse_charge > 0), 'no second charge was ever spent');
 });
 
 // ── the contract ─────────────────────────────────────────────────────────────────────────────

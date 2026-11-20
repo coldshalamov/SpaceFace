@@ -50,7 +50,7 @@ import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
-import { Masks } from '../core/entity.js';
+import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
@@ -87,8 +87,10 @@ const FIELD_NPC_MAX_ACTIVE = 4;
 const NPC_CONE_HOLD_TICKS = 180;
 // OVH-01c2 — Conjurer tuning (Echo's delay/strength live in powerVerbs' shared seam). Combo
 // needs two different powers on one body within this window, and pays out at most once per body
-// per window.
+// per window. PT-FIX-C item 4: at most this many bodies detonate per tick (queued during the
+// force pass, fired from the drain after it — never synchronously, never recursively).
 export const PILOT_COMBO_WINDOW_S = 2;
+export const PILOT_COMBO_MAX_BLASTS_PER_TICK = 8;
 const PILOT_COMBO_LEDGER_CAP = 64;
 // Discover new NPC field deploys on this cadence; live cone geometry stays every tick.
 const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
@@ -475,10 +477,12 @@ export const fields = {
     // seam and Gyre's thrown-aggregate lifecycle. Runtime only, never serialized.
     this._knots = createCollectorKnots(this);
     // OVH-01c2 — Conjurer runtime-only state: the pending Echo queue (second fires at half
-    // strength 0.5 s later) and the Combo touch ledger (two different powers on one body within
-    // 2 s detonate). Cleared with every other fields boundary in _clearAll.
+    // strength 0.5 s later) and the Combo touch ledger + queue (two different powers on one body
+    // within 2 s detonate — queued during the force pass, fired after it). Cleared with every
+    // other fields boundary in _clearAll.
     this._pilotEcho = [];
     this._comboTouches = new Map();
+    this._comboQueue = [];
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
@@ -1025,6 +1029,9 @@ export const fields = {
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
     // be published. Order: geometry settled → forces → publish.
     const applied = this._applyForces(dt, state, rt);
+    // PT-FIX-C item 4 — queued combos fire HERE, after the force pass: iterative, capped, and
+    // never inside the membership loop that queued them.
+    this._drainComboQueue(state);
     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
     state.fieldsRuntime = state.fieldsRuntime || {};
     state.fieldsRuntime.quietLatched = false;
@@ -1260,10 +1267,13 @@ export const fields = {
     }
   },
 
-  /** The Bomb's blast touches every body it reaches (bombs.js and impulseCharges receipts). */
+  /** The Bomb's blast touches every body it reaches (bombs.js and impulseCharges receipts).
+   * PT-FIX-C item 4 — a combo's OWN detonation receipt (trigger 'pilot_combo') never touches:
+   * combos must not breed combos, whatever else the blast sets off. */
   _noteBombComboTouch(payload) {
     const state = this.state;
     if (!state || payload.ownerId == null || String(payload.ownerId) !== String(state.playerId)) return;
+    if (payload.trigger === 'pilot_combo') return;
     if (!Array.isArray(payload.hits)) return;
     for (const id of payload.hits) {
       const body = state.entities && state.entities.get ? state.entities.get(id) : null;
@@ -1293,20 +1303,24 @@ export const fields = {
   /**
    * conjurer_combo — a body touched by two different powers inside PILOT_COMBO_WINDOW_S detonates:
    * the Bomb's blast at 60 % strength at that body (impulseCharges owns the blast; the detonation
-   * is credited to the player), at most once per body per window. Sim time only; the ledger is
-   * bounded and cleared with the fields runtime.
+   * is credited to the player), at most once per body per window. PT-FIX-C item 4: the touch only
+   * QUEUES — the blast fires from _drainComboQueue after the force pass, at most
+   * PILOT_COMBO_MAX_BLASTS_PER_TICK per tick, so a pack of bodies can never recurse or spike a
+   * single tick. The ledger row carries the body's occupant generation, so a recycled id
+   * inherits nothing. Sim time only; cleared with the fields runtime.
    */
   _notePowerComboTouch(state, body, power) {
     if (!pilotHas(state, 'conjurer_combo')) return;
     if (!body || body.alive === false || body.id === state.playerId || !body.pos) return;
     const now = nowOf(state);
+    const generation = occupantGenerationOf(body);
     let rec = this._comboTouches.get(body.id);
-    if (!rec || now - rec.lastAt > PILOT_COMBO_WINDOW_S) {
+    if (!rec || rec.generation !== generation || now - rec.lastAt > PILOT_COMBO_WINDOW_S) {
       if (this._comboTouches.size >= PILOT_COMBO_LEDGER_CAP) {
         // Insertion-order FIFO: the oldest row dies, never the just-touched body.
         this._comboTouches.delete(this._comboTouches.keys().next().value);
       }
-      rec = { touches: new Map(), lastAt: now, detonatedAt: -Infinity };
+      rec = { generation, touches: new Map(), lastAt: now, detonatedAt: -Infinity };
       this._comboTouches.set(body.id, rec);
     }
     let partner = null;
@@ -1316,26 +1330,52 @@ export const fields = {
     rec.touches.set(power, now);
     rec.lastAt = now;
     if (partner == null || now - rec.detonatedAt < PILOT_COMBO_WINDOW_S) return;
-    const charges = this.registry && typeof this.registry.get === 'function'
-      ? this.registry.get('impulseCharges') : null;
-    if (!charges || typeof charges.comboBlast !== 'function') return;
-    // Close the row BEFORE the blast: the detonation's own charge:detonated receipt re-enters
-    // this listener synchronously, and that touch must read "already paid this window", not
-    // find the same partner pair still armed and recurse into a second blast.
+    // Close the row and queue: "once per body per window" is paid HERE, whether or not this
+    // tick's blast cap has room left for it. The blast itself never runs inside the force pass
+    // or inside a detonation receipt.
     rec.touches.clear();
     rec.detonatedAt = now;
-    const fired = charges.comboBlast(state, { x: body.pos.x, z: body.pos.z }, state.playerId, {
-      trigger: 'pilot_combo',
-    });
-    if (fired) {
+    const queue = this._comboQueue || (this._comboQueue = []);
+    if (queue.length >= PILOT_COMBO_MAX_BLASTS_PER_TICK) return;
+    queue.push({ body, partner, power, at: now });
+  },
+
+  /**
+   * Fire the queued combos — iteratively, after the force pass, at most
+   * PILOT_COMBO_MAX_BLASTS_PER_TICK per tick. Entries the cap cannot serve this tick are spent
+   * (their rows already closed); a blast's own receipt is ignored by _noteBombComboTouch, so
+   * nothing here can re-enter the queue synchronously.
+   */
+  _drainComboQueue(state) {
+    const queue = this._comboQueue;
+    if (!queue || queue.length === 0) return;
+    const charges = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('impulseCharges') : null;
+    if (!charges || typeof charges.comboBlast !== 'function') {
+      queue.length = 0;
+      return;
+    }
+    const now = nowOf(state);
+    let fired = 0;
+    while (queue.length > 0 && fired < PILOT_COMBO_MAX_BLASTS_PER_TICK) {
+      const entry = queue.shift();
+      const body = entry.body;
+      if (!body || body.alive === false || !body.pos) continue;
+      if (now - entry.at > PILOT_COMBO_WINDOW_S) continue; // the window closed while queued
+      const result = charges.comboBlast(state, { x: body.pos.x, z: body.pos.z }, state.playerId, {
+        trigger: 'pilot_combo',
+      });
+      if (!result) continue;
+      fired += 1;
       this.bus.emit('pilot:comboDetonated', {
         sourceId: state.playerId,
         targetId: body.id,
-        powers: [partner, power],
+        powers: [entry.partner, entry.power],
         pos: { x: body.pos.x, z: body.pos.z },
         tick: state.tick,
       });
     }
+    queue.length = 0;
   },
 
   _player(state) {
@@ -1885,10 +1925,11 @@ export const fields = {
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     this._orbitScanned = false;
     if (this._kernel) this._kernel.clear();
-    // OVH-01c2 — a pending Echo never crosses a boundary, and a stale Combo ledger must not
-    // carry touches into a fresh sector or run.
+    // OVH-01c2 — a pending Echo never crosses a boundary, and a stale Combo ledger or queue must
+    // not carry touches into a fresh sector or run.
     if (this._pilotEcho) this._pilotEcho.length = 0;
     if (this._comboTouches) this._comboTouches.clear();
+    if (this._comboQueue) this._comboQueue.length = 0;
     this._acceptedFieldAccel = new WeakMap();
     this._fieldForcePass++;
     this._seedLockFieldId = null;

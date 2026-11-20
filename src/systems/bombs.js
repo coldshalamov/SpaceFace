@@ -833,8 +833,10 @@ export const bombs = {
       const rt = ensureRuntime(state);
       const cell = rt.rack.cells.find((c) => c && c.id === rec.payloadId && c.count > 0) || null;
       if (!cell) continue;
-      const bomb = this.drop(player, rec.payloadId, state);
-      if (bomb && bomb.data) bomb.data.strengthScale = PILOT_ECHO_STRENGTH;
+      // PT-FIX-C item 1 — the echo option carries the half-strength stamp past the bay
+      // cooldown the first drop just started; without it every rack echo died as a
+      // spurious "Bomb bay cycling" refusal.
+      this.drop(player, rec.payloadId, state, { echo: true });
       this._bombsQuiet = null;
     }
   },
@@ -1133,10 +1135,15 @@ export const bombs = {
   // Rack law (PQ-205.03): the PLAYER may only drop a payload sitting loaded in a rack socket,
   // and each drop consumes one unit of it. Non-player owners bypass the rack entirely — NPC
   // drops (action_drop_bomb, combatDefs) have no hangar and never will.
-  drop(owner, payloadId, state = this.state) {
+  drop(owner, payloadId, state = this.state, opts = null) {
     if (!state || blocked(state, owner) || state.entities.get(owner.id) !== owner || !BOMB_DEFS[payloadId]) return null;
     const now = simNow(state), rt = ensureRuntime(state);
     const isPlayer = owner.id === state.playerId;
+    // PT-FIX-C item 1 — conjurer_echo's second fire is the SAME drop path with an internal
+    // option: it bypasses the bay-cooldown gate (the first drop just started one), never
+    // overwrites the bay's cooldowns, and spawns at half strength. Rack ammo is still spent —
+    // the rack is the power's own resource, exactly like the first drop.
+    const echo = !!(opts && opts.echo);
     let cell = null;
     if (isPlayer) {
       cell = rt.rack.cells.find((c) => c && c.id === payloadId && c.count > 0) || null;
@@ -1148,7 +1155,7 @@ export const bombs = {
     }
     let bay = isPlayer ? rt : this._ownerCooldowns.get(owner.id);
     if (!bay) this._ownerCooldowns.set(owner.id, bay = { cooldownUntil: 0, cooldowns: {} });
-    if (now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) {
+    if (!echo && now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) {
       this._notePlayerBombRefusal(owner, state, 'Bomb bay cycling');
       return null;
     }
@@ -1182,7 +1189,8 @@ export const bombs = {
       collisionMask: Masks.PROJECTILE, team: owner.team, ownerId: owner.id,
       data: {
         kind: 'bomb', bombId: def.id, ownerId: owner.id, phase: 'drift', armed: false, radiusScale,
-        strengthScale: isPlayer ? pilotPowerDepthScale(state, 'bomb') : 1,
+        strengthScale: echo ? PILOT_ECHO_STRENGTH
+          : (isPlayer ? pilotPowerDepthScale(state, 'bomb') : 1),
         armedAt: now + BOMB_DRIFT.armS, detonateAt: now + def.fuzeS,
         spawnedAt: now, fieldStartedAt: 0, fieldEndsAt: 0, nextFieldTick: 0,
         triggered: false, spinRadS: 0, sectorId: state.world?.currentSectorId || null,
@@ -1192,8 +1200,12 @@ export const bombs = {
     if (!bomb) return null;
     adaptBombProjectileProxy(bomb);
     bomb.data.spinRadS = (Math.abs(Math.trunc(bomb.id)) % 2 ? 1 : -1) * BOMB_DRIFT.maxSpinRadS;
-    bay.cooldownUntil = now + BOMB_DRIFT.releaseIntervalS;
-    bay.cooldowns[payloadId] = now + def.cooldownS * cooldownScale;
+    // PT-FIX-C item 1 — the echo never restarts or extends the bay's clocks; the first drop's
+    // cooldown stands exactly as the key pressed it.
+    if (!echo) {
+      bay.cooldownUntil = now + BOMB_DRIFT.releaseIntervalS;
+      bay.cooldowns[payloadId] = now + def.cooldownS * cooldownScale;
+    }
     if (cell) {
       // A dropped unit leaves the magazine. The cell keeps its payload id at 0 — the socket
       // stays fitted, dock-side restock refills it. If the selection just ran dry the bay
