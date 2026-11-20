@@ -254,21 +254,21 @@ export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeL
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
-  yawLeft: 'Steer left (Classic scheme)',
-  yawRight: 'Steer right (Classic scheme)',
+  yawLeft: 'Steer left (turn)',
+  yawRight: 'Steer right (turn)',
   strafeLeft: 'Lateral thrust left',
   strafeRight: 'Lateral thrust right',
   boost: 'Boost / dash',
   autoFire: 'Toggle auto-target / draw-to-fly',
   brake: 'Brake / full stop (wheel latch by default)',
   siteBeam: 'World Site beam (selected target)',
-  tether: 'Tether (Massline) · tap to latch or cut, hold for line controls',
+  tether: 'Line · tap to latch or cut, hold for line controls',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   pull: 'Pull: gravity well at your aim',
   shove: 'Shove: tap for outward blast + detonate armed explosives',
-  pin: 'Pin: anchor seed for the Line',
+  pin: 'Pin: drops an anchor for the Line',
   bomb: 'Bomb: sticky charge, or the chosen drift bomb',
-  rig: 'Rig: tap to turn clearing cone / ore scoop on or off',
+  rig: 'Plow: tap to turn clearing wedge / ore scoop on or off',
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   reelIn: 'Tether winch in',
@@ -277,8 +277,8 @@ export const REBIND_LABELS = {
   cloak: 'Cloak toggle',
   // W1-5. A latch that is rebindable in data but has no row here is not rebindable to a player.
   travelBurn: 'Travel drive (burn latch)',
-  // The Gyre Snare is a held verb: grip to beam/hold, release to bowl the clump.
-  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  // The Gather is a held verb: grip to beam/hold, release to throw the clump.
+  gyreSnare: 'Gather: hold to gather, release to throw',
   deployShieldPylon: 'Shield pylons: place, link, or recall (needs a Pylon Projector)',
   cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
   // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
@@ -303,7 +303,7 @@ export const GAMEPAD_REBIND_LABELS = {
   dock: 'Dock (when prompted)',
   shove: 'Shove: tap for outward blast + detonate armed explosives',
   cancel: 'Back / cancel',
-  massline: 'Massline / the Line: tap latch/cut; hold line control',
+  massline: 'Line: tap latch/cut; hold line control',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   fire: 'Fire',
   mine: 'Mine beam (wheel latch by default)',
@@ -327,12 +327,12 @@ export const GAMEPAD_REBIND_LABELS = {
   bulletTime: 'Bullet time (hold)',
   cloak: 'Cloak toggle',
   siteBeam: 'World Site beam (selected target)',
-  pin: 'Pin: anchor seed for the Line',
+  pin: 'Pin: drops an anchor for the Line',
   pull: 'Pull: gravity well at your aim',
-  rig: 'Rig: tap to turn clearing cone / ore scoop on or off',
+  rig: 'Plow: tap to turn clearing wedge / ore scoop on or off',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
-  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  gyreSnare: 'Gather: hold to gather, release to throw',
   deployShieldPylon: 'Shield pylons: place, link, or recall',
 };
 
@@ -1099,7 +1099,7 @@ export const settingsScreen = {
         ['drift', 'Drift · slides farther'],
         ['newtonian', 'Newtonian · keeps turning after release'],
       ], (v) => this._set(ctx, 'controls', 'flightMode', v));
-      rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
+      rowSelect('Line orbit assist', () => g.orbitAssistStrength || 'standard', [
         ['full', 'Full'],
         ['standard', 'Standard'],
         ['light', 'Light'],
@@ -1133,7 +1133,7 @@ export const settingsScreen = {
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       const masslineFamilyOn = massline2Flag('enabled');
-      const releaseRow = rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
+      const releaseRow = rowSelect('Line release assist', () => g.masslineReleaseAssist || 'arm', [
         ['arm', 'Auto-release on solution (default)'],
         ['snap', 'Snap window on manual release'],
         ['off', 'Off — raw physics'],
@@ -1144,7 +1144,7 @@ export const settingsScreen = {
           releaseSelect.disabled = true;
           releaseSelect.setAttribute('aria-disabled', 'true');
         }
-        build.note('Massline release assist is unavailable because the Massline family is off.');
+        build.note('Line release assist is unavailable because the Line family is off.');
       } else {
         build.note('The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.');
       }
@@ -1273,8 +1273,8 @@ export const settingsScreen = {
         ['boost', 'Boost / dash'],
         ['brake', 'Brake / reverse'],
         ['bulletTime', 'Bullet time'],
-        ['gyreSnare', 'Gyre Snare lash'],
-        ['massline', 'Massline hold'],
+        ['gyreSnare', 'Gather (hold to gather)'],
+        ['massline', 'Line hold'],
         ['reelIn', 'Tether reel in'],
         ['reelOut', 'Tether reel out'],
       ];
@@ -1384,7 +1384,7 @@ export const settingsScreen = {
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
     // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
     // the live seat, including 'LB + D-Pad Up' style chords.
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target, D-pad right bomb, D-pad left cycle bombs, View star map, Start → Pause → Mission Log. Hold LB or RB and tap a second button for scanner, fields, cloak and cruise.');
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, A/Cross Line, B dock when prompted, X/Square target, D-pad up auto-target, D-pad right bomb, D-pad left cycle bombs, View star map, Start → Pause → Mission Log. Hold LB or RB and tap a second button for scanner, fields, cloak and cruise.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
