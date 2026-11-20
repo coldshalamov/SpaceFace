@@ -173,6 +173,17 @@ ${CHART}[data-layout="wide"] .gm-rail-sum:focus-visible { outline:2px solid var(
 ${CHART}[data-layout="wide"] .gm-rail-body { padding-left:4px !important; }
 ${CHART}[data-layout="wide"] .gm-rail-sec + .gm-rail-sec { border-top:1px solid var(--dp-rule) !important; }
 ${CHART}:not([data-layout="wide"]) .gm-quick-key { display:none; }
+/* MAPS-2: the rail never runs under the zoom keys: it stops above them and scrolls its own list. */
+${CHART} .gm-left-rail { max-height:calc(100vh - 300px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+/* MAPS-2: the four lens chips sit in the rail under the objective, one column of icon + word. */
+${CHART} .gm-lens-chips { display:grid; grid-template-columns:1fr; gap:3px; margin:6px 0 8px; }
+${CHART} .gm-lens-chip { display:flex; align-items:center; gap:6px; min-height:28px; padding:3px 8px; width:100%; box-sizing:border-box; justify-content:flex-start; border:1px solid rgb(232 226 212 / .22); border-radius:3px; background:rgb(10 14 18 / .72); color:rgb(232 226 212 / .78); font:600 12px/1.1 var(--dp-face-read, sans-serif); cursor:pointer; text-transform:none; letter-spacing:.02em; }
+${CHART} .gm-lens-chip:hover { color:#f4efe2; border-color:rgb(232 226 212 / .45); }
+${CHART} .gm-lens-chip[aria-pressed="true"] { color:#ffe2a6; border-color:rgb(242 185 80 / .7); background:rgb(42 30 12 / .78); }
+${CHART} .gm-lens-chip:focus-visible { outline:2px solid var(--dp-hand, #f2b950); outline-offset:2px; }
+/* MAPS-2: four tabs and a Log link. The link sits at the row's end, quieter than a tab. */
+${CHART} #gm-tabs .gm-tab.gm-tab--log { margin-left:auto; text-decoration:underline; text-underline-offset:3px; opacity:.82; }
+${CHART} #gm-tabs .gm-tab.gm-tab--log[aria-selected="true"] { opacity:1; }
 @media (forced-colors: active) {
   ${CHART} .gm-right-inspector, ${CHART} .gm-left-rail { background:Canvas !important; border-color:CanvasText !important; }
 }

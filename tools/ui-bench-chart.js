@@ -80,7 +80,28 @@ export function seedChartShot(state, shot) {
     route: state.nav.route,
     discovery: state.world.discovery,
     frontierRumors: state.world.frontierRumors,
+    marketMemory: state.player && state.player.marketMemory,
+    boards: state.missions && state.missions.boards,
   };
+  // MAPS-2 lenses: what a pilot some hours in remembers — iron prices at four markets (two with a
+  // previous price, so a trend shows) and the jobs posted where they docked.
+  const seenAt = Math.max(0, (Number(state.simTime) || 0) - 420);
+  if (state.player) {
+    state.player.marketMemory = {
+      station_ceres: { cmdty_ore_iron: { buy: 22, sell: 18, seenAt } },
+      station_helios: { cmdty_ore_iron: { buy: 40, sell: 36, prevSell: 31, seenAt } },
+      station_tethys: { cmdty_ore_iron: { buy: 35, sell: 44, prevSell: 48, seenAt } },
+      station_forge: { cmdty_ore_iron: { buy: 30, sell: 52, prevSell: 51, seenAt } },
+    };
+  }
+  if (state.missions) {
+    const offer = (id, cr) => ({ id: `bench-job-${id}`, reward_cr: cr, status: 'offered' });
+    state.missions.boards = {
+      station_helios: { offers: [offer(1, 900), offer(2, 1400), offer(3, 650)] },
+      station_ceres: { offers: [offer(4, 2200), offer(5, 800)] },
+      station_forge: { offers: [offer(6, 3100)] },
+    };
+  }
   state.world.currentSectorId = SECTOR;
   if (state.nav.waypoint) state.nav.waypoint.sectorId = SECTOR;
   // A pilot some hours in has surveyed the charted core; the frontier stays unknown.
@@ -157,6 +178,8 @@ export function unseedChartShot(state) {
     state.nav.route = saved.route;
     state.world.discovery = saved.discovery;
     state.world.frontierRumors = saved.frontierRumors;
+    if (state.player) state.player.marketMemory = saved.marketMemory;
+    if (state.missions) state.missions.boards = saved.boards;
     saved = null;
   }
 }

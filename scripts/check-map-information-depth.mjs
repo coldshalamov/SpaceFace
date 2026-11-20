@@ -414,7 +414,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   };
   galaxyMapScreen._camera = null;
   galaxyMapScreen._selectedTarget = null;
-  galaxyMapScreen._activeTab = 'overview';
+  galaxyMapScreen._activeTab = 'place';
   galaxyMapScreen._tabButtons = [];
   galaxyMapScreen._bookmarks = [];
   galaxyMapScreen._localIntel = null;
@@ -653,7 +653,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   assert.equal(tabs.length, MAP_INSPECTOR_TAB_IDS.length, 'every declared tab must be rendered');
   const selected = tabs.filter((t) => t.getAttribute('aria-selected') === 'true');
   assert.equal(selected.length, 1, 'exactly one tab may be selected');
-  assert.equal(selected[0].getAttribute('data-tab'), 'overview', 'Overview is the default');
+  assert.equal(selected[0].getAttribute('data-tab'), 'place', 'Place is the default (MAPS-2: four tabs and a Log link)');
 
   // 6d. The measurable claim: the no-selection panel is SHORTER than the old always-on dump.
   // The old body rendered Command Status + trade lanes + best-known quotes + a note unconditionally

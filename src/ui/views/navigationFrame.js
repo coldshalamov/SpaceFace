@@ -1,6 +1,6 @@
 // Native chart chrome. All controls, IDs, hidden states, and route/engage boundaries are retained.
 // HTML parameters are trusted, already-escaped fragments constructed by galaxyMap's own models.
-export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', legendHtml = '', markLegendHtml = '', quickKeyHtml = '' } = {}) {
+export function navigationFrameHtml({ lensChipsHtml = '', hintRowsHtml = '', layerButtonsHtml = '', legendHtml = '', markLegendHtml = '', quickKeyHtml = '' } = {}) {
   return `
       <div class="gm-head k-title">
         <div class="gm-title-lockup">
@@ -54,6 +54,7 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
             <span class="gm-locate-sector"></span>
             <span class="gm-locate-action">Find on chart</span>
           </button>
+          <div class="gm-lens-chips" role="group" aria-label="Chart layers">${lensChipsHtml}</div>
           <details class="gm-rail-sec" data-rail-sec="lenses">
             <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Map layers</span></summary>
             <div class="gm-rail-body">

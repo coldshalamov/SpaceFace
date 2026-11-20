@@ -12,6 +12,7 @@ import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
 import { chartContactRead } from './map/contactVisibility.js';
 import { createAtlasRelief } from './map/atlasRelief.js';
 import { createRockFieldPainter } from './map/rockFieldRegion.js';
+import { sectorTradeRead } from './map/chartTradeRead.js';
 import { CONTACT_JOB_PALETTE, TACTICAL_MAP_PALETTE, classifyContactRole, drawRoleGlyph, isBossContact } from './map/tacticalMapGrammar.js';
 import { injectChartLayouts } from './orrery/chartLayouts.js';
 import {
@@ -3396,6 +3397,19 @@ const LAYER_DEFS = Object.freeze([
   { id: 'traffic', name: 'Passing traffic', icon: '<path d="M4 8h13l3 4v5H4Z M9 8v9m5-9v9"/>' },
 ]);
 
+// MAPS-2: four decision lenses on chips (the full layer list stays one click deeper). Each chip
+// drives the layers that answer one question: where is it dangerous, where is the work, where does
+// a price pay, what is mine.
+export const MAP_LENSES = Object.freeze([
+  { id: 'danger', label: 'Danger', layers: Object.freeze(['security', 'hazard', 'events']),
+    icon: '<path d="M12 3 L21 19 H3 Z"/><path d="M12 9.5v4.5M12 16.6v.4"/>' },
+  { id: 'jobs', label: 'Jobs', layers: Object.freeze(['mission']),
+    icon: '<rect x="4" y="7" width="16" height="12" rx="1.5"/><path d="M9 7V5h6v2M4 12h16"/>' },
+  { id: 'trade', label: 'Trade', layers: Object.freeze(['market']),
+    icon: '<path d="M4 16 L10 10 L14 13 L20 6"/><path d="M15 6h5v5"/>' },
+  { id: 'yours', label: 'Yours', layers: Object.freeze(['holdings']),
+    icon: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="M9 12l2 2 4-4"/>' },
+]);
 const LAYER_BANKS = Object.freeze([
   { id: 'place', label: 'Places', layers: Object.freeze(['services', 'holdings', 'discovery']) },
   { id: 'flow', label: 'Navigation', layers: Object.freeze(['route', 'mission', 'market', 'traffic']) },
@@ -3498,19 +3512,30 @@ const HINT_ROWS = Object.freeze([
 // state that says so. It does not get filled with invented content, and it does not get a new
 // data system built behind it — D2/D9 reject growing a registry to feed a panel.
 
+// MAPS-2: four tabs, not nine. Place answers "what is here" (who owns it, its services, its danger:
+// the old Overview, Services and Threat); Route is the plotted course; Jobs is work (Missions and
+// Careers); Trade is prices. Discovery and History sit behind one Log link. Nothing is lost.
 export const MAP_INSPECTOR_TABS = Object.freeze([
-  { id: 'overview', label: 'Overview' },
+  { id: 'place', label: 'Place' },
   { id: 'travel', label: 'Route' },
-  { id: 'missions', label: 'Missions' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'threat', label: 'Threat' },
-  { id: 'careers', label: 'Careers' },
-  { id: 'services', label: 'Services' },
-  { id: 'discovery', label: 'Discovery' },
-  { id: 'history', label: 'History' },
+  { id: 'jobs', label: 'Jobs' },
+  { id: 'trade', label: 'Trade' },
 ]);
+/** The Log (survey Discovery + site History): a link under the tabs, one click away. */
+export const MAP_INSPECTOR_LOG_TAB = Object.freeze({ id: 'log', label: 'Log' });
+/** Where each retired tab id now lives (saved screen state, other screens' open intents, tests). */
+export const MAP_INSPECTOR_TAB_ALIASES = Object.freeze({
+  overview: 'place', threat: 'place', services: 'place',
+  missions: 'jobs', careers: 'jobs',
+  economy: 'trade',
+  discovery: 'log', history: 'log',
+});
+export function normalizeInspectorTab(id) {
+  if (id === 'log' || MAP_INSPECTOR_TABS.some((t) => t.id === id)) return id;
+  return MAP_INSPECTOR_TAB_ALIASES[id] || null;
+}
 
-export const MAP_INSPECTOR_TAB_IDS = Object.freeze(MAP_INSPECTOR_TABS.map((t) => t.id));
+export const MAP_INSPECTOR_TAB_IDS = Object.freeze([...MAP_INSPECTOR_TABS.map((t) => t.id), MAP_INSPECTOR_LOG_TAB.id]);
 
 /**
  * Which tabs carry something for the current selection/state.
@@ -3555,6 +3580,13 @@ export function resolveInspectorTabAvailability(state, target) {
   set('history', hasWorldSiteHistory, hasWorldSiteHistory
     ? 'Authoritative World Site activity'
     : 'Select a World Site with an activity ledger');
+  // The four tabs (and the Log) compose the sections above.
+  set('place', true, 'What is here: who holds it, its services and its danger');
+  set('jobs', out.missions.available || out.careers.available,
+    out.missions.available || out.careers.available ? 'Your active jobs and the work this place offers'
+      : 'No active jobs, and no work posted here. Dock at a station to take a contract.');
+  set('trade', true, 'Prices from your market memory and the best known places to buy and sell');
+  set('log', true, 'What you have charted here, and the history of a selected site');
   return Object.freeze(out);
 }
 
@@ -4444,7 +4476,7 @@ export const galaxyMapScreen = {
 
   // --- SLICE C: information in depth --------------------------------------------------------
   // Which inspector tab is showing. Exactly one at a time — that is the disclosure mechanism.
-  _activeTab: 'overview',
+  _activeTab: 'place',
   _tabButtons: [],
   _tabPanel: null,
   _lastTabHtml: null,
@@ -4849,7 +4881,13 @@ export const galaxyMapScreen = {
           <div class="gm-hint-row k-row k-row--static"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
     const quickKeyHtml = MAP_QUICK_KEY.map(({ tone, name, svg }) =>
       `<span data-map-symbol="${tone}">${svg}${name}</span>`).join('');
-    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml, quickKeyHtml }));
+    const lensChipsHtml = MAP_LENSES.map((lens) => {
+      const on = lens.layers.every((id) => this._layers[id]);
+      return `<button ${mapControlAttrs('lens')} class="gm-lens-chip k-word fh-key" type="button" data-lens="${lens.id}" aria-pressed="${on}" title="${lens.label} layer">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${lens.icon}</svg>
+        <span>${lens.label}</span></button>`;
+    }).join('');
+    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ lensChipsHtml, hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml, quickKeyHtml }));
 
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
@@ -5195,6 +5233,30 @@ export const galaxyMapScreen = {
       }
     }
 
+    // Lens chips: one press turns a lens's layers on or off together; the layer list follows.
+    const syncLensChips = () => {
+      for (const chip of Array.from(rootEl.querySelectorAll('.gm-lens-chip'))) {
+        const lens = MAP_LENSES.find((l) => l.id === chip.getAttribute('data-lens'));
+        if (lens) chip.setAttribute('aria-pressed', String(lens.layers.every((id) => this._layers[id])));
+      }
+      for (const btn of Array.from(rootEl.querySelectorAll('.gm-layer-btn'))) {
+        const on = !!this._layers[btn.getAttribute('data-layer')];
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    };
+    this._syncLensChips = syncLensChips;
+    for (const chip of Array.from(rootEl.querySelectorAll('.gm-lens-chip'))) {
+      chip.addEventListener('click', () => {
+        const lens = MAP_LENSES.find((l) => l.id === chip.getAttribute('data-lens'));
+        if (!lens) return;
+        const next = !lens.layers.every((id) => this._layers[id]);
+        for (const id of lens.layers) this._layers[id] = next;
+        syncLensChips();
+        this.refresh();
+      });
+    }
+
     // Toggle layer click listeners
     const layerBtns = rootEl.querySelectorAll('.gm-layer-btn');
     layerBtns.forEach(btn => {
@@ -5204,6 +5266,7 @@ export const galaxyMapScreen = {
         if (this._layers[layer]) btn.classList.add('active');
         else btn.classList.remove('active');
         btn.setAttribute('aria-pressed', this._layers[layer] ? 'true' : 'false');
+        if (this._syncLensChips) this._syncLensChips();
 
         // Trigger scan ring center
         const w = this._canvas.width / this._dpr;
@@ -5582,7 +5645,7 @@ export const galaxyMapScreen = {
     for (const k of Object.keys(def.layers)) this._layers[k] = def.layers[k];
 
     const bag = mem.get('galaxyMap');
-    if (bag.activeTab && MAP_INSPECTOR_TAB_IDS.includes(bag.activeTab)) this._activeTab = bag.activeTab;
+    if (bag.activeTab && normalizeInspectorTab(bag.activeTab)) this._activeTab = normalizeInspectorTab(bag.activeTab);
     // A remembered commodity that no longer exists in the catalogue must not become a lens on
     // nothing; onShow re-validates through selectedMarketCommodityOnOpen either way.
     if (bag.selectedCommodity && COMMODITIES.some((c) => c.id === bag.selectedCommodity)) {
@@ -6174,6 +6237,8 @@ _stepAnimation(now) {
 
   _updateInspector() {
     if (!HAS_DOC || !this._root) return;
+    // A retired tab id (saved state, another screen's intent, a fixture) lands on its new home.
+    this._activeTab = normalizeInspectorTab(this._activeTab) || 'place';
     const state = this._ctx && this._ctx.state;
     // The title block follows the selection (name + one sentence) — same beat as the inspector.
     this._syncPublicIdentity(state);
@@ -6221,7 +6286,7 @@ _stepAnimation(now) {
     // Only Overview consumes the per-kind model below. Building its route, market and mission
     // markup on every animation frame while another tab is visible discards all of that work.
     // Selection and navigation controls still project fresh state on every inspector update.
-    if (this._activeTab && this._activeTab !== 'overview') {
+    if (this._activeTab && this._activeTab !== 'place') {
       const primary = resolveGalaxyMapPrimaryAction(state, t);
       let label = 'Track Target';
       if (t.kind === 'sector') label = primary?.label || 'Plot Course';
@@ -6648,16 +6713,30 @@ _stepAnimation(now) {
 
   _tabHtml(state, selectionHtml) {
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
+    this._activeTab = normalizeInspectorTab(this._activeTab) || 'place';
     const info = avail[this._activeTab];
     if (info && !info.available) {
       // A tab with nothing behind it says so in words. This is the same contract as a disabled
       // action carrying its reason: an empty panel that explains itself teaches, a blank one does
       // not, and a fabricated one lies.
       return `<div class="gm-ins-section"><div class="gm-ins-title">${escapeMapHtml(
-        (MAP_INSPECTOR_TABS.find((t) => t.id === this._activeTab) || {}).label || '')}</div>
+        ([...MAP_INSPECTOR_TABS, MAP_INSPECTOR_LOG_TAB].find((t) => t.id === this._activeTab) || {}).label || '')}</div>
         <div class="gm-ins-note">${escapeMapHtml(info.reason)}</div></div>`;
     }
+    const avail2 = avail;
+    const join = (...parts) => parts.filter(Boolean).join('');
     switch (this._activeTab) {
+      case 'place': return join(
+        this._overviewTabHtml(state, selectionHtml),
+        avail2.services.available ? this._servicesTabHtml(state) : '',
+        avail2.threat.available ? this._threatTabHtml(state) : '');
+      case 'jobs': return join(
+        avail2.missions.available ? this._missionsTabHtml(state) : '',
+        avail2.careers.available ? this._careersTabHtml(state) : '');
+      case 'trade': return this._economyTabHtml(state);
+      case 'log': return join(
+        this._discoveryTabHtml(state),
+        avail2.history.available ? this._historyTabHtml() : '');
       case 'travel': return this._travelTabHtml(state);
       case 'missions': return this._missionsTabHtml(state);
       case 'economy': return this._economyTabHtml(state);
@@ -7571,8 +7650,8 @@ _stepAnimation(now) {
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
 
     if (!this._tabButtons.length) {
-      host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
-        <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+      host.innerHTML = [...MAP_INSPECTOR_TABS, MAP_INSPECTOR_LOG_TAB].map((tab) => `
+        <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend${tab.id === 'log' ? ' gm-tab--log' : ''}" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
       for (const btn of this._tabButtons) {
@@ -7631,7 +7710,8 @@ _stepAnimation(now) {
   },
 
   _setTab(id, { focus = false, defer = false } = {}) {
-    if (!id || MAP_INSPECTOR_TAB_IDS.indexOf(id) < 0) return false;
+    id = normalizeInspectorTab(id);
+    if (!id) return false;
     const state = this._ctx && this._ctx.state;
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
     // An unavailable tab still SELECTS — it renders its reason. Refusing the selection outright
@@ -10047,6 +10127,63 @@ _draw() {
       }
     }
 
+    // MAPS-2 lenses: read once per frame. Trade reads prices only through chartTradeRead (the price
+    // model is being rebuilt; that file is the seam). Jobs count the posted offers the player has seen.
+    const galaxyTrade = this._layers.market ? sectorTradeRead(state, this._selectedCommodity, SECTORS) : null;
+    let galaxyJobs = null;
+    let galaxyTrackedSector = null;
+    if (this._layers.mission) {
+      galaxyJobs = new Map();
+      const stationSector = new Map();
+      for (const sec of SECTORS) for (const st of sec.stations || []) if (st && st.id) stationSector.set(String(st.id), sec.id);
+      const boards = (state.missions && state.missions.boards) || {};
+      for (const stationId of Object.keys(boards)) {
+        const sid = stationSector.get(String(stationId));
+        const offers = boards[stationId] && Array.isArray(boards[stationId].offers) ? boards[stationId].offers : [];
+        if (!sid || !offers.length) continue;
+        const row = galaxyJobs.get(sid) || { count: 0, best: 0 };
+        for (const o of offers) { row.count += 1; row.best = Math.max(row.best, Math.round(Number(o && o.reward_cr) || 0)); }
+        galaxyJobs.set(sid, row);
+      }
+      const tracked = trackedMissionOf(state);
+      galaxyTrackedSector = tracked ? (tracked.destSectorId || (tracked.params && tracked.params.sectorId) || null) : null;
+    }
+    let tradeMarginLabel = null;
+    // The trade arrow: from the best known place to buy the selected good to the best place to sell
+    // it, labelled with the margin per unit.
+    if (galaxyTrade && galaxyTrade.arrow) {
+      const a = screenOf.get(galaxyTrade.arrow.from);
+      const b = screenOf.get(galaxyTrade.arrow.to);
+      if (a && b) {
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        if (len > tokenR * 2.5) {
+          const ux = (b.x - a.x) / len;
+          const uy = (b.y - a.y) / len;
+          const sx0 = a.x + ux * (tokenR + 6);
+          const sy0 = a.y + uy * (tokenR + 6);
+          const ex = b.x - ux * (tokenR + 10);
+          const ey = b.y - uy * (tokenR + 10);
+          g.save();
+          g.strokeStyle = 'rgba(127, 220, 138, 0.85)';
+          g.fillStyle = 'rgba(127, 220, 138, 0.95)';
+          g.lineWidth = 2;
+          g.setLineDash([8, 6]);
+          g.beginPath(); g.moveTo(sx0, sy0); g.lineTo(ex, ey); g.stroke();
+          g.setLineDash([]);
+          g.beginPath();
+          g.moveTo(ex + ux * 8, ey + uy * 8);
+          g.lineTo(ex - uy * 6, ey + ux * 6);
+          g.lineTo(ex + uy * 6, ey - ux * 6);
+          g.closePath(); g.fill();
+          g.restore();
+          tradeMarginLabel = {
+            text: `${commodityMapLabel(this._selectedCommodity)} +${galaxyTrade.arrow.margin.toLocaleString('en-US')} cr each`,
+            x: (sx0 + ex) / 2 + uy * 22, y: (sy0 + ey) / 2 - ux * 22,
+          };
+        }
+      }
+    }
+
     // THE HAND: the plotted route as the amber beam, drawn in when it changes, a packet running it.
     const route = state.nav && state.nav.route;
     const routeDest = route && route.legs && route.legs.length ? route.legs[route.legs.length - 1].to : null;
@@ -10140,6 +10277,23 @@ _draw() {
 
       // The token: the sector's produced art (or its bone fallback), lifted under the pointer.
       const lift = (n.id === hoverId || n.id === snapId) ? this._liftAmount(now) : 0;
+      // MAPS-2 Danger lens: pirate and war heat as a soft red glow under the token.
+      if (this._layers.security) {
+        const rec = sectorRecordById(state, n.id);
+        const sec = Number.isFinite(n.security) ? n.security : Number(rec && rec.security);
+        const heat = Math.max(0, Math.min(1, (Number.isFinite(sec) ? (1 - sec) * 0.7 : 0)
+          + (Number(rec && rec.enemyDensity) || 0) * 0.35
+          + (eventSignal ? eventSignal.wars * 0.3 + eventSignal.tense * 0.12 : 0) - 0.25));
+        if (heat > 0.05 && typeof g.createRadialGradient === 'function') {
+          const gr = g.createRadialGradient(x, y, r * 0.6, x, y, r * 2.6);
+          gr.addColorStop(0, `rgba(255, 70, 52, ${(0.42 * heat).toFixed(3)})`);
+          gr.addColorStop(1, 'rgba(255, 70, 52, 0)');
+          g.save();
+          g.fillStyle = gr;
+          g.beginPath(); g.arc(x, y, r * 2.6, 0, Math.PI * 2); g.fill();
+          g.restore();
+        }
+      }
       if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: n.current ? 0.55 : 0.28 });
       const drawnR = drawSectorToken(g, n.id, x, y, tokenSize, {
         dpr, lift, stale, berths: sectorBerthCount(state, n.id), onReady: this._tokenReadyHandler(),
@@ -10272,10 +10426,55 @@ _draw() {
           g.textAlign = 'left'; g.textBaseline = 'middle';
           g.lineJoin = 'round';
           g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-          const text = `BEST ${marketData.sell}`;
-          g.strokeText(text, x + drawnR + 6, y);
+          // MAPS-2: the price reads under the token (below a jobs badge), never where the name sits.
+          const text = `Sells ${marketData.sell} cr`;
+          const hasJobs = !!(this._layers.mission && galaxyJobs && galaxyJobs.get(n.id) && galaxyJobs.get(n.id).count > 0)
+            || galaxyTrackedSector === n.id;
+          const py = y + drawnR + (hasJobs ? 46 : 26);
+          g.textAlign = 'center';
+          g.strokeText(text, x, py);
           g.fillStyle = tint.key === 'fresh' ? CHART_INK.phos(1) : CHART_INK.bone(0.72);
-          g.fillText(text, x + drawnR + 6, y);
+          g.fillText(text, x, py);
+          g.restore();
+        }
+      }
+
+      // MAPS-2 Trade lens: which way this sector's best price is moving (only when known).
+      if (this._layers.market && galaxyTrade) {
+        const tr = galaxyTrade.bySector.get(n.id);
+        if (tr && tr.trend) {
+          const tx = x - drawnR - 10;
+          const ty = y;
+          g.save();
+          g.fillStyle = tr.trend === 'rising' ? '#7fdc8a' : tr.trend === 'falling' ? '#ff7a62' : CHART_INK.bone(0.7);
+          g.beginPath();
+          if (tr.trend === 'rising') { g.moveTo(tx, ty - 6); g.lineTo(tx + 5, ty + 3); g.lineTo(tx - 5, ty + 3); }
+          else if (tr.trend === 'falling') { g.moveTo(tx, ty + 6); g.lineTo(tx + 5, ty - 3); g.lineTo(tx - 5, ty - 3); }
+          else { g.rect(tx - 5, ty - 1.5, 10, 3); }
+          g.fill();
+          g.restore();
+        }
+      }
+
+      // MAPS-2 Jobs lens: how much work is posted here and the best pay, the tracked job lit.
+      if (this._layers.mission && galaxyJobs) {
+        const jobs = galaxyJobs.get(n.id);
+        const tracked = galaxyTrackedSector === n.id;
+        if ((jobs && jobs.count > 0) || tracked) {
+          const text = jobs && jobs.count > 0 ? `${jobs.count} job${jobs.count === 1 ? '' : 's'} · ${jobs.best.toLocaleString('en-US')} cr` : 'Tracked job';
+          g.save();
+          g.font = chartFont(650, 12, { stretch: 'normal' });
+          g.textAlign = 'center'; g.textBaseline = 'top';
+          const tw = g.measureText(text).width;
+          const bx = x - tw / 2 - 6;
+          const by = y + drawnR + 20;
+          g.fillStyle = tracked ? 'rgba(52, 36, 10, 0.92)' : 'rgba(8, 12, 16, 0.86)';
+          g.fillRect(bx, by, tw + 12, 18);
+          g.strokeStyle = tracked ? '#f2b950' : CHART_INK.bone(0.35);
+          g.lineWidth = 1;
+          g.strokeRect(bx + 0.5, by + 0.5, tw + 11, 17);
+          g.fillStyle = tracked ? '#ffd890' : CHART_INK.bone(0.9);
+          g.fillText(text, x, by + 3);
           g.restore();
         }
       }
@@ -10412,6 +10611,20 @@ _draw() {
     }
     if (goalNode) wellDiscs.push({ x: sx(goalNode.x), y: sy(goalNode.y), r: goalRingR + 4 });
     this._edgeScalePxPerWU = graphScale / SECTOR_ORIGIN_LATTICE_WU;
+    // MAPS-2 Trade lens: the buy→sell margin, drawn over the tokens so nothing hides it.
+    if (tradeMarginLabel) {
+      g.save();
+      g.font = chartFont(700, 12, { stretch: 'normal' });
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const tw = g.measureText(tradeMarginLabel.text).width;
+      g.fillStyle = 'rgba(6, 14, 10, 0.92)';
+      g.fillRect(tradeMarginLabel.x - tw / 2 - 7, tradeMarginLabel.y - 11, tw + 14, 22);
+      g.strokeStyle = 'rgba(127, 220, 138, 0.7)';
+      g.strokeRect(tradeMarginLabel.x - tw / 2 - 6.5, tradeMarginLabel.y - 10.5, tw + 13, 21);
+      g.fillStyle = '#9ff0a8';
+      g.fillText(tradeMarginLabel.text, tradeMarginLabel.x, tradeMarginLabel.y);
+      g.restore();
+    }
     const galaxyLabelLayout = this._placeLabels(labelCandidates, w, h, {
       reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
     });

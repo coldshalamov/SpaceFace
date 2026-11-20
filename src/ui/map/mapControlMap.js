@@ -14,6 +14,7 @@ export const MAP_CONTROLS = Object.freeze({
   'locate-goal': { label: 'Locate goal' },
   'sort-deck': { label: 'Sort' },
   layer: { label: 'Layer' },
+  lens: { label: 'Layer lens' },
   lane: { label: 'Lane' },
   'world-site': { label: 'Site' },
   'frontier-rumor': { label: 'Rumor' },
@@ -80,6 +81,7 @@ function inferMapControlId(attrs) {
   if (has(/id="gm-frame-both-btn"/)) return 'frame-both';
   if (has(/id="gm-deck-sort"/)) return 'sort-deck';
   if (has(/data-layer="/)) return 'layer';
+  if (has(/data-lens="/)) return 'lens';
   if (has(/data-ribbon-action="engage"/)) return 'engage';
   if (has(/data-ribbon-action="resume"/)) return 'resume';
   if (has(/data-ribbon-action="disengage"/)) return 'disengage';

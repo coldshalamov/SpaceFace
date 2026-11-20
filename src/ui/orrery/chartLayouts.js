@@ -399,7 +399,9 @@ ${C} .gm-apron:has(.gm-deck:not([hidden])) { height:var(--gm-apron-h); }
   /* the inspector's pinned verbs share the column with the sector's readings: on a short screen the
      explanatory sentences stand down to the screen reader and the framing words share one row, so the
      readings (the accordion) keep some of the column */
-  ${C} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason) { ${SR} }
+  ${C} :is(.gm-frame-reason, .gm-plot-reason) { ${SR} }
+  /* MAPS-2: a disabled primary key always says why, even on a short screen */
+  ${C} #gm-engage-route-btn:not([aria-disabled="true"]) + #gm-engage-reason { ${SR} }
   ${C} .gm-frame-group { flex-wrap:nowrap !important; gap:0 18px !important; }
   ${C} .gm-frame-group .gm-frame-btn { min-height:26px !important; }
   ${C} .gm-inspector-actions { gap:2px !important; }

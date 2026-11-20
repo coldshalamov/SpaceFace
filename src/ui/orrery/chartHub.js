@@ -230,7 +230,9 @@ export function enhanceInspectorSections(details, { tab = 'overview' } = {}) {
       const head = sec.firstElementChild;
       const title = (head.textContent || '').trim();
       const key = `${tab}:${title}`;
-      const defaultOpen = /navigation cost|threat assessment|trade lanes|best known|survey record/i.test(title);
+      // MAPS-2: the first section is what the player selected (Place folds in Threat and Services):
+      // its own brief always starts open.
+      const defaultOpen = index === 0 || /navigation cost|threat assessment|trade lanes|best known|survey record/i.test(title);
       const open = accOpen.has(key) ? accOpen.get(key) : defaultOpen;
       const summary = accSummary(sec, head);
       head.classList.add('gmh-acc-head');
