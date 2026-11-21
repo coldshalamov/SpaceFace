@@ -25,6 +25,11 @@ export const WORKS_REPEAT_PAY = 0.6;
 
 const STATION_SECTOR = new Map();
 const STATION_NAME = new Map();
+// A station only shows its Jobs door when it keeps a desk: a mission office or a black-market
+// contact (the same pair missionsData CONTRACT_DESK_SERVICES names). A job posted anywhere else
+// is a job no player can take.
+const STATION_HAS_DESK = new Map();
+const DESK_SERVICES = new Set(['missions', 'black_market']);
 const SECTOR_ROCKS = new Map();
 for (const sector of SECTORS) {
   // Only belts that really hold rocks: an authored `count: 0` is a named but empty field (the
@@ -34,6 +39,7 @@ for (const sector of SECTORS) {
   for (const station of sector.stations || []) {
     STATION_SECTOR.set(station.id, sector.id);
     STATION_NAME.set(station.id, station.name);
+    STATION_HAS_DESK.set(station.id, (station.services || []).some((service) => DESK_SERVICES.has(service)));
   }
 }
 const COMMODITY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -77,7 +83,7 @@ export const WORKS_CONTRACTS = Object.freeze([
     drillTier: 2,
   }),
   job({
-    id: 'works_nereid_clean_water', rung: 'rover', stationId: 'station_nereid_claim', reward_cr: 1200,
+    id: 'works_nereid_clean_water', rung: 'rover', stationId: 'station_nereid', reward_cr: 1200,
     title: 'Clean Water', client: 'Shoal Claim',
     brief: 'An ice body is mostly water and the rest is gas waiting for somebody careless. The claim wants water it does not have to scrub.',
     summary: 'Rover job. Cut 14 water ice from an ice body. Bonus for breaching no gas pocket: ice bodies are full of them.',
@@ -85,7 +91,7 @@ export const WORKS_CONTRACTS = Object.freeze([
     bonus: [{ kind: 'sealed', pct: 0.4 }],
   }),
   job({
-    id: 'works_forge_long_crystal', rung: 'rover', stationId: 'station_forge', reward_cr: 1700,
+    id: 'works_forge_long_crystal', rung: 'rover', stationId: 'station_depot3', reward_cr: 1700,
     title: 'Long Crystal', client: 'Forge Foundry Optics',
     brief: 'Crystal runs down through a crystal body in long clean seams. Follow one seam instead of quarrying the rock and the foundry pays for the tidy work.',
     summary: 'Rover job. Cut 10 silica crystal from a crystal body (Mk II beam). Bonus for opening 22 cells or fewer.',
@@ -129,7 +135,7 @@ export const WORKS_CONTRACTS = Object.freeze([
     goal: { kind: 'install', defId: 'sm_extractor', contacts: { solid: 6, ore: 1 } },
   }),
   job({
-    id: 'works_forge_gaslight', rung: 'build', stationId: 'station_forge', reward_cr: 1800, repeat: false,
+    id: 'works_forge_gaslight', rung: 'build', stationId: 'station_depot3', reward_cr: 1800, repeat: false,
     requires: ['works_beltout_first_claim'],
     title: 'Gaslight', client: 'Forge Foundry Power',
     brief: 'A gas pocket you breach is a hole. A gas pocket you tap is a generator that never needs fuel. Tunnel up beside one without opening it and seat a tap against it.',
@@ -190,7 +196,7 @@ export const WORKS_CONTRACTS = Object.freeze([
     goal: { kind: 'claims', qty: 2 },
   }),
   job({
-    id: 'works_customs_deep_stamp', rung: 'rover', stationId: 'station_customs', reward_cr: 1350,
+    id: 'works_customs_deep_stamp', rung: 'rover', stationId: 'station_tethys', reward_cr: 1350,
     title: 'Deep Stamp', client: 'Customs Gate Assay',
     brief: 'Customs keeps seizing shallow nickel and calling it deep ore. The assay desk wants nickel cut from the far side of a common rock so its stamp means something next time.',
     summary: 'Rover job. Cut 8 nickel ore by hand from deep in a common rock (Mk II beam). Shallow cuts and laser ore do not count. Bonus for breaching no gas pocket.',
@@ -199,7 +205,7 @@ export const WORKS_CONTRACTS = Object.freeze([
     drillTier: 2,
   }),
   job({
-    id: 'works_vesta_yard_titanium', rung: 'rover', stationId: 'station_vesta_outlying_yard', reward_cr: 2100,
+    id: 'works_vesta_yard_titanium', rung: 'rover', stationId: 'station_depot3', reward_cr: 2100,
     title: 'Yard Titanium', client: 'Forge Outlying Yard',
     brief: 'The yard builds berths out of titanium and is short again. Titanium sits in the heart of a metallic rock, under the iron and copper, and the yard pays for the dig down.',
     summary: 'Rover job. Cut 8 titanium ore by hand from a metallic rock (Mk II beam). The laser does not count. Bonus for opening 54 cells or fewer.',
@@ -276,7 +282,7 @@ export const WORKS_CONTRACTS = Object.freeze([
     bonus: [{ kind: 'unhurt', pct: 0.3 }],
   }),
   job({
-    id: 'works_hyperion_cut_supply_line', rung: 'yard', stationId: 'station_hyperion_cut', reward_cr: 2500, repeat: false,
+    id: 'works_hyperion_cut_supply_line', rung: 'yard', stationId: 'station_hyperion_claim', reward_cr: 2500, repeat: false,
     requires: ['works_beltout_first_claim'],
     title: 'Cut Supply Line', client: 'Cut Refinery Logistics',
     brief: 'The Cut Refinery wants two claims that can feed each other instead of one rock mined bare. Claim a second rock in the Cut and run a cargo line between the two.',
@@ -336,11 +342,11 @@ export const WORKS_CONTRACTS = Object.freeze([
     drillTier: 2,
   }),
   job({
-    id: 'works_sedna_three_rocks', rung: 'build', stationId: 'station_sedna', reward_cr: 5800, repeat: false,
+    id: 'works_orcus_three_rocks', rung: 'build', stationId: 'station_orcus_shadow', reward_cr: 5800, repeat: false,
     requires: ['works_beltout_first_claim'],
-    title: 'Three Rocks in the Dark', client: 'Sedna Survey Post',
-    brief: 'The survey post at Sedna charts a sector most pilots cross once and never work. Anchor three claims out there so the post has ground truth that stays put between visits.',
-    summary: 'Building job. Hold 3 anchored claims in Sedna Dark at once. A rock with only a tunnel in it does not count. The first machine you build anchors each rock.',
+    title: 'Three Rocks in the Dark', client: 'Shadow Cache Survey',
+    brief: 'The cache charts a sector most pilots cross once and never work. Anchor three claims in Orcus Shadow so the survey has ground truth that stays put between visits.',
+    summary: 'Building job. Hold 3 anchored claims in Orcus Shadow at once. A rock with only a tunnel in it does not count. The first machine you build anchors each rock.',
     goal: { kind: 'claims', qty: 3 },
   }),
   job({
@@ -428,6 +434,7 @@ export function validateWorksContracts() {
   for (const row of WORKS_CONTRACTS) {
     const sectorId = STATION_SECTOR.get(row.stationId);
     if (!sectorId) { errors.push(`${row.id}: station ${row.stationId} is not on the map`); continue; }
+    if (!STATION_HAS_DESK.get(row.stationId)) errors.push(`${row.id}: ${row.stationId} has no job desk to post it on`);
     if (row.goal.kind === 'cut' && !worksRockTypesFor(sectorId, row.goal.ore).length) {
       errors.push(`${row.id}: no rock in ${sectorId} carries ${row.goal.ore}`);
     }

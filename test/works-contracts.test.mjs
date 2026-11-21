@@ -216,7 +216,19 @@ test('every job is posted at a real station, under its own title, behind a job t
   for (const row of WORKS_CONTRACTS) {
     for (const need of row.requires || []) assert.ok(ids.has(need), `${row.id} waits on a job that exists`);
   }
-  assert.ok(new Set(WORKS_CONTRACTS.map((row) => row.stationId)).size >= 24, 'the jobs reach across the galaxy');
+  assert.ok(new Set(WORKS_CONTRACTS.map((row) => row.stationId)).size >= 20, 'the jobs reach across the galaxy');
+  // A station shows its Jobs door only when it keeps a desk. Every job sits on one, and the real
+  // board of that station carries it once the jobs it builds on are done.
+  const { hasContractsDesk } = await import('../src/data/missions.js');
+  const stationById = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((s) => [s.id, s])));
+  for (const row of WORKS_CONTRACTS) {
+    assert.ok(hasContractsDesk(stationById.get(row.stationId).services), `${row.id}: ${row.stationId} has a job desk`);
+    const h = harness(row.id);
+    h.state.story.flags.worksContracts = Object.fromEntries((row.requires || []).map((need) => [need, 1]));
+    h.host.ensureBoard(row.stationId);
+    const slots = h.state.missions.boards[row.stationId]?.slots || [];
+    assert.ok(slots.some((offer) => offer?.params?.works?.id === row.id), `${row.id} is on the ${row.stationId} board`);
+  }
   // A rover job is only posted where the sector's belts really hold a rock that carries the ore.
   // The Bolus names an exotic field with no rocks in it; no job may lean on a belt like that.
   const sectorOf = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((s) => [s.id, sector])));
