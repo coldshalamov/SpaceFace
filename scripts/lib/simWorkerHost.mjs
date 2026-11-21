@@ -2949,7 +2949,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
         const snapshot = profiler.snapshot();
         systemProfile = {
           ...snapshot,
-          systems: snapshot.systems.slice(0, 40),
+          systems: snapshot.systems.slice(0, 120),
         };
         host.systemProfileReplyCountdown = 60;
       }

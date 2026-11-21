@@ -13,6 +13,7 @@
 import { afterHoursCoachPlant } from './afterHoursCoach.js';
 import { anselsDishPlant } from './anselsDish.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
+import { getSimStepProfiler, nowNs } from '../../core/simStepProfiler.js';
 import { badMagnetPlant } from './badMagnetPlant.js';
 import { borrowedBoostPlant } from './borrowedBoost.js';
 import { borrowedLadderPlant } from './borrowedLadder.js';
@@ -490,8 +491,12 @@ export const plantsRuntime = {
       if (typeof plant.update !== 'function') continue;
       // The ordered tick can reach every child. Isolate failures at the call so a
       // routine update does not allocate a callback for each plant.
+      const prof = getSimStepProfiler();
+      const t0 = prof.active ? nowNs() : 0;
       try {
         plant.update(dt, state);
+        // Per-plant attribution (no-freeze world speed): only while the profiler is armed.
+        if (prof.active) prof.record(`plants.${plant.name || i}`, nowNs() - t0);
       } catch (err) {
         reportPlantFailure(plant.name, err);
       }
