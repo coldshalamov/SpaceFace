@@ -11,6 +11,7 @@
 // Read by the probes and the no-freeze gate through window.__SF_POSE_AGE__.
 
 import { POSE_ROW, POSE_ROW_STRIDE } from '../core/simPoseTable.js';
+import { IS_DEV } from '../core/devMode.js';
 import { getLatestSnapshotFence } from './snapshotFence.js';
 const fenceScratch = { x: 0, y: 0, z: 0, rot: 0, valid: false };
 
@@ -83,6 +84,9 @@ const feedIndex = new Map();
 
 /** Once per presented frame, before this frame's poses are seated (measures the last drawn frame). */
 export function recordPresentedPoseAge(state, meshes, feed, world = null) {
+  // Measurement only: dev builds (the unpackaged desktop build the gate drives) pay for it,
+  // a packaged release never does.
+  if (!IS_DEV) return;
   const now = nowMs();
   watchedState = state;
   if (!watcher && typeof setInterval === 'function') {

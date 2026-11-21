@@ -144,7 +144,7 @@ try {
   await page.evaluate((legacy) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
-      if (legacy) localStorage.setItem('sf.laneLegacy', '1'); else localStorage.removeItem('sf.laneLegacy');
+      if (legacy) sessionStorage.setItem('sf.laneLegacy', '1'); else sessionStorage.removeItem('sf.laneLegacy');
       localStorage.setItem('sf.simProfile', '1');
     } catch { /* storage gated */ }
   }, LEGACY);

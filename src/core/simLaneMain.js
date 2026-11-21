@@ -391,8 +391,10 @@ export function resolveSimLaneFlags(search) {
   // stop-and-wait worker clock and turns the shared pose table off, so the no-freeze gate can
   // show the old freeze on the same build. Never a player path.
   let legacyRequested = params && params.get('laneLegacy');
-  if (legacyRequested == null && typeof localStorage !== 'undefined') {
-    try { legacyRequested = localStorage.getItem('sf.laneLegacy'); } catch (_) { /* storage gated */ }
+  // Session storage only (audit housekeeping): a profile can never carry the A/B switch into a
+  // later session — it lives exactly as long as the probe's own window.
+  if (legacyRequested == null && typeof sessionStorage !== 'undefined') {
+    try { legacyRequested = sessionStorage.getItem('sf.laneLegacy'); } catch (_) { /* storage gated */ }
   }
   const legacy = IS_DEV && (legacyRequested === '1' || legacyRequested === 'true');
   return {
@@ -754,6 +756,8 @@ export function createSimLaneRuntime({
   let poseFeedFrames = 0;
   let poseFeedLastAdvanceAtMs = -1;
   let poseFacadeRows = 0;
+  let poseGenerationMismatchFrames = 0;
+  let poseGenerationMismatchLiveFrames = 0;
   let posePeekWrites = -1;
   let posePeekChangedAtMs = -1;
   // Coast state for the table feed. The pack stream glides through worker silence via the
@@ -837,6 +841,12 @@ export function createSimLaneRuntime({
     poseFeed.frame++;
     poseFeed.advanced = advanced;
     poseFeed.active = snapshot.valid === true && snapshot.lifecycleGeneration === lifecycleGeneration;
+    // Audit B1: a generation mismatch (main bumped its lifecycle, the worker has not stepped with
+    // it yet) puts this frame back on the journal path. Count it so it can never hide.
+    if (snapshot.valid === true && snapshot.lifecycleGeneration !== lifecycleGeneration) {
+      poseGenerationMismatchFrames++;
+      if (state && state.mode === 'flight' && Number(state.timeScale) > 0) poseGenerationMismatchLiveFrames++;
+    }
     if (poseFeed.active) {
       poseFeedFrames++;
       if (advanced) poseFeedLastAdvanceAtMs = now;
@@ -1033,6 +1043,7 @@ export function createSimLaneRuntime({
   // ambient impact sparks older than REPLY_COSMETIC_STALE_MS are dropped (never gameplay events).
   const REPLY_APPLY_BUDGET_MS = 6;
   const REPLY_COSMETIC_STALE_MS = 250;
+  const REPLY_QUEUE_BOUND = 8;
   const replyQueue = [];
   let replyBudgetSpentMs = 0;
   let replyBudgetFrame = -1;
@@ -1060,8 +1071,11 @@ export function createSimLaneRuntime({
       // With no backlog the arriving reply applies now (one reply per message task, as before);
       // a backlog drains only inside the budget, at least one reply per frame.
       const noBacklog = replyQueue.length === 1 && appliedThisCall === 0;
+      // Bounded (audit B2): past REPLY_QUEUE_BOUND waiting replies the budget yields to catching
+      // up — a long backlog is what leaves destroyed bodies drawn and new ones late.
       if (replyBudgetSpentMs >= REPLY_APPLY_BUDGET_MS && !noBacklog
-        && !(frameBoundary && appliedThisCall === 0)) break;
+        && !(frameBoundary && appliedThisCall === 0)
+        && replyQueue.length <= REPLY_QUEUE_BOUND) break;
       appliedThisCall++;
       const msg = replyQueue.shift();
       const started = nowMs();
@@ -2874,6 +2888,10 @@ export function createSimLaneRuntime({
           simTime: poseFeed.snapshot ? poseFeed.snapshot.simTime : null,
           ageMs: poseFeedLastAdvanceAtMs >= 0 ? Math.max(0, nowMs() - poseFeedLastAdvanceAtMs) : null,
           transferArrivals: poseTransferArrivals,
+          generationMismatchFrames: poseGenerationMismatchFrames,
+          generationMismatchLiveFrames: poseGenerationMismatchLiveFrames,
+          truncatedWrites: poseFeed.snapshot ? poseFeed.snapshot.truncated || 0 : 0,
+          writeErrors: poseFeed.snapshot ? poseFeed.snapshot.writeErrors || 0 : 0,
           reader: poseReader.getStats(),
         },
         heldReplies: heldReplies.length,

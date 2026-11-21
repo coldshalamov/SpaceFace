@@ -32,6 +32,8 @@ const H_WRITES = 7;
 const H_PLAYER_ID = 8;
 const H_APPLIED_COMMAND = 9;
 const H_STEPS = 10;
+const H_TRUNCATED = 11;
+const H_WRITE_ERRORS = 12;
 const HEADER_INTS = 16;
 // Float64 header cells (after the Int32 header).
 const F_SIM_TIME = 0;
@@ -109,7 +111,10 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
     const { header, scalars, rows, capacity: cap } = views;
     if (shared) Atomics.add(header, H_SEQ, 1); // odd: rows are being written
     else header[H_SEQ] += 1;
+    // The sequence goes even again in `finally`: a throw mid-write must never leave the table odd
+    // (readers would keep a stale copy forever). The throw is counted in the header for main.
     let count = 0;
+    try {
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -155,13 +160,19 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
     header[H_PLAYER_ID] = playerId;
     header[H_APPLIED_COMMAND] = Number.isSafeInteger(meta.appliedCommandSequence) ? meta.appliedCommandSequence : 0;
     header[H_STEPS] = Number.isSafeInteger(meta.steps) ? (meta.steps & 0x7fffffff) : 0;
+    header[H_TRUNCATED] = stats.truncated & 0x7fffffff;
     writes++;
     header[H_WRITES] = writes & 0x7fffffff;
-    if (shared) {
-      Atomics.add(header, H_SEQ, 1); // even: coherent
-    } else {
-      header[H_SEQ] += 1;
-      dirtyPrivate = true;
+    } catch (error) {
+      stats.writeErrors = (stats.writeErrors || 0) + 1;
+      header[H_WRITE_ERRORS] = stats.writeErrors & 0x7fffffff;
+    } finally {
+      if (shared) {
+        Atomics.add(header, H_SEQ, 1); // even: coherent
+      } else {
+        header[H_SEQ] += 1;
+        dirtyPrivate = true;
+      }
     }
     stats.writes = writes;
     stats.rows = count;
@@ -235,6 +246,8 @@ export function createPoseTableReader() {
     target.appliedCommandSequence = header[H_APPLIED_COMMAND];
     target.steps = header[H_STEPS];
     target.writes = header[H_WRITES];
+    target.truncated = header[H_TRUNCATED];
+    target.writeErrors = header[H_WRITE_ERRORS];
     target.simTime = scalars[F_SIM_TIME];
     target.wallMs = scalars[F_WALL_MS];
     for (let k = 0; k < POSE_PLAYER_FIELDS.length; k++) {

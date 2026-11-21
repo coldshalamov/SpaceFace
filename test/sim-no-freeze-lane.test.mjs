@@ -203,3 +203,23 @@ test('the worker never returns per-frame camera envelopes as durable receipt row
     .flatMap((r) => r.commandAcks || []).filter((a) => a.t === 'camera');
   assert.equal(cameraAcks.length, 0, 'camera receipts are latest-wins state, not reply rows');
 });
+
+test('a throw inside a pose-table write never leaves the seqlock odd (readers would keep a stale copy forever)', () => {
+  const table = createSharedPoseTable();
+  const writer = createPoseTableWriter(table);
+  const reader = createPoseTableReader();
+  reader.bindShared(table);
+  const state = { entityList: [{ id: 3, alive: true, pos: { x: 1, y: 0, z: 2 }, vel: { x: 0, z: 0 } }], tick: 1, simTime: 0.1 };
+  writer.write(state, { getActiveGeneration: () => 1 }, {});
+  assert.equal(reader.read(0).snapshot.count, 1);
+  writer.write(state, { getActiveGeneration: () => { throw new Error('boom'); } }, {});
+  const header = new Int32Array(table.sab, 0, 16);
+  assert.equal(Atomics.load(header, 2) % 2, 0, 'the sequence is even after a throw');
+  assert.equal(writer.getStats().writeErrors, 1);
+  state.simTime = 0.2;
+  writer.write(state, { getActiveGeneration: () => 1 }, {});
+  const { snapshot, advanced } = reader.read(1);
+  assert.equal(advanced, true, 'the next good write still reaches the reader');
+  assert.equal(snapshot.simTime, 0.2);
+  assert.equal(snapshot.writeErrors, 1, 'main sees the swallowed throw');
+});
