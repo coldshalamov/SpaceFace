@@ -16,7 +16,7 @@ export const RESOURCE_BODY_RETENTION_CLASS = Object.freeze({
 
 const RECOVERY_EPSILON = 1e-6;
 const DRILL_TILES = ['drillVeinRemainders', 'drillVented', 'drillScars', 'drillFaults', 'drillRubble'];
-const DRILL_PROGRESS_FIELDS = ['boreSeed', 'drillAvatarCol', 'drillAvatarRow', 'lastDrillT',
+const DRILL_PROGRESS_FIELDS = ['boreSeed', 'boreFamily', 'drillAvatarCol', 'drillAvatarRow', 'lastDrillT',
   'drillYieldMax', 'drillDepletion', 'drillCleared', ...DRILL_TILES];
 
 export function asteroidHasDrillProgress(data) {

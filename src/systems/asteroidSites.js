@@ -27,6 +27,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
 import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
+import { resolveBoreFamily } from './drillFieldModel.js';
 import { markFieldRockAtRest } from './spawnClearance.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { addCargo, removeCargo, sellableCargoQuantity, slotFitFor } from './cargo.js';
@@ -199,6 +200,23 @@ function worldSiteFailureActorMatches(actorPolicy, entity, state) {
 const _siteImpactParticipants = [null, null];
 const _siteImpactMatched = { record: null, manifest: null, live: null, trigger: null };
 
+/**
+ * A site generates its interior with the same geology family its rock does. Called where a site
+ * record meets its rock, BEFORE any seed is written onto the rock: an unstamped rock that already
+ * carries a seed was bored under the old single interior and keeps it.
+ */
+export function adoptRockBoreFamily(site, ent) {
+  if (!site) return null;
+  const data = ent && ent.data;
+  if (typeof site.boreFamily !== 'string' || !site.boreFamily) {
+    site.boreFamily = Number.isFinite(site.boreSeed) && !(data && data.boreFamily)
+      ? resolveBoreFamily({ boreSeed: site.boreSeed })
+      : resolveBoreFamily(data);
+  }
+  if (data && !data.boreFamily) data.boreFamily = site.boreFamily;
+  return site.boreFamily;
+}
+
 export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) {
   return {
     id,
@@ -208,6 +226,7 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
     anchored: false,
     asteroidId: asteroidId ?? null,
     boreSeed: null,           // frozen at first install; until then the live entity id seeds the bore
+    boreFamily: null,         // geology family the interior generates with; null = the pre-family interior
     anchor: null,             // { x, z, radius, typeId, yieldU } — physical re-spawn recipe
     cleared: [],
     machines: [],
@@ -1533,6 +1552,7 @@ export const asteroidSites = {
       });
       site.cleared = normalizeClearedTiles(ent.data && ent.data.drillCleared);
       copyDrillSessionAccounting(site, ent && ent.data);
+      adoptRockBoreFamily(site, ent);
       sites.byId[id] = site;
       sites.order.push(id);
       ent.data.siteId = id;
@@ -1575,6 +1595,7 @@ export const asteroidSites = {
     const state = this.state;
     site.anchored = true;
     // Adopt the rock's bore seed when an unclaimed tunnel becomes a permanent site.
+    adoptRockBoreFamily(site, ent);
     if (!Number.isFinite(site.boreSeed)) {
       const seed = Number.isFinite(ent.data.boreSeed) ? ent.data.boreSeed : site.asteroidId;
       site.boreSeed = (seed >>> 0) || 1;
@@ -2292,7 +2313,9 @@ export const asteroidSites = {
         fieldId: (ent.data && ent.data.fieldId) || null,
         createdT: state.simTime,
       });
-      site.boreSeed = (asteroidId >>> 0) || 1;
+      adoptRockBoreFamily(site, ent);
+      // The commissioned pocket is cut in the rock the rover would open: same seed, same family.
+      site.boreSeed = ((Number.isFinite(ent.data && ent.data.boreSeed) ? ent.data.boreSeed : asteroidId) >>> 0) || 1;
       sites.byId[id] = site;
       sites.order.push(id);
       ent.data.siteId = id;
@@ -2468,7 +2491,8 @@ export const asteroidSites = {
     const rtExisting = site ? this._runtime(site) : null;
     const field = rtExisting
       ? rtExisting.field
-      : generateDrillField(ent.id, ent.data?.typeId || 'ast_common_rock', sectorId);
+      : generateDrillField(((Number.isFinite(ent.data?.boreSeed) ? ent.data.boreSeed : ent.id) >>> 0) || 1,
+        resolveBoreFamily(ent.data));
     if (!site && ent.data?.drillCleared) applyClearedTiles(field, ent.data.drillCleared);
 
     let col = anchorCol;
@@ -2532,9 +2556,10 @@ export const asteroidSites = {
       });
       site.cleared = normalizeClearedTiles(ent.data && ent.data.drillCleared);
       copyDrillSessionAccounting(site, ent && ent.data);
+      if (!ent.data) ent.data = {};
+      adoptRockBoreFamily(site, ent);
       sites.byId[id] = site;
       sites.order.push(id);
-      if (!ent.data) ent.data = {};
       ent.data.siteId = id;
       this.bus.emit('site:created', { siteId: id, asteroidId: ent.id });
     }
@@ -2973,6 +2998,7 @@ export const asteroidSites = {
           siteId: site.id,
           siteAnchored: true,
           boreSeed: site.boreSeed,
+          ...(site.boreFamily ? { boreFamily: site.boreFamily } : {}),
           drillCleared: site.cleared.slice(),
           fieldId: site.fieldId,
           size: site.anchor.radius,
