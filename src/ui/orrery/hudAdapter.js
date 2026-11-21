@@ -24,6 +24,8 @@ import { isSwarmGlass } from '../swarmGlass.js';
 import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
+import { targetDisplayName } from '../targetPanel.js';
+import { couplingBodyMass, resolveMassInterpretation } from '../masslineHud.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
 import { swarmRailSlotAllowed } from '../../data/swarmControls.js';
@@ -626,10 +628,59 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   // S12 — the run's perk pick rides the cluster model; a fired trigger bumps that chip's pulse.
   const perkPulseCounts = {};
   let offPerkTrigger = null;
+  // HUD-2 Item 5 — live ship-panel status: directional hull-hit flashes (0.65 s decay) and weapon fire flash.
+  const HIT_FLASH_MS = 650;
+  const WEAPON_FLASH_MS = 220;
+  const hitUntilWall = { bow: 0, starboard: 0, port: 0, stern: 0 };
+  const weaponFireUntil = new Map();
+  let offShipDmg = null;
+  let offShipImpact = null;
+  let offShipFire = null;
+  const nowWallMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
+  const recordHitFromPos = (liveState, srcPos) => {
+    const me = liveState?.entities?.get?.(liveState.playerId);
+    const until = nowWallMs() + HIT_FLASH_MS;
+    if (!me?.pos || !srcPos || !Number.isFinite(srcPos.x) || !Number.isFinite(srcPos.z)) {
+      hitUntilWall.bow = Math.max(hitUntilWall.bow, until);
+      return;
+    }
+    const dx = srcPos.x - me.pos.x;
+    const dz = srcPos.z - me.pos.z;
+    if (dx * dx + dz * dz < 1e-4) {
+      hitUntilWall.bow = Math.max(hitUntilWall.bow, until);
+      return;
+    }
+    const rot = Number.isFinite(me.rot) ? me.rot : 0;
+    let rel = Math.atan2(dz, dx) - rot;
+    while (rel > Math.PI) rel -= Math.PI * 2;
+    while (rel <= -Math.PI) rel += Math.PI * 2;
+    const deg = rel * 180 / Math.PI;
+    const side = Math.abs(deg) <= 45 ? 'bow' : Math.abs(deg) >= 135 ? 'stern' : (deg > 0 ? 'starboard' : 'port');
+    hitUntilWall[side] = Math.max(hitUntilWall[side], until);
+  };
   if (bus && typeof bus.on === 'function') {
     offPerkTrigger = bus.on('swarm:perkTrigger', (p) => {
       const id = p && p.perkId;
       if (typeof id === 'string' && id) perkPulseCounts[id] = (perkPulseCounts[id] || 0) + 1;
+    });
+    offShipDmg = bus.on('combat:damage', (ev) => {
+      if (!ev) return;
+      if (ev.targetId !== state.playerId && ev.isPlayer !== true) return;
+      const attacker = ev.attackerId != null ? state.entities?.get?.(ev.attackerId) : null;
+      recordHitFromPos(state, attacker?.pos || ev.sourcePos || ev.pos);
+    });
+    offShipImpact = bus.on('physics:impact', (ev) => {
+      if (!ev) return;
+      const pid = state.playerId;
+      if (ev.entityId !== pid && ev.aId !== pid && ev.bId !== pid) return;
+      const otherId = ev.aId === pid ? ev.bId : (ev.bId === pid ? ev.aId : ev.otherId);
+      const other = otherId != null ? state.entities?.get?.(otherId) : null;
+      recordHitFromPos(state, other?.pos || ev.pos);
+    });
+    offShipFire = bus.on('combat:fire', (ev) => {
+      if (!ev || ev.ownerId !== state.playerId) return;
+      const key = ev.slotIndex != null ? ev.slotIndex : (ev.weaponIndex != null ? ev.weaponIndex : 0);
+      weaponFireUntil.set(key, nowWallMs() + WEAPON_FLASH_MS);
     });
   }
   let offName = null;
@@ -737,6 +788,42 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
         model.perkPulses = perkPulseCounts;
         model.moreKey = resolveActionLabel(liveState, 'contextWheel') || 'Q';
         model.powerCaption = liveState?._uiBenchPowerCaption || activeCaption;
+        // HUD-2 Item 5: live ship-panel status (directional hull hits, hardpoint pips, held Line tag).
+        const benchShip = liveState?._uiBenchShipStatus || null;
+        const hits = benchShip?.hits || {
+          bow: hitUntilWall.bow > nowWall ? (hitUntilWall.bow - nowWall) / HIT_FLASH_MS : 0,
+          starboard: hitUntilWall.starboard > nowWall ? (hitUntilWall.starboard - nowWall) / HIT_FLASH_MS : 0,
+          port: hitUntilWall.port > nowWall ? (hitUntilWall.port - nowWall) / HIT_FLASH_MS : 0,
+          stern: hitUntilWall.stern > nowWall ? (hitUntilWall.stern - nowWall) / HIT_FLASH_MS : 0,
+        };
+        const weapons = Array.isArray(p.data?.weapons) ? p.data.weapons : [];
+        const hardpoints = benchShip?.hardpoints || weapons.slice(0, 4).map((w, idx) => {
+          const heatMax = Number(w?.heatMax) || 100;
+          const heatFrac = Number.isFinite(w?._heat) && heatMax > 0 ? w._heat / heatMax : 0;
+          const slotKey = w?.slotIndex != null ? w.slotIndex : idx;
+          const firing = !!(w?._firing || (weaponFireUntil.get(slotKey) > nowWall) || (weaponFireUntil.get(idx) > nowWall));
+          const hot = !!(w?._overheated || w?._venting || heatFrac >= 0.8);
+          return { firing, hot };
+        });
+        let lineTag = benchShip?.lineTag || '';
+        if (!lineTag && model.tether && model.tether.state && model.tether.state !== 'Idle') {
+          const local = liveState.player?.tether;
+          const activeLine = local && local.active ? local : liveState.player?.remoteMassline;
+          const ledger = liveState.combat?.attachments?.byId;
+          const att = activeLine?.attachmentId != null && ledger ? ledger[String(activeLine.attachmentId)] : null;
+          const bodyId = att?.targetId != null ? att.targetId : (activeLine?.targetId ?? activeLine?.payloadId);
+          const body = bodyId != null ? liveState.entities?.get?.(bodyId) : null;
+          const rawName = body
+            ? (body.type === 'asteroid' ? 'Rock' : (targetDisplayName(body, { state: liveState }) || 'Payload'))
+            : 'Payload';
+          const shortName = rawName.length > 14 ? `${rawName.slice(0, 13).trim()}…` : rawName;
+          const interp = body ? resolveMassInterpretation(couplingBodyMass(p), couplingBodyMass(body)) : null;
+          const band = interp?.key === 'likely-payload' ? 'Light'
+            : interp?.key === 'likely-anchor' ? 'Heavy'
+            : interp?.key === 'comparable' ? 'Even' : '';
+          lineTag = band ? `${shortName} · ${band}` : shortName;
+        }
+        model.shipStatus = { hits, hardpoints, lineTag };
         cluster.update(model);
       }
     },
@@ -744,6 +831,9 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       if (captionTimer) { clearTimeout(captionTimer); captionTimer = null; }
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }
       if (typeof offPerkTrigger === 'function') { try { offPerkTrigger(); } catch (_) {} }
+      if (typeof offShipDmg === 'function') { try { offShipDmg(); } catch (_) {} }
+      if (typeof offShipImpact === 'function') { try { offShipImpact(); } catch (_) {} }
+      if (typeof offShipFire === 'function') { try { offShipFire(); } catch (_) {} }
       try { offDenials(); } catch (_) {}
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', markClusterBoxStale);

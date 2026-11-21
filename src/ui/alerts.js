@@ -516,12 +516,35 @@ export function createAlerts(ctx) {
 
   // dock prompt (persistent while in range) — large and unmissable, a status affordance not a voice.
   // The key label is sourced from the live binding registry (spec §15.4) so it can never drift.
+  function nearestLiveStationId(state) {
+    if (!state) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const px = Number(player?.pos?.x);
+    const pz = Number(player?.pos?.z);
+    const hasPos = Number.isFinite(px) && Number.isFinite(pz);
+    const list = state.entityIndex?.stations
+      || (Array.isArray(state.entityList) ? state.entityList : []);
+    let bestId = null;
+    let bestD2 = Infinity;
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || e.data?.isGate) continue;
+      const sid = e.data?.stationId || e.id;
+      if (sid == null) continue;
+      if (!hasPos || !e.pos) { if (bestId == null) bestId = sid; continue; }
+      const d2 = (e.pos.x - px) ** 2 + (e.pos.z - pz) ** 2;
+      if (d2 < bestD2) { bestD2 = d2; bestId = sid; }
+    }
+    return bestId;
+  }
+
   bus.on('dock:range', ({ inRange, stationId }) => {
     if (!inRange) { clear('dock'); return; }
+    const resolvedStationId = stationId != null ? stationId : nearestLiveStationId(ctx.state);
     const keyLabel = promptLabel('dock');
-    const rec = raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, stationId, keyLabel), ttl: Infinity });
+    const rec = raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, resolvedStationId, keyLabel), ttl: Infinity });
     if (rec?.el) {
-      if (stationId != null) rec.el.setAttribute('data-dock-station', String(stationId));
+      if (resolvedStationId != null) rec.el.setAttribute('data-dock-station', String(resolvedStationId));
       else rec.el.removeAttribute('data-dock-station');
       const key = keyLabel.replace(/^\[\s*|\s*\]$/g, '');
       rec.el.setAttribute('data-dock-key', key);
@@ -529,9 +552,9 @@ export function createAlerts(ctx) {
         const chip = document.createElement('span');
         chip.className = 'sf-alert__dock-chip';
         chip.setAttribute('aria-hidden', 'true');
-        chip.hidden = true;
         rec._dockKey = document.createElement('kbd');
         const verb = document.createElement('span');
+        verb.className = 'sf-alert__dock-verb';
         verb.textContent = 'Dock';
         chip.append(rec._dockKey, verb);
         rec.el.appendChild(chip);

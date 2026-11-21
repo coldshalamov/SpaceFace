@@ -278,7 +278,7 @@ export const swarmJuice = {
         pos: payload.pos || victim.pos || null, word, cause, friendlyFire: true, score: 0,
         credits: 0, wave: run.wave,
       });
-      this._emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL', count: 1 });
+      this._emit('swarm:announce', { kind: 'collateral', text: 'FRIENDLY FIRE', count: 1 });
     }
 
     // A champion may die before any 15-tick sweep collected it — and a LIVE straggler may

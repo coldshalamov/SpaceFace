@@ -952,6 +952,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
       nextEl.textContent = decision;
       nextEl.hidden = decision === '';
     }
+    if (readouts && typeof readouts.updateShipPanel === 'function' && d.shipStatus) {
+      readouts.updateShipPanel(d.shipStatus);
+    }
   }
 
   function arrive() {

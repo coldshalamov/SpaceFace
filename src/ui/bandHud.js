@@ -115,7 +115,12 @@ export function createBandHud(ctx, options = {}) {
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-controls', 'sf-radio-tuner');
   root.appendChild(button);
-  host.appendChild(root);
+  const utilityRow = typeof documentRef.getElementById === 'function'
+    && documentRef.documentElement?.dataset?.sfMobileFlight !== '1'
+    && !(state?.settings?.ui?.hudLayout?.band)
+    ? documentRef.getElementById('sf-visor-utility-row')
+    : null;
+  (utilityRow || host).appendChild(root);
   const layoutDrag = createHudDragController({
     state, bus, element: root, key: 'band', documentRef, windowRef: options.windowRef,
   });

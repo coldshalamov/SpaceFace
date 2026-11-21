@@ -31,25 +31,33 @@ const STYLE_ID = 'sf-sj-css';
 const POPUP_POOL = 40;
 /** Sim-second lifetimes — pause and slow-time hold the beat with the world. */
 const POPUP_TTL_S = 1.05;
-const CALL_TTL_S = 1.35;
-const TIER_TTL_S = 1.6;
-const SLAM_LINGER_S = 0.9;
+const CALL_TTL_S = 1.25;
+const TIER_TTL_S = 1.4;
+const SLAM_LINGER_S = 0.85;
+const SLAM_MAX_S = 1.4;
 export const TALLY_ROW_STAGGER_S = 0.16;
-const TALLY_HOLD_S = 3.4;
-const CARD_TTL_S = 2.0;
-const BOSSDOWN_TTL_S = 2.2;
-const SHATTER_TTL_S = 1.7;
-// Two announcer lines at most: the centre column is one flow (see the CSS), and two lines plus
-// one beat keep it clear of the ship at 1280x720. A third arrival retires the oldest line.
+const TALLY_HOLD_S = 1.4;
+const CARD_TTL_S = 1.45;
+const BOSSDOWN_TTL_S = 1.45;
+const SHATTER_TTL_S = 1.25;
+// Exactly one short headline at a time across calls, beats, and shatter — high enough not to cross the ship.
 const MAX_CALL_LINES = 1;
 const NEXT_MARK_REACH = 8;
 // Higher speaks over lower. Boss beats outrank kill words; counted repeats and small receipts
 // (a close call, a pile-up tick) never talk over a bigger moment.
 const CALL_PRIORITY = Object.freeze({ bossdown: 5, bossact: 4, overdrive: 3, chainstar: 3,
-  firstbeat: 4, collateral: 3, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, discharge: 1 });
+  firstbeat: 4, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, collateral: 1, discharge: 1 });
 const CALL_PRIORITY_DEFAULT = 2;
 /** A beat that waited this long behind a higher one is stale news — it is dropped, not shown late. */
 const BEAT_STALE_S = 12;
+
+/** Plain-word sanitation for announcer callouts (never leaks internal words like COLLATERAL). */
+export function swarmAnnounceDisplayText(text, kind = '') {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  if (kind === 'collateral' || /^COLLATERAL$/i.test(raw)) return 'FRIENDLY FIRE';
+  return raw;
+}
 
 /** The popup's one line: the money/score figure first, the cause word riding it. */
 export function swarmPopupText({ word = '', score = 0, credits = 0 } = {}) {
@@ -216,32 +224,9 @@ export const swarmJuiceHud = {
     const step = Math.max(0, Number(dt) || 0);
 
     // --- the chain hero -----------------------------------------------------------
-    const showChain = this._chain > 0;
-    dom.hero.hidden = !showChain;
-    if (showChain) {
-      this._text(dom.heroFig, `${this._chain}`);
-      const tier = swarmChainTier(this._chain);
-      const tierId = tier ? tier.id : 'base';
-      if (dom.hero.dataset.tier !== tierId) dom.hero.dataset.tier = tierId;
-      this._text(dom.heroTier, this._tierName && simNow < this._tierUntil
-        ? this._tierName
-        : swarmHeroTierText(this._chain, { phone: document.documentElement.getAttribute('data-sf-mobile-flight') === '1' }));
-      // inf-overdrive-mark: the window keeps its word on the hero — the tier line says it once
-      // here, not just in the one-shot announcement — until the chain breaks or the run ends.
-      const overdrive = this._overdriveRate > 0;
-      if ((dom.hero.dataset.overdrive === '1') !== overdrive) {
-        dom.hero.dataset.overdrive = overdrive ? '1' : '0';
-      }
-      const badge = overdrive
-        ? `OVERDRIVE · GUNS ×${this._overdriveRate}`
-        : (this._chainStep === 2 ? 'MIXED +2' : '');
-      this._text(dom.heroMix, badge);
-      dom.heroMix.hidden = !badge;
-      const remaining = chainWindowRemaining(this._chainAt, simNow);
-      const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
-      setScaleX(dom.heroDeplete, deplete);
-      this._text(dom.heroBest, this._chainBest > this._chain ? `BEST ${this._chainBest}` : '');
-    }
+    // HUD-2 Item 9: the chain readout (and Overdrive mark) now live inside the Swarm round card
+    // in survivalHud.js. Keep the top-center hero retired so the center column stays uncluttered.
+    dom.hero.hidden = true;
 
     // --- the announcer ------------------------------------------------------------
     const activeCall = this._calls[0];
@@ -252,27 +237,33 @@ export const swarmJuiceHud = {
       const dead = this._calls.shift();
       if (dead.node) dead.node.remove();
     }
-    // A repeated kind (PILE-UP ×N growing) replaces its own line in place.
-    dom.calls.hidden = this._calls.length === 0;
     for (const call of this._calls) {
       if (call.node && call.node.textContent !== call.text) call.node.textContent = call.text;
     }
 
-    // --- the beat lane --------------------------------------------------------------
-    // The centre column shows ONE big beat at a time, by priority: BOSS DOWN > round slam /
-    // FIGHT > boss card > clear tally > Tab scoreboard. A beat that loses the lane waits (its
-    // clock starts when it first shows) instead of drawing over the winner; the DOM is a flow
-    // column too, so even two lit nodes could never stack on one another.
+    // --- ONE single top-center headline slot (HUD-2 Item 9) -------------------------
+    // Priority: BOSS DOWN > round slam / FIGHT > boss card > clear tally > announcer call >
+    // chain shatter > Tab scoreboard. Exactly one short headline may appear at a time, <= 1.5s,
+    // high enough not to cross the ship.
+    if (this._slam && Number.isFinite(this._slam.until) && simNow >= this._slam.until) {
+      this._slam = null;
+    }
     const card = this._card;
     if (card && card.shownAt == null && simNow - card.at > BEAT_STALE_S) this._card = null;
     if (this._clear && this._clear.shownAt == null && simNow - this._clear.at > BEAT_STALE_S) this._clear = null;
+    if (this._shatter && simNow >= this._shatter.until) this._shatter = null;
+
     let beat = '';
     if (simNow < this._bossDownUntil) beat = 'bossDown';
     else if (this._slam || (simNow < this._fightUntil && this._fightWord)) beat = 'slam';
     else if (this._card && (this._card.shownAt == null || simNow < this._card.until)) beat = 'card';
     else if (this._clear) beat = 'clear';
+    else if (this._calls.length > 0) beat = 'call';
+    else if (this._shatter && simNow < this._shatter.until) beat = 'shatter';
     else if (this._boardOn) beat = 'board';
     this._beat = beat;
+
+    dom.calls.hidden = beat !== 'call';
 
     const slam = this._slam;
     dom.slam.hidden = beat !== 'slam';
@@ -292,7 +283,7 @@ export const swarmJuiceHud = {
     if (beat === 'clear') {
       if (this._clear.shownAt == null) this._clear.shownAt = simNow;
       const age = simNow - this._clear.shownAt;
-      const hold = this._clear.rows.length * TALLY_ROW_STAGGER_S + TALLY_HOLD_S;
+      const hold = Math.min(1.5, this._clear.rows.length * TALLY_ROW_STAGGER_S + TALLY_HOLD_S);
       if (age > hold) {
         this._clear = null;
         dom.tally.hidden = true;
@@ -351,12 +342,11 @@ export const swarmJuiceHud = {
     }
 
     // --- the shatter ------------------------------------------------------------------
-    if (this._shatter && simNow < this._shatter.until) {
+    if (beat === 'shatter' && this._shatter && simNow < this._shatter.until) {
       dom.shatter.hidden = false;
       this._text(dom.shatter, this._shatter.text);
     } else {
       dom.shatter.hidden = true;
-      this._shatter = null;
     }
 
     // --- the popups ---------------------------------------------------------------------
@@ -505,6 +495,8 @@ export const swarmJuiceHud = {
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     const kind = p.kind || '';
     if (kind !== 'bossdown' && readIronMawMouth(this.state, this._mawAperture)) return;
+    const displayText = swarmAnnounceDisplayText(p.text, kind);
+    if (!displayText) return;
     const pri = CALL_PRIORITY[kind] ?? CALL_PRIORITY_DEFAULT;
     const cur = this._calls[0];
     // The stunt lane shares this voice: a first-beat word (LATCHED) holds the centre against a
@@ -512,7 +504,7 @@ export const swarmJuiceHud = {
     if (!claimCalloutVoice(`sj:${kind}`, pri, CALL_TTL_S * 1000)) return;
     if (cur && cur.until > now) {
       if (cur.kind === kind) {
-        cur.text = p.text;
+        cur.text = displayText;
         cur.until = now + CALL_TTL_S;
         return;
       }
@@ -523,17 +515,19 @@ export const swarmJuiceHud = {
       if (dead.node) dead.node.remove();
     }
     const node = makeNode(document, 'div', 'sf-sj__call', this._dom.calls);
-    node.textContent = p.text;
+    node.textContent = displayText;
     node.dataset.kind = kind;
-    this._calls.push({ kind, pri, text: p.text, node, until: now + CALL_TTL_S });
+    this._calls.push({ kind, pri, text: displayText, node, until: now + CALL_TTL_S });
   },
 
   _onSlam(p) {
     if (!p || !Number.isInteger(p.wave)) return;
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     this._slam = {
       wave: p.wave,
       title: `ROUND ${String(Math.max(1, p.wave)).padStart(2, '0')}`,
       sub: swarmSlamSub(p),
+      until: now + SLAM_MAX_S,
     };
     this._fightWord = 'FIGHT';
     this._fightUntil = 0;
@@ -720,7 +714,7 @@ const CSS = `
 /* Desktop Swarm owns the upper centre for chain and announcer. The existing alert floor
    and receipt lane remain live in the upper right, clear of that arcade register. The
    mobile HUD has its own measured placement and must keep control of its lanes. */
-@media (min-width: 1100px) and (min-height: 700px) {
+@media (min-width: 1100px) and (min-height: 580px) {
   html:not([data-sf-mobile-flight="1"]) body.sf-swarm-flight #alerts {
     position:fixed !important; left:auto !important; right:20px !important; top:22px !important;
     bottom:auto !important; width:300px !important; transform:none !important; align-items:flex-end;
@@ -730,124 +724,99 @@ const CSS = `
   }
   html:not([data-sf-mobile-flight="1"]) body.sf-swarm-flight #toasts {
     position:fixed !important; left:auto !important; right:20px !important;
-    top:clamp(150px, 18vh, 190px) !important; bottom:auto !important;
+    top:clamp(112px, 15vh, 170px) !important; bottom:auto !important;
     width:300px !important; transform:none !important;
   }
 }
-/* — the chain hero — */
-/* The ONE centre column. Hero, boss bar, the single beat, announcer lines and the shatter are
-   flow children (CSS order = reading order), so no piece owns a private vh offset and none can
-   draw on another. */
-.sf-sj__col { position:absolute; top:3.4vh; left:50%; transform:translateX(-50%);
-  width:max-content; max-width:94vw; display:flex; flex-direction:column; align-items:center; gap:8px; }
-.sf-sj__hero { order:0; display:flex; flex-direction:column; align-items:center; gap:2px; }
-.sf-sj__hero[hidden] { display:none; }
-/* While a boss is up the top centre has ONE owner: the boss bar and its name, with the callout
-   below it in clear space. The chain shrinks to a small figure under the bar (the round panel
-   already carries the chain and its tier); no tier word, no big numeral. */
+/* — ONE high, compact top-centre headline slot (HUD-2 Item 9) — */
+.sf-sj__col { position:absolute; top:calc(16px + var(--sf-safe-inset-top, 0px)); left:50%; transform:translateX(-50%);
+  width:max-content; max-width:min(520px, 78vw); display:flex; flex-direction:column; align-items:center; gap:4px; }
+.sf-sj__hero { display:none !important; }
+.sf-sj__hero[hidden] { display:none !important; }
 .sf-sj__col.is-boss .sf-sj__boss { order:0; }
-.sf-sj__col.is-boss .sf-sj__hero { order:1; }
-.sf-sj__col.is-boss .sf-sj__herotier, .sf-sj__col.is-boss .sf-sj__heromix { display:none; }
-.sf-sj__col.is-boss .sf-sj__herofig { font-size:22px; }
-.sf-sj__col.is-boss .sf-sj__calls, .sf-sj__col.is-boss .sf-sj__slam { margin-top:14px; }
-.sf-sj__herotier { font-weight:700; font-size:13px; letter-spacing:.34em; text-transform:uppercase;
+.sf-sj__col.is-boss .sf-sj__calls, .sf-sj__col.is-boss .sf-sj__slam { margin-top:4px; }
+.sf-sj__herotier { font-weight:700; font-size:12px; letter-spacing:.24em; text-transform:uppercase;
   color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__herorow { display:flex; align-items:baseline; gap:12px; }
-.sf-sj__herofig { font-weight:800; font-size:54px; line-height:1; font-variant-numeric:tabular-nums;
-  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, 0 0 18px rgb(232 226 212 / .3)); }
-/* Tier ramp on the sanctioned tokens only: warm amber while the chain holds, the lamp driven
-   danger-hot as it nears the break, danger red at the tiers one hit from the shatter. The tier
-   WORD above the figure carries the meaning; the ramp is reinforcement, never the sole channel. */
-.sf-sj__hero[data-tier="ignition"] .sf-sj__herofig { color:var(--dp-lamp-hot, #ffd98c); }
-.sf-sj__hero[data-tier="flare"] .sf-sj__herofig { color:var(--dp-lamp, #f2b950); }
-.sf-sj__hero[data-tier="nova"] .sf-sj__herofig { color:var(--dp-danger-hot, #ff8a70); }
-.sf-sj__hero[data-tier="supernova"] .sf-sj__herofig,
-.sf-sj__hero[data-tier="singularity"] .sf-sj__herofig { color:var(--dp-danger, #ff5038);
-  text-shadow:var(--dp-emit, 0 0 18px rgb(232 226 212 / .3)); }
-.sf-sj__hero[data-tier="ignition"] .sf-sj__herotier,
-.sf-sj__hero[data-tier="flare"] .sf-sj__herotier { color:var(--dp-lamp-hot, #ffd98c); }
-.sf-sj__hero[data-tier="nova"] .sf-sj__herotier,
-.sf-sj__hero[data-tier="supernova"] .sf-sj__herotier,
-.sf-sj__hero[data-tier="singularity"] .sf-sj__herotier { color:var(--dp-danger-hot, #ff8a70); }
-.sf-sj__heromix { font-weight:700; font-size:15px; letter-spacing:.18em;
-  color:var(--dp-lamp-hot, #f2b950); }
-/* inf-overdrive-mark: the opened window reads hot, distinct from the amber MIXED badge — the
-   word carries the meaning; the color is reinforcement, never the sole channel. */
-.sf-sj__hero[data-overdrive="1"] .sf-sj__heromix { color:var(--dp-danger-hot, #ff8a70); }
-.sf-sj__herobest { font-weight:500; font-size:12px; letter-spacing:.14em;
-  font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__herotrack { width:130px; height:3px; background:var(--dp-rule-hi, rgb(232 226 212 / .20)); overflow:hidden; }
-.sf-sj__herodeplete { width:100%; height:100%; transform-origin:left center;
-  background:var(--dp-lamp, #f2b950); }
+.sf-sj__herorow { display:flex; align-items:baseline; gap:10px; }
+.sf-sj__herofig { font-weight:800; font-size:28px; line-height:1; font-variant-numeric:tabular-nums;
+  color:var(--dp-ink, var(--sf-paper)); }
+.sf-sj__heromix { font-weight:700; font-size:13px; letter-spacing:.14em; color:var(--dp-lamp-hot, #f2b950); }
+.sf-sj__herobest { font-weight:500; font-size:12px; letter-spacing:.12em; font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
+.sf-sj__herotrack { width:110px; height:3px; background:var(--dp-rule-hi, rgb(232 226 212 / .20)); overflow:hidden; }
+.sf-sj__herodeplete { width:100%; height:100%; transform-origin:left center; background:var(--dp-lamp, #f2b950); }
 /* — the announcer — */
-.sf-sj__calls { order:3; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.sf-sj__calls { order:2; display:flex; flex-direction:column; align-items:center; gap:2px; }
 .sf-sj__calls[hidden] { display:none; }
-.sf-sj__call { font-weight:800; font-size:30px; letter-spacing:.22em; text-transform:uppercase;
-  color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, 0 0 16px rgb(232 226 212 / .3));
-  animation:sf-sj-pop .28s cubic-bezier(.2,.9,.3,1) both; }
+.sf-sj__call { padding:3px 14px; font-weight:750; font-size:20px; line-height:1.15; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--dp-ink, var(--sf-paper));
+  background:linear-gradient(90deg, transparent, rgb(7 17 26 / .76) 16%, rgb(7 17 26 / .76) 84%, transparent);
+  text-shadow:0 1px 4px rgb(3 8 12 / .92);
+  animation:sf-sj-pop .22s cubic-bezier(.2,.9,.3,1) both; }
 .sf-sj__call[data-kind="pileup"], .sf-sj__call[data-kind="collateral"] { color:var(--dp-lamp, #f2b950); }
 .sf-sj__call[data-kind="revenge"], .sf-sj__call[data-kind="closecall"] { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__call[data-kind="lastone"], .sf-sj__call[data-kind="bossdown"] { color:var(--dp-lamp-hot, #ffd98c); }
-/* inf-chain-star: the zone's chain star reads in the lamp's hot gold — the same ink the ladder's
-   stars wear on the Crucible screen; the words carry the meaning. */
 .sf-sj__call[data-kind="chainstar"] { color:var(--dp-lamp-hot, #ffd98c); }
-.sf-sj__shatter { order:4;
-  font-weight:800; font-size:22px; letter-spacing:.26em; text-transform:uppercase;
-  color:var(--dp-danger-hot, #ff5038); animation:sf-sj-drop .5s ease-out both; }
+.sf-sj__shatter { order:2; padding:3px 12px;
+  font-weight:750; font-size:16px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--dp-danger-hot, #ff6c54);
+  background:linear-gradient(90deg, transparent, rgb(7 17 26 / .74) 16%, rgb(7 17 26 / .74) 84%, transparent);
+  text-shadow:0 1px 3px rgb(3 8 12 / .9);
+  animation:sf-sj-drop .42s ease-out both; }
 .sf-sj__shatter[hidden] { display:none; }
 /* — the round slam — */
-/* RC-456: the centring lives on the column (left:50% + translateX(-50%), intrinsic width) and the
-   children are plain flow items, so the slam keyframes carry no translate that could ride a
-   full-width box off the left edge (the clipped ROUND label of the C1 pass). */
-.sf-sj__slam { order:2; max-width:94vw; display:flex; flex-direction:column;
-  align-items:center; gap:6px; animation:sf-sj-slam .34s cubic-bezier(.2,.9,.3,1) both; }
+.sf-sj__slam { order:2; max-width:94vw; padding:4px 18px; display:flex; flex-direction:column;
+  align-items:center; gap:3px;
+  background:linear-gradient(90deg, transparent, rgb(7 17 26 / .78) 16%, rgb(7 17 26 / .78) 84%, transparent);
+  animation:sf-sj-slam .26s cubic-bezier(.2,.9,.3,1) both; }
 .sf-sj__slam[hidden] { display:none; }
-.sf-sj__slamtitle { font-weight:800; font-size:64px; line-height:1; letter-spacing:.3em;
+.sf-sj__slamtitle { font-weight:800; font-size:28px; line-height:1.05; letter-spacing:.22em;
   text-transform:uppercase; color:var(--dp-ink, var(--sf-paper));
-  text-shadow:var(--dp-emit, 0 0 26px rgb(232 226 212 / .3)); }
-.sf-sj__slamsub { font-weight:700; font-size:15px; letter-spacing:.3em; text-transform:uppercase;
+  text-shadow:0 1px 6px rgb(3 8 12 / .92); }
+.sf-sj__slamsub { font-weight:700; font-size:13px; letter-spacing:.18em; text-transform:uppercase;
   color:var(--dp-lamp-hot, #f2b950); }
 /* — the clear tally — */
-.sf-sj__tally { order:2; display:flex; flex-direction:column;
-  align-items:center; gap:4px; }
+.sf-sj__tally { order:2; padding:6px 16px; display:flex; flex-direction:column;
+  align-items:center; gap:3px;
+  background:linear-gradient(90deg, transparent, rgb(7 17 26 / .8) 14%, rgb(7 17 26 / .8) 86%, transparent); }
 .sf-sj__tally[hidden] { display:none; }
-.sf-sj__tallytitle { font-weight:800; font-size:34px; letter-spacing:.28em; text-transform:uppercase;
-  color:var(--dp-lamp-hot, #f2b950); text-shadow:var(--dp-emit-lamp, 0 0 18px rgb(242 185 80 / .4)); }
-.sf-sj__tallyrow { font-weight:650; font-size:16px; letter-spacing:.2em; text-transform:uppercase;
+.sf-sj__tallytitle { font-weight:800; font-size:22px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--dp-lamp-hot, #f2b950); text-shadow:0 1px 4px rgb(3 8 12 / .9); }
+.sf-sj__tallyrow { font-weight:650; font-size:13px; letter-spacing:.14em; text-transform:uppercase;
   font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper));
-  animation:sf-sj-rise .3s ease-out both; }
+  animation:sf-sj-rise .24s ease-out both; }
 .sf-sj__tallyrow[hidden] { display:none; }
 /* — the boss furniture — */
-.sf-sj__card { order:2; display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 26px;
-  background:var(--dp-glass-flight, rgb(10 12 16 / .72));
+.sf-sj__card { order:2; display:flex; flex-direction:column; align-items:center; gap:4px; padding:7px 20px;
+  background:var(--dp-glass-flight, rgb(10 12 16 / .78));
   border-top:1px solid color-mix(in srgb, var(--dp-lamp, #f2b950) 55%, transparent);
   border-bottom:1px solid color-mix(in srgb, var(--dp-lamp, #f2b950) 55%, transparent);
-  animation:sf-sj-slam .3s ease-out both; }
+  animation:sf-sj-slam .24s ease-out both; }
 .sf-sj__card[hidden] { display:none; }
-.sf-sj__cardtitle { font-weight:800; font-size:26px; letter-spacing:.26em; text-transform:uppercase;
+.sf-sj__cardtitle { font-weight:800; font-size:20px; letter-spacing:.18em; text-transform:uppercase;
   color:var(--dp-ink, var(--sf-paper)); }
-.sf-sj__cardline { font-weight:550; font-size:13px; letter-spacing:.08em; font-style:italic;
+.sf-sj__cardline { font-weight:550; font-size:13px; letter-spacing:.04em; font-style:italic;
   color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__boss { order:1; width:min(34vw,420px);
+.sf-sj__boss { order:0; width:min(30vw, 360px);
   display:flex; flex-direction:column; align-items:center; gap:3px; }
 .sf-sj__boss[hidden] { display:none; }
-.sf-sj__bossname { font-weight:700; font-size:12px; letter-spacing:.3em; text-transform:uppercase;
+.sf-sj__bossname { font-weight:700; font-size:12px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--dp-danger-hot, #ff5038); }
-.sf-sj__bosstrack { width:100%; height:6px; background:var(--dp-rule-hi, rgb(232 226 212 / .16)); overflow:hidden; }
+.sf-sj__bosstrack { width:100%; height:5px; background:var(--dp-rule-hi, rgb(232 226 212 / .18)); overflow:hidden; }
 .sf-sj__bossfill { width:100%; height:100%; transform-origin:left center;
   background:var(--dp-danger, #ff5038);
   transition:transform .18s linear; }
-.sf-sj__bosscount { font-weight:650; font-size:12px; letter-spacing:.2em;
+.sf-sj__bosscount { font-weight:650; font-size:12px; letter-spacing:.18em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__bossinstruction { width:max-content; max-width:min(60vw,248px); font-weight:650;
+.sf-sj__bossinstruction { width:max-content; max-width:min(60vw, 260px); font-weight:650;
   font-size:12px; line-height:1.35; text-align:center; color:var(--dp-ink, var(--sf-paper));
   text-shadow:0 1px 3px #080a0e, 0 1px 8px #080a0e; }
 .sf-sj__bossinstruction[hidden] { display:none; }
-/* The column centres its children; the keyframes carry no translate, so nothing rides off-centre. */
-.sf-sj__bossdown { order:2; max-width:94vw; text-align:center;
-  font-weight:800; font-size:44px; letter-spacing:.3em; text-transform:uppercase;
-  color:var(--dp-lamp-hot, #f2b950); text-shadow:var(--dp-emit-lamp, 0 0 26px rgb(242 185 80 / .4));
-  animation:sf-sj-slam .34s cubic-bezier(.2,.9,.3,1) both; }
+.sf-sj__bossdown { order:2; max-width:94vw; padding:4px 16px; text-align:center;
+  font-weight:800; font-size:26px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--dp-lamp-hot, #f2b950);
+  background:linear-gradient(90deg, transparent, rgb(7 17 26 / .78) 16%, rgb(7 17 26 / .78) 84%, transparent);
+  text-shadow:0 1px 5px rgb(3 8 12 / .92);
+  animation:sf-sj-slam .26s cubic-bezier(.2,.9,.3,1) both; }
 .sf-sj__bossdown[hidden] { display:none; }
 /* — the kill popups — */
 .sf-sj__pops { position:absolute; inset:0; }

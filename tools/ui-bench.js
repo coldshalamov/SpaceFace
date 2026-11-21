@@ -220,7 +220,7 @@ function seededState() {
   // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
   state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
   state.nav.waypoint = {
-    label: 'Beacon 419 u', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
+    label: 'Beacon', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
   };
   // the real sector the bench's station stands in (a made-up id read as "Helios" beside saves filed in "Helios Prime")
   state.world.currentSectorId = 'sector_helios_prime';
@@ -1788,6 +1788,7 @@ async function mountFlightHud(opts = {}) {
   state.player.massSeed = { cooldownUntil: 0 };
   delete state.player.armedChargeCount;
   delete state._uiBenchPowerCaption;
+  delete state._uiBenchShipStatus;
   delete state.ui.minimapBenchHit;
 
   const seedMinimapScenario = (preset) => {
@@ -2014,6 +2015,7 @@ async function mountFlightHud(opts = {}) {
   // weapons range so Adventure isn't forced into `fight`; in `fight`, add live off-screen attackers.
   const calmBenchMode = hudState === 'calm' || hudState === 'idle' || hudState === 'teach'
     || hudState === 'cooldown' || hudState === 'armed' || hudState === 'plow' || hudState === 'caption'
+    || hudState === 'world-prompt' || hudState === 'news-long'
     || minimapPreset === 'calm' || minimapPreset === 'objective';
   if (calmBenchMode) {
     state.simTime = hudState === 'teach' ? 30 : 240;
@@ -2024,7 +2026,7 @@ async function mountFlightHud(opts = {}) {
     }
     const cradle = state.entities.get(12);
     if (cradle) cradle.team = 0;
-    if (hudState === 'calm') {
+    if (hudState === 'calm' || hudState === 'world-prompt') {
       // Nearby claimable asteroid + cargo + hailable contact so calm controls prove zero overlap.
       if (!state.entities.has(77)) {
         const rock = { id: 77, type: 'asteroid', alive: true, team: 0, radius: 38, pos: { x: 260, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 }, data: { claimable: true } };
@@ -2033,7 +2035,17 @@ async function mountFlightHud(opts = {}) {
       }
       state.player.cargo.items.cmdty_iron_ore = 8;
     }
-  } else if (hudState === 'fight') {
+    if (hudState === 'world-prompt') {
+      // Station projected cleanly in open upper-right sky so the unified Dock prompt anchors to it.
+      const st = {
+        id: 78, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 64,
+        pos: { x: 320, y: 0, z: -320 }, vel: { x: 0, y: 0, z: 0 },
+        data: { stationId: 'station_helios', name: 'Helios Station', services: ['trade', 'repair'] },
+      };
+      state.entities.set(78, st);
+      if (!state.entityList.some((e) => e && e.id === 78)) state.entityList.push(st);
+    }
+  } else if (hudState === 'fight' || hudState === 'ship-status' || hudState === 'shield-collapse') {
     state.simTime = 240;
     const offscreenHostiles = [
       { id: 81, x: 2400, z: -1600, callsign: 'FLANKER NORTH-EAST' },
@@ -2048,6 +2060,26 @@ async function mountFlightHud(opts = {}) {
       };
       state.entities.set(oh.id, e);
       state.entityList.push(e);
+    }
+  }
+  if (hudState === 'ship-status') {
+    // HUD-2 Item 5: live ship-status bench state — bow/port hit flash, firing + hot weapon pips,
+    // and taut Line holding a throwable boulder ("Boulder · Light").
+    const rock = { id: 90, type: 'asteroid', alive: true, team: 0, radius: 16, mass: 18, pos: { x: -120, y: 0, z: -140 }, vel: { x: 0, y: 0, z: 0 }, data: { name: 'Iron Rock' } };
+    state.entities.set(90, rock);
+    if (!state.entityList.some((e) => e && e.id === 90)) state.entityList.push(rock);
+    state.player.tether = { active: true, targetId: 90, phase: 'taut', restLength: 140, strain: 0.42 };
+    state._uiBenchShipStatus = {
+      hits: { bow: 0.92, starboard: 0, port: 0.68, stern: 0 },
+      hardpoints: ['firing', 'hot', 'idle'],
+      lineActive: true,
+      lineStrain: 0.48,
+      lineTag: 'Iron Rock · Light',
+    };
+  } else if (hudState === 'shield-collapse') {
+    if (playerEnt) {
+      playerEnt.shield = 0;
+      playerEnt.hull = 74;
     }
   }
   if (hudState === 'cooldown') {
@@ -2065,7 +2097,7 @@ async function mountFlightHud(opts = {}) {
   }
 
   // Override worldToScreen in fight mode so far off-screen attackers project off-screen for threatHalo.
-  if (hudState === 'fight') {
+  if (hudState === 'fight' || hudState === 'ship-status' || hudState === 'shield-collapse' || hudState === 'world-prompt') {
     ctx.helpers.worldToScreen = (world, out = {}) => {
       const x = window.innerWidth / 2 + ((world && world.x) || 0) * 0.4;
       const y = window.innerHeight * 0.62 + ((world && world.z) || 0) * 0.4;
@@ -2076,10 +2108,10 @@ async function mountFlightHud(opts = {}) {
   }
 
   // Mount calm-state secondary controls in the exact uiRoot.js order: comms (+ its own hail prompt)
-  // before createHud so hud.js adopts them into .sf-commtape__slots, then bandHud, fieldBuild, and
+  // before createHud so hud.js adopts them into the top-right utility row, then bandHud, fieldBuild, and
   // racingHud AFTER createHud (since createHud resets #hud.innerHTML).
   let benchBand = null, benchFb = null, benchRace = null, benchComms = null;
-  const mountAuxCalm = hudState === 'calm' || hudState === 'teach' || hudState === 'fight';
+  const mountAuxCalm = hudState === 'calm' || hudState === 'teach' || hudState === 'fight' || hudState === 'news-long' || hudState === 'world-prompt';
   let auxMods = null;
   if (mountAuxCalm) {
     auxMods = await Promise.all([
@@ -2121,7 +2153,18 @@ async function mountFlightHud(opts = {}) {
   document.body.classList.remove('sf-swarm-flight');
   // One persistent affordance + one warning through the live event path, so the annunciator is
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
-  if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
+  if (opts.dockCue !== false) {
+    bus.emit('dock:range', hudState === 'world-prompt'
+      ? { inRange: true, stationId: 'station_helios' }
+      : { inRange: true });
+  }
+  if (hudState === 'shield-collapse') {
+    bus.emit('combat:damage', {
+      targetId: state.playerId, isPlayer: true, brokeShield: true,
+      shieldDamage: 48, hullDamage: 12, applied: 60,
+      attackerId: 13, fromPos: { x: 240, z: -120 },
+    });
+  }
   // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
   // voice (kind 'danger', priority 110). Omit in calm/teach/idle bench modes so calm flight is genuinely calm.
   if (!calmBenchMode) {
@@ -2251,6 +2294,67 @@ async function mountCrucibleHud() {
       if (rk && rk.pos) { rk.pos.x *= 0.36; rk.pos.z *= 0.36; }
     }
     state.player.targetId = 353;
+  }
+  if (hudStateParam === 'cast' || params.get('minimapCast')) {
+    bus.emit('encounter:castAnnounced', {
+      wave: 4, recipeId: 'bench',
+      line: 'A rushing pack, with a sniper on the rim',
+      answer: 'Break its line with a rock',
+      jobs: ['rush', 'reach', 'deny'],
+      groups: [], tick: 0,
+    });
+  }
+  if (hudStateParam === 'headlines') {
+    const { swarmJuiceHud } = await import('../src/ui/swarmJuiceHud.js');
+    swarmJuiceHud.init({ state, bus, helpers: { worldToScreen: (w, o = {}) => { o.x = window.innerWidth / 2 + (w?.x || 0) * 0.4; o.y = window.innerHeight * 0.62 + (w?.z || 0) * 0.4; o.onScreen = true; return o; } } });
+    bus.emit('swarm:overdrive', { active: true });
+    bus.emit('swarm:announce', { kind: 'multikill', text: 'SWARM WIPE', count: 5 });
+    bus.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
+    bus.emit('ai:telegraph', { kind: 'engine_flare', entityId: 13, targetId: state.playerId, durationTicks: 600 });
+    swarmJuiceHud.update(1 / 60, state);
+    survivalHud._overdrive = true;
+  }
+  if (hudStateParam === 'floor-shop' || hudStateParam === 'floor-shop-fight') {
+    const playerNow = state.entities.get(state.playerId);
+    if (playerNow) playerNow.pos = { x: 0, y: 0, z: 0 };
+    const padNear = {
+      id: 910, type: 'pickup', alive: true, team: 0, radius: 18,
+      pos: { x: 65, y: 0, z: -48 }, vel: { x: 0, y: 0, z: 0 },
+      data: {
+        kind: 'swarm_floor_pad',
+        swarmFloorPad: {
+          padId: 'foundry-tap-west', kind: 'tap', modId: 'stripped',
+          price: 1500, label: 'LIGHT FRAME · 1,500',
+        },
+      },
+    };
+    const padFar = {
+      id: 911, type: 'pickup', alive: true, team: 0, radius: 18,
+      pos: { x: -340, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 },
+      data: {
+        kind: 'swarm_floor_pad',
+        swarmFloorPad: {
+          padId: 'foundry-crate', kind: 'crate',
+          price: 950, label: 'THE CRATE · 950', fitPreview: 'Fits empty slot 2',
+        },
+      },
+    };
+    for (const ent of [padNear, padFar]) {
+      state.entities.set(ent.id, ent);
+      if (!state.entityList.some((e) => e && e.id === ent.id)) state.entityList.push(ent);
+    }
+    if (hudStateParam === 'floor-shop') {
+      // Calm between enemies: push hostiles far so the nearby pad opens cleanly right over itself.
+      for (const id of [11, 12, 13]) {
+        const e = state.entities.get(id);
+        if (e && e.pos) { e.pos.x = 4200; e.pos.z = 4200; }
+      }
+    } else {
+      // Under fire: nearby hostile shooting at the player suppresses the un-armed shop card.
+      const h = state.entities.get(13);
+      if (h && h.pos) { h.pos.x = 120; h.pos.z = -90; }
+      bus.emit('combat:damage', { targetId: state.playerId, isPlayer: true, applied: 8, hullDamage: 8, attackerId: 13 });
+    }
   }
   survivalHud.update(1 / 60, state);
   const hudRoot = document.getElementById('hud');

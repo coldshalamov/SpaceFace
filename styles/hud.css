@@ -4,10 +4,7 @@
    multi-stage missile lock convergence, and G-LOC tunnel vision.
    ========================================================================== */
 
-/* --- Hardware Acceleration & Compositor Layers ---
-   #hud only transforms during the 180ms .sf-hud--glitch jitter, so the fullscreen layer carries
-   will-change only while that class is on; the small combat marks keep it permanently. */
-#hud.sf-hud--glitch,
+/* --- Hardware Acceleration & Compositor Layers --- */
 #aim-reticle,
 .sf-lockdiamond,
 .sf-target-arcs,
@@ -27,29 +24,32 @@
   transform-origin: center center;
 }
 
-/* --- Electronic Disruption (EMP Strike & Shield Collapse) --- */
-@keyframes sf-hud-jitter {
-  0%   { transform: translate3d(0, 0, 0); filter: none; }
-  15%  { transform: translate3d(-3px, 1px, 0); filter: drop-shadow(-2px 0 0 #ff0040) drop-shadow(2px 0 0 #00ffff); }
-  35%  { transform: translate3d(4px, -1px, 0); filter: drop-shadow(2px 0 0 #ff0040) drop-shadow(-2px 0 0 #00ffff); }
-  55%  { transform: translate3d(-2px, 2px, 0); filter: drop-shadow(-3px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
-  75%  { transform: translate3d(3px, -1px, 0); filter: drop-shadow(1px 0 0 #ff0040) drop-shadow(-1px 0 0 #00ffff); }
-  90%  { transform: translate3d(-1px, 0, 0); filter: drop-shadow(-1px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
-  100% { transform: translate3d(0, 0, 0); filter: none; }
+/* --- Electronic Disruption (EMP Strike & Shield Collapse) ---
+   Confined strictly to the shield meter and a thin screen-edge flash — zero full-screen
+   scanlines, zero tint over the 3D scene, and zero whole-HUD shake. */
+@keyframes sf-shield-meter-kick {
+  0%   { transform: translate3d(0, 0, 0); opacity: 1; }
+  25%  { transform: translate3d(-2px, 0, 0); opacity: 0.55; }
+  55%  { transform: translate3d(2px, 0, 0); opacity: 0.95; }
+  80%  { transform: translate3d(-1px, 0, 0); opacity: 0.7; }
+  100% { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 #hud.sf-hud--glitch {
-  animation: sf-hud-jitter 180ms steps(6, end) 1;
+  animation: none;
 }
 
-#hud.sf-hud--glitch .sf-caption,
-#hud.sf-hud--glitch .sf-nav-label,
-#hud.sf-hud--glitch .sf-lockring__label,
-#hud.sf-hud--glitch .sf-mt-obj {
-  text-shadow: -2px 0 0 #ff0040, 2px 0 0 #00ffff !important;
+#hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] {
+  animation: sf-shield-meter-kick 220ms steps(4, end) 1;
+  --visor-fill: var(--dp-danger, #ff644c);
 }
 
-/* Raster Scanline Static Overlay */
+#hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] .orr-label,
+#hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] b {
+  color: var(--dp-danger-hot, #ff8a70);
+}
+
+/* Thin edge-only frame flash on shield collapse / EMP (never tints the 3D viewport) */
 .sf-hud-glitch-overlay {
   display: none;
   position: absolute;
@@ -57,27 +57,20 @@
   pointer-events: none;
   z-index: 25;
   opacity: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 255, 255, 0.12) 3px,
-    rgba(255, 0, 64, 0.12) 4px
-  );
-  mix-blend-mode: screen;
+  background: none;
+  mix-blend-mode: normal;
+  box-shadow: inset 0 0 0 2px rgb(255 106 84 / 0.62), inset 0 0 26px rgb(255 96 76 / 0.24);
 }
 
 .sf-hud-glitch-overlay.active {
   display: block;
-  opacity: 0.85;
-  animation: sf-scanline-flicker 180ms ease-out 1;
+  opacity: 1;
+  animation: sf-shield-edge-flash 220ms ease-out 1 forwards;
 }
 
-@keyframes sf-scanline-flicker {
-  0%   { opacity: 0.9; transform: translateY(0); }
-  30%  { opacity: 0.6; transform: translateY(3px); }
-  60%  { opacity: 0.85; transform: translateY(-2px); }
-  100% { opacity: 0; transform: translateY(0); }
+@keyframes sf-shield-edge-flash {
+  0%   { opacity: 0.92; }
+  100% { opacity: 0; }
 }
 
 /* --- G-LOC Tunnel Vision Vignette --- */

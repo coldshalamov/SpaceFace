@@ -63,10 +63,24 @@ const CSS = `
 .orr-visor__meter::before { border-block:1px solid rgb(192 224 234 / .15); box-sizing:border-box; }
 .orr-visor__meter::after { color:var(--visor-fill); clip-path:inset(0 calc(100% - var(--visor-meter, 0%)) 0 0); transition:clip-path 160ms ease-out; }
 .orr-visor__portrait { position:relative; grid-column:4; min-width:0; margin:12px 0 0; padding-inline:clamp(8px,1.1vw,18px) clamp(11px,2.1vw,35px); height:104px; display:grid; justify-items:center; grid-template-rows:75px auto; gap:6px; }
-.orr-visor__plan { display:block; width:100%; height:100%; min-height:0; object-fit:contain; padding:3px 1px; box-sizing:border-box;
+.orr-visor__hull-stage { position:relative; width:100%; height:100%; min-height:0; display:grid; place-items:center; }
+.orr-visor__plan { display:block; width:100%; height:100%; min-height:0; object-fit:contain; padding:5px 6px; box-sizing:border-box;
   filter:drop-shadow(0 1px 1px rgb(3 12 19 / .8)); }
 .orr-visor__plan[hidden] { visibility:hidden; }
 .orr-visor__plan[data-view="holo"] { transform:rotate(-90deg); }
+.orr-visor__ship-hud { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+.orr-visor__hit-arc { fill:none; stroke:#ff5e47; stroke-width:3.2; stroke-linecap:round; opacity:0; transition:opacity 120ms ease-out; }
+.orr-visor__hit-arc.is-lit { filter:drop-shadow(0 0 4px rgb(255 94 71 / .85)); }
+.orr-visor__hp-core { fill:#a9edf4; stroke:#06121b; stroke-width:1.2; transition:fill 90ms ease, r 90ms ease; }
+.orr-visor__hp-ring { fill:none; stroke:transparent; stroke-width:1.5; opacity:0; transition:opacity 90ms ease; }
+.orr-visor__hp[data-state="firing"] .orr-visor__hp-core { fill:#fff3c8; }
+.orr-visor__hp[data-state="firing"] .orr-visor__hp-ring { stroke:#ffbe4f; opacity:1; }
+.orr-visor__hp[data-state="hot"] .orr-visor__hp-core { fill:#ff6048; }
+.orr-visor__hp[data-state="hot"] .orr-visor__hp-ring { stroke:#ff6048; opacity:1; }
+.orr-visor__tether-vec { stroke:#6ee5f5; stroke-width:1.6; stroke-dasharray:3 2; stroke-linecap:round; opacity:0; }
+.orr-visor__tether-dot { fill:#6ee5f5; stroke:#06121b; stroke-width:1; opacity:0; }
+.orr-visor__portrait[data-tethered="1"] .orr-visor__tether-vec,
+.orr-visor__portrait[data-tethered="1"] .orr-visor__tether-dot { opacity:1; }
 .orr-visor__portrait::before { content:""; position:absolute; inset:1px clamp(11px,2.1vw,35px) 28px clamp(8px,1.1vw,18px); pointer-events:none; opacity:.78;
   --corner:linear-gradient(#b8d5e3,#b8d5e3);
   background:var(--corner) left top / 11px 1px no-repeat, var(--corner) left top / 1px 10px no-repeat,
@@ -75,7 +89,12 @@ const CSS = `
     var(--corner) right bottom / 11px 1px no-repeat, var(--corner) right bottom / 1px 10px no-repeat;
 }
 .orr-visor__portrait figcaption { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  font-size:clamp(12px,1.08vw,18px); line-height:1.2; font-weight:520; }
+  display:inline-flex; align-items:center; justify-content:center; gap:5px;
+  font-size:clamp(12px,1.02vw,16px); line-height:1.2; font-weight:560; }
+.orr-visor__portrait[data-tethered="1"] figcaption { color:#8be9fd; font-weight:650; }
+.orr-visor__line-badge { display:none; width:7px; height:7px; border-radius:50%; background:#6ee5f5;
+  box-shadow:0 0 6px rgb(110 229 245 / .75); flex:0 0 auto; }
+.orr-visor__portrait[data-tethered="1"] .orr-visor__line-badge { display:inline-block; }
 .orr-cluster--visor .orr-cluster__keys { display:flex; flex-wrap:nowrap; align-items:stretch; margin:0 0 0 10px; padding:0 0 12px;
   border-bottom:1px solid rgb(216 236 240 / .7); }
 .orr-cluster.orr-cluster--visor .orr-cluster__key {
@@ -264,6 +283,21 @@ html.sf-reduce-flash .orr-cluster--visor .arsenal-fuse-rays { animation:none !im
 }
 `;
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  return node;
+}
+
+// Mount positions around the left-facing top-down hull silhouette (viewBox 0 0 160 76).
+const HARDPOINT_LAYOUTS = Object.freeze({
+  1: [[30, 38]],
+  2: [[56, 20], [56, 56]],
+  3: [[28, 38], [62, 18], [62, 58]],
+  4: [[38, 26], [38, 50], [74, 17], [74, 59]],
+});
+
 function el(tag, className) {
   const node = document.createElement(tag);
   node.className = className;
@@ -295,6 +329,7 @@ export function createVisorReadouts(dial, shipId, variantId, name, rows) {
   }
 
   const portrait = el('figure', 'orr-visor__portrait');
+  const stage = el('div', 'orr-visor__hull-stage');
   const drawing = el('img', 'orr-visor__plan');
   drawing.alt = '';
   drawing.addEventListener('load', () => { drawing.hidden = !drawing.naturalWidth; });
@@ -304,6 +339,36 @@ export function createVisorReadouts(dial, shipId, variantId, name, rows) {
     drawing.dataset.view = 'holo';
     drawing.src = fallback;
   });
+
+  // Live ship-panel overlay: directional hull-hit arcs (bow=left, starboard=top, port=bottom,
+  // stern=right), hardpoint firing/overheat pips, and taut Line tether vector.
+  const shipHudSvg = svgEl('svg', { class: 'orr-visor__ship-hud', viewBox: '0 0 160 76', 'aria-hidden': 'true' });
+  const hitArcs = {
+    bow: svgEl('path', { class: 'orr-visor__hit-arc', 'data-side': 'bow', d: 'M 22 14 Q 6 38 22 62' }),
+    starboard: svgEl('path', { class: 'orr-visor__hit-arc', 'data-side': 'starboard', d: 'M 38 8 Q 80 1 122 8' }),
+    port: svgEl('path', { class: 'orr-visor__hit-arc', 'data-side': 'port', d: 'M 38 68 Q 80 75 122 68' }),
+    stern: svgEl('path', { class: 'orr-visor__hit-arc', 'data-side': 'stern', d: 'M 138 14 Q 154 38 138 62' }),
+  };
+  for (const arc of Object.values(hitArcs)) shipHudSvg.appendChild(arc);
+
+  const tetherVec = svgEl('line', { class: 'orr-visor__tether-vec', x1: 24, y1: 38, x2: 5, y2: 38 });
+  const tetherDot = svgEl('circle', { class: 'orr-visor__tether-dot', cx: 5, cy: 38, r: 3.4 });
+  shipHudSvg.append(tetherVec, tetherDot);
+
+  const hpGroup = svgEl('g', { class: 'orr-visor__hardpoints' });
+  const hpNodes = [];
+  for (let i = 0; i < 4; i++) {
+    const g = svgEl('g', { class: 'orr-visor__hp' });
+    g.style.display = 'none';
+    const ring = svgEl('circle', { class: 'orr-visor__hp-ring', cx: 0, cy: 0, r: 6.2 });
+    const core = svgEl('circle', { class: 'orr-visor__hp-core', cx: 0, cy: 0, r: 3.1 });
+    g.append(ring, core);
+    hpGroup.appendChild(g);
+    hpNodes.push({ g, ring, core, x: -1, y: -1, state: '', shown: false });
+  }
+  shipHudSvg.appendChild(hpGroup);
+  stage.append(drawing, shipHudSvg);
+
   function setHull(id, variant) {
     const url = hullPosterUrl(id, 'hud', variant);
     portrait.dataset.ship = id;
@@ -313,10 +378,76 @@ export function createVisorReadouts(dial, shipId, variantId, name, rows) {
     else drawing.removeAttribute('src');
   }
   setHull(shipId, variantId);
+
+  let baseShipName = name;
+  let baseShipDetail = name;
+  let lastCaptionShown = name;
+  let lastTethered = false;
+  const lastHitAlpha = { bow: -1, starboard: -1, port: -1, stern: -1 };
+
   const caption = el('figcaption', 'orr-visor__ship-name');
-  caption.textContent = name;
-  portrait.append(drawing, caption);
+  const lineBadge = el('span', 'orr-visor__line-badge');
+  lineBadge.setAttribute('aria-hidden', 'true');
+  const captionText = el('span', 'orr-visor__ship-text');
+  captionText.textContent = name;
+  caption.append(lineBadge, captionText);
+  portrait.append(stage, caption);
   root.append(dial, condition, systems, portrait);
+
+  function updateShipPanel(status = {}) {
+    const hits = status.hits || {};
+    for (const side of ['bow', 'starboard', 'port', 'stern']) {
+      const a = Math.max(0, Math.min(1, Number(hits[side]) || 0));
+      const q = Math.round(a * 20) / 20;
+      if (lastHitAlpha[side] !== q) {
+        lastHitAlpha[side] = q;
+        const arc = hitArcs[side];
+        arc.style.opacity = q > 0 ? String(q) : '0';
+        arc.classList?.toggle?.('is-lit', q > 0.15);
+      }
+    }
+
+    const hps = Array.isArray(status.hardpoints) ? status.hardpoints.slice(0, 4) : [];
+    const coords = HARDPOINT_LAYOUTS[hps.length] || [];
+    for (let i = 0; i < hpNodes.length; i++) {
+      const node = hpNodes[i];
+      const hp = hps[i];
+      if (!hp) {
+        if (node.shown) { node.shown = false; node.g.style.display = 'none'; }
+        continue;
+      }
+      if (!node.shown) { node.shown = true; node.g.style.display = ''; }
+      const [cx, cy] = coords[i] || [30, 38];
+      if (node.x !== cx || node.y !== cy) {
+        node.x = cx; node.y = cy;
+        node.core.setAttribute('cx', String(cx));
+        node.core.setAttribute('cy', String(cy));
+        node.ring.setAttribute('cx', String(cx));
+        node.ring.setAttribute('cy', String(cy));
+      }
+      const st = hp.hot ? 'hot' : (hp.firing ? 'firing' : 'idle');
+      if (node.state !== st) {
+        node.state = st;
+        node.g.setAttribute('data-state', st);
+        node.core.setAttribute('r', st === 'idle' ? '2.8' : '3.7');
+      }
+    }
+
+    const heldTag = typeof status.lineTag === 'string' ? status.lineTag.trim() : '';
+    const tethered = heldTag.length > 0;
+    if (lastTethered !== tethered) {
+      lastTethered = tethered;
+      if (tethered) portrait.setAttribute('data-tethered', '1');
+      else portrait.removeAttribute('data-tethered');
+    }
+    const nextCaption = tethered ? heldTag : baseShipName;
+    if (lastCaptionShown !== nextCaption) {
+      lastCaptionShown = nextCaption;
+      captionText.textContent = nextCaption;
+      portrait.title = tethered ? `Line: ${heldTag}` : baseShipDetail;
+    }
+  }
+
   return {
     el: root,
     setMeter(key, fraction) {
@@ -326,10 +457,16 @@ export function createVisorReadouts(dial, shipId, variantId, name, rows) {
       const parent = meter.parentElement || meter.parentNode;
       if (key === 'heat' && parent && parent.classList) parent.classList.toggle('is-hot', fraction > .75);
     },
-    setName(name, detail) {
-      caption.textContent = name;
-      portrait.title = detail;
+    setName(nextName, detail) {
+      baseShipName = nextName;
+      baseShipDetail = detail || nextName;
+      if (!lastTethered) {
+        lastCaptionShown = nextName;
+        captionText.textContent = nextName;
+        portrait.title = baseShipDetail;
+      }
     },
     setHull,
+    updateShipPanel,
   };
 }

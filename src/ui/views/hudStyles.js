@@ -511,24 +511,28 @@ export const HUD_CSS = `
     background:radial-gradient(ellipse at center, transparent 45%, rgba(0,5,12,.4) 72%, rgba(0,2,8,.85) 92%, rgba(0,0,0,.98) 100%);
     transition:opacity .12s linear; will-change:opacity; }
 
-  /* Electronic disruption glitch & scanlines */
-  #hud.sf-hud--glitch { animation:sf-hud-jitter 180ms steps(6, end) 1; }
-  #hud.sf-hud--glitch .sf-caption,
-  #hud.sf-hud--glitch .sf-nav-label,
-  #hud.sf-hud--glitch .sf-lockring__label,
-  #hud.sf-hud--glitch .sf-mt-obj { text-shadow:-2px 0 0 #ff0040, 2px 0 0 #00ffff !important; }
-  @keyframes sf-hud-jitter {
-    0% { transform:translate3d(0,0,0); }
-    20% { transform:translate3d(-3px,1px,0); }
-    40% { transform:translate3d(4px,-1px,0); }
-    60% { transform:translate3d(-2px,2px,0); }
-    80% { transform:translate3d(2px,-1px,0); }
-    100% { transform:translate3d(0,0,0); }
+  /* Electronic disruption: localized shield-meter kick + thin screen-edge flash only (no scanlines/tint). */
+  #hud.sf-hud--glitch { animation:none; }
+  #hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] {
+    animation:sf-shield-meter-kick 220ms steps(4, end) 1;
+    --visor-fill:var(--dp-danger, #ff644c);
+  }
+  #hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] .orr-label,
+  #hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] b {
+    color:var(--dp-danger-hot, #ff8a70);
+  }
+  @keyframes sf-shield-meter-kick {
+    0% { transform:translate3d(0,0,0); opacity:1; }
+    25% { transform:translate3d(-2px,0,0); opacity:.55; }
+    55% { transform:translate3d(2px,0,0); opacity:.95; }
+    80% { transform:translate3d(-1px,0,0); opacity:.7; }
+    100% { transform:translate3d(0,0,0); opacity:1; }
   }
   .sf-hud-glitch-overlay { display:none; position:absolute; inset:0; pointer-events:none; z-index:25; opacity:0;
-    background:repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,255,255,.12) 3px, rgba(255,0,64,.12) 4px);
-    mix-blend-mode:screen; }
-  .sf-hud-glitch-overlay.active { display:block; opacity:.85; }
+    background:none; mix-blend-mode:normal;
+    box-shadow:inset 0 0 0 2px rgb(255 106 84 / .62), inset 0 0 26px rgb(255 96 76 / .24); }
+  .sf-hud-glitch-overlay.active { display:block; opacity:1; animation:sf-shield-edge-flash 220ms ease-out 1 forwards; }
+  @keyframes sf-shield-edge-flash { 0% { opacity:.92; } 100% { opacity:0; } }
 
   /* Gravity Mark — a persistent world-space contracting well read, independent of selection. */
   .sf-gravity-mark { position:absolute; left:0; top:0; width:46px; height:46px;
@@ -3295,6 +3299,7 @@ export const HUD_CSS = `
   #hud .sf-vtape { display:none !important; }
   #hud .sf-stableload, #hud .sf-hudphase { display:none !important; }
   :is(#hud[data-hud-attention="fight"], #hud[data-hud-attention="teach"]) :is(
+    .sf-visor-utility-row,
     .sf-commtape, .sf-commtape__slots, .sf-commtape__news, #news-ticker,
     #sf-comm-backlog-btn, #sf-contact-hail, #sf-band-hud,
     .race-tape[data-compact="true"], #sf-cargo-bar,

@@ -83,21 +83,33 @@ export function mountRacingHud({ root, bus, state, screens }) {
   closeOptions.className += ' race-tape-options-close'; closeOptions.style.display = 'none';
   readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,options,row,live); root.appendChild(panel);
   const syncParent = (authored) => {
-    // HUD reconstruction can replace the entire dock, so ownership is re-derived each frame —
-    // but a tape already inside a live .sf-rightdock under root is correctly placed, and only
-    // a missing/disconnected parent pays the subtree querySelector (not every frame).
+    // HUD reconstruction can replace the entire dock or utility row, so ownership is re-derived
+    // each frame. In desktop visor mode the compact camera-view chip joins the unified top-right
+    // utility row (#sf-visor-utility-row) instead of floating off above the minimap.
     let parent = root;
+    const mobileFlight = document.documentElement?.dataset?.sfMobileFlight === '1';
     if (!authored) {
-      const cur = panel.parentNode;
-      const docked = cur && cur !== root
-        && cur.classList?.contains?.('sf-rightdock')
-        && cur.isConnected !== false
-        && (typeof root.contains !== 'function' || root.contains(cur));
-      parent = docked ? cur : (root.querySelector?.('.sf-rightdock') || root);
+      const utilityRow = !mobileFlight
+        ? (root.querySelector?.('#sf-visor-utility-row') || document.getElementById?.('sf-visor-utility-row'))
+        : null;
+      if (utilityRow && utilityRow.isConnected !== false) {
+        parent = utilityRow;
+      } else {
+        const cur = panel.parentNode;
+        const docked = cur && cur !== root
+          && cur.classList?.contains?.('sf-rightdock')
+          && cur.isConnected !== false
+          && (typeof root.contains !== 'function' || root.contains(cur));
+        parent = docked ? cur : (root.querySelector?.('.sf-rightdock') || root);
+      }
     }
     if (panel.parentNode === parent) return;
     if (parent === root) root.appendChild(panel);
-    else parent.insertBefore(panel, parent.firstChild);
+    else if (parent.id === 'sf-visor-utility-row') {
+      const commsBtn = parent.querySelector?.('#sf-comm-backlog-btn');
+      if (commsBtn && commsBtn.parentNode === parent) parent.insertBefore(panel, commsBtn);
+      else parent.appendChild(panel);
+    } else parent.insertBefore(panel, parent.firstChild);
   };
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
   // The simulation registers temporary corridor sessions in a realm-local WeakMap. In the
@@ -217,9 +229,27 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
       const mobileCompact = !authored && document.documentElement?.dataset?.sfMobile === '1' && document.documentElement?.dataset?.sfMobileFlight === '1';
-      setProperty(view, 'textContent', mobileCompact
-        ? `View: ${viewMode === 'racing' ? 'Chase' : 'Overhead'}${lock ? ' (mission locked)' : ''}`
-        : lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
+      const inUtilityRow = panel.parentNode?.id === 'sf-visor-utility-row';
+      if (inUtilityRow && !lock && !mobileCompact) {
+        const modeText = viewMode === 'racing' ? 'Chase' : 'Overhead';
+        const keyText = promptLabel('steeringView').replace(/^\[\s*|\s*\]$/g, '');
+        const viewSig = `visor:${modeText}:${keyText}`;
+        if (view._sfViewSig !== viewSig) {
+          view._sfViewSig = viewSig;
+          view.textContent = '';
+          const lbl = document.createElement('span');
+          lbl.textContent = modeText;
+          const key = document.createElement('kbd');
+          key.className = 'race-tape-view-key';
+          key.textContent = keyText;
+          view.append(lbl, key);
+        }
+      } else {
+        view._sfViewSig = '';
+        setProperty(view, 'textContent', mobileCompact
+          ? `View: ${viewMode === 'racing' ? 'Chase' : 'Overhead'}${lock ? ' (mission locked)' : ''}`
+          : lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
+      }
       setProperty(view, 'disabled', !!lock);
       const pressed=String(viewMode==='racing');
       if(view.getAttribute('aria-pressed')!==pressed)view.setAttribute('aria-pressed',pressed);
