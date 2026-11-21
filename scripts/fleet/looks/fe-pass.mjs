@@ -1,7 +1,9 @@
 // Frontend review look: live Swarm round 3 -> shoot the Foundry pad labels, the rope class-up
 // plate (line:classChanged on the bus), and the Q context wheel held open.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/fe-pass.mjs <out-prefix> [WxH]
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 const PORT = 8163;

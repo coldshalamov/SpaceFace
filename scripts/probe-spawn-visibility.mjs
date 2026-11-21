@@ -36,7 +36,6 @@ try {
   if (OPEN) await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Spawn' }));
   else await page.evaluate(async () => { const l = await import('/src/ui/crucibleLaunch.js'); const s = l.crucibleSetupFor({ seed: 4242 }); l.requestCrucibleRun(window.SF.bus, s.value, s.ruleset); });
   await page.waitForFunction(() => { const s = window.SF.state; return s.mode === 'flight' && Number.isFinite(s.render && s.render.firstPlayableFrameAt); }, null, { timeout: 560000 });
-  await page.bringToFront();
   await page.mouse.move(1100, 300);
   await page.keyboard.down('KeyW');
   const c0 = cpuSnapshot();

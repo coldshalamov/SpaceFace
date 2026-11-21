@@ -9,7 +9,7 @@ import http from 'node:http';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-const { chromium } = await import('playwright');
+const { chromium: rawChromium } = await import('playwright'); const chromium = (await import('../../scripts/lib/quietLaunch.mjs')).quietChromium(rawChromium);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const out = path.resolve(process.argv[2] || process.env.RUBRIC_REVIEW_OUT || path.join(os.tmpdir(), 'rubric-review'));
 await fs.mkdir(out, { recursive: true });

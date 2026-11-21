@@ -119,7 +119,6 @@ try {
     return state && state.mode === 'flight'
       && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
   }, null, { timeout: 560_000 });
-  await page.bringToFront();
   await page.mouse.move(1400, 300);
 
   // In-page sampler. Reads SF.THREE (dev debug surface), the live camera, and the camera

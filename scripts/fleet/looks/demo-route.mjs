@@ -18,7 +18,9 @@
 // Writes <out>/demo-route.json, <out>/report.md and <out>/NN-<screen>.png. Observers read window.SF (as a
 // person watching the screen could); every game action goes through Playwright's trusted input.
 // Latch / swing / release code and event logging come from throw.mjs.
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -765,7 +767,6 @@ const keyUp = async (k) => { if (held.has(k)) { held.delete(k); await page.keybo
 let lastReassert = 0;
 async function reassertKeys() {
   if (Date.now() - lastReassert < 700) return; lastReassert = Date.now();
-  await page.bringToFront().catch(() => {});
   for (const k of held) { await page.keyboard.up(k).catch(() => {}); await page.keyboard.down(k).catch(() => {}); }
 }
 const releaseAll = async () => { for (const k of [...held]) await keyUp(k); if (nav.lmb) { await page.mouse.up({ button: 'left' }).catch(() => {}); nav.lmb = false; } };

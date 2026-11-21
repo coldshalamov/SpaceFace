@@ -20,7 +20,7 @@ const arg = (name, fallback) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : fallback;
 };
-const ONLY = new Set(String(arg('only', 'race,rover,field,planet')).split(',').map((s) => s.trim()).filter(Boolean));
+const ONLY = new Set(String(arg('only', 'race,job,rover,field,planet')).split(',').map((s) => s.trim()).filter(Boolean));
 const OUT_DIR = resolve(ROOT, arg('out', '.devshots/side-modes'));
 const RACE_CONTRACT = arg('contract', '');
 const RACE_SECONDS = Number(arg('raceSeconds', 45));
@@ -277,6 +277,151 @@ const pickRock = (page) => page.evaluate(() => {
     typeId: best.r.data?.typeId, rocks: rocks.length, cluster: best.n } : null;
 });
 
+// One works contract, start to finish, the way a player does it: dock at Helios, take "First Cut"
+// off the board, undock, set the rover down on a rock, cut four iron by hand, and get paid.
+async function runJob(page) {
+  const shot = shooter(page, 'job');
+  const clickText = async (pattern, opts = {}) => {
+    const hit = await page.evaluate(({ source, flags, tags }) => {
+      const re = new RegExp(source, flags);
+      const nodes = [...document.querySelectorAll(tags)].filter((n) => {
+        const r = n.getBoundingClientRect();
+        return r.width > 4 && r.height > 4 && getComputedStyle(n).visibility !== 'hidden' && re.test((n.textContent || '').trim());
+      });
+      nodes.sort((a, b) => (a.textContent || '').length - (b.textContent || '').length);
+      const n = nodes[0];
+      if (!n) return null;
+      const r = n.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, text: (n.textContent || '').trim().slice(0, 80) };
+    }, { source: pattern.source, flags: pattern.flags, tags: opts.tags || 'button, [role="button"], [role="tab"], a, li, article, .sx-row, [data-offer-id]' });
+    if (hit) await page.mouse.click(hit.x, hit.y);
+    return hit;
+  };
+  try {
+    const station = await page.evaluate(() => {
+      const st = window.SF.state;
+      const e = st.entityList.find((x) => x && x.alive !== false && x.type === 'station'
+        && (x.data?.stationId === 'station_helios' || /helios station/i.test(x.name || '')));
+      return e ? { id: e.id, x: e.pos.x, z: e.pos.z, radius: e.radius || 40 } : null;
+    });
+    facts.jobStation = station;
+    if (!station) throw new Error('Helios Station is not in the opening sector');
+    await relocate(page, { x: station.x - station.radius - 160, z: station.z, heading: 0 });
+    await page.waitForTimeout(2000);
+    await page.evaluate(async (id) => {
+      const { laneInputWrite } = await import('/src/core/simLaneCommands.js');
+      laneInputWrite(window.SF.state, 'player.targetId', id);
+    }, station.id);
+    for (let i = 0; i < 30; i++) {
+      if (await page.evaluate(() => !!window.SF.state.ui?.docked)) break;
+      await page.keyboard.press('KeyE');
+      await page.waitForTimeout(2500);
+    }
+    facts.jobDocked = await page.evaluate(() => ({ docked: !!window.SF.state.ui?.docked, station: window.SF.state.ui?.dockedStationId }));
+    if (!facts.jobDocked.docked) throw new Error('could not dock at Helios by pressing E');
+    await page.waitForTimeout(3500);
+    await shot('00-docked');
+    facts.jobDoor = await clickText(/^(contracts|jobs|work|job board|contract board)\b/i)
+      || await clickText(/contracts|job board/i);
+    await page.waitForTimeout(1800);
+    await shot('01-board');
+    facts.jobBoardText = await page.evaluate(() => {
+      const root = document.querySelector('[data-screen="station"]') || document.body;
+      const text = root.textContent.split(/[ \n\t]+/).join(' ');
+      const at = text.indexOf('First Cut');
+      return { hasFirstCut: at >= 0, around: at >= 0 ? text.slice(Math.max(0, at - 80), at + 260) : text.slice(0, 500) };
+    });
+    facts.jobRow = await clickText(/First Cut/, { tags: 'button, [role="button"], li, article, tr, .sx-row, [data-offer-id], [data-mission-id], div' });
+    await page.waitForTimeout(1200);
+    await shot('02-offer');
+    facts.jobAccept = await clickText(/^(accept|take the job|accept contract|take contract)/i);
+    await page.waitForTimeout(1500);
+    await shot('03-accepted');
+    const active = () => page.evaluate(() => {
+      const st = window.SF.state;
+      const m = (st.missions?.active || []).find((x) => x && x.params && x.params.works);
+      return { job: m ? { title: m.title, status: m.status, progress: m.objectiveProgress, target: m.objectiveTarget } : null,
+        credits: st.player?.credits, flags: st.story?.flags?.worksContracts || null };
+    });
+    facts.jobAfterAccept = await active();
+    if (!facts.jobAfterAccept.job) throw new Error('First Cut was not accepted through the board');
+    await clickText(/^undock/i) || await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !window.SF.state.ui?.docked, null, { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(3500);
+    await shot('04-undocked-objective');
+    facts.jobHudText = await page.evaluate(() => {
+      const hud = document.getElementById('hud');
+      const text = hud ? hud.textContent.split(/[ \n\t]+/).join(' ') : '';
+      const at = text.indexOf('Cut ');
+      return at >= 0 ? text.slice(Math.max(0, at - 60), at + 120) : null;
+    });
+    // To the rock the job's marker names, and down.
+    const rock = await page.evaluate(() => {
+      const st = window.SF.state;
+      const wp = st.nav && st.nav.waypoint;
+      const byMarker = wp && wp.targetEntityId != null ? st.entities.get(wp.targetEntityId) : null;
+      const pick = byMarker || st.entityList.find((e) => e && e.alive !== false && e.type === 'asteroid' && (e.data?.yieldU || 0) > 6);
+      return pick ? { id: pick.id, x: pick.pos.x, z: pick.pos.z, radius: pick.radius || 10, fromMarker: !!byMarker,
+        reason: wp && wp.reason } : null;
+    });
+    facts.jobRock = rock;
+    if (!rock) throw new Error('no rock for the job');
+    await relocate(page, { x: rock.x - rock.radius - 26, z: rock.z, heading: 0 });
+    await page.waitForTimeout(2500);
+    await page.keyboard.press('KeyB');
+    await page.waitForFunction(() => !!window.SF.state.drill, null, { timeout: 30000 });
+    await page.waitForTimeout(900);
+    await shot('05-landing-card');
+    await page.waitForFunction(() => {
+      const root = document.querySelector('[data-screen="drill"]');
+      return !!root && !/Docking the mining rig|Loading mining equipment/.test(root.textContent);
+    }, null, { timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(700);
+    await page.locator('.ast-canvas').click({ position: { x: 400, y: 200 } }).catch(() => {});
+    const hold = async (code, ms) => { await page.keyboard.down(code); await page.waitForTimeout(ms); await page.keyboard.up(code); };
+    const where = () => page.evaluate(() => {
+      const d = window.SF.state.drill;
+      if (!d) return null;
+      const iron = [];
+      for (let c = 0; c < d.field.length; c++) for (let r = 1; r < 8; r++) {
+        const t = d.field[c][r];
+        if (t && t.type === 'vein' && t.ore === 'cmdty_ore_iron') iron.push({ c, r });
+      }
+      return { col: d.avatar.col, row: d.avatar.row, iron, got: (d.yieldLog && d.yieldLog.cmdty_ore_iron) || 0 };
+    });
+    for (let step = 0; step < 40; step++) {
+      const w = await where();
+      if (!w) break;
+      const m = await active();
+      if (!m.job || w.got >= 4) break;
+      if (!w.iron.length) { await hold('ArrowDown', 700); continue; }
+      w.iron.sort((a, b) => (Math.abs(a.c - w.col) + Math.abs(a.r - w.row)) - (Math.abs(b.c - w.col) + Math.abs(b.r - w.row)));
+      const t = w.iron[0];
+      // Work along the row above the seam, then down into it.
+      if (w.row < t.r - 1) await hold('ArrowDown', 450);
+      else if (w.row > t.r - 1 && w.col !== t.c) await hold('ArrowUp', 450);
+      else if (w.col < t.c) await hold('ArrowRight', 420);
+      else if (w.col > t.c) await hold('ArrowLeft', 420);
+      else await hold('ArrowDown', 900);
+    }
+    await shot('06-cut');
+    facts.jobDig = await where();
+    facts.jobEnd = await active();
+    facts.jobToasts = await page.evaluate(() => (window.__roverLog || []).filter((row) => row[0] === 'toast').slice(-8));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(2500);
+    await shot('07-paid');
+  } catch (error) {
+    facts.jobError = String(error && error.message || error);
+    log(`job failed: ${facts.jobError}`);
+    await shot('zz-error');
+    if (await page.evaluate(() => !!window.SF.state.drill).catch(() => false)) {
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(1500);
+    }
+  }
+}
+
 // The rover by the ordinary route: target a rock, put the Line on it, press the drill key.
 async function runRover(page) {
   const shot = shooter(page, 'rover');
@@ -516,9 +661,14 @@ try {
       `--window-size=${VIEWPORT.width},${VIEWPORT.height}`, '--force-device-scale-factor=1'],
   } : { headless: true });
   if (ONLY.has('race')) await runRace();
-  if (ONLY.has('rover') || ONLY.has('field') || ONLY.has('planet')) {
+  if (ONLY.has('job') || ONLY.has('rover') || ONLY.has('field') || ONLY.has('planet')) {
     const { page, issues } = await newPage();
     await startAdventure(page);
+    await page.evaluate(() => {
+      window.__roverLog = window.__roverLog || [];
+      window.SF.bus.on('toast', (p) => window.__roverLog.push(['toast', JSON.stringify(p || {}).slice(0, 200)]));
+    });
+    if (ONLY.has('job')) await runJob(page);
     if (ONLY.has('rover')) await runRover(page);
     if (ONLY.has('field')) await runField(page);
     if (ONLY.has('planet')) await runPlanet(page);

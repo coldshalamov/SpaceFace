@@ -147,7 +147,6 @@ async function runOnce(chromium, variant, rep) {
       await sleep(1000);
     }
     result.loadS = +((Date.now() - t0) / 1000).toFixed(1);
-    await page.bringToFront();
     await page.mouse.move(1000, 380);
     result.setup = await page.evaluate((cap) => {
       const S = window.SF.state;

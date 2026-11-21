@@ -17,7 +17,9 @@
 // --legacy turns the 2026-11-21 fix off in the same build (localStorage sf.laneLegacy=1: the old
 // stop-and-wait worker clock, no shared pose table) so before/after can be measured in one minute.
 // Writes <out>/report.json and prints one table row per phase. Exit code 0; the gate judges.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import * as nodeModule from 'node:module';
+const require_ = () => nodeModule;
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,6 +33,14 @@ const SECONDS = Number(argv.seconds || 180);
 const FORCED = argv.forced === true || argv.forced === '1';
 const LEGACY = argv.legacy === true || argv.legacy === '1';
 const ROUND = Number(argv.round || 3);
+// Real-device conditions (owner, 2026-11-21: "maybe it has something to do with the physical keyboard"):
+//   --pad=noisy|quiet   navigator.getGamepads reports a connected pad (drifting axes, or perfectly still)
+//   --real-profile      the player's own settings profile and saves, COPIED read-only into this isolated
+//                       profile's storage (the real store is never opened for writing)
+//   --visible           a normal activated window; default is a never-activated window (showInactive)
+const PAD = argv.pad ? String(argv.pad) : null;
+const REAL_PROFILE = argv['real-profile'] === true;
+const VISIBLE = argv.visible === true;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/no-freeze/${ROUTE}${LEGACY ? '-legacy' : ''}`));
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -40,9 +50,26 @@ const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 const { installCspSafePlaywrightPolling } = await import('./lib/playwrightCspPolling.mjs');
 const { installFirstLightPromptHandler } = await import('./player-truth/routes.mjs');
 const { _electron: electron } = await loadPlaywright();
-const launch = createIsolatedElectronLaunch({ root: ROOT, taskId: `no-freeze-${ROUTE}`, timeout: 180000, baseEnv: { ...process.env } });
+const launch = createIsolatedElectronLaunch({ root: ROOT, taskId: `no-freeze-${ROUTE}`, timeout: 180000, baseEnv: {
+  ...process.env,
+  // Never steal focus from what the owner is watching: shown inactive, never activated, and kept
+  // un-throttled so it renders and measures like a foreground window.
+  ...(VISIBLE ? {} : { SPACEFACE_EVIDENCE_SHOW_INACTIVE: '1', SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' }),
+} });
+function readPlayerProfilePairs() {
+  const { createRequire } = require_();
+  const req = createRequire(import.meta.url);
+  const { resolvePlayerSaveDir } = req('./lib/playerSaveStore.cjs');
+  const dir = resolvePlayerSaveDir(process.env);
+  const pairs = {};
+  for (const file of readdirSync(dir)) {
+    if (!file.startsWith('sf.') || !file.endsWith('.json')) continue;
+    pairs[file.slice(0, -'.json'.length)] = readFileSync(join(dir, file), 'utf8');
+  }
+  return { dir, pairs };
+}
 
-const report = { route: ROUTE, seconds: SECONDS, forced: FORCED, legacy: LEGACY, errors: [], phases: [], rows: [] };
+const report = { route: ROUTE, seconds: SECONDS, forced: FORCED, legacy: LEGACY, pad: PAD, realProfile: REAL_PROFILE, visible: VISIBLE, errors: [], phases: [], rows: [] };
 let app = null;
 
 // ---- the hand: CDP input ---------------------------------------------------------------------
@@ -108,6 +135,12 @@ try {
   await page.waitForLoadState('domcontentloaded', { timeout: 180000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 240000 });
   // A/B switch and first-run state live in this isolated profile's storage; reload to apply.
+  if (REAL_PROFILE) {
+    const prof = readPlayerProfilePairs();
+    report.realProfileKeys = Object.keys(prof.pairs);
+    await page.evaluate((pairs) => { for (const [k, v] of Object.entries(pairs)) localStorage.setItem(k, v); }, prof.pairs);
+    console.log('real profile copied (read-only) from', prof.dir, Object.keys(prof.pairs).join(','));
+  }
   await page.evaluate((legacy) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
@@ -121,6 +154,22 @@ try {
   }
   await page.waitForFunction(() => typeof window.SF.simLaneDiag === 'function', null, { timeout: 240000 })
     .catch(async () => { console.log('no simLaneDiag', await page.evaluate(() => Object.keys(window.SF || {}).join(','))); });
+  const cdp0 = await page.context().newCDPSession(page);
+  // The window is never activated; tell the page it has focus, as a player's window does.
+  await cdp0.send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
+  if (PAD) {
+    await page.evaluate((mode) => {
+      let t = 0;
+      const pad = () => ({
+        id: 'Probe HID pad (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', timestamp: performance.now(),
+        axes: [0, 1, 2, 3].map(() => (mode === 'noisy' ? (Math.random() - 0.5) * 0.06 : 0)),
+        buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })),
+      });
+      navigator.getGamepads = () => { t++; return [pad(), null, null, null]; };
+      try { window.dispatchEvent(Object.assign(new Event('gamepadconnected'), { gamepad: pad() })); } catch (_) {}
+      window.__padCalls = () => t;
+    }, PAD);
+  }
   report.realm = await page.evaluate(() => ({
     coi: globalThis.crossOriginIsolated === true, sab: typeof SharedArrayBuffer === 'function',
     ua: navigator.userAgent.slice(0, 90), w: innerWidth, h: innerHeight,
@@ -128,14 +177,8 @@ try {
   console.log('realm', JSON.stringify(report.realm));
 
   // ---- reach flight on the ordinary route's own launch seams (Electron forbids query strings) ----
-  const t0 = Date.now();
-  if (ROUTE === 'swarm') {
-    await page.waitForFunction(() => {
-      const ui = window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
-      const m = ui && (ui.screenManager || ui.manager);
-      return !!(m && typeof m.hasScreen === 'function' && m.hasScreen('crucibleDraft'));
-    }, null, { timeout: 120000 }).catch(() => {});
-    const launched = await page.evaluate(async (round) => {
+  const launchSwarm = async () => {
+    return page.evaluate(async (round) => {
       const { swarmStartAtRound, swarmArcadeSeedFor } = await import('/src/data/swarmLadder.js');
       const L = await import('/src/ui/crucibleLaunch.js');
       const { SWARM_RULESET } = await import('/src/data/swarmMode.js');
@@ -149,7 +192,22 @@ try {
       L.requestCrucibleRun(window.SF.bus, setup, SWARM_RULESET);
       return { ok: true, wave: start.startWave };
     }, ROUND).catch((e) => ({ ok: false, error: String(e).slice(0, 200) }));
+  };
+
+  const t0 = Date.now();
+  if (ROUTE === 'swarm') {
+    await page.waitForFunction(() => {
+      const ui = window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
+      const m = ui && (ui.screenManager || ui.manager);
+      return !!(m && typeof m.hasScreen === 'function' && m.hasScreen('crucibleDraft'));
+    }, null, { timeout: 120000 }).catch(() => {});
+    const launched = await launchSwarm();
     console.log('swarm launch', JSON.stringify(launched));
+  } else if (REAL_PROFILE) {
+    // The player's own campaign: press Continue on the title like he does.
+    const ok = await page.getByRole('button', { name: /^Continue/i }).first().click({ timeout: 60000 }).then(() => true).catch(() => false);
+    console.log('continue pressed', ok);
+    if (!ok) await page.evaluate(() => window.SF.bus.emit('game:new', { seed: 4242 })).catch(() => {});
   } else {
     await page.evaluate(() => window.SF.bus.emit('game:new', { seed: 4242 })).catch(() => {});
   }
@@ -172,7 +230,6 @@ try {
     await sleep(1000);
   }
   report.loadS = +((Date.now() - t0) / 1000).toFixed(1);
-  await page.bringToFront().catch(() => {});
   await sleep(3000);
   report.lane0 = await page.evaluate(() => {
     const g = window.SF.simLaneDiag();
@@ -200,7 +257,7 @@ try {
     }, 50);
   });
   const vp = { w: report.realm.w || 1280, h: report.realm.h || 720 };
-  const cdp = await page.context().newCDPSession(page);
+  const cdp = cdp0;
   const hand = createHand(cdp, vp);
   hand.start();
   const setPhase = (name) => page.evaluate((n) => { window.__nf.phase = n; window.__SF_POSE_AGE__ && window.__SF_POSE_AGE__.reset(); }, name);
@@ -208,6 +265,7 @@ try {
   const force = (opts) => page.evaluate((o) => (window.__SF_LANE_FORCE__ ? window.__SF_LANE_FORCE__(o) : null), opts);
 
   // A busy hand: thrust + turn held (+ strafe), the trigger held, powers tapped, fingers lifted.
+  let notFlying = 0;
   const play = async (ms) => {
     const end = Date.now() + ms;
     let beat = 0;
@@ -227,10 +285,21 @@ try {
         const take = [...document.querySelectorAll('#screens button, #screens [role="button"]')]
           .find((x) => x.offsetParent && !x.disabled && /TAKE$/i.test(n(x.textContent)));
         if (take) { take.click(); return; }
+        const again = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled
+          && /^(Retry|Restart|Run again|Play again|New run|Try again)/i.test(n(x.textContent)));
+        if (again) { again.click(); return; }
         const b = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled
           && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start run|Retry|Restart|Respawn|Undock)/i.test(n(x.textContent)));
         if (b) b.click();
       }).catch(() => {});
+      // A Swarm run that ended (death, results screen) is relaunched so every phase flies.
+      const flying = await page.evaluate(() => window.SF.state.mode === 'flight').catch(() => true);
+      notFlying = flying ? 0 : notFlying + 1;
+      if (ROUTE === 'swarm' && notFlying >= 3) {
+        notFlying = 0;
+        report.relaunches = (report.relaunches || 0) + 1;
+        await launchSwarm().catch(() => {});
+      }
     }
     hand.releaseAll();
   };
@@ -241,7 +310,16 @@ try {
     phases.push(['forced: replies held 3 s', async () => { await force({ holdRepliesMs: 3000 }); await play(6000); }]);
     phases.push(['forced: dense replies 2000 rows', async () => { await force({ padRows: 2000 }); await play(6000); await force({ padRows: 0 }); await play(2000); }]);
   }
+  const ensureFlight = async () => {
+    for (let i = 0; i < 60; i++) {
+      const live = await page.evaluate(() => window.SF.state.mode === 'flight' && window.SF.state.timeScale > 0).catch(() => false);
+      if (live) return true;
+      await play(1500);
+    }
+    return false;
+  };
   for (const [name, run] of phases) {
+    await ensureFlight();
     await setPhase(name);
     const freezeBefore = await page.evaluate(() => (window.__SF_FREEZE_LOG__ || []).length).catch(() => 0);
     await run();
@@ -252,6 +330,8 @@ try {
   }
   hand.stop();
   report.hand = hand.counts();
+  report.realmEnd = await page.evaluate(() => ({ hasFocus: document.hasFocus(), visibility: document.visibilityState,
+    padCalls: window.__padCalls ? window.__padCalls() : null })).catch(() => null);
   const samples = await page.evaluate(() => { clearInterval(window.__nf.timer); return window.__nf.samples; });
   report.end = await page.evaluate(() => {
     const g = window.SF.simLaneDiag();
@@ -293,7 +373,7 @@ try {
   }
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(samples));
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
-  console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
+  console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
   for (const r of report.rows) {
     console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
   }

@@ -325,7 +325,6 @@ async function openElectronRoute() {
     const bw = await electronApp.browserWindow(page);
     await bw.evaluate((win) => { win.show(); win.focus(); if (win.moveTop) win.moveTop(); });
   } catch (_) {}
-  await page.bringToFront().catch(() => {});
   await page.waitForLoadState('domcontentloaded', { timeout: T(180_000) });
   if (!PLAYER_PROFILE) assertIsolatedElectronRootUrl(page.url());
   return { page, baseUrl: new URL(page.url()).origin + '/' };

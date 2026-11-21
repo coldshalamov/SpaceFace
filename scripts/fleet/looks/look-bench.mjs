@@ -23,7 +23,9 @@
 //
 // No game code is touched: the live hooks are window.SF_fleetLook (the existing ?dev=fleetlook
 // dev flag: setMood/tune) plus the render system from SF.registry.get('render').
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';

@@ -728,7 +728,6 @@ async function bootSeededFlight(page, rootUrl, fixedSeed, { navigateInitialRoot 
   const url = new URL(page.url());
   assert.equal(url.search, '', 'PQ-020 route must use the canonical root with no query flags');
   assert.equal(url.hash, '', 'PQ-020 route must use the canonical root with no hash flags');
-  await page.bringToFront().catch(() => {});
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.ctx), null,
     { timeout: 60_000 });
   await dismissCinematic(page);
@@ -1295,7 +1294,6 @@ async function coldContinue(page, rootUrl, fixedSeed, screenshot, pageIssueTrack
     beaconId: PQ020_BEACON_POI_ID,
   }, { timeout: CONTINUE_TIMEOUT_MS });
   await waitForScreenRegistrationSettled(page);
-  await page.bringToFront().catch(() => {});
   await screenshot('16-continue-restored.png');
   const after = await readFunctionalSnapshot(page);
   assert.equal(after.seed, fixedSeed, 'Continue must preserve the fixed seed');

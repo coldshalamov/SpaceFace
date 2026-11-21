@@ -14,7 +14,7 @@ const outIdx = args.indexOf('--out');
 const OUT = outIdx >= 0 ? args[outIdx + 1] : join(ROOT, '.devshots', 'intro-cine');
 const URL_BASE = process.env.CINE_URL || 'http://localhost:8123/tools/cinematic/intro.html';
 
-const { chromium } = await import('playwright-core');
+const { chromium: rawChromium } = await import('playwright-core'); const chromium = (await import('../../scripts/lib/quietLaunch.mjs')).quietChromium(rawChromium);
 
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.connectOverCDP('http://localhost:29229');

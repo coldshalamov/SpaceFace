@@ -70,7 +70,6 @@ export async function bootSeededFlight(targetPage, rootUrl, fixedSeed, { admissi
   const url = new URL(targetPage.url());
   assert.equal(url.search, '', 'PQ-022 route must use the canonical root with no query flags');
   assert.equal(url.hash, '', 'PQ-022 route must use the canonical root with no hash flags');
-  await targetPage.bringToFront().catch(() => {});
   await targetPage.waitForFunction(() => !!(
     window.SF?.state && window.SF?.bus && window.SF?.registry && window.SF?.helpers
   ), null, { timeout: 60_000 });

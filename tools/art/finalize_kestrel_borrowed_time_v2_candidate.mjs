@@ -176,7 +176,7 @@ l.load('/${rel(CANDIDATE)}',g=>{const root=g.scene;root.traverse(o=>{if(o.isMesh
 }
 
 async function capture() {
-  const { chromium } = await import('playwright');
+  const { chromium: rawChromium } = await import('playwright'); const chromium = (await import('../../scripts/lib/quietLaunch.mjs')).quietChromium(rawChromium);
   mkdirSync(THREE, { recursive: true }); mkdirSync(DEVSHOTS, { recursive: true });
   const html = resolve(EVIDENCE, 'three_preview_kestrel_v2.html'); writeFileSync(html, previewHtml());
   const { instance, port } = await server(); const browser = await chromium.launch({ headless: true }); const shots = [];

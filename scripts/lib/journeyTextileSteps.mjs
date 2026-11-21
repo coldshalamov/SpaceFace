@@ -834,7 +834,6 @@ async function dockAtNearestStation(page, helpers, log, wantStationId = null) {
       // A paused game is not evidence about navigation. Recover through the public key and count
       // it, so the recovery can never hide how long the measurement was invalid.
       pausedFrames += 1;
-      await page.bringToFront().catch(() => {});
       await returnFocusToGame(page);
       await page.keyboard.press('Escape').catch(() => {});
       await page.waitForTimeout(250);

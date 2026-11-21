@@ -728,7 +728,6 @@ export async function runContextRecoveryElectronDiagnostic({
       await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
       mark('buffer-resize-diagnostic-armed', { performanceClaimsEligible: false, canonicalRootPreserved: true });
     }
-    await page.bringToFront();
     mark('canonical-root', { rootUrl });
     await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
 

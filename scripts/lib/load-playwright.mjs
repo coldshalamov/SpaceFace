@@ -2,6 +2,8 @@ import { existsSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
+import { quietElectronOptions, quietLaunchOptions } from './quietLaunch.mjs';
+
 export async function loadPlaywright() {
   const attempts = [];
 
@@ -56,7 +58,7 @@ function wrapLauncher(launcher, supportsPersistentContext) {
     Object.defineProperty(wrapped, 'launch', {
       configurable: true,
       enumerable: true,
-      value: (options) => launcher.launch(mutedLaunchOptions(options)),
+      value: (options) => launcher.launch(quietFor(supportsPersistentContext, mutedLaunchOptions(options))),
     });
   }
   if (supportsPersistentContext && typeof launcher.launchPersistentContext === 'function') {
@@ -65,11 +67,17 @@ function wrapLauncher(launcher, supportsPersistentContext) {
       enumerable: true,
       value: (userDataDir, options) => launcher.launchPersistentContext(
         userDataDir,
-        mutedLaunchOptions(options),
+        quietFor(true, mutedLaunchOptions(options)),
       ),
     });
   }
   return wrapped;
+}
+
+// Test windows never take focus: Chromium goes headless on the real GPU, isolated Electron shows
+// inactive. SPACEFACE_TEST_VISIBLE=1 opts out (see quietLaunch.mjs).
+function quietFor(isChromium, options) {
+  return isChromium ? quietLaunchOptions(options) : quietElectronOptions(options);
 }
 
 function mutedLaunchOptions(options) {

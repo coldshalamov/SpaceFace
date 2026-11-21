@@ -1,6 +1,8 @@
 // Run: xvfb-run -a node scripts/check-draw-flight-browser.mjs (Linux, xdotool installed).
 // Actual browser/native mouse events + Rapier; component fixture, not full-game art acceptance.
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -50,7 +52,6 @@ try{
   };
   if(!locked)await page.evaluate(()=>{document.getElementById('gl-canvas').requestPointerLock=()=>Promise.reject(new Error('denied for unlocked-path test'))});
   if(locked){
-    await page.bringToFront();
     const before=await page.evaluate(()=>drawFlightMouseEvents.length);
     // Establish the OS cursor position before locking. Mixing a CDP cursor position with
     // the first native event would manufacture a jump from two different coordinate histories.

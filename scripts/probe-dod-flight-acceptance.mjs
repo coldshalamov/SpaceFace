@@ -182,7 +182,6 @@ async function runElectronAcceptance() {
     page.setDefaultTimeout(30_000);
     page.setDefaultNavigationTimeout(60_000);
     await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
-    await page.bringToFront();
     await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 180_000 });
     const rootUrl = page.url();
     const parsed = new URL(rootUrl);

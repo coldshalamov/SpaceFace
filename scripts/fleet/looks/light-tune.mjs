@@ -2,7 +2,9 @@
 // clock (SF.timeEffects 'bench:freeze' scale 0, renderer keeps drawing), then on that same frame:
 // lamps off, then each headlight intensity variant, shooting each and sampling GPU pass time.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/light-tune.mjs swarm <outPrefix> 20 [i1,i2,...]
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

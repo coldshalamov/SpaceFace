@@ -204,7 +204,6 @@ try {
   }, null, { timeout: 560_000 });
   const launchToFlightS = (Date.now() - bootedAt) / 1000;
 
-  await page.bringToFront();
   await page.mouse.move(1100, 300);
   await page.keyboard.down('KeyW');
   if (SETTLE_MS > 0) await page.waitForTimeout(SETTLE_MS);

@@ -8,7 +8,9 @@
 //   crop-<frame>-rock-<i>.png per on-screen asteroid (on/off pair)
 // and report renderer.info program counts, how many programs carry the triplanar token, and the
 // render pass count, before and after the toggle (proving "no programs beyond the shared family").
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

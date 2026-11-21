@@ -5,7 +5,9 @@
 // The sim runs on the main thread here (?simLane=main) so the page can stage bodies; staging only moves
 // entities (teleport + heal); it never synthesises an input or a gameplay event.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/throw-fixture.mjs <out.json> <round> <attempts> <clusterAttempts> [scale]
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

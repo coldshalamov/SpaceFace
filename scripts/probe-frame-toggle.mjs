@@ -106,7 +106,6 @@ try {
     await sleep(1000);
   }
   report.loadS = +((Date.now() - t0) / 1000).toFixed(1);
-  await page.bringToFront();
   await page.mouse.move(1000, 380);
   report.setup = await page.evaluate(({ cap, dynres }) => {
     const S = window.SF.state;

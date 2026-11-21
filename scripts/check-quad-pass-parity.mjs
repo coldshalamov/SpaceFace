@@ -14,7 +14,9 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.html': 'text/html', '.json': 'application/json' };

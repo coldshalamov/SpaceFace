@@ -125,7 +125,6 @@ try {
   canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
 
   await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.bringToFront().catch(() => {});
 
   pilotResult = await runGoldCorridorPublicPilot({
     page,

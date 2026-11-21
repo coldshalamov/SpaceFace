@@ -4,7 +4,9 @@ import http from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../scripts/lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 const root=fileURLToPath(new URL('../../',import.meta.url)),out=resolve(root,'artifacts/ruckus/browser');await mkdir(out,{recursive:true});
 const mime={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.wasm':'application/wasm','.png':'image/png'};
 const server=http.createServer(async(req,res)=>{try{

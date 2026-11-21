@@ -454,7 +454,6 @@ export async function runReleaseSoakProbe({
 
     page.setDefaultTimeout(30_000);
     page.setDefaultNavigationTimeout(60_000);
-    await page.bringToFront();
     doLog(`${runtime} canonical root ${rootUrl}`);
     servedSourceOverlay = await readServedSourceOverlayIdentity(page, baselineSource);
     if (baselineSource) {
@@ -8384,7 +8383,6 @@ async function runPerformanceAttributionProbe({
     }
     page.setDefaultTimeout(30_000);
     page.setDefaultNavigationTimeout(60_000);
-    await page.bringToFront();
     doLog(`${runtimePlan.runtimeKind} canonical root ${rootUrl}`);
 
     try {

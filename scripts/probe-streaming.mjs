@@ -159,7 +159,6 @@ try {
     await new Promise((r) => setTimeout(r, 1000));
   }
   const loadS = (Date.now() - tNew) / 1000;
-  await page.bringToFront();
   await page.mouse.move(1100, 300);
   const tFlight = Date.now();
   for (let s = 0; s * 1000 <= SAMPLE_MS; s++) {

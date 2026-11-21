@@ -4,7 +4,9 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../scripts/lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const args = parseArgs(process.argv.slice(2));
 const port = Number(args.port || 41735);

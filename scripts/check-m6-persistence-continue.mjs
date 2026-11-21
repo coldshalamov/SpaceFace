@@ -111,7 +111,6 @@ async function main() {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     });
-    await page.bringToFront();
     assert(navigationResponse, 'canonical root navigation must return an HTTP response');
     assert.deepEqual(
       inspectCanonicalRootUrl(page.url(), rootUrl).failures,

@@ -3,7 +3,9 @@
 // fate (killer/cause), and whether massline:throw fired. Mode `hammer` (default) or `nohammer` (the
 // held-body contact rule is switched off by rewriting the served module in this browser only).
 //   SF_LOCK_URGENT=1 node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/throw-rate.mjs <out.json> <hammer|nohammer> <rounds e.g. 1,2,3> <attemptsPerRound>
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

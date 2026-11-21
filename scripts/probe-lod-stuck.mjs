@@ -29,7 +29,6 @@ try {
     if (Date.now() - t0 > 560000) throw new Error('no flight');
     await new Promise((r) => setTimeout(r, 1000));
   }
-  await page.bringToFront();
   await page.evaluate(() => window.SF.bus.emit('camera:zoom', { level: 330 }));
   await page.waitForTimeout(4000);
   await page.evaluate(() => window.SF.bus.emit('camera:zoom', { level: 330 }));

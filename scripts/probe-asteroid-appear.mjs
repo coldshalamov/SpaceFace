@@ -815,7 +815,6 @@ try {
   await page.goto(SIM_LANE ? `${baseUrl}?simLane=${SIM_LANE}` : baseUrl,
     { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
-  await page.bringToFront();
 
   // Developer launch (not the title/New Game interaction); the opening-ram leg itself uses WASD.
   await page.evaluate((seed) => window.SF.bus.emit('game:new', { name: 'Asteroid Appear', seed }), SEED);

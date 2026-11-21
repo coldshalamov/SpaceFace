@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /** Isolated software-WebGL regression review; NEVER a shipping-camera/performance receipt. */
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';

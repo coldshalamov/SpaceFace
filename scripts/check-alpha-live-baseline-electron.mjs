@@ -106,7 +106,6 @@ try {
   log(`electron root ${rootUrl}`);
 
   await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
-  await page.bringToFront();
   runtimeMetadata = await collectElectronRuntimeMetadata(electronApp, page, childProcess);
   viewportFloorAssessment = assessElectronViewportFloor(runtimeMetadata);
   assert.deepEqual(viewportFloorAssessment.failures, [],

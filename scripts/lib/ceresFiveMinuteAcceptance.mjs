@@ -1829,7 +1829,6 @@ export async function runCeresFiveMinutePublicRoute({
   };
 
   try {
-    await page.bringToFront();
     await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
     await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry),
       null, { timeout: 60_000 });

@@ -3615,7 +3615,6 @@ try {
   if (PRODUCTION_ROUTE && !productionRecorder && new Set([
     'dock-refit-undock', 'asteroid-works-roundtrip', 'busy-site-save-reload',
   ]).has(PRODUCTION_ROUTE.id)) {
-    await page.bringToFront();
     productionRecorder = await installProductionMatrixRecorder(page);
   }
   productionRoutePreparation ||= await prepareProductionRoute(page, PRODUCTION_ROUTE);
@@ -3756,7 +3755,6 @@ try {
   }
   let openingInputBaseline = null;
   if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
-    await page.bringToFront();
     await page.locator('#gl-canvas').click({ timeout: 10_000 });
     openingInputBaseline = await page.evaluate(() => {
       const state = window.SF?.state;

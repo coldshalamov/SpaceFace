@@ -96,7 +96,6 @@ try {
     'Electron must establish canonical root',
   );
   await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
-  await page.bringToFront();
   log(`electron root ${rootUrl}`);
 
   routeResult = await runProfessionalTravelPublicRoute({

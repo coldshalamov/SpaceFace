@@ -158,7 +158,6 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
           // The HUD mounts before the run does; the flight-key surfaces refuse while the session
           // is still loading, and the key must arrive while the page is focused.
           await page.waitForFunction(() => globalThis.SF && globalThis.SF.state && globalThis.SF.state.mode === 'flight', null, { timeout: ROOT_TIMEOUT_MS });
-          await page.bringToFront();
           await synthesizeEntryKey();
           await page.waitForSelector(finder, { state: 'visible', timeout: 30_000 });
         } else {

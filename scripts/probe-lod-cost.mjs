@@ -53,7 +53,6 @@ try {
     await new Promise((r) => setTimeout(r, 1000));
   }
   const loadS = (Date.now() - t0) / 1000;
-  await page.bringToFront();
 
   // ---- in-page recorder ----------------------------------------------------
   // The game's render RAF is registered before this loop, so each tick runs after the frame's

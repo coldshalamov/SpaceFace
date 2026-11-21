@@ -1247,7 +1247,7 @@ async function hideRuntime(runtime, trigger) {
 async function restoreRuntime(runtime, trigger) {
   if (runtime.runtimeKind === 'browser') {
     await setBrowserWindowLifecycleState(runtime.browserWindowDriver, 'normal');
-    await runtime.page.bringToFront();
+    await runtime.page.bringToFront(); // lifecycle test: restoring the window is the thing under test
     return;
   }
   await driveElectronWindow(runtime.electronApp, trigger === 'window-minimize' ? 'restore' : 'show',

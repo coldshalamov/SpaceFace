@@ -5,7 +5,9 @@
 //
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/rim-d.mjs <outPrefix> [round] [windowSeconds]
 //
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

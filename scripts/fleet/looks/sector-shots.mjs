@@ -5,7 +5,9 @@
 // world units (the same frame src/data sector anchors and site files use), --heading is
 // degrees, --t is the post-aim settle delay in seconds (default 3), --out redirects PNGs.
 // --freeze=0 skips the post-aim time-freeze (a diagnostic for render-lane sync issues).
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

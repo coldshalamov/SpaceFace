@@ -104,7 +104,6 @@ try {
   rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
   rootUrl = assertIsolatedElectronRootUrl(rootUrl);
   await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
-  await page.bringToFront();
   assertCanonical('canonical-root');
   mark('electron-canonical-root', { rootUrl });
 

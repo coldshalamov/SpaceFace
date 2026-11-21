@@ -3,7 +3,9 @@
 // burst: if frames keep advancing while the worker crunches the restore, the
 // presentation thread is provably decoupled from the sim lane.
 
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

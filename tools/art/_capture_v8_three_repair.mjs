@@ -126,7 +126,7 @@ function startServer() {
 }
 
 const shots = [];
-const { chromium } = await import('playwright');
+const { chromium: rawChromium } = await import('playwright'); const chromium = (await import('../../scripts/lib/quietLaunch.mjs')).quietChromium(rawChromium);
 mkdirSync(RENDERS, { recursive: true });
 mkdirSync(DEVSHOTS, { recursive: true });
 const { server, port } = await startServer();
