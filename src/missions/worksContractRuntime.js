@@ -305,11 +305,11 @@ export function worksContractWaypoint(owner, mission) {
     rocks.push(entity);
   }
   const rock = nearest(state, rocks);
-  const reason = goal.kind === 'cut' ? 'Put the Line on this rock, then set the rover down.'
-    : goal.kind === 'blast' ? 'Set the rover down and arm bore charges.'
+  const reason = goal.kind === 'cut' ? 'Fly up to this rock and press B to set the rover down.'
+    : goal.kind === 'blast' ? 'Press B at this rock to set the rover down, then arm bore charges.'
       : goal.kind === 'link' ? 'Open Field Build over your claims.'
         : goal.kind === 'defense' ? 'Open Field Build over your claim.'
-          : 'Set the rover down, dig a bay, then build.';
+          : 'Press B at this rock to set the rover down, dig a bay, then build.';
   if (!rock) {
     return { ...out, reason: goal.kind === 'link' || goal.kind === 'defense'
       ? 'Stake a claim in this sector first.' : reason };

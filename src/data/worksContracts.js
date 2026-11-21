@@ -52,7 +52,7 @@ export const WORKS_CONTRACTS = Object.freeze([
   job({
     id: 'works_helios_first_cut', rung: 'rover', stationId: 'station_helios', reward_cr: 450,
     title: 'First Cut', client: 'Helios Assay Office',
-    brief: 'The assay office wants iron that came out of one seam, not swept up by a beam. Put the Line on a rock, set the rover down (B) and dig to the iron yourself.',
+    brief: 'The assay office wants iron that came out of one seam, not swept up by a beam. Fly up to a rock, press B to set the rover down, and dig to the iron yourself.',
     summary: 'Rover job. Cut 4 iron ore by hand from any Helios rock. The laser does not count.',
     goal: { kind: 'cut', ore: 'cmdty_ore_iron', qty: 4 },
   }),

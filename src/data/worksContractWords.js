@@ -87,7 +87,7 @@ export function worksNextStep(mission) {
   if (!works) return 'Next: follow the tracked marker.';
   switch (works.goal && works.goal.kind) {
     case 'cut':
-      return `Next: put the Line on ${works.rockName ? withArticle(works.rockName) : 'a rock'}, press B to set the rover down, and dig to the ${works.goodName || 'ore'}.`;
+      return `Next: fly up to ${works.rockName ? withArticle(works.rockName) : 'a rock'}, press B to set the rover down, and dig to the ${works.goodName || 'ore'}.`;
     case 'blast': return 'Next: set the rover down in a rock, press R to arm a bore charge, and step out of the pattern.';
     case 'installSet':
     case 'install': return 'Next: set the rover down in a rock, dig a bay, press B to build, and pick the machine.';

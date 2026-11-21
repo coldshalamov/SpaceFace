@@ -95,7 +95,10 @@ export function clauseWhyAttr(clause) {
 }
 const reward = (m) => num(m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout)));
 const risk = (m) => num(m.riskTier != null ? m.riskTier : m.risk);
-const typeLabel = (t) => String(t || 'mission').replace(/_/g, ' ');
+// A works contract says which kind of work it is: that is what a pilot scans the board for.
+const WORKS_KIND_LABEL = Object.freeze({ rover: 'rover job', build: 'building job', yard: 'field build job', planet: 'planet job' });
+const typeLabel = (t, m = null) => (m && m.params && m.params.works && WORKS_KIND_LABEL[m.params.works.rung])
+  || String(t || 'mission').replace(/_/g, ' ');
 const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open mission'; };
 
 /** The client's crest at row size (the kit's `.k-crest--row`; a generic mark when unknown). */
@@ -473,7 +476,7 @@ export function missionDossierHtml(m, state, options = {}) {
   const upfrontCr = missionUpfrontCost(m);
   const facShort = escapeHtml((FAC.get(m.factionId) || {}).short || 'faction');
   const authoredSummary = missionDossierSummary(m);
-  const title = m.title || typeLabel(m.type);
+  const title = m.title || typeLabel(m.type, m);
   const routeScope = missionRouteScope(m, state);
   const routeText = routeScope && routeScope.text
     ? routeScope.text
@@ -488,7 +491,7 @@ export function missionDossierHtml(m, state, options = {}) {
   // route, and known hazards, paired with a concrete approach — not another flavor paragraph.
   const briefing = missionBriefingDiagram(m, state, origin);
   return bindStationMarkup(contractDossierView({
-    typeName: typeLabel(m.type),
+    typeName: typeLabel(m.type, m),
     titleHtml: entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title)),
     clientHtml: clientEntityHtml(m),
     reward: reward(m).toLocaleString('en-US'),
@@ -749,7 +752,7 @@ export function createContractsScreen(ctx) {
         const badgePrefix = badge ? `${badge}${destTag ? ' ' + destTag : ''} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
-          : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+          : `${badgePrefix}${m.title || typeLabel(m.type, m)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
         return (
           `<li><button type="button" ${stationControlAttrs('mission-row')} class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
@@ -760,12 +763,12 @@ export function createContractsScreen(ctx) {
             `<span class="k-row__name sx-ct-row__title">` +
               // DUST P5: the type chip leads the title (glyph is decorative; the type word is
               // real content, so the spoken row names its verb before its prose).
-              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type) })}` +
-              `${escapeHtml(m.title || typeLabel(m.type))}` +
+              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type, m) })}` +
+              `${escapeHtml(m.title || typeLabel(m.type, m))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
           `</button>` +
-          (optionsByMission.get(id) || []).map((e) => optionHtml(e, true, m.title || typeLabel(m.type))).join('') +
+          (optionsByMission.get(id) || []).map((e) => optionHtml(e, true, m.title || typeLabel(m.type, m))).join('') +
           `</li>`
         );
       }).join('') +
@@ -1471,7 +1474,7 @@ export function createContractsScreen(ctx) {
           const sub = [objectiveText(m), status].filter(Boolean).join(' · ');
           return (
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
-              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type))}</span>` +
+              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type, m))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
               `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`

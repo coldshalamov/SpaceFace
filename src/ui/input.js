@@ -30,7 +30,7 @@ import { createDockIntent } from '../core/dockIntent.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
 import { isSwarmControls } from '../data/swarmControls.js';
-import { contextUiAllowed } from '../data/inputContexts.js';
+import { contextUiAllowed, inputContextFor } from '../data/inputContexts.js';
 import { nearestSwarmFloorPad, swarmFloorPadQuote, SWARM_FLOOR_ARM_REQUEST } from '../data/swarmFloor.js';
 import { berthOfferStation, isDockableStation, stationDisplayName } from './berthOffer.js';
 
@@ -902,6 +902,15 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
           // so ordinary strafing is unaffected.
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
           doDock();
+        } else if (matchesBinding(ev, BINDINGS.dock) && inputContextFor(state) !== 'combat') {
+          // The HUD offers "[E] Fly to berth" out of range, and the keyboard did nothing with it in
+          // Adventure: only touch, the pad and a Swarm run reached doFlightInteract. E is not a
+          // flight key in any scheme, so the press is free. In a fight the offer is not on screen
+          // (flightHelm.resolveBerthOffer) and the key stays out of it too.
+          if (doFlightInteract()) {
+            ev.preventDefault();
+            if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          }
         }
         return;
       case 'F2':
