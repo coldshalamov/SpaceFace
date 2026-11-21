@@ -174,3 +174,22 @@ test('Mining: Steady Beam doubles the share of everything but silicate slag, on 
   assert.ok(Math.abs(plain - 0.3) < 0.03, `plain iron share ${plain}`);
   assert.ok(Math.abs(steady - 0.6 / 1.3) < 0.03, `Steady Beam iron share ${steady}`);
 });
+
+test('Landslide: the Plow fires its load twice as fast with the capstone', async () => {
+  const { launchPlow } = await import('../src/systems/plow.js');
+  const { consumePhysicsCommand } = await import('../src/core/physicsAuthority.js');
+  const { FIELD_DEFS } = await import('../src/data/fields.js');
+  const fire = (nodes) => {
+    const rock = { id: 5, type: 'asteroid', alive: true, pos: { x: 30, z: 0 }, vel: { x: 0, z: 0 }, mass: 10, physicsBody: { dynamic: true, mass: 10 }, data: {} };
+    const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+    const state = { tick: 1, simTime: 2, playerId: 1, run: runWith(nodes), entities: new Map([[1, player], [5, rock]]) };
+    const rt = { plow: { held: [{ id: 5, f: 30, l: 0, at: 0, mass: 10 }], lastScanTick: -1, launchedAt: null, launchedCount: 0 } };
+    assert.equal(launchPlow({ state, rt, player, bus: null }), 1);
+    const cmd = consumePhysicsCommand(rock);
+    const imp = cmd.impulses[0];
+    return Math.hypot(imp.x, imp.z) / 10;
+  };
+  const plain = fire([]);
+  assert.ok(Math.abs(plain - FIELD_DEFS.cone.plow.launchSpeed) < 1e-6, `plain launch ${plain}`);
+  assert.ok(Math.abs(fire(['conjurer_avalanche']) - FIELD_DEFS.cone.plow.launchSpeed * 2) < 1e-6, 'twice as fast');
+});

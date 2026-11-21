@@ -37,7 +37,7 @@ const noteOf = (row) => (row.includes(IN_COMBAT) ? IN_COMBAT : undefined);
 test('combat marks the long Interface rows the UI gate refuses', () => {
   const sections = controlSections(state({ targetId: 2 }));
   const interfaceRows = section(sections, 'Interface (fixed keys)');
-  for (const label of ['Star-map', 'Local system map', 'Tech tree', 'Codex']) {
+  for (const label of ['Star-map', 'Local system map', 'Pilot Tree', 'Codex']) {
     const row = interfaceRows.get(label);
     assert.ok(row, `${label} stays on the reference sheet`);
     assert.equal(noteOf(row), IN_COMBAT, `${label} is marked refused in combat`);
@@ -84,5 +84,5 @@ test('out of combat the full reference is unchanged', () => {
   }
   const interfaceRows = section(sections, 'Interface (fixed keys)');
   assert.ok(interfaceRows.has('Star-map'), 'flight still lists the chart key');
-  assert.ok(interfaceRows.has('Tech tree'), 'flight still lists the tech key');
+  assert.ok(interfaceRows.has('Pilot Tree'), 'flight still lists the Pilot Tree key (T, 2026-11-20)');
 });

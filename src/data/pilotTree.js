@@ -117,12 +117,12 @@ const JUGGERNAUT = branchNodes('juggernaut', [
 
 // Stealth's root is the cloak itself: taking it gives the ship a cloak on V (no module needed).
 const GHOST = branchNodes('ghost', [
-  [1, 'Cloak', 'Press V to go dark: enemies outside your ring lose you. Firing or a hull hit drops it.'],
+  [1, 'Cloak', 'Go dark (V): enemies outside your ring lose you and hunt where you were. Firing or a hull hit drops it.'],
   [1, 'Cold Drift', 'Coasting in the dark, your ring shrinks to half: slip right past them.', { needs: 'ghost_cloak' }],
   [2, 'Ambush', 'Your first shots out of the dark hit three times as hard.', { needs: 'ghost_cloak' }],
-  [2, 'Deep Shroud', 'Your cloak lasts twice as long and charges twice as fast.', { needs: 'ghost_cloak' }],
+  [2, 'Deep Shroud', 'Your cloak drains half as fast and charges twice as fast.', { needs: 'ghost_cloak' }],
   [3, 'Vanish', 'A kill in the second after you fire from the dark puts you straight back in it.', { needs: 'ghost_cloak' }],
-  ['capstone', 'Phantom', 'Firing no longer drops your cloak.', { needs: 'ghost_cloak' }],
+  ['capstone', 'Phantom', 'Firing no longer drops your cloak; each shot only shows you for a moment.', { needs: 'ghost_cloak' }],
 ]);
 
 // The work branches: Adventure only (ruling R21 — each rung of the ladder is its own game).

@@ -174,3 +174,13 @@ test('Trading: the chart names no trend without Market Sense; Long Memory double
   const longKey = marketQuoteHtml({ id: 'x', name: 'X', buy: 10, sell: 9, avg: 10, hist, now: 15, historyWord: 'Last twenty minutes' });
   assert.match(longKey, /Last twenty minutes/);
 });
+
+test('Building: a loaded game holds (free) the skills its built machines need, every load', () => {
+  const h = boot();
+  h.state.sites = { byId: { s1: { machines: [{ defId: 'sm_fabricator' }] } }, order: ['s1'] };
+  h.bus.emit('save:loaded', {});
+  assert.deepEqual(h.state.player.pilot.granted, ['builder_foundations']);
+  assert.equal(h.state.player.pilot.banked, 0);
+  h.bus.emit('save:loaded', {});
+  assert.deepEqual(h.state.player.pilot.nodes, ['builder_foundations'], 'idempotent');
+});

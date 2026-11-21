@@ -36,6 +36,7 @@ import {
   createAdventurePilot,
   normalizeAdventurePilot,
 } from '../data/pilotAdventure.js';
+import { builderSkillsCovering } from '../data/pilotWork.js';
 import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
@@ -182,7 +183,7 @@ export const runSession = {
     // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
     // save cannot inherit a live Survival run and suppress campaign autosaves forever.
     this._unsubs.push(this.bus.on('save:restoring', () => this._onSaveLifecycle()));
-    this._unsubs.push(this.bus.on('save:loaded', () => this._onSaveLifecycle()));
+    this._unsubs.push(this.bus.on('save:loaded', () => { this._onSaveLifecycle(); this._grantBuiltMachineSkills(); }));
   },
 
   destroy() {
@@ -976,6 +977,30 @@ export const runSession = {
       });
     }
     this.state.run = createRunState();
+  },
+
+  /** Idempotent twin of the v25->26 grant: every Building skill covering a machine kind already
+   *  built on a claim is held (free), so a loaded board never shrinks. */
+  _grantBuiltMachineSkills() {
+    const state = this.state;
+    const byId = state && state.sites && state.sites.byId;
+    if (!state || !state.player || !byId || typeof byId !== 'object') return;
+    const built = [];
+    for (const site of Object.values(byId)) {
+      for (const m of (site && Array.isArray(site.machines) ? site.machines : [])) if (m && m.defId) built.push(m.defId);
+    }
+    const grant = builderSkillsCovering(built);
+    if (!grant.length) return;
+    const pilot = normalizeAdventurePilot(state.player.pilot);
+    let changed = false;
+    for (const id of grant) {
+      if (pilot.nodes.includes(id)) continue;
+      pilot.nodes.push(id);
+      pilot.granted.push(id);
+      pilot.points.builder = (pilot.points.builder || 0) + 1;
+      changed = true;
+    }
+    if (changed) state.player.pilot = normalizeAdventurePilot(pilot);
   },
 
   _onSaveLifecycle() {

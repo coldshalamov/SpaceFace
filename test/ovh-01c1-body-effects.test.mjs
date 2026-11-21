@@ -886,3 +886,73 @@ test('OVH-01c1 NPC exclusion — an NPC with the same contact/kick gets no pilot
   // Player never gains the stamp from an NPC kick either.
   assert.equal(readKickStamp(a, state), null);
 });
+
+// ---- Evolutions built 2026-11-20 (progression lead) -------------------------------------------
+
+function evolutionScene(nodes) {
+  const { state, bus } = makeState(nodes);
+  const kills = [];
+  makeCollisionCtx(state, bus, kills);
+  const foe = (id) => {
+    const body = makeBody({ id, team: 1, hull: 99999, hullMax: 99999, extra: { data: { encounter: { id: 'enc' } } } });
+    state.entities.set(id, body);
+    return body;
+  };
+  return { state, bus, kills, foe };
+}
+
+test('evolution_wrecking_ball — a knocked body keeps killing: no single-kill allowance', () => {
+  const { state, bus, foe } = evolutionScene(['bruiser_billiards', 'evolution_wrecking_ball']);
+  const striker = makeBody({ id: 'striker', team: 0, type: 'wreck', hull: 500, hullMax: 500 });
+  state.entities.set(striker.id, striker);
+  const a = foe('foeA');
+  const b = foe('foeB');
+  stampKick(striker, state);
+  withCombatFlags(null, () => emitImpact(bus, striker, a, { closing: 50 }));
+  withCombatFlags(null, () => emitImpact(bus, striker, b, { closing: 50, tick: 11 }));
+  assert.equal(a.alive, false);
+  assert.equal(b.alive, false, 'the second enemy dies too');
+});
+
+test('evolution_meteor_shower — a Plow-launched rock kills every enemy it hits; other kicks do not', () => {
+  const { state, bus, foe } = evolutionScene(['evolution_meteor_shower']);
+  const rock = makeBody({ id: 'rock', team: 0, type: 'asteroid', hull: 500, hullMax: 500 });
+  state.entities.set(rock.id, rock);
+  recordImpulseProvenance(rock, { actorId: 'player', tag: 'plow_launch', appliedTick: state.tick,
+    magnitude: 4000, by: 'player', at: state.simTime, impulse: { x: 4000, z: 0 }, kickHops: 0 });
+  const a = foe('foeA');
+  const b = foe('foeB');
+  withCombatFlags(null, () => emitImpact(bus, rock, a, { closing: 50 }));
+  withCombatFlags(null, () => emitImpact(bus, rock, b, { closing: 50, tick: 11 }));
+  assert.equal(a.alive, false);
+  assert.equal(b.alive, false);
+  const other = evolutionScene(['evolution_meteor_shower']);
+  const kicked = makeBody({ id: 'kicked', team: 0, type: 'wreck', hull: 500 });
+  other.state.entities.set(kicked.id, kicked);
+  stampKick(kicked, other.state);
+  const c = other.foe('foeC');
+  withCombatFlags(null, () => emitImpact(other.bus, kicked, c, { closing: 50 }));
+  assert.notEqual(c.alive, false, 'a gun kick is not a Plow rock');
+});
+
+test('evolution_freight_train — what you tow on the Line kills an enemy no heavier than you', () => {
+  const { state, bus, foe } = evolutionScene(['evolution_freight_train']);
+  const towed = makeBody({ id: 'towed', team: 0, type: 'asteroid', hull: 500, hullMax: 500 });
+  state.entities.set(towed.id, towed);
+  state.player.tether = { active: true, targetId: 'towed' };
+  const light = foe('light');
+  withCombatFlags(null, () => emitImpact(bus, towed, light, { closing: 50 }));
+  assert.equal(light.alive, false, 'the towed rock smashes it like a ram');
+  const heavy = makeBody({ id: 'heavy', team: 1, hull: 99999, mass: 500, extra: { data: { encounter: { id: 'enc' } } } });
+  heavy.physicsBody.mass = 500;
+  state.entities.set(heavy.id, heavy);
+  withCombatFlags(null, () => emitImpact(bus, towed, heavy, { closing: 50, tick: 12 }));
+  assert.notEqual(heavy.alive, false, 'an enemy heavier than you survives the hit');
+  const plain = evolutionScene([]);
+  const t2 = makeBody({ id: 'towed', team: 0, type: 'asteroid', hull: 500 });
+  plain.state.entities.set(t2.id, t2);
+  plain.state.player.tether = { active: true, targetId: 'towed' };
+  const f2 = plain.foe('f2');
+  withCombatFlags(null, () => emitImpact(plain.bus, t2, f2, { closing: 50 }));
+  assert.notEqual(f2.alive, false, 'without the evolution a tow is just a tow');
+});
