@@ -26,7 +26,11 @@ const argv = Object.fromEntries(process.argv.slice(2).map((a) => {
   return m ? [m[1], m[2] ?? true] : [a, true];
 }));
 const SECONDS = Number(argv.seconds || 420);
-const ROUTES = String(argv.routes || 'swarm,adventure').split(',').filter(Boolean);
+// swarm-pad: Swarm with a connected gamepad whose axes drift (a device that reports as a pad).
+const ROUTES = String(argv.routes || 'swarm,adventure,swarm-pad').split(',').filter(Boolean);
+// The focus-steal case is the one run that takes the foreground on purpose (another window over the
+// game, then back). --no-focus-steal skips it when someone is using the machine.
+const FOCUS_STEAL = argv['no-focus-steal'] !== true;
 const LEGACY = argv.legacy === true;
 // The owner's freeze has only ever been seen from real play; --real-profile copies
 // the owner's own settings/saves (read-only) into the isolated profile so the gate
@@ -37,10 +41,12 @@ const WORLD_SPEED_FLOOR = 0.97;
 
 const rows = [];
 let failed = false;
-for (const route of ROUTES) {
-  const out = join(ROOT, '.devshots', 'no-freeze', `gate-${route}${LEGACY ? '-legacy' : ''}`);
+for (const routeName of ROUTES) {
+  const route = routeName === 'swarm-pad' ? 'swarm' : routeName;
+  const out = join(ROOT, '.devshots', 'no-freeze', `gate-${routeName}${LEGACY ? '-legacy' : ''}`);
   const args = ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath, 'scripts/probe-no-freeze-electron.mjs',
-    `--route=${route}`, `--seconds=${SECONDS}`, '--forced', `--out=${out}`,
+    `--route=${route}`, `--seconds=${routeName === 'swarm-pad' ? Math.min(SECONDS, 120) : SECONDS}`,
+    ...(routeName === 'swarm-pad' ? ['--pad=noisy'] : ['--forced']), `--out=${out}`,
     ...(REAL_PROFILE ? ['--real-profile'] : []), ...(LEGACY ? ['--legacy'] : [])];
   console.log(`[no-freeze] ${route}: ${SECONDS} s dense input + forced stalls${REAL_PROFILE ? ' + real profile' : ''}${LEGACY ? ' (LEGACY: fix off)' : ''}`);
   const run = spawnSync(process.execPath, args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: (SECONDS + 900) * 1000 });
@@ -49,7 +55,7 @@ for (const route of ROUTES) {
   let report = null;
   try { report = JSON.parse(readFileSync(join(out, 'report.json'), 'utf8')); } catch (_) { /* reported below */ }
   if (!report || report.failed || !Array.isArray(report.rows) || !report.rows.length) {
-    rows.push({ route, phase: '(probe did not reach flight)', verdict: 'FAIL', why: report?.failed || 'no report' });
+    rows.push({ route: routeName, phase: '(probe did not reach flight)', verdict: 'FAIL', why: report?.failed || 'no report' });
     failed = true;
     continue;
   }
@@ -63,9 +69,24 @@ for (const route of ROUTES) {
     if (r.silentHoldMs > 0) why.push(`world held at time scale 0 for ${r.silentHoldMs} ms with no pause plate or screen`);
     if (r.freezeLog > 0) why.push(`${r.freezeLog} freeze-log entr${r.freezeLog === 1 ? 'y' : 'ies'}`);
     if (!(r.wallS > 0)) why.push('no unpaused flight samples');
-    rows.push({ route, ...r, verdict: why.length ? 'FAIL' : 'pass', why: why.join('; ') });
+    rows.push({ route: routeName, ...r, verdict: why.length ? 'FAIL' : 'pass', why: why.join('; ') });
     if (why.length) failed = true;
   }
+}
+
+if (FOCUS_STEAL) {
+  const out = join(ROOT, '.devshots', 'no-freeze', 'gate-focus-steal');
+  console.log('[no-freeze] focus steal + held key across the blur (THIS RUN TAKES FOCUS ON PURPOSE, then hands it back)');
+  const run = spawnSync(process.execPath, ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath,
+    'scripts/probe-focus-steal-electron.mjs', `--out=${out}`], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 900000 });
+  const text = `${run.stdout || ''}${run.stderr || ''}`;
+  for (const line of text.split(/\r?\n/)) if (/focus-steal probe|PROBE FAILED/.test(line)) console.log(`  ${line.slice(0, 900)}`);
+  let report = null;
+  try { report = JSON.parse(readFileSync(join(out, 'report.json'), 'utf8')); } catch (_) { /* below */ }
+  const ok = report && report.verdict === 'pass';
+  rows.push({ route: 'adventure', phase: 'focus steal + held W across blur', verdict: ok ? 'pass' : 'FAIL',
+    why: ok ? `paused with plate; resume ahead of wall ${report.summary.returned.simAheadOfWallS} s; speed ${Math.round(report.summary.returned.speedAtSteal)} -> ${Math.round(report.summary.returned.speedEnd)}` : (report?.why || 'no report') });
+  if (!ok) failed = true;
 }
 
 const pad = (v, n) => String(v ?? '-').padEnd(n);

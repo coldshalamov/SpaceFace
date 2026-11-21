@@ -46,6 +46,8 @@ try {
     const w = BrowserWindow.getAllWindows()[0]; if (w) { w.show(); w.focus(); } return !!w;
   });
   await focusGame();
+  // Swarm (round 2): the Adventure opening neutralises flight input, so W could not be measured there.
+  // The hold is kept short (2 s before, 2.5 s after) so the ship cannot reach the arena rim.
   await page.waitForFunction(() => {
     const ui = window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
     const m = ui && (ui.screenManager || ui.manager);
@@ -71,7 +73,7 @@ try {
     await page.evaluate(() => {
       const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
       const b = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled
-        && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start run)/i.test(n(x.textContent)));
+        && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start run|Begin|Undock|Skip)/i.test(n(x.textContent)));
       if (b) b.click();
     }).catch(() => {});
     if (Date.now() - t0 > 240000) throw new Error('no flight');
@@ -107,7 +109,7 @@ try {
   const repeater = setInterval(() => { if (repeating) key('keyDown', true); }, 33);
   // 1. Fly with W physically held.
   await key('keyDown'); repeating = true;
-  await sleep(4000);
+  await sleep(2000);
   // 2. Another process opens a focused window over the game. An unfocused window receives no key
   //    events from the OS, so the repeats stop reaching the game while the finger stays down.
   await phase('stolen');
@@ -123,16 +125,20 @@ try {
   await phase('returned');
   await focusGame();
   repeating = true;
-  await sleep(4000);
+  await sleep(2500);
   await page.screenshot({ path: join(OUT, 'after-return.png') }).catch(() => {});
   repeating = false; clearInterval(repeater); await key('keyUp');
   const samples = await page.evaluate(() => { clearInterval(window.__fs.timer); return window.__fs.samples; });
   const by = (ph) => samples.filter((s) => s.ph === ph);
   const span = (rows, f) => (rows.length > 1 ? f(rows.at(-1)) - f(rows[0]) : null);
   const stolen = by('stolen'); const fly = by('fly'); const back = by('returned');
-  const settled = stolen.filter((s) => s.t - stolen[0].t > 700);
+  const settled = stolen.filter((s) => s.t - stolen[0].t > 700 && s.ts === 0);
+  // A jump is sim time advancing faster than wall time between two samples.
   let resumeJump = 0;
-  for (let i = 1; i < back.length; i++) resumeJump = Math.max(resumeJump, back[i].sim - back[i - 1].sim);
+  for (let i = 1; i < back.length; i++) {
+    resumeJump = Math.max(resumeJump, (back[i].sim - back[i - 1].sim) - (back[i].t - back[i - 1].t) / 1000);
+  }
+  const speedAtSteal = stolen[0]?.speed ?? null;
   report.summary = {
     fly: { simAdvanced: span(fly, (s) => s.sim), wallS: span(fly, (s) => s.t / 1000), speedEnd: fly.at(-1)?.speed },
     stolen: {
@@ -146,14 +152,27 @@ try {
     returned: {
       plateCleared: back.length ? !back.at(-1).plate : null,
       timeScaleEnd: back.at(-1)?.ts,
-      largestSimStepBetweenSamplesS: +resumeJump.toFixed(3),
+      simAheadOfWallS: +resumeJump.toFixed(3),
+      speedAtSteal,
       speedEnd: back.at(-1)?.speed,
-      speedStart: back[0]?.speed,
     },
   };
+  const s = report.summary;
+  const why = [];
+  if (!settled.length) why.push('the focus steal never paused the world (no scale-0 samples)');
+  if (settled.length && !s.stolen.platePresent) why.push('the world was held with no pause plate');
+  if (s.stolen.simAdvancedAfterBlur > 0.05) why.push(`the world kept moving off screen (+${s.stolen.simAdvancedAfterBlur} s)`);
+  // One worker batch (up to four 16.7 ms steps) can land between two samples; the owner's blip was seconds.
+  if (resumeJump > 0.25) why.push(`resume jumped ${resumeJump.toFixed(2)} s ahead`);
+  if (!(s.returned.timeScaleEnd > 0)) why.push('the world did not resume after focus returned');
+  if (speedAtSteal != null && s.returned.speedEnd != null && speedAtSteal > 20 && s.returned.speedEnd < speedAtSteal * 0.5) {
+    why.push(`the still-held W did nothing after focus returned (speed ${speedAtSteal.toFixed(0)} -> ${s.returned.speedEnd.toFixed(0)})`);
+  }
+  report.verdict = why.length ? 'FAIL' : 'pass';
+  report.why = why.join('; ');
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(samples));
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
-  console.log('focus-steal probe', JSON.stringify(report.summary, null, 1));
+  console.log('focus-steal probe', report.verdict, report.why, JSON.stringify(report.summary));
 } catch (e) {
   console.log('PROBE FAILED', String((e && e.stack) || e).slice(0, 800));
   process.exitCode = 2;
