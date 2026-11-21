@@ -35,6 +35,7 @@ import {
 } from './contextSteering.js';
 import { packArchetypeFor, PACK_FIRE_PHASE_BY_DOCTRINE, PACK_TELL_FLOOR_TICKS } from '../../data/packArchetypes.js';
 import { applyAIFiringIntent, clearAIFiringIntent } from '../../systems/aiFireIntent.js';
+import { playerFixFor, AWARENESS_SEARCH_S } from '../playerAwareness.js';
 import { authorizeAIEngagement } from '../engagementAuthority.js';
 import { shovePanicLive } from '../shovePanic.js';
 import { isTumbling } from '../../combat/tumbleStatus.js';
@@ -412,6 +413,21 @@ export class PackBrain {
       return;
     }
 
+    // What this hull knows: the live player, or — while the player is cloaked beyond this
+    // hull's sight — the last known position (src/ai/playerAwareness.js, the one shared rule).
+    const fix = playerFixFor(state, e, this._fix || (this._fix = {}));
+    const searching = !fix.seen;
+    px = fix.x; pz = fix.z; pvx = fix.vx; pvz = fix.vz;
+    if (searching !== (rec.searching === true)) {
+      rec.searching = searching;
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit(searching ? 'ai:targetLost' : 'ai:targetReacquired', {
+          entityId: rec.id, targetId: player.id, x: fix.x, z: fix.z, tick });
+      }
+    }
+    if (searching && (rec.phase === PACK_PHASE.WINDUP || rec.phase === PACK_PHASE.STRIKE)) {
+      this._setPhase(ctx, rec, PACK_PHASE.RECOVER, tick, player);
+    }
     const toPx = px - ex; const toPz = pz - ez;
     const dist = Math.sqrt(toPx * toPx + toPz * toPz) || 1;
     const panicked = shovePanicLive(ai, now);
@@ -428,7 +444,7 @@ export class PackBrain {
     }
     switch (rec.phase) {
       case PACK_PHASE.APPROACH: {
-        const armed = !panicked && tick >= rec.cooldownUntil && dist <= arch.ingressWU;
+        const armed = !panicked && !searching && tick >= rec.cooldownUntil && dist <= arch.ingressWU;
         // Retry is deferred ONLY when an authorization attempt was actually made and denied:
         // bumping while the retry gate itself is closed pushes the deadline 14 ticks further
         // every think, so a wasp denied once inside its no-fire response window never attacks.
@@ -482,7 +498,19 @@ export class PackBrain {
     const fs = this.flightSum;
     const hasFlight = f != null && f >= 0 && fs[f * 5 + 4] > 1;
     let goalX = 0; let goalZ = 0;
-    if (rec.phase === PACK_PHASE.STRIKE && arch.attack !== 'gun_hold') {
+    if (searching) {
+      // A visible search, never a freeze: close on the last known position, then spread around
+      // it on a per-hull ring that sweeps (hash-phased, side-signed), widening after the first
+      // AWARENESS_SEARCH_S so a pack that missed fans out across the area.
+      const widen = 1 + clamp((fix.lostFor - AWARENESS_SEARCH_S) / AWARENESS_SEARCH_S, 0, 1.5);
+      const ring = (70 + 120 * rec.hash) * widen;
+      const ang = rec.hash * Math.PI * 2 + rec.side * fix.lostFor * 0.55;
+      const sx = px + Math.cos(ang) * ring - ex; const sz = pz + Math.sin(ang) * ring - ez;
+      const sl = Math.sqrt(sx * sx + sz * sz) || 1;
+      goalX = sx / sl; goalZ = sz / sl;
+      writeInterest(interest, goalX, goalZ, w.goal, 0.3);
+      speed = cruise * (sl > 160 ? 0.85 : 0.6);
+    } else if (rec.phase === PACK_PHASE.STRIKE && arch.attack !== 'gun_hold') {
       goalX = rec.strikeX; goalZ = rec.strikeZ;
       writeInterest(interest, goalX, goalZ, 1.4 * w.goal, 0.05);
       speed = strikeSpeed;
