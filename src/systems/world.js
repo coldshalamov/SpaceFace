@@ -209,6 +209,7 @@ import {
   insertAsteroidFieldRock,
   promoteAsteroidFieldRock,
   queryAsteroidField,
+  refreshAsteroidFieldRow,
   shouldKeepLiveAsteroid,
   tickOpticFieldRocks,
 } from '../world/asteroidField.js';
@@ -296,9 +297,15 @@ import {
   normalizeResourceBodyBagChunked,
   ensureResourceBodies,
   findResourceBodyForEntity,
+  isFullyRecoveredResourceBody,
+  regrowthVerdict,
+  resourceBodyPinned,
+  resourceBodyRestockAt,
+  restockResourceBody,
   serializeResourceBodyBag,
   upsertResourceBody,
 } from '../world/resourceBodyRecords.js';
+import { ROCK_REGROWTH } from '../data/rockRegrowth.js';
 import { advanceResourceBody, advanceWorldRecord } from '../world/worldCatchup.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
@@ -749,6 +756,8 @@ export const world = {
     const bus = this.bus;
     // Adventure experience: kills, jobs, hauls, mining, sales and discoveries emit pilot:xpEarned.
     this._unsubs.push(...installAdventureXp(this));
+    // A mined-out rock leaves its spent core at the slot (rock regrowth, src/data/rockRegrowth.js).
+    this._unsubs.push(bus.on('mining:rockSpent', (p) => { try { this._leaveSpentCore(p); } catch (_) { /* never break mining */ } }));
     state.world.wreckCourtRulings = normalizeCourtRulings(state.world.wreckCourtRulings);
     this._unsubs.push(bus.on('wreckCourt:worldFact', payload => {
       if (this.registry?.get('wreckCourt')?.verifyRulingFact?.(payload)?.ok !== true) return;
@@ -3566,12 +3575,29 @@ export const world = {
     const bag = ensureResourceBodies(state.world, opts);
     const rec = findResourceBodyForEntity(bag, ent);
     if (!rec) return ent;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
+    // Rock regrowth (WORLD slice 3, src/data/rockRegrowth.js). This read happens only while the
+    // sector is being built — off-screen by construction — so a restock here never pops in on view.
+    const verdict = regrowthVerdict(rec, simTime, ROCK_REGROWTH, { early: this._beltFloorEarly(bag, rec, simTime) });
+    if (verdict === 'restock' || verdict === 'stock') {
+      // The slot returns to its exact stock rock: the generator just built it; forget the ledger row.
+      restockResourceBody(bag, rec.recordId, { simTime, reason: verdict === 'stock' ? 'recovered' : 'regrowth' });
+      if (ent.data) delete ent.data.resourceBodyId;
+      return ent;
+    }
+    if (verdict === 'core') {
+      applyResourceBodyToEntity(ent, rec);
+      if (!this._shapeSpentCore(ent, rec)) {
+        ent.alive = false; // a live-bound authored rock keeps the old mined-out absence
+        if (ent.data) ent.data.respawnAt = resourceBodyRestockAt(rec, ROCK_REGROWTH);
+      }
+      return ent;
+    }
     if (rec.outcome === 'destroyed') {
       ent.alive = false;
       if (ent.data) ent.data.respawnAt = Number.isFinite(rec.depletedAtT) ? rec.depletedAtT : state.simTime;
       return ent;
     }
-    const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     // Zero is a valid observation/mining time; only clamp future timestamps, never treat zero as
     // "missing" and lose deterministic drift/recovery on a Continue.
     const observedT = Number.isFinite(rec.lastObservedT)
@@ -3582,10 +3608,144 @@ export const world = {
       fieldId: rec.fieldId,
       allowRecovery: rec.outcome === 'depleted'
         && rec.recoveryPolicy && rec.recoveryPolicy.recoverDepleted === true,
+      // Pinned rocks (built in, towed, mission) never heal; worn ones heal on the regrowth clock.
+      ...(verdict === 'worn' ? { regrowth: ROCK_REGROWTH } : {}),
     }) || rec;
+    if (verdict === 'worn' && isFullyRecoveredResourceBody(advanced)) {
+      restockResourceBody(bag, rec.recordId, { simTime, reason: 'recovered' });
+      if (ent.data) delete ent.data.resourceBodyId;
+      return ent;
+    }
     applyResourceBodyToEntity(ent, advanced);
     upsertResourceBody(bag, advanced, opts);
     return ent;
+  },
+
+  /**
+   * Turn a dormant field row into the spent core of a mined-out rock: the stock body shrunk to
+   * ROCK_REGROWTH.coreScale, worked dark (the fracture read stays near its end), not ore-bearing
+   * (respawnAt is every beam/NPC/HUD filter's "mined out" mark). Only shelf rows are reshaped — a
+   * row has no native body yet, so its collider is born at the core's size when it promotes.
+   * Returns false for a live-bound rock (its collider already exists at stock size).
+   */
+  _shapeSpentCore(row, rec) {
+    if (!row || !row.data) return false;
+    if (this.state.entities && this.state.entities.get(row.id) === row) return false;
+    const stockRadius = Number(rec && rec.extra && rec.extra.stock && rec.extra.stock.radius)
+      || Number(row.data.stockRadius) || Number(row.radius) || 8;
+    const max = Number(row.data.oreHPMax) || Number(row.hullMax) || 100;
+    row.alive = true;
+    row.radius = Math.max(2, stockRadius * ROCK_REGROWTH.coreScale);
+    if (Number.isFinite(row.mass)) row.mass = Math.max(1, row.mass * ROCK_REGROWTH.coreScale * ROCK_REGROWTH.coreScale);
+    const d = row.data;
+    d.spentCore = true;
+    d.stockRadius = stockRadius;
+    d.respawnAt = resourceBodyRestockAt(rec, ROCK_REGROWTH);
+    d.oreHP = Math.max(1, Math.round(max * 0.12)); // ~88 % fractured: a few vein glints, no ore
+    d.oreHPMax = max;
+    row.hull = d.oreHP;
+    row.hullMax = max;
+    d.yieldU = 0;
+    d.yieldRemainingU = 0;
+    d.pctEjected = 1;
+    d.miningWear = 1;
+    if (rec && rec.recordId) d.resourceBodyId = rec.recordId;
+    return true;
+  },
+
+  /** Belt floor: is this spent slot among the oldest that must restock early to hold the floor? */
+  _beltFloorEarly(bag, rec, simTime) {
+    if (!rec || (rec.outcome !== 'depleted' && rec.outcome !== 'destroyed')) return false;
+    const key = `${rec.sectorId}|${rec.fieldId}`;
+    const cache = this._beltFloorCache || (this._beltFloorCache = new Map());
+    let entry = cache.get(key);
+    if (!entry || entry.t !== simTime || entry.bag !== bag) {
+      const sector = SECTOR_BY_ID.get(rec.sectorId);
+      const fdef = sector && (sector.fields || []).find((f) => f && f.id === rec.fieldId);
+      const stockCount = Number(fdef && fdef.count) || 0;
+      const early = new Set();
+      if (stockCount > 0) {
+        const spent = [];
+        for (const row of Object.values(bag.byId || {})) {
+          if (!row || row.sectorId !== rec.sectorId || row.fieldId !== rec.fieldId) continue;
+          if (regrowthVerdict(row, simTime, ROCK_REGROWTH) !== 'core') continue;
+          spent.push(row);
+        }
+        const allowed = Math.floor(stockCount * (1 - ROCK_REGROWTH.beltFloor));
+        if (spent.length > allowed) {
+          spent.sort((a, b) => (resourceBodyRestockAt(a, ROCK_REGROWTH) - resourceBodyRestockAt(b, ROCK_REGROWTH))
+            || String(a.recordId).localeCompare(String(b.recordId)));
+          for (const row of spent.slice(0, spent.length - allowed)) early.add(row.recordId);
+        }
+      }
+      entry = { t: simTime, bag, early };
+      cache.set(key, entry);
+    }
+    return entry.early.has(rec.recordId);
+  },
+
+  /**
+   * In the sector the pilot is in: a spent core whose slot is due restocks in place, but only
+   * where it cannot be seen (farther than ROCK_REGROWTH.offscreenWu from the ship). Dormant rows
+   * only — a row has no native body, so the stock rock is simply there the next time it is read.
+   */
+  _tickRockRegrowth(state) {
+    if ((state.tick | 0) % FIELD_REGROWTH_SCAN_TICKS !== 0) return 0;
+    const field = state.world && state.world.asteroidField;
+    const sectorId = state.world && state.world.currentSectorId;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!field || !field.rocks || !sectorId || !player || !player.pos) return 0;
+    const bag = ensureResourceBodies(state.world, this._resourceBodyRetentionOptions());
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const far2 = ROCK_REGROWTH.offscreenWu * ROCK_REGROWTH.offscreenWu;
+    let restocked = 0;
+    for (const row of field.rocks) {
+      const d = row && row.data;
+      if (!d || d.spentCore !== true || row.alive === false || !row.pos) continue;
+      if ((row.homeSectorId || d.homeSectorId) !== sectorId) continue;
+      const dx = row.pos.x - player.pos.x, dz = row.pos.z - player.pos.z;
+      if (dx * dx + dz * dz < far2) continue;
+      const rec = d.resourceBodyId ? bag.byId[d.resourceBodyId] : null;
+      if (rec && regrowthVerdict(rec, simTime, ROCK_REGROWTH, { early: this._beltFloorEarly(bag, rec, simTime) }) !== 'restock') continue;
+      if (rec) restockResourceBody(bag, rec.recordId, { simTime, reason: 'regrowth' });
+      row.radius = Number(d.stockRadius) || row.radius;
+      if (Number.isFinite(row.mass)) row.mass = Math.max(1, row.mass / (ROCK_REGROWTH.coreScale * ROCK_REGROWTH.coreScale));
+      d.oreHP = Number(d.oreHPMax) || d.oreHP;
+      row.hull = d.oreHP;
+      d.yieldU = Number(d.stockYieldU) || Number(d.yieldMaxU) || d.yieldU || 10;
+      d.yieldRemainingU = d.yieldU;
+      d.pctEjected = 0;
+      d.miningWear = 0;
+      for (const key of ['spentCore', 'respawnAt', 'depleted', 'depletedAtT', 'resourceBodyId', 'stockRadius', '_oreCarry']) delete d[key];
+      refreshAsteroidFieldRow(state, row);
+      restocked++;
+      this.bus.emit('field:slotRestocked', { sectorId, fieldId: d.fieldId, slotId: d.asteroidSlotId, rowId: row.id });
+    }
+    return restocked;
+  },
+
+  /** A rock the pilot just mined out leaves its spent core at the slot (a dormant drawn row). */
+  _leaveSpentCore(payload) {
+    const state = this.state;
+    const ast = payload && state.entities && state.entities.get(payload.id);
+    const d = ast && ast.data;
+    if (!ast || !d || d.isChunk || !d.fieldId || !(d.asteroidSlotId || d.activityObjectSlotId)) return null;
+    if (d.siteId || d.siteAnchored) return null;
+    const bag = ensureResourceBodies(state.world, this._resourceBodyRetentionOptions());
+    const rec = findResourceBodyForEntity(bag, ast);
+    if (!rec || resourceBodyPinned(rec) || (rec.outcome !== 'depleted' && rec.outcome !== 'destroyed')) return null;
+    const homeSectorId = ast.homeSectorId || d.homeSectorId || state.world.currentSectorId;
+    const data = { ...d, stockYieldU: d.yieldU };
+    delete data.fieldResident;
+    const row = insertAsteroidFieldRock(state, {
+      pos: { x: ast.pos.x, z: ast.pos.z }, rot: ast.rot || 0, angVel: 0,
+      radius: ast.radius, mass: ast.mass, hull: 1, hullMax: Number(d.oreHPMax) || ast.hullMax,
+      data, homeSectorId,
+    });
+    if (!row) return null;
+    this._shapeSpentCore(row, rec);
+    refreshAsteroidFieldRow(state, row);
+    return row;
   },
 
   persistResourceBody(entity) {
@@ -5773,6 +5933,7 @@ export const world = {
     this._tickFieldRegrowth(state);
     this._tickUsedUpFieldOpportunity(state);
     this._tickAmbientRefill(state);
+    this._tickRockRegrowth(state);
     // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
     // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
     // Runs BEFORE tickFarActors so rows orphaned by this sweep are evicted by the far-row
