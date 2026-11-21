@@ -255,7 +255,7 @@ function displayName(enemyId) {
  *   "Wave 1. Six hostiles from the south. Clear the arena."
  *   "Wave 5. Seven hostiles from the north and the south. Corsair Raider leads. Kill the elite and
  *    clear the rest."
- *   "Wave 10. Seven hostiles from the northwest and the east. Dreadnought 'Iron Maw' leads. Kill it
+ *   "Wave 10. Seven hostiles from the northeast and the west. Dreadnought 'Iron Maw' leads. Kill it
  *    and clear the rest."
  */
 /**

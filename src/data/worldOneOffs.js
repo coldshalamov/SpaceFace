@@ -251,7 +251,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_ore_bulk_container',
     sectorId: 'sector_helios_prime',
     anchor: { type: 'station', id: 'station_helios' },
-    // station (1280,-420) + offset = (1020,80), west of the first buoy and rib.
+    // station (1280,-420) + offset = (1020,80), east of the first buoy and rib.
     offsetLocal: Object.freeze({ x: -260, z: 500 }),
     rot: 1.3,
     spin: 0,
@@ -365,7 +365,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_aftermath_wreck_ore_freighter_bow__stripped',
     sectorId: 'sector_pallas_drift',
     anchor: { type: 'station', id: 'station_smuggler' },
-    // station_smuggler (-1080, 540) + this = (-380, 560): on the west rim of the nebula at
+    // station_smuggler (-1080, 540) + this = (-380, 560): on the east rim of the nebula at
     // (400, 600, r800), where the cleaner's work is aimed.
     offsetLocal: Object.freeze({ x: 700, z: 20 }),
     rot: 3.4,
@@ -506,7 +506,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_drill_platform_cold',
     sectorId: 'sector_hyperion_cut',
     anchor: { type: 'station', id: 'station_hyperion_cut' },
-    // station_hyperion_cut (-640, 480) + this = (-60, 60): mid-sector, south-east of the refinery (+z is north).
+    // station_hyperion_cut (-640, 480) + this = (-60, 60): mid-sector, south-west of the refinery (+z is north).
     offsetLocal: Object.freeze({ x: 580, z: -420 }),
     rot: 2.9,
     spin: 0,
@@ -572,7 +572,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_slurry_tank',
     sectorId: 'sector_rhea_cinder',
     anchor: { type: 'station', id: 'station_rhea_cinder' },
-    // station_rhea_cinder (-640, 520) + this = (240, 120): south-east of the cinder line (+z is north).
+    // station_rhea_cinder (-640, 520) + this = (240, 120): south-west of the cinder line (+z is north).
     offsetLocal: Object.freeze({ x: 880, z: -400 }),
     rot: 2.7,
     spin: 0.08,
@@ -645,7 +645,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_comms_array',
     sectorId: 'sector_phoebe_echo',
     anchor: { type: 'station', id: 'station_phoebe_echo' },
-    // station_phoebe_echo (280, -960) + this = (-300, -300): open floor north-west of the station (+z is north).
+    // station_phoebe_echo (280, -960) + this = (-300, -300): open floor north-east of the station (+z is north).
     offsetLocal: Object.freeze({ x: -580, z: 660 }),
     rot: 2.0,
     spin: 0.1,
@@ -665,7 +665,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_tanker_coupling',
     sectorId: 'sector_nereid_shoal',
     anchor: { type: 'station', id: 'station_nereid' },
-    // station_nereid (960, -380) + this = (1340, 60): north-east of the market (+z is north), off the wreck approach.
+    // station_nereid (960, -380) + this = (1340, 60): north-west of the market (+z is north), off the wreck approach.
     offsetLocal: Object.freeze({ x: 380, z: 440 }),
     rot: 1.2,
     spin: 0,
@@ -687,7 +687,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_container_rack_abandoned',
     sectorId: 'sector_proteus_well',
     anchor: { type: 'station', id: 'station_proteus' },
-    // station_proteus (-640, 520) + this = (40, 820): north-east (+z is north), clear of the fog rim.
+    // station_proteus (-640, 520) + this = (40, 820): north-west (+z is north), clear of the fog rim.
     offsetLocal: Object.freeze({ x: 680, z: 300 }),
     rot: 0.8,
     spin: 0,
@@ -799,7 +799,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
 
 // One ropeable cache beside a named Helios landmark. Not one of the six texture props:
 // those stay non-colliding dressing. This record is a jettisoned cargo pod the beam
-// already knows how to split, parked 120 WU east of The Candle Fleet (latch is 390).
+// already knows how to split, parked 120 WU west of The Candle Fleet (latch is 390).
 export const HELIOS_ROPE_CACHE = Object.freeze({
   id: 'oneoff_helios_candle_cache',
   name: 'Candle Fleet sample pod',
@@ -807,7 +807,7 @@ export const HELIOS_ROPE_CACHE = Object.freeze({
   sectorId: 'sector_helios_prime',
   landmarkPoiId: 'poi_memorial',
   anchor: Object.freeze({ type: 'station', id: 'station_helios' }),
-  // station_helios (1280, -420) + this offset = (1800, -820), 120 WU east of
+  // station_helios (1280, -420) + this offset = (1800, -820), 120 WU west of
   // poi_memorial The Candle Fleet at (1680, -820).
   offsetLocal: Object.freeze({ x: 520, z: -400 }),
   commodityId: 'cmdty_ore_iron',

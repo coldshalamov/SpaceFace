@@ -3,6 +3,7 @@ import { starterBuoyRecordMarker } from '../missions/starterWorkday.js';
 import {TALLY_THREE} from '../data/tallyThree.js';
 import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
 import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
+import { installAdventureXp } from '../world/adventureXp.js';
 // World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
 //
 // Owns: the sector graph (loaded copy of SECTORS), the active sector's live contents
@@ -746,6 +747,8 @@ export const world = {
 
     const state = this.state;
     const bus = this.bus;
+    // Adventure experience: kills, jobs, hauls, mining, sales and discoveries emit pilot:xpEarned.
+    this._unsubs.push(...installAdventureXp(this));
     state.world.wreckCourtRulings = normalizeCourtRulings(state.world.wreckCourtRulings);
     this._unsubs.push(bus.on('wreckCourt:worldFact', payload => {
       if (this.registry?.get('wreckCourt')?.verifyRulingFact?.(payload)?.ok !== true) return;
@@ -8746,10 +8749,10 @@ export const world = {
       members[role] = entity.id;
       return entity;
     };
-    // The cutter points east across the parcel's route; the receiver sits beyond its 90 WU cone.
+    // The cutter points west across the parcel's route; the receiver sits beyond its 90 WU cone.
     const start = { x: station.pos.x - 240, z: station.pos.z + 80 };
     for (const [role, dx, dz, defId, name] of [
-      ['scanner', 19, -28, 'ship_hornet', 'Customs cutter — east-facing scan'],
+      ['scanner', 19, -28, 'ship_hornet', 'Customs cutter — west-facing scan'],
       ['receiver', 144, 0, 'ship_mule', 'Quiet receiving barge'],
     ]) {
       if (live(role) || run.phase === 'delivered') continue;

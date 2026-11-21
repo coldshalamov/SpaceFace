@@ -131,8 +131,9 @@ function occupancyField(kind, center, extra = {}) {
 }
 
 /**
- * PURE quadrant map. West is the cold half at rest; heat occupies the east.
- * Phases retune which quadrants are cold/hot. The island is always insulated.
+ * PURE quadrant map. At rest the −x keys (player east) are the cold half; heat
+ * occupies the +x keys (player west). Phases retune which quadrants are cold/hot.
+ * The island is always insulated.
  */
 export function cryoThermalMap(phase, spin = 0) {
   const map = { nw: 'cold', ne: 'hot', sw: 'cold', se: 'hot' };
@@ -150,11 +151,11 @@ export function cryoThermalMap(phase, spin = 0) {
       map.se = 'hot';
       break;
     case 'boss': {
-      const hotEast = Math.cos(spin) >= 0;
+      const hotWestHalf = Math.cos(spin) >= 0;
       map.nw = 'cold';
       map.sw = 'cold';
-      map.ne = hotEast ? 'hot' : 'cold';
-      map.se = hotEast ? 'hot' : 'cold';
+      map.ne = hotWestHalf ? 'hot' : 'cold';
+      map.se = hotWestHalf ? 'hot' : 'cold';
       break;
     }
     default:
@@ -319,7 +320,7 @@ export function planCryoInstall({
   switch (phase) {
     case 'idle':
     case 'shutter_slow':
-      out.note = `${cryoThermalSentence(thermal) || 'west is cold, east is hot'}; momentum keeps, the helm does not`;
+      out.note = `${cryoThermalSentence(thermal) || 'east is cold, west is hot'}; momentum keeps, the helm does not`;
       break;
     case 'furnace_active':
       out.note = 'three quadrants vent heat; one cold pocket remains';

@@ -20,7 +20,7 @@ export const TETHYS_WATCH_OVERLOOK_STOPS = Object.freeze([
     lookAt: point(-1380, 420) }), // the real Quiet Cache, not a second receiver
 ]);
 
-// Open approach and outside pass. The middle legs remain west of the service-yard
+// Open approach and outside pass. The middle legs remain east of the service-yard
 // waypoint, log survey sweep, counterweight cradle and z=-520 transfer corridor.
 // This is composition evidence only: no autopilot or route is installed here.
 export const TETHYS_WATCH_OVERLOOK_PASS = Object.freeze([
@@ -33,7 +33,7 @@ export const TETHYS_WATCH_OVERLOOK_PROPS = Object.freeze([
     placeId: 'place_freight_platform', name: 'Watch-change Apron',
     pos: point(-1168, -960), rot: -Math.PI / 2,
     // Forge's -Y approach lip exports as +Z. Entity yaw -pi/2 faces that
-    // green-lit edge east into the empty stopping space, not into the rack.
+    // green-lit edge west into the empty stopping space, not into the rack.
   }),
   Object.freeze({
     placeId: 'place_worklight_tower', name: 'Watch-change Worklight',
@@ -49,7 +49,7 @@ export const TETHYS_WATCH_OVERLOOK_PROPS = Object.freeze([
   Object.freeze({
     placeId: 'place_hull_rack', name: 'Outer Log Rib Rack',
     pos: point(-1160, 80), rot: Math.atan2(340, -220),
-    // The +X run of stripped ribs lies along the cache bearing. Kept east of
+    // The +X run of stripped ribs lies along the cache bearing. Kept west of
     // the pilot's open pass: evidence of the yard, not a wall across it.
   }),
 ]);

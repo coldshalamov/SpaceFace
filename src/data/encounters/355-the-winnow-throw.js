@@ -1,6 +1,6 @@
 // 355 — THE WINNOW THROW (CR-ANVIL braid: a sling variant that is not the Anvil).
 // The Feedstock Belt's ore winnow is a cycle, not a place: a gather well herds loose pods
-// into the throat, a warning beat, then the discharge cone throws the batch east toward
+// into the throat, a warning beat, then the discharge cone throws the batch west toward
 // the foundry approach. This braid stages the shift honestly: longshore mules loiter on
 // the gathering batch (the waiting bodies), ore pods sit inside the real gather well, and
 // claim-jumpers run the discharge lane inbound — they want the throw, not the crew.
@@ -37,7 +37,7 @@ export const trigger = deepFreeze({
 const WINNOW = VESTA_ORE_WINNOW;
 const POD_COMMODITY = 'cmdty_ore_copper';
 const POD_COUNT = 5;
-const BATCH_EXIT_WU = 330;          // pods past this east of the winnow read as thrown
+const BATCH_EXIT_WU = 330;          // pods past this west of the winnow read as thrown
 const JUMPER_STAGE_WU = 820;        // jumpers inbound up the discharge lane
 const JUMPER_SPEED = 62;
 const SHIFT_DEADLINE_S = 140;
@@ -71,7 +71,7 @@ export const runtime = Object.freeze({
     if (!loaderSpecs.length || !jumperSpecs.length) return d.abort(live, 'no_cast');
 
     // The gather well holds the batch at the throat; loaders orbit the batch on the well's
-    // west rim, clear of the discharge cone's mouth.
+    // east rim, clear of the discharge cone's mouth.
     const mouth = WINNOW.globalPos;
     const rng = d.stream(live, 'winnow_layout');
     loaderSpecs.forEach((spec, i) => {
@@ -139,7 +139,7 @@ export const runtime = Object.freeze({
     live.data.thrown = false;
     live.phase = 'conflict';
     d.say(live, 'alert',
-      'SHIFT WATCH: the winnow is loading — the throw goes east when the throat warns.',
+      'SHIFT WATCH: the winnow is loading — the throw goes west when the throat warns.',
       null, { primary: true, literal: true });
     d.emit('comms:log', {
       from: 'WINNOW LONGSHORE',
@@ -167,7 +167,7 @@ export const runtime = Object.freeze({
         live.data.thrown = true;
         d.emit('comms:log', {
           from: 'WINNOW LONGSHORE',
-          text: 'THERE GOES THE BATCH \u2014 east, ride it or leave it.',
+          text: 'THERE GOES THE BATCH \u2014 west, ride it or leave it.',
           kind: 'encounter',
         });
       }
@@ -239,7 +239,7 @@ export default defineEncounter(trigger, {
   factionId: 'faction_reach',
   context: 'encounter',
   title: 'THE WINNOW THROW',
-  primaryLine: 'SHIFT WATCH: the winnow is loading — the throw goes east when the throat warns.',
+  primaryLine: 'SHIFT WATCH: the winnow is loading — the throw goes west when the throat warns.',
   squad: {
     archetypes: ['corsair_raider', 'wasp_swarmer'],
     size: [2, 3],
@@ -264,7 +264,7 @@ export default defineEncounter(trigger, {
   receipts: {
     claim_broken: 'CLAIM BROKEN — the shift holds. Pods in the lane are salvage, not theft.',
     crew_down: 'CREW DOWN — the winnow throws an unclaimed batch on schedule.',
-    batch_away: 'THE THROW — the batch went east. What the cone caught, the belt keeps.',
+    batch_away: 'THE THROW — the batch went west. What the cone caught, the belt keeps.',
     shift_ended: 'Shift over. The winnow cycles on; the lane forgets the jumpers.',
   },
 });

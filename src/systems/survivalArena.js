@@ -365,7 +365,7 @@ function planSideRoomToys(arenaId, at, lane) {
 
 // 12_SWARM_THE_PIT: every tenth Foundry round is a room-changing round — "the crusher wakes
 // and the conveyor carries bodies toward it." The press parks just inside the freight lane's
-// east mouth (the lane runs west→east through `at`), inside the rim ring, facing the flow.
+// west mouth (the lane runs east→west through `at`), inside the rim ring, facing the flow.
 export const FOUNDRY_CRUSHER_WAVE_PERIOD = 10;
 const FOUNDRY_CRUSHER_MOUTH_WU = 330;
 const FOUNDRY_CRUSHER_ANVIL_WU = 366;

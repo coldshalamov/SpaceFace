@@ -1,9 +1,12 @@
 // Player-facing compass. One convention for every bearing a pilot reads.
 //
-// The chase camera sits on −z and looks toward +z, so world +z is screen up
-// (src/ui/hud.js objectiveBearingGlyph, measured 2026-09-19). The radar draws the
-// same way: y = center − dz, and the N mark sits above the dial. North is +z.
-// East is +x (screen left on that same camera). South is −z. West is −x.
+// The rule is the screen, read like a map: north is screen up, east is screen
+// right, south is screen down, west is screen left. The chase camera sits on −z
+// and looks toward +z, so world +z is screen up (src/ui/hud.js
+// objectiveBearingGlyph, measured 2026-09-19) and north is +z. World −x is
+// screen right, so east is −x — which means world +x is west, plainly. The
+// world's x axis is an internal detail a player never sees; only these words
+// reach them, and they follow the screen, not the axis.
 //
 // Cryo quadrant keys put nw/ne on +z, which is north here.
 
@@ -12,10 +15,10 @@ const HYPHEN = Object.freeze([
 ]);
 const LETTERS = Object.freeze(['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE']);
 
-/** Index 0 is east, matching atan2(dz, dx). −1 when the offset is not a finite vector. */
+/** Index 0 is east (world −x, screen right). −1 when the offset is not a finite vector. */
 export function playerBearingIndex(dx, dz) {
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return -1;
-  return (Math.round(Math.atan2(dz, dx) / (Math.PI / 4)) + 8) % 8;
+  return (Math.round(Math.atan2(dz, -dx) / (Math.PI / 4)) + 8) % 8;
 }
 
 /** 'north', 'northeast', 'east', … Empty when the offset is not finite. */
@@ -37,8 +40,10 @@ export function playerBearingLetter(dx, dz) {
 }
 
 /**
- * World offset of each cryo quadrant key. +z (nw/ne) is player north, screen up.
- * Kept beside the compass so a dressing comment cannot re-teach the opposite north.
+ * World offset of each cryo quadrant key. The keys are named by world sign — the 'n*'
+ * rows sit on +z, which is player north, screen up — and predate the east-right rule,
+ * so 'ne' is the +x key, which is player west. sharedPlayerHalf reads the signs, not
+ * the names, so the words the player hears still follow the screen compass.
  */
 export const CRYO_KEY_VECTOR = Object.freeze({
   nw: Object.freeze({ x: -1, z: 1 }),
@@ -59,7 +64,7 @@ export function sharedPlayerHalf(keys) {
   const sameX = vecs.every((vector) => Math.sign(vector.x) === Math.sign(vecs[0].x));
   const sameZ = vecs.every((vector) => Math.sign(vector.z) === Math.sign(vecs[0].z));
   if (sameZ && !sameX) return vecs[0].z > 0 ? 'north' : 'south';
-  if (sameX && !sameZ) return vecs[0].x > 0 ? 'east' : 'west';
+  if (sameX && !sameZ) return vecs[0].x > 0 ? 'west' : 'east';
   return null;
 }
 

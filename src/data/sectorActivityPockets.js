@@ -329,7 +329,7 @@ const refineryActors = Object.freeze([
     identity: 'reuse:factionPresence:pitborn:yardTender:sector_ceres_belt',
     presentationRole: 'tender',
     jobKind: 'tender',
-    // West service staging clears the station, Furnace Mouth anvil and visual client.
+    // East service staging clears the station, Furnace Mouth anvil and visual client.
     // Keep R1's <=95 WU immediate band without borrowing clearance from missing producers.
     spawnOffset: point(-94, 0),
     binding: Object.freeze({
@@ -345,9 +345,9 @@ const refineryActors = Object.freeze([
       id: 'ceres_refinery_tender_service',
       jobKind: 'tender',
       durationS: 28,
-      // Wide oblique, 147.3 deg / 228.5 WU. The west berth and staging center avoid
-      // the Furnace Mouth anvil occupying the former northwestern service berth.
-      // The southeast fallback mark stays distinct from the actual southwestern client;
+      // Wide oblique, 147.3 deg / 228.5 WU. The east berth and staging center avoid
+      // the Furnace Mouth anvil occupying the former northeastern service berth.
+      // The southwest fallback mark stays distinct from the actual southeastern client;
       // production steering binds that unchanged real hull, not this abstract mark.
       marks: [
         mark('refinery_tender_berth', -120, 15, 'station:station_ceres:service-berth'),

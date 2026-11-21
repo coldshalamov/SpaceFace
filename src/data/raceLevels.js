@@ -151,7 +151,7 @@ const SECTOR_RECORD_WU_S = 120;
 
 // Pallas Drift, sector-local. The reef cone (-320,-620 r420) sits on gates 3-5: the
 // five-mine string rides the current along rot 0.38. f_pallas_2 (980,420) is the
-// eastern ice bank; f_pallas_3 (-840,1180) closes the return.
+// western ice bank; f_pallas_3 (-840,1180) closes the return.
 const PALLAS_COURSE = freezeCourse({
   courseId: 'circuit_pallas_reef',
   courseName: 'Pallas Reef',
@@ -177,9 +177,9 @@ const PALLAS_COURSE = freezeCourse({
 
 // Vesta Forge, sector-local. The radiation belt (-540,-480 r260) is gate 6's
 // approach; the storm lane (680,320, a 460x78 sheet on rot -0.55) crosses the leg
-// into gate 8. Gate 6 is nudged south-west and gate 8 south-east of the authored
-// marks so the course physically rides both foundry windows instead of passing
-// beside them.
+// into gate 8. Gate 6 is nudged onto the radiation belt's approach and gate 8 onto
+// the storm lane's crossing so the course physically rides both foundry windows
+// instead of passing beside them.
 const VESTA_COURSE = freezeCourse({
   courseId: 'circuit_vesta_furnace',
   courseName: 'Vesta Furnace',
@@ -231,7 +231,7 @@ const CERES_COURSE = freezeCourse({
 // Haumea Rift, sector-local. The dense_asteroid disc (-540,380 r780) covers gates
 // 2-5; the fissure cracker (180,380) stands off gate 5's shoulder as native
 // machinery scenery. f_haumea_1 ice banks the north loop, f_haumea_2 crystals the
-// east drop.
+// west drop.
 const HAUMEA_COURSE = freezeCourse({
   courseId: 'circuit_haumea_fissure',
   courseName: 'Haumea Fissure',
@@ -254,7 +254,7 @@ const HAUMEA_COURSE = freezeCourse({
   ],
 });
 
-// Kepler Scar, sector-local. The radiation scar (200,-300 r900) covers the east
+// Kepler Scar, sector-local. The radiation scar (200,-300 r900) covers the west
 // descent through gates 6-8; the debris field (-700,500 r700) takes the north
 // arc through gates 2-3. f_kepler_1 rare-exotic banks the south drop, f_kepler_2
 // metallic the north.
@@ -280,8 +280,8 @@ const KEPLER_COURSE = freezeCourse({
 });
 
 // Sker Haven, sector-local. Both dense-asteroid approach banks are on the lap:
-// the east disc (500,300 r800) covers gates 4-6 between the Throne pass and the
-// Bazaar cut; the west disc (-500,-400 r700) takes gates 2-3 and the long return.
+// the west disc (500,300 r800) covers gates 4-6 between the Throne pass and the
+// Bazaar cut; the east disc (-500,-400 r700) takes gates 2-3 and the long return.
 // f_sker_1 rare-exotic sits off the south sweep.
 const SKER_COURSE = freezeCourse({
   courseId: 'circuit_sker_wreckrun',
@@ -415,7 +415,7 @@ export const SECTOR_RACE_LEVELS = Object.freeze([
     stationId: 'station_kepler_scar',
     courseRevision: 1,
     terrain: 'Kepler radiation scar and the debris field under the capsized hull',
-    blurb: 'The glow eats the east descent. The debris field takes the north arc. Neither one moves for you.',
+    blurb: 'The glow eats the west descent. The debris field takes the north arc. Neither one moves for you.',
     course: KEPLER_COURSE,
     sectorHazards: Object.freeze([
       Object.freeze({ id: 'kepler_debris', kind: 'staticZone', zoneIndex: 1,
@@ -436,12 +436,12 @@ export const SECTOR_RACE_LEVELS = Object.freeze([
     blurb: 'Gate-camp rock on both approaches. The banks are the checkpoints and the hazard at once.',
     course: SKER_COURSE,
     sectorHazards: Object.freeze([
-      Object.freeze({ id: 'sker_west_bank', kind: 'staticZone', zoneIndex: 1,
-        name: 'West approach bank', gateIndex: 3, label: 'DENSE BANK', waitBackWU: 200,
-        hint: 'The west disc is crowded with scrap rock. Hold the cleared lane.' }),
-      Object.freeze({ id: 'sker_east_bank', kind: 'staticZone', zoneIndex: 0,
-        name: 'East approach bank', gateIndex: 5, label: 'DENSE BANK', waitBackWU: 220,
-        hint: 'The east disc takes the Throne pass. Do not improvise inside it.' }),
+      Object.freeze({ id: 'sker_west_bank', kind: 'staticZone', zoneIndex: 0,
+        name: 'West approach bank', gateIndex: 5, label: 'DENSE BANK', waitBackWU: 220,
+        hint: 'The west disc takes the Throne pass. Do not improvise inside it.' }),
+      Object.freeze({ id: 'sker_east_bank', kind: 'staticZone', zoneIndex: 1,
+        name: 'East approach bank', gateIndex: 3, label: 'DENSE BANK', waitBackWU: 200,
+        hint: 'The east disc is crowded with scrap rock. Hold the cleared lane.' }),
     ]),
   }),
 ]);

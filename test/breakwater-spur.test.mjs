@@ -198,13 +198,13 @@ async function fixture() {
   return { sim, s, owner, native, player, offers, receipts, cues, emit, tick, admitted };
 }
 
-test('the in-transit bonded original exposes its real southeast mark through the chart and offer', async () => {
+test('the in-transit bonded original exposes its real southwest mark through the chart and offer', async () => {
   const {sim,s,owner,tick}=await fixture();tick(4);
   const row=s.world.breakwaterSpur;row.phase='operating';row.stage=3;row.charter='bonded';row.commission.status='paid';
   row.looseLoad={kind:'consignment',status:'in_transit',worldRecordId:breakwaterRecordId('consignment_1')};
   s.breakwaterSpurView=getBreakwaterSpurStatus(s);
   const point=buildSystemModel(s,BREAKWATER_SECTOR_ID).points.find(p=>p.id==='poi_breakwater_belt_receiver');
-  assert.ok(point);assert.match(point.statusLine,/southeast|sealed load/i);
+  assert.ok(point);assert.match(point.statusLine,/southwest|sealed load/i);
   const target=sectorLocalToGlobalForSector(BREAKWATER_CONSIGNMENT.receiverLocal,BREAKWATER_SECTOR_ID);
   assert.deepEqual(resolveCourseTarget(point).pos,target);
   assert.equal(resolveCourseTarget(point).arrivalRadius,60);

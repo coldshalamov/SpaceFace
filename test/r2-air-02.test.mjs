@@ -141,9 +141,9 @@ test('Quiet Numbers is noise outside the cathedral shadow and names the freighte
     reward.pos.x - ox,
     reward.pos.z - oz,
   )} of ${occluder.data.name}.`;
-  assert.equal(fact, 'Derelict Freighter lies south-east of The Resonant Cathedral.');
+  assert.equal(fact, 'Derelict Freighter lies south-west of The Resonant Cathedral.', 'the freighter sits at +x of the cathedral, which is west: north up, east right');
   assert.doesNotMatch(fact, /[a-z]+_[a-z0-9_]+/);
-  assert.doesNotMatch(NOISE, /Derelict Freighter|south-east/);
+  assert.doesNotMatch(NOISE, /Derelict Freighter|south-west/);
 
   bus.emit('band:tune', { channelId: 'numbers_station' });
   state.simTime = 1;

@@ -410,7 +410,7 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_crusher_module',
   sectorId: SKER_SCRAP_BALER_SECTOR_ID,
-  // Nudged 180 WU west of the original (-200,-1400) site: alien-ecology cycle 2 appended
+  // Nudged 180 WU east of the original (-200,-1400) site: alien-ecology cycle 2 appended
   // zone_sker_red_snow (center 400,-1800 r=780) and zone_sker_harvest_deep after the baler
   // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still south of the
   // Bazaar, still in open water — >=120 WU clear of every station, gate, zone, field,
@@ -478,7 +478,7 @@ export const RIFT_FISSURE_CRACKER = buildKillMachine({
 // bite, calm is the safe window. None of these is a damage aura.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 
-// VESTA FORGE - the foundry shear. A double shear stands on the south-east approach to the works: two
+// VESTA FORGE - the foundry shear. A double shear stands on the south-west approach to the works: two
 // slag rams close from both ends onto one shear bar at the throat. Its rot runs along the inbound
 // leg from the Helios gate so the jaws close ACROSS a ship crossing the approach, which is the
 // whole read: not a mouth you fly into, a pair of jaws that meet where you are.
@@ -488,7 +488,7 @@ export const VESTA_SHEAR_JAWS = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_ore_sorter',
   sectorId: VESTA_SHEAR_SECTOR_ID,
-  // South-east approach to the works (player compass, +z north): clear of both stations (975 WU to Depot Three), both belts
+  // South-west approach to the works (player compass, +z north): clear of both stations (975 WU to Depot Three), both belts
   // (946 WU off the radiation volume, 1388 off the storm lane), the ore winnow at f_vesta_3, the
   // dead freighter, and the runaway ladle on the foundry apron.
   localPos: { x: 250, z: -1000 },
@@ -690,8 +690,8 @@ export const IO_BELL_RINGER = buildKillMachine({
 // Sited inside the authored debris disc (136 WU off its heart, so the mouth disc stays
 // nested inside it), 1302 WU from station_ashcache, 308 WU clear of f_ash_1's rim in the
 // shove's path, clear of f_ash_2's rim (1660), every gate and anchor POI (nearest 807:
-// poi_boss). The rig stands on the Converted Yards' south-west footprint (504 WU off its
-// heart, inside the zone), and the disc's rim brushes the slag yard's west edge - the same
+// poi_boss). The rig stands on the Converted Yards' south-east footprint (504 WU off its
+// heart, inside the zone), and the disc's rim brushes the slag yard's east edge - the same
 // debris language, so the overlap reads as one field.
 export const ASHFALL_SCARECROW_SECTOR_ID = 'sector_ashfall_reach';
 
@@ -732,7 +732,7 @@ export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
 // calm is the safe window between loads. Cracker family — the census's plain directional
 // feed, same law as the Helios starter and the Rift fissure cracker — because the yard's
 // claim is not a new shape, it is the live machine standing where the dead one is not:
-// south-east of the claim post on the open apron, aimed north-west up the seam side that
+// south-west of the claim post on the open apron, aimed north-east up the seam side that
 // feeds it (f_hyperion_1), clear of the post (452 WU), the Cut Refinery (2443), both gates
 // (>3734), all three fields (f_hyperion_1 rim +489), the authored dense_asteroid disc
 // (rim +212), both POIs, and the Half-Cut itself (1733). Inside the Hyperion Seams zone
@@ -1023,7 +1023,7 @@ export const VESTA_ORE_WINNOW = Object.freeze({
   fieldId: 'f_vesta_3',
   localPos: freezeVec(120, 980),
   globalPos: WINNOW_POS,
-  // East is clear of the foundry (west of the throat) and of the storm sheet to the south-east.
+  // West is clear of the foundry (east of the throat) and of the storm sheet to the south-west.
   dir: freezeVec(1, 0),
   cycle: Object.freeze({ gatherS: 5, warningS: 2, dischargeS: 3, calmS: 6 }),
   fields: Object.freeze([
@@ -1168,7 +1168,7 @@ export const WEATHER_VOLUMES = Object.freeze([
   // Io Reach's war is weather. The contested floor has changed hands by the week, and the
   // fighting left two standing facts on the chart: a debris current thrown off the hulls that
   // died crossing the southern approach (shots and hulls bend inside it), and a radiation
-  // belt off the west holdings nobody has held long enough to vent. Positions sit clear of
+  // belt off the east holdings nobody has held long enough to vent. Positions sit clear of
   // both stations, all four gates, both ore fields, and the named POIs in sectorAnchors.js.
   buildWeatherVolume({
     id: 'io_reach_storm_lane',

@@ -30,7 +30,7 @@ const COURSE_APPROACH = { x: BREAKWATER_SITE_LOCAL.x, z: BREAKWATER_SITE_LOCAL.z
 // that actually occurred; every line keys off a real transition.
 const NESSA = {
   signal: 'Unknown hull, you are passing Breakwater Spur. It is a dead loading frame, not a wreck — mark it if you haul.',
-  inspect: 'Dispatch. Two empty sockets. Originals lie southeast.',
+  inspect: 'Dispatch. Two empty sockets. Originals lie southwest.',
   partial: 'One arm is holding. The other socket is still empty.',
   damaged: 'That original is scarred. It will seat — just settle it slower.',
   seat: 'Seated. That is a real part again, not salvage.',
@@ -242,8 +242,8 @@ export function createBreakwaterSpurSystem() {
       else if (!this._destinationOffer && !this._offerRevision) {
         this._destinationOffer=true;
         const offer={revision:`destination:${row.seq}`,kind:'bonded',title:'Belt Outpost receiver',
-          detail:'Approach from the southeast. Keep the ship clear; tow the sealed load to the receiving mark, settle below 4 m/s and keep the line attached.',
-          actions:[{id:'deliver:consignment',label:'Hand off consignment'},{id:'course:receiver',label:'Mark southeast receiving berth'},{id:'close',label:'Leave'}],
+          detail:'Approach from the southwest. Keep the ship clear; tow the sealed load to the receiving mark, settle below 4 m/s and keep the line attached.',
+          actions:[{id:'deliver:consignment',label:'Hand off consignment'},{id:'course:receiver',label:'Mark southwest receiving berth'},{id:'close',label:'Leave'}],
           expiresAt:this.state.simTime+BREAKWATER_OFFER_TTL_S};
         this._offerRevision=offer.revision; this.state.breakwaterSpurOffer=offer; this.bus.emit('breakwaterSpur:offer',offer);
       }
@@ -300,12 +300,12 @@ export function createBreakwaterSpurSystem() {
           this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(COURSE_APPROACH,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater Spur', autopilot:false });
           break;
         case 'course_pocket':
-          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_POCKET_LOCAL,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater southeast salvage pocket', autopilot:false });
+          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_POCKET_LOCAL,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater southwest salvage pocket', autopilot:false });
           break;
         case 'course:receiver':
           if (row.charter !== BREAKWATER_CHARTER.BONDED || row.looseLoad?.kind !== 'consignment'
             || row.looseLoad.status !== 'in_transit') break;
-          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_CONSIGNMENT.receiverLocal,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Belt Outpost southeast receiving mark', arrivalRadius:60, autopilot:false });
+          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_CONSIGNMENT.receiverLocal,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Belt Outpost southwest receiving mark', arrivalRadius:60, autopilot:false });
           break;
         case 'seat:drive': case 'seat:drum': {
           const socketRole = id.split(':')[1];

@@ -1,10 +1,10 @@
 // VX-02 — the Cracker Run: a persistent, unscored free-drive ring on Helios Prime's yard edge.
 //
-// WHAT THIS IS: one authored arrangement — a plaza mouth southwest of Helios Station, an arcing
+// WHAT THIS IS: one authored arrangement — a plaza mouth northeast of Helios Station, an arcing
 // berth-rib row (wide line outside, a real needle gap inside), an apron turn, and a claim-edge
 // crossing where the Claim Cracker's fixed south-facing intake cone switches on for 3.5 s of
 // every 12 s cycle. The crossing offers three honest lines: the low road (always safe, detours
-// south), the anvil thread (a narrow northbound slot between the cone's west tail and the anvil
+// south), the anvil thread (a narrow northbound slot between the cone's east tail and the anvil
 // — timed), and the open field (weave through live scatter, no authored line). No mission, no
 // timer, no gate contract: it is a place. Reaching it leases nothing and changes no setting.
 //
@@ -23,8 +23,8 @@
 // south; cone apex (720,-402), reach 100, effective half-angle ~0.64 rad; anvil body (720,-484)
 // r22. The slot between mouth south edge (-438) and anvil north edge (-462) is 24 wu — CLOSED to
 // a 28-wu hull, so no lane may author a crossing through the pinch. The anvil thread instead
-// rides the cone's west flank: at z -490 the wedge's west edge sits near x 654 and the anvil's
-// west edge near x 698, a ~40 wu slot that is inside the cone's tail during surge. Entering it
+// rides the cone's east flank: at z -490 the wedge's east edge sits near x 654 and the anvil's
+// east edge near x 698, a ~40 wu slot that is inside the cone's tail during surge. Entering it
 // in the calm window is the ring's committed line; riding it during the surge is the honest
 // price of mistiming — the field shoves south toward the anvil, not through it.
 
@@ -107,16 +107,16 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 680, z: 840 }),
     rot: 0.3, radius: 44,
-    why: 'The last heavy rib closes the stripped berth\'s silhouette before the apron opens west — a wide, forgiving turn.',
+    why: 'The last heavy rib closes the stripped berth\'s silhouette before the apron opens east — a wide, forgiving turn.',
   }),
-  // ── Apron corner: the west gate of the run ─────────────────────────────────
+  // ── Apron corner: the east gate of the run ─────────────────────────────────
   Object.freeze({
     id: 'vx_ring_apron_mouth',
     name: 'Apron Mouth',
     placeId: 'place_freight_platform',
     localPos: Object.freeze({ x: 640, z: 1030 }),
     rot: 0.3, radius: 60,
-    why: 'The broad freight apron caps the berth; the run turns west across the face of its solid platform.',
+    why: 'The broad freight apron caps the berth; the run turns east across the face of its solid platform.',
   }),
   Object.freeze({
     id: 'vx_ring_hulk_gate',
@@ -124,7 +124,7 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     placeId: 'place_dead_hulk',
     localPos: Object.freeze({ x: -220, z: 820 }),
     rot: 2.2, radius: 50,
-    why: 'A dead ore hulk parked as the west corner; the run bends north around her.',
+    why: 'A dead ore hulk parked as the east corner; the run bends north around her.',
   }),
   // ── The turn down to the claim edge ────────────────────────────────────────
   Object.freeze({
@@ -188,13 +188,13 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
 ]);
 
 // Route breadcrumbs — deliberately sub-floor silhouettes: markers, never walls. The thread
-// buoys at (676,-490) and (670,-445) sit inside the cone's west tail: they mark the lip, and
+// buoys at (676,-490) and (670,-445) sit inside the cone's east tail: they mark the lip, and
 // during the surge they are inside live field — which is the point.
 export const VX_FREE_DRIVE_MARKERS = Object.freeze([
   // plaza approach
   Object.freeze({ localPos: Object.freeze({ x: 1060, z: 40 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 940, z: 110 }) }),
-  // apron run west
+  // apron run east
   Object.freeze({ localPos: Object.freeze({ x: 420, z: 1050 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 180, z: 980 }) }),
   Object.freeze({ localPos: Object.freeze({ x: -60, z: 900 }) }),
@@ -210,7 +210,7 @@ export const VX_FREE_DRIVE_MARKERS = Object.freeze([
   Object.freeze({ localPos: Object.freeze({ x: 680, z: -545 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 676, z: -490 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 670, z: -445 }) }),
-  // the return leg to the plaza (west of the station approach)
+  // the return leg to the plaza (east of the station approach)
   Object.freeze({ localPos: Object.freeze({ x: 1000, z: -490 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 1090, z: -350 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 1150, z: -190 }) }),

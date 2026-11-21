@@ -53,22 +53,22 @@ test('the rock-field painter only forms a field where rocks cluster and never pa
   assert.equal(isRockRecord({ type: 'ship', pos: { x: 0, z: 0 } }), false);
 });
 
-test('minimap, chart and the 3D view agree: east (+x) is screen left, north (+z) is screen up', () => {
-  // Measured live 2026-11-20 through the renderer's worldToScreen: a point 300 m east of the ship
-  // projects 2134 px to its LEFT; 300 m north (+z) projects 867 px ABOVE it.
+test('minimap, chart and the 3D view agree: +x is screen left (west), north (+z) is screen up', () => {
+  // Measured live 2026-11-20 through the renderer's worldToScreen: a point 300 m at +x of the ship
+  // projects 2134 px to its LEFT; 300 m north (+z) projects 867 px ABOVE it. North up, east right.
   const view = { width: 800, height: 600 };
   const cam = createMapCamera({ focusGlobal: { x: 0, z: 0 }, spanWU: 2000 });
   const centre = globalToScreen(cam, { x: 0, z: 0 }, view);
-  const east = globalToScreen(cam, { x: 300, z: 0 }, view);
+  const west = globalToScreen(cam, { x: 300, z: 0 }, view);
   const north = globalToScreen(cam, { x: 0, z: 300 }, view);
-  assert.ok(east.x < centre.x && Math.abs(east.y - centre.y) < 1e-6, 'chart: east is left');
+  assert.ok(west.x < centre.x && Math.abs(west.y - centre.y) < 1e-6, 'chart: +x is left, which is west — north up, east right');
   assert.ok(north.y < centre.y && Math.abs(north.x - centre.x) < 1e-6, 'chart: north is up');
-  const back = screenToGlobal(cam, east, view);
+  const back = screenToGlobal(cam, west, view);
   assert.ok(Math.abs(back.x - 300) < 1e-6 && Math.abs(back.z) < 1e-6, 'chart unprojects exactly');
   const m = tacticalRadarMetrics(false);
-  const rEast = projectRadarPoint({ x: 0, z: 0 }, { x: 300, z: 0 }, 1000, m);
+  const rWest = projectRadarPoint({ x: 0, z: 0 }, { x: 300, z: 0 }, 1000, m);
   const rNorth = projectRadarPoint({ x: 0, z: 0 }, { x: 0, z: 300 }, 1000, m);
-  assert.ok(rEast.x < m.center && rNorth.y < m.center, 'minimap: east left, north up');
-  assert.equal(playerBearingLetter(300, 0), 'E');
+  assert.ok(rWest.x < m.center && rNorth.y < m.center, 'minimap: +x left, north up');
+  assert.equal(playerBearingLetter(300, 0), 'W', '+x is west — north up, east right');
   assert.equal(playerBearingLetter(0, 300), 'N');
 });
