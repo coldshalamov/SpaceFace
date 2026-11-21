@@ -118,7 +118,9 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e || e.alive === false || !Number.isSafeInteger(e.id) || e.id <= 0) continue;
+      // Every body the journal still presents gets its pose, dying ones included: a killed hull keeps
+      // drifting through its death beat until the journal retires it, instead of freezing mid-air.
+      if (!e || !Number.isSafeInteger(e.id) || e.id <= 0) continue;
       const generation = journal.getActiveGeneration(e.id);
       if (!generation) continue;
       if (count >= cap) { stats.truncated++; break; }

@@ -44,6 +44,7 @@ const rec = {
   dataChangedAtMs: 0,
   openEpisode: null,
   silentHoldFrames: 0,
+  worstGhostMs: 0,
   worstSilentHoldMs: 0,
   // Set by a wall-clock watcher when the game was paused/hidden between two frames (a pause screen
   // may stop presenting entirely); the next frame then starts fresh instead of counting the pause.
@@ -178,6 +179,16 @@ export function recordPresentedPoseAge(state, meshes, feed, world = null) {
       t.fenceChangedAtMs = -1;
     }
     t.inScene = !!mesh.parent;
+    // Identity facts for the diagnosis of a stale row: does the table row match the world slot?
+    if (snap && world && wslot >= 0) {
+      const o2 = feedIndex.get(id);
+      t.tableGen = o2 === undefined ? null : rows[o2 + POSE_ROW.GENERATION];
+      t.tableOcc = o2 === undefined ? null : rows[o2 + POSE_ROW.OCCUPANT];
+      t.worldGen = world.sourceGenerations ? world.sourceGenerations[wslot] : null;
+      t.worldOcc = world.occupantGenerations ? world.occupantGenerations[wslot] : null;
+      t.worldX = world.x ? world.x[wslot] : null;
+      t.tableX = o2 === undefined ? null : rows[o2 + POSE_ROW.X];
+    }
     // With the pose table, "should be moving" means the simulation actually moved the body
     // recently (a pinned or tethered hull can report velocity yet stand still). Without a table
     // (legacy A/B) the reported velocity is the only signal, since the facade itself may be frozen.
@@ -189,8 +200,15 @@ export function recordPresentedPoseAge(state, meshes, feed, world = null) {
         t.tx = tx; t.tz = tz; t.tableMovedAtMs = now;
       }
       moving = now - (t.tableMovedAtMs || -1e9) < 250;
+      t.ghostSinceMs = -1;
+    } else if (snap) {
+      // Not in the table: the simulation no longer presents this body (its retirement is in flight).
+      moving = false;
+      if (!(t.ghostSinceMs >= 0)) t.ghostSinceMs = now;
+      const ghostMs = now - t.ghostSinceMs;
+      if (ghostMs > rec.worstGhostMs) rec.worstGhostMs = ghostMs;
     } else {
-      moving = speedFor(id, snap ? feedIndex : null, rows, state) > MOVING_SPEED;
+      moving = speedFor(id, null, rows, state) > MOVING_SPEED;
     }
     const age = moving ? now - t.changedAtMs : 0;
     if (!moving) t.changedAtMs = now;
@@ -226,7 +244,7 @@ export function recordPresentedPoseAge(state, meshes, feed, world = null) {
     if (worstDetail && Math.round(worst) >= ep.poseAgeMs) {
       const e = state.entities && state.entities.get ? state.entities.get(worstId) : null;
       ep.worst = { id: worstId, type: e ? e.type : null, player: worstId === state.playerId,
-        inScene: worstDetail.inScene, fenceAgeMs: worstDetail.fenceChangedAtMs < 0 ? null : Math.round(now - worstDetail.fenceChangedAtMs) };
+        inScene: worstDetail.inScene, tableGen: worstDetail.tableGen, tableOcc: worstDetail.tableOcc, worldGen: worstDetail.worldGen, worldOcc: worstDetail.worldOcc, worldX: worstDetail.worldX, tableX: worstDetail.tableX, meshX: worstDetail.x + rec.rebaseX, fenceAgeMs: worstDetail.fenceChangedAtMs < 0 ? null : Math.round(now - worstDetail.fenceChangedAtMs) };
     }
   } else if (rec.openEpisode) {
     rec.openEpisode = null;
@@ -267,6 +285,8 @@ export function readPoseAge() {
     tracked: rec.tracked.size,
     worstId: rec.worstId,
     silentHoldFrames: rec.silentHoldFrames,
+    // A drawn body the simulation already retired (its destroy has not reached the picture yet).
+    worstGhostMs: Math.round(rec.worstGhostMs),
     worstSilentHoldMs: Math.round(rec.worstSilentHoldMs),
     episodes: rec.episodes.map((e) => ({ ...e })),
   };
@@ -276,6 +296,7 @@ export function resetPoseAge() {
   rec.worstPoseAgeMs = 0;
   rec.worstId = null;
   rec.silentHoldFrames = 0;
+  rec.worstGhostMs = 0;
   rec.worstSilentHoldMs = 0;
   rec.worstPlayerPoseAgeMs = 0;
   rec.worstDataAgeMs = 0;

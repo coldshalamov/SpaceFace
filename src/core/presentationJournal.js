@@ -121,6 +121,7 @@ function poseChanged(entity) {
  * publication resumes only after `rebuildFrom` emits a full current-entity spawn set.
  */
 export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, options = {}) {
+  const suppressTransforms = typeof options.suppressTransforms === 'function' ? options.suppressTransforms : null;
   const size = Math.max(1, Math.floor(Number.isFinite(capacity)
     ? capacity
     : DEFAULT_RECORD_CAPACITY));
@@ -499,6 +500,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
   function recordTransform(tick, entity) {
     assertOpen();
+    // NO-FREEZE: a shared pose table (simPoseTable.js) owns per-tick poses in the worker lane, so
+    // the journal keeps only spawns, destroys and visual changes (option suppressTransforms).
+    if (suppressTransforms && suppressTransforms()) return 0;
     return recordCoalescible(
       PRESENTATION_JOURNAL_KINDS.TRANSFORM,
       tick,

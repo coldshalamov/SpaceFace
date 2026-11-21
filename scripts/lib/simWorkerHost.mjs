@@ -1025,7 +1025,7 @@ const BRIDGE_EVENTS = [
   'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
 
-export function createSimHost({ onAsyncSaveReady, onStep } = {}) {
+export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransforms } = {}) {
   // The save system's synchronous localStorage contract runs against a staged
   // snapshot in worker realms (browser worker, node worker_threads): main
   // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
@@ -2114,6 +2114,7 @@ export function createSimHost({ onAsyncSaveReady, onStep } = {}) {
         const telemetry = e ? readPhysicsTelemetry(e) : null;
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
+          journalRebuildReasons: { ...host.rebuildReasons },
           tick: state.tick,
           seed: state.meta?.seed ?? null,
           runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,
@@ -2254,7 +2255,7 @@ export function createSimHost({ onAsyncSaveReady, onStep } = {}) {
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
       ? msg.journalCapacity
       : undefined;
-    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms });
     host.journal = journal;
     host.scratch = createPresentationJournalRecord();
     host.suppressedSpawns = [];
@@ -2441,7 +2442,7 @@ export function createSimHost({ onAsyncSaveReady, onStep } = {}) {
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
       ? msg.journalCapacity
       : undefined;
-    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms });
     host.journal = journal;
     host.scratch = createPresentationJournalRecord(); // visitRange copies each record into this
 
@@ -2460,6 +2461,11 @@ export function createSimHost({ onAsyncSaveReady, onStep } = {}) {
       return seq;
     };
     journal.recordTransformIfChanged = (tick, entity) => {
+      // NO-FREEZE: when the shared pose table carries every journaled body's pose each step, the
+      // journal carries only spawns, destroys and visual changes. Per-tick transform rows were ~95%
+      // of its volume; a presentation ACK lagging ~2 s overflowed the 16k ring into a full rebuild
+      // (measured: 3 overflow rebuilds in 45 s of busy Swarm), which re-mints every generation.
+      if (typeof poseTableOwnsTransforms === 'function' && poseTableOwnsTransforms()) return 0;
       const before = journal.getDiagnostics().identityErrorCount;
       const seq = origTransformIfChanged(tick, entity);
       const diag = journal.getDiagnostics();

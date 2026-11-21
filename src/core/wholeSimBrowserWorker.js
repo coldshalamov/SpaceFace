@@ -64,6 +64,7 @@ const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
   applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({
   onAsyncSaveReady: requestAsyncSaveReply,
   onStep: writePoseTable,
+  poseTableOwnsTransforms: () => poseWriter !== null && !localClock.stopped,
 });
 
 let chain = Promise.resolve();

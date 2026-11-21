@@ -286,7 +286,7 @@ try {
           .find((x) => x.offsetParent && !x.disabled && /TAKE$/i.test(n(x.textContent)));
         if (take) { take.click(); return; }
         const again = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled
-          && /^(Retry|Restart|Run again|Play again|New run|Try again)/i.test(n(x.textContent)));
+          && /^(Retry|Restart|Run it again|Run again|Play again|New run|Try again)/i.test(n(x.textContent)));
         if (again) { again.click(); return; }
         const b = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled
           && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start run|Retry|Restart|Respawn|Undock)/i.test(n(x.textContent)));
@@ -304,7 +304,8 @@ try {
     hand.releaseAll();
   };
 
-  const phases = [['dense input', async () => play(SECONDS * 1000)]];
+  // Forced stalls first, while the run is young (a long dense phase often ends the run).
+  const phases = [];
   if (FORCED) {
     phases.push(['forced: ACKs withheld 4 s', async () => { await force({ withholdAcksMs: 4000 }); await play(6000); }]);
     phases.push(['forced: replies held 3 s', async () => { await force({ holdRepliesMs: 3000 }); await play(6000); }]);
@@ -318,6 +319,7 @@ try {
     }
     return false;
   };
+  phases.push(['dense input', async () => play(SECONDS * 1000)]);
   for (const [name, run] of phases) {
     await ensureFlight();
     await setPhase(name);
@@ -333,10 +335,13 @@ try {
   report.realmEnd = await page.evaluate(() => ({ hasFocus: document.hasFocus(), visibility: document.visibilityState,
     padCalls: window.__padCalls ? window.__padCalls() : null })).catch(() => null);
   const samples = await page.evaluate(() => { clearInterval(window.__nf.timer); return window.__nf.samples; });
+  report.workerProbe = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); return { journalRebuildReasons: r && (r.result || r).journalRebuildReasons }; } catch (e) { return String(e); } }).catch(() => null);
+  console.log('worker journal rebuilds', JSON.stringify(report.workerProbe));
   report.end = await page.evaluate(() => {
     const g = window.SF.simLaneDiag();
     return { clock: g.workerClockLastDiagnostics, poseTable: g.poseTable, profile: g.workerSystemProfile || null,
-      slowApplies: g.workerSlowApplies, replyLag: (g.replyLagEpisodes || []).slice(-8), maxApplyMs: g.workerApplyMaxMs };
+      slowApplies: g.workerSlowApplies, publisher: (() => { try { const r = window.SF.registry.get('render'); const d = r && r._presentationPublisher && r._presentationPublisher.getDiagnostics(); return d ? JSON.parse(JSON.stringify(d)) : null; } catch (_) { return null; } })(),
+      presentationRunner: (() => { try { const l = window.SF.loop && window.SF.loop.diagnostics ? window.SF.loop.diagnostics() : null; return l ? JSON.parse(JSON.stringify(l)) : null; } catch (_) { return null; } })(), replyLag: (g.replyLagEpisodes || []).slice(-8), maxApplyMs: g.workerApplyMaxMs };
   }).catch(() => null);
 
   // ---- per-phase table ----
@@ -365,6 +370,7 @@ try {
       tracked: ph.age ? ph.age.tracked : null,
       worstId: ph.age ? ph.age.worstId : null,
       silentHoldMs: ph.age ? ph.age.worstSilentHoldMs : null,
+      ghostMs: ph.age ? ph.age.worstGhostMs : null,
       freezeLog: ph.freezeEpisodes.length,
       maxUnacked: Math.max(0, ...s.map((d) => d.unacked || 0)),
       backpressuredSamples: s.filter((d) => d.bp).length,
@@ -376,7 +382,7 @@ try {
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
   for (const r of report.rows) {
-    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
+    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  ghost ${r.ghostMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
   }
   if (report.errors.length) console.log('page errors:', report.errors.slice(0, 5).join(' | '));
 } catch (e) {
