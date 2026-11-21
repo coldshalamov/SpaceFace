@@ -11,6 +11,8 @@
 // Read by the probes and the no-freeze gate through window.__SF_POSE_AGE__.
 
 import { POSE_ROW, POSE_ROW_STRIDE } from '../core/simPoseTable.js';
+import { getLatestSnapshotFence } from './snapshotFence.js';
+const fenceScratch = { x: 0, y: 0, z: 0, rot: 0, valid: false };
 
 const TRACK_REFRESH_FRAMES = 30;
 const TRACK_OTHERS = 8;
@@ -40,6 +42,8 @@ const rec = {
   dataSimTime: NaN,
   dataChangedAtMs: 0,
   openEpisode: null,
+  silentHoldFrames: 0,
+  worstSilentHoldMs: 0,
   // Set by a wall-clock watcher when the game was paused/hidden between two frames (a pause screen
   // may stop presenting entirely); the next frame then starts fresh instead of counting the pause.
   sawNonLive: true,
@@ -62,6 +66,8 @@ function presentingLive(state) {
   if (!state || state.mode !== 'flight') return false;
   if (!(Number(state.timeScale) > 0)) return false;
   if (state.ui && state.ui.docked === true) return false;
+  // The flight reveal veil holds the simulation on purpose while the first picture settles.
+  if (state.render && state.render.flightVeilHoldsSim === true) return false;
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false;
   return true;
 }
@@ -76,7 +82,7 @@ function speedFor(id, feedIndex, rows, state) {
 const feedIndex = new Map();
 
 /** Once per presented frame, before this frame's poses are seated (measures the last drawn frame). */
-export function recordPresentedPoseAge(state, meshes, feed) {
+export function recordPresentedPoseAge(state, meshes, feed, world = null) {
   const now = nowMs();
   watchedState = state;
   if (!watcher && typeof setInterval === 'function') {
@@ -88,6 +94,7 @@ export function recordPresentedPoseAge(state, meshes, feed) {
   rec.lastFrameAtMs = now;
   rec.frames++;
   const live = presentingLive(state) && !resumed;
+  noteSilentHold(state, now, gap);
   const snap = feed && feed.active === true ? feed.snapshot : null;
   feedIndex.clear();
   if (snap) {
@@ -130,17 +137,22 @@ export function recordPresentedPoseAge(state, meshes, feed) {
       }
     }
     for (const id of rec.tracked.keys()) if (!keep.has(id)) rec.tracked.delete(id);
-    for (const id of keep) if (!rec.tracked.has(id)) rec.tracked.set(id, { x: NaN, z: NaN, changedAtMs: now });
+    for (const id of keep) if (!rec.tracked.has(id)) rec.tracked.set(id, { x: NaN, z: NaN, tx: NaN, tz: NaN, fx: NaN, fz: NaN, fenceChangedAtMs: now, inScene: true, tableMovedAtMs: 0, changedAtMs: now });
   }
   let worst = 0;
   let playerAge = 0;
   let worstId = null;
+  let worstDetail = null;
   const rows = snap ? snap.rows : null;
   const playerMesh = Number.isSafeInteger(state.playerId) ? meshes.get(state.playerId) : null;
   for (const [id, t] of rec.tracked) {
     const mesh = meshes.get(id);
     // Only bodies on screen count: the renderer legitimately skips posing culled/off-screen meshes.
-    if (!mesh || !mesh.position || mesh.visible === false
+    const wslot = world && typeof world.getSlotForEntityId === 'function' ? world.getSlotForEntityId(id) : -1;
+    // The renderer seats only rows its view pass found visible this frame (culled rows keep
+    // their last pose by design), so only those count.
+    const culled = world && world.visible ? !(wslot >= 0 && world.visible[wslot] === 1) : false;
+    if (!mesh || !mesh.position || mesh.visible === false || culled
       || (playerMesh && playerMesh.position && id !== state.playerId
         && Math.hypot(mesh.position.x - playerMesh.position.x, mesh.position.z - playerMesh.position.z) > ON_SCREEN_WU)) {
       t.changedAtMs = now; t.x = NaN; continue;
@@ -150,10 +162,35 @@ export function recordPresentedPoseAge(state, meshes, feed) {
     if (!(Math.abs(gx - t.x) <= MOVED_EPS && Math.abs(gz - t.z) <= MOVED_EPS)) {
       t.x = gx; t.z = gz; t.changedAtMs = now;
     }
-    const moving = speedFor(id, snap ? feedIndex : null, rows, state) > MOVING_SPEED;
+    // Diagnostic beside the mesh: the fence's presented pose for the same body (what the mesh is
+    // supposed to be seated from). Mesh stale + fence moving = a render-side seat skip, not the lane.
+    const fence = getLatestSnapshotFence();
+    const fp = fence && typeof fence.presentedPose === 'function' ? fence.presentedPose(id, fenceScratch) : null;
+    if (fp && fp.valid) {
+      if (!(Math.abs(fp.x - t.fx) <= MOVED_EPS && Math.abs(fp.z - t.fz) <= MOVED_EPS)) {
+        t.fx = fp.x; t.fz = fp.z; t.fenceChangedAtMs = now;
+      }
+    } else {
+      t.fenceChangedAtMs = -1;
+    }
+    t.inScene = !!mesh.parent;
+    // With the pose table, "should be moving" means the simulation actually moved the body
+    // recently (a pinned or tethered hull can report velocity yet stand still). Without a table
+    // (legacy A/B) the reported velocity is the only signal, since the facade itself may be frozen.
+    let moving;
+    const fo = snap ? feedIndex.get(id) : undefined;
+    if (fo !== undefined) {
+      const tx = rows[fo + POSE_ROW.X]; const tz = rows[fo + POSE_ROW.Z];
+      if (!(Math.abs(tx - t.tx) <= MOVED_EPS && Math.abs(tz - t.tz) <= MOVED_EPS)) {
+        t.tx = tx; t.tz = tz; t.tableMovedAtMs = now;
+      }
+      moving = now - (t.tableMovedAtMs || -1e9) < 250;
+    } else {
+      moving = speedFor(id, snap ? feedIndex : null, rows, state) > MOVING_SPEED;
+    }
     const age = moving ? now - t.changedAtMs : 0;
     if (!moving) t.changedAtMs = now;
-    if (age > worst) { worst = age; worstId = id; }
+    if (age > worst) { worst = age; worstId = id; worstDetail = t; }
     if (id === state.playerId) playerAge = age;
   }
   const dataAge = now - rec.dataChangedAtMs;
@@ -182,9 +219,32 @@ export function recordPresentedPoseAge(state, meshes, feed) {
     ep.poseAgeMs = Math.max(ep.poseAgeMs, Math.round(worst));
     ep.dataAgeMs = Math.max(ep.dataAgeMs, Math.round(dataAge));
     ep.frameGapMs = Math.max(ep.frameGapMs, Math.round(gap));
+    if (worstDetail && Math.round(worst) >= ep.poseAgeMs) {
+      const e = state.entities && state.entities.get ? state.entities.get(worstId) : null;
+      ep.worst = { id: worstId, type: e ? e.type : null, player: worstId === state.playerId,
+        inScene: worstDetail.inScene, fenceAgeMs: worstDetail.fenceChangedAtMs < 0 ? null : Math.round(now - worstDetail.fenceChangedAtMs) };
+    }
   } else if (rec.openEpisode) {
     rec.openEpisode = null;
   }
+}
+
+// Ruling (owner, 2026-11-21): the world is never held silently. In flight, a time scale of zero with
+// no open screen and no pause plate is a frozen world that looks like a hang — count every frame of it.
+let silentSinceMs = -1;
+function noteSilentHold(state, now, gap) {
+  const silent = !!state && state.mode === 'flight' && !(Number(state.timeScale) > 0)
+    && !(state.ui && state.ui.docked === true)
+    && !(state.render && state.render.flightVeilHoldsSim === true)
+    && !(state.ui && Array.isArray(state.ui.screenStack) && state.ui.screenStack.length > 0)
+    && !(typeof document !== 'undefined' && (document.visibilityState === 'hidden'
+      || document.getElementById('sf-focus-pause')));
+  if (!silent) { silentSinceMs = -1; return; }
+  if (silentSinceMs < 0) silentSinceMs = now;
+  rec.silentHoldFrames++;
+  const held = now - silentSinceMs;
+  if (held > rec.worstSilentHoldMs) rec.worstSilentHoldMs = held;
+  void gap;
 }
 
 export function readPoseAge() {
@@ -202,6 +262,8 @@ export function readPoseAge() {
     lastDataAgeMs: Math.round(rec.lastDataAgeMs),
     tracked: rec.tracked.size,
     worstId: rec.worstId,
+    silentHoldFrames: rec.silentHoldFrames,
+    worstSilentHoldMs: Math.round(rec.worstSilentHoldMs),
     episodes: rec.episodes.map((e) => ({ ...e })),
   };
 }
@@ -209,6 +271,8 @@ export function readPoseAge() {
 export function resetPoseAge() {
   rec.worstPoseAgeMs = 0;
   rec.worstId = null;
+  rec.silentHoldFrames = 0;
+  rec.worstSilentHoldMs = 0;
   rec.worstPlayerPoseAgeMs = 0;
   rec.worstDataAgeMs = 0;
   rec.worstFrameGapMs = 0;

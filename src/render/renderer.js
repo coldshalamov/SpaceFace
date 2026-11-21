@@ -33039,7 +33039,7 @@ export const render = {
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
     // Presented-pose age (poseAgeRecorder.js): measured from the meshes drawn last frame.
-    tryPresentedCall(this, 'pose-age', () => recordPresentedPoseAge(this.state, this._meshes, getActivePoseFeed()));
+    tryPresentedCall(this, 'pose-age', () => recordPresentedPoseAge(this.state, this._meshes, getActivePoseFeed(), this._presentationWorld));
     // E6 residency: reset the per-frame inline upload wallet. A drawable's first upload is
     // either small enough to pay here or held for the off-screen residency lane.
     if (this._residencyManager) {

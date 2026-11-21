@@ -364,6 +364,7 @@ try {
       poseAgeOver100Frames: ph.age ? ph.age.poseAgeOver100Frames : null,
       tracked: ph.age ? ph.age.tracked : null,
       worstId: ph.age ? ph.age.worstId : null,
+      silentHoldMs: ph.age ? ph.age.worstSilentHoldMs : null,
       freezeLog: ph.freezeEpisodes.length,
       maxUnacked: Math.max(0, ...s.map((d) => d.unacked || 0)),
       backpressuredSamples: s.filter((d) => d.bp).length,
@@ -375,7 +376,7 @@ try {
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
   for (const r of report.rows) {
-    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
+    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
   }
   if (report.errors.length) console.log('page errors:', report.errors.slice(0, 5).join(' | '));
 } catch (e) {

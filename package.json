@@ -507,6 +507,7 @@
     "check:wcag-contrast": "node scripts/check-wcag-contrast.mjs",
     "check:boot-resilience": "node --test test/loading-boot-resilience.test.mjs test/boot-graphics-failure.test.mjs",
     "check:playable": "node scripts/check-game-playable.mjs",
+    "check:no-freeze": "node scripts/check-no-freeze.mjs",
     "check:live-whole-ship-admission": "node scripts/check-live-whole-ship-admission.mjs",
     "check:crucible:route": "node scripts/check-crucible-route.mjs",
     "player-truth": "node scripts/player-truth/run.mjs",
