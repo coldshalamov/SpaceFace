@@ -14,6 +14,9 @@ import { resolveActionLabel } from '../../systems/input.js';
 import { counted } from '../../core/numberFormat.js';
 import { laneInputWrite } from '../../core/simLaneCommands.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { rockName } from '../asteroid/rockNames.js';
+import { rockAssayLine } from '../asteroid/rockAssay.js';
+import { ROCK_GEOLOGY, resolveBoreFamily } from '../../systems/drillFieldModel.js';
 import { renderFieldTacticalCanvas, radarScreenToWorld, TACTICAL_MAP_MODES } from './fieldTacticalCanvas.js';
 import { ARCHITECT_TABS, renderFieldArchitectWorkspace } from './fieldArchitectPanels.js';
 
@@ -121,6 +124,10 @@ export function buildFieldArchitectViewModel({
     selectedAsteroid: ent && ent.alive !== false ? {
       id: ent.id,
       typeId: ent.data?.typeId || 'ast_common_rock',
+      // The rock by the name the rover screen uses, its kind in words, and the strata scan.
+      name: rockName(ent.id),
+      kind: (ROCK_GEOLOGY[resolveBoreFamily(ent.data)] || {}).label || 'Asteroid',
+      assay: rockAssayLine(ent, state, (oreId) => commodityDisplayName(oreId)),
       glyph: ASTEROID_SCAN_GLYPH_BY_TYPE[ent.data?.typeId] || 'Si',
       yieldU: Math.round(Number(ent.data?.yieldU) || 0),
       radius: Math.round(Number(ent.radius) || 8),
@@ -559,7 +566,7 @@ export function createFieldBuildMode(ctx) {
       }
       const existingSite = sys.siteForAsteroid?.(selectedAsteroidId) || null;
       if (!existingSite) {
-        announceToast('Commission a rig on this asteroid first before anchoring orbital structures.', 'warn');
+        announceToast('Claim this rock first (1). Turrets, beacons and sails are built around a claim.', 'warn');
         return;
       }
       const msg = toolId === 'turret'
@@ -576,7 +583,7 @@ export function createFieldBuildMode(ctx) {
       }
       const existingSite = sys.siteForAsteroid?.(selectedAsteroidId) || null;
       if (!existingSite) {
-        announceToast('Commission a rig on this asteroid first before launching drones.', 'warn');
+        announceToast('Claim this rock first (1). A drone works for a claim.', 'warn');
         return;
       }
       runSiteOp(sys.commissionSiteDrone?.(existingSite.id, 'harvester'), 'Autonomous harvester drone launched.');

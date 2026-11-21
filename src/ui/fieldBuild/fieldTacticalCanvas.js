@@ -309,7 +309,7 @@ function drawHoveredAsteroidReticle(g, row, w, h) {
   g.fillStyle = row.site ? '#8ce0ff' : '#f2b949';
   const head = row.site
     ? `${row.site.specialization?.label || 'Claim'} (${row.site.directive?.short || 'STD'})`
-    : `Unclaimed Rock · ${row.glyph}`;
+    : `Unclaimed rock · ${row.glyph}`;
   g.fillText(head, bx + 9, by + 17);
 
   g.font = '500 12px monospace';
@@ -318,9 +318,9 @@ function drawHoveredAsteroidReticle(g, row, w, h) {
     const netMw = Math.round((row.site.totalPowerGenMw || 0) - (row.site.totalPowerDrawMw || 0));
     g.fillText(`${netMw >= 0 ? '+' : ''}${netMw} MW · ${row.site.storedU} units · ${row.site.drones?.length || 0} drn`, bx + 9, by + 33);
     g.fillStyle = '#92b4c7';
-    g.fillText('Click inspect · [2] Link · [8] Works', bx + 9, by + 48);
+    g.fillText('Click to look · 2 link · 8 go inside', bx + 9, by + 48);
   } else {
-    g.fillText('Click inspect · [1] Auto-rig', bx + 9, by + 33);
+    g.fillText('Click to look · 1 claims it', bx + 9, by + 33);
   }
   g.restore();
 }

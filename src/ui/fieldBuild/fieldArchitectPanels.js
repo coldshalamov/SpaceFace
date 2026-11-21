@@ -175,7 +175,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
       for (const aid of vm.selectedAsteroidIds) {
         if (!sys?.siteForAsteroid?.(aid)) runSiteOp(sys.commissionFieldAsteroid(aid, 'extractor'), null);
       }
-      callbacks.toast(`Commission order queued across ${vm.selectedAsteroidIds.length} rocks.`, 'good');
+      callbacks.toast(`Claiming ${vm.selectedAsteroidIds.length} rocks.`, 'good');
     });
     const turAll = el('button', 'fb-mini-btn', '+Turret All');
     turAll.type = 'button';
@@ -226,7 +226,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   }
 
   const head = el('div', 'fb-card-head');
-  const title = vm.selectedSite ? vm.selectedSite.specialization.label : `Asteroid ${vm.selectedAsteroid.glyph}`;
+  const title = vm.selectedSite ? vm.selectedSite.specialization.label : (vm.selectedAsteroid.name || 'Asteroid');
   const badge = el('span', `fb-badge ${vm.selectedSite ? 'mint' : 'amber'}`,
     vm.selectedSite ? vm.selectedSite.specialization.tag : 'Unclaimed');
   head.append(el('h3', 'fb-card-title', title), badge);
@@ -234,10 +234,10 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
 
   if (vm.selectedAsteroid) {
     const geoSec = el('div', 'fb-section');
-    geoSec.appendChild(el('h4', 'fb-sec-title', 'Geological Survey'));
+    geoSec.appendChild(el('h4', 'fb-sec-title', `${vm.selectedAsteroid.kind || 'Asteroid'} · what the laser brings up`));
     const statsRow = el('div', 'fb-kv-row');
     statsRow.append(
-      el('span', '', `Core Reserve · R${vm.selectedAsteroid.radius}`),
+      el('span', '', 'Ore left for the laser'),
       el('span', 'fb-kv-val', `${vm.selectedAsteroid.yieldU} units`),
     );
     geoSec.appendChild(statsRow);
@@ -250,21 +250,24 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
       bar.append(el('span', '', c.name), tr, el('span', 'fb-kv-val', `${c.pct}%`));
       geoSec.appendChild(bar);
     }
+    // The rover's half of the picture: what is inside and how deep, from the same scan the
+    // target card shows in flight.
+    if (vm.selectedAsteroid.assay) geoSec.appendChild(el('p', 'fb-tool-sub', vm.selectedAsteroid.assay));
     panel.appendChild(geoSec);
   }
 
   if (!vm.selectedSite) {
     const actSec = el('div', 'fb-section');
-    const rigBtn = el('button', 'fb-action-btn primary', '[1] Commission Automated Rig');
+    const rigBtn = el('button', 'fb-action-btn primary', 'Claim and start mining (1)');
     rigBtn.type = 'button';
     rigBtn.addEventListener('click', () => activateTool('commission'));
-    const refBtn = el('button', 'fb-action-btn', 'Commission + Smelter Rig');
+    const refBtn = el('button', 'fb-action-btn', 'Claim with a smelter');
     refBtn.type = 'button';
-    refBtn.addEventListener('click', () => runSiteOp(sys.commissionFieldAsteroid(vm.selectedAsteroid.id, 'refinery'), 'Automated smelter rig commissioned.'));
-    const bpBtn = el('button', 'fb-action-btn', 'Stamp Starter Extraction Pocket');
+    refBtn.addEventListener('click', () => runSiteOp(sys.commissionFieldAsteroid(vm.selectedAsteroid.id, 'refinery'), 'Claimed, with a smelter running.'));
+    const bpBtn = el('button', 'fb-action-btn', 'Dig a starter pocket');
     bpBtn.type = 'button';
-    bpBtn.addEventListener('click', () => runSiteOp(sys.applySiteBlueprint(vm.selectedAsteroid.id, 'bp_starter_pocket', null, null, 0), 'Starter Pocket blueprint stamped.'));
-    const drillBtn = el('button', 'fb-action-btn', '[8] Enter Asteroid Works');
+    bpBtn.addEventListener('click', () => runSiteOp(sys.applySiteBlueprint(vm.selectedAsteroid.id, 'bp_starter_pocket', null, null, 0), 'Starter pocket dug.'));
+    const drillBtn = el('button', 'fb-action-btn', 'Go inside with the rover (8)');
     drillBtn.type = 'button';
     drillBtn.addEventListener('click', () => enterSelectedWorks());
     actSec.append(rigBtn, refBtn, bpBtn, drillBtn);
