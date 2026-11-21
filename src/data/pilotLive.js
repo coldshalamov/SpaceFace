@@ -52,10 +52,18 @@ export const PILOT_LIVE_NODE_IDS = Object.freeze(new Set([
   'ghost_deep_shroud',
   'ghost_vanish',
   'ghost_phantom',
+  // Trading (Adventure only): the market screen's chart and hold reads (src/data/pilotWork.js).
+  'trader_long_memory',
+  'trader_market_sense',
+  'trader_best_buyer',
   // Mining (Adventure only)
   'prospector_steady_beam',
   'prospector_deep_bite',
   'prospector_ore_magnet',
+  // Building (Adventure only): each opens a few claim machine kinds (src/data/pilotWork.js).
+  'builder_foundations',
+  'builder_tight_packing',
+  'builder_yard_hand',
   // Evolutions
   'evolution_orbital_saw',
   'evolution_wrecking_ball',

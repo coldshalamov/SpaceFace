@@ -14,6 +14,7 @@
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
 // asteroidController owns modes/input. Excavation sim stays in systems/drill.js; durable
 // structures/production in systems/asteroidSites.js.
+import { builderMachineLock } from '../../data/pilotWork.js';
 import { DRILL_CONST, tileIndex, generateDrillField, chargeRefusalText, drillFacingCell } from '../../systems/drill.js';
 import { BINDINGS } from '../bindings.js';
 import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
@@ -1337,7 +1338,11 @@ export const asteroidScreen = {
           present.push(item.id); // dismantle, once there is something to take apart
         }
       }
-      palette.sync({ present, shortfall: shortfallMap(s, present), settle: paletteSettleAllowed });
+      // A machine kind a Building skill has not opened yet stays on the row, greyed, with the line
+      // that names the skill (never hidden).
+      const locked = {};
+      for (const id of present) { const lock = builderMachineLock(state, id); if (lock) locked[id] = lock.line; }
+      palette.sync({ present, shortfall: shortfallMap(s, present), locked, settle: paletteSettleAllowed });
       palette.setBuildActive(controller.state.mode === MODES.BUILD);
     }
 
@@ -1462,6 +1467,7 @@ export const asteroidScreen = {
       armedSpill = null; // any non-overlay action disarms a pending spill confirmation
       const request = { asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row };
       const placement = siteSys.canInstall({ ...request, preview: true });
+      request.source = 'player'; // the Building skill gate reads player installs only
       const seat = `${item.id}:${tileIndex(cursor.col, cursor.row)}`;
       if (placement?.sealsReturn && armedReturn !== seat) {
         armedReturn = seat;

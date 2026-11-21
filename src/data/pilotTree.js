@@ -128,7 +128,7 @@ const GHOST = branchNodes('ghost', [
 // The work branches: Adventure only (ruling R21 — each rung of the ladder is its own game).
 const TRADER = branchNodes('trader', [
   [1, 'Long Memory', 'Price charts show twice as much history.'],
-  [1, 'Market Sense', 'Every price chart names what the market is doing: climbing, sliding, swinging.'],
+  [1, 'Market Sense', 'Price charts name what a market is doing and for how long: "Climbing for 12 min".'],
   [1, 'Best Buyer', 'Anything in your hold shows the best price you know for it, and where.'],
 ]);
 
@@ -139,9 +139,9 @@ const PROSPECTOR = branchNodes('prospector', [
 ]);
 
 const BUILDER = branchNodes('builder', [
-  [1, 'Foundations', 'Unlocks the next three module kinds on your claim\'s board.'],
-  [1, 'Tight Packing', 'Unlocks three more module kinds on your claim\'s board.'],
-  [1, 'Yard Hand', 'Unlocks the last three module kinds of the first set.'],
+  [1, 'Foundations', 'Your claims can build the Gas Tap, the Auto-Bore Head and the Fabricator.'],
+  [1, 'Tight Packing', 'Your claims can build the Capacitor Bank, the Coolant Condenser and the Charge Press.', { needs: 'builder_foundations' }],
+  [1, 'Yard Hand', 'Your claims can build the Pillar Brace, the Mass Driver, the Lattice Synthesizer and the Vein Exciter.', { needs: 'builder_tight_packing' }],
 ]);
 
 export const PILOT_NODES = Object.freeze([

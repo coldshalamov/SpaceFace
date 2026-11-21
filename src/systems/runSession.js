@@ -863,14 +863,18 @@ export const runSession = {
     const docked = !!((state.player.flags && state.player.flags.docked) || (state.ui && state.ui.docked));
     const pilot = normalizeAdventurePilot(state.player.pilot);
     if (!docked) { this._emit('pilot:respecRejected', { reason: 'not_docked' }); return false; }
-    if (pilot.nodes.length === 0) { this._emit('pilot:respecRejected', { reason: 'nothing_to_refund' }); return false; }
+    if (pilot.nodes.length <= (pilot.granted || []).length) { this._emit('pilot:respecRejected', { reason: 'nothing_to_refund' }); return false; }
     const fee = adventureRespecFee(pilot);
     const credits = Math.round(Number(state.player.credits) || 0);
     let applied = false;
     const req = {
       amount: fee, reason: 'pilot_respec', requireFull: true, expectedCredits: credits,
       commit: () => {
-        state.player.pilot = normalizeAdventurePilot({ ...pilot, points: {}, nodes: [], respecs: pilot.respecs + 1 });
+        // Free (granted) skills stay: they were never the pilot's points to refund.
+        const kept = pilot.granted || [];
+        const keptPoints = {};
+        for (const id of kept) { const c = getPilotCard(id); if (c && c.branch) keptPoints[c.branch] = (keptPoints[c.branch] || 0) + 1; }
+        state.player.pilot = normalizeAdventurePilot({ ...pilot, points: keptPoints, nodes: kept.slice(), granted: kept.slice(), respecs: pilot.respecs + 1 });
         applied = true;
         return true;
       },

@@ -2,6 +2,7 @@
 // together so visual rows, keyboard focus, assistive text, and the selected trade instrument never
 // tell different stories.
 
+import { pilotHas } from '../data/pilotTree.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
 import { causeFor } from './causeLedger.js';
@@ -179,9 +180,12 @@ export function presentMarketDrivers({ state, stationId, commodity, entry, cycle
   const cycleDriver = driver('cycle', 'Short-term trend', regimeText.replace(/ demand| pricing| market| curve/i, ''), `The current short-term formula regime is ${regimeText.toLocaleLowerCase()}.`, cycleDirection, regime);
 
   const standing = standingDriver(state, station, entry, reputation);
+  // Market Sense (Trading, ruling 2026-11-20): the short-term trend is named only for a pilot who
+  // has learned to read it; everyone else reads the curve's shape.
+  const trendRow = pilotHas(state, 'trader_market_sense') ? [cycleDriver] : [];
   const primary = Object.freeze(standing
-    ? [roleDriver, geographyDriver, conflictDriver, cycleDriver, standing]
-    : [roleDriver, geographyDriver, conflictDriver, cycleDriver]);
+    ? [roleDriver, geographyDriver, conflictDriver, ...trendRow, standing]
+    : [roleDriver, geographyDriver, conflictDriver, ...trendRow]);
   const cause = sector.id ? causeFor(state, sector.id) : null;
   const forecast = sector.id ? forecastFor(state, sector.id) : null;
   const sectorLines = cause && cause.receipts ? cause.receipts.map((receipt) => receipt.line) : [];
@@ -289,5 +293,6 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
     });
   }
   const regime = (regimeState && regimeState.kind) || 'steady';
+  if (!pilotHas(state, 'trader_market_sense')) return Object.freeze({ text: 'Last move: no news, just trading', eventId: null, kind: 'cycle' });
   return Object.freeze({ text: `Last move: ${regimeLabel(regime)}`, eventId: null, kind: 'cycle' });
 }

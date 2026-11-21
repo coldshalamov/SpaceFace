@@ -1,3 +1,4 @@
+import { builderMachineLock } from '../data/pilotWork.js';
 import { asteroidSiteReadMethods } from './asteroidSiteReadModel.js';
 export { getAsteroidSiteFromState, findAsteroidSiteFromState, projectAsteroidSiteFromState, canInstallAsteroidSiteFromState } from './asteroidSiteReadModel.js';
 import { readOrchardSaveSection } from '../data/anvilOrchard.js';
@@ -1506,7 +1507,13 @@ export const asteroidSites = {
    * Install a machine. Creates the site record on first install and stakes the claim immediately
    * (PQ-145.01): the rock is a permanent site from the first housing, not from the Core.
    */
-  installMachine({ asteroidId, defId, col, row }) {
+  installMachine({ asteroidId, defId, col, row, source = null }) {
+    // Building (Pilot Tree, 2026-11-20): a player install of an advanced machine needs the
+    // Building skill that opens it. Built machines are never re-checked; only new installs.
+    if (source === 'player') {
+      const lock = builderMachineLock(this.state, defId);
+      if (lock) return { ok: false, reason: 'skill-locked', skill: lock, missing: {}, profile: null };
+    }
     const check = this.canInstall({ asteroidId, defId, col, row });
     if (!check.ok) return check;
     const def = SITE_MACHINE_BY_ID.get(defId);

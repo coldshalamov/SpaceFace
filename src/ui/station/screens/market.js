@@ -1,3 +1,5 @@
+import { traderHasBestBuyer, traderHistorySpanS, traderTrendLine } from '../../../data/pilotWork.js';
+import { bestKnownSell } from '../../marketIntelligence.js';
 import { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
 import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml, rememberedSurveyFreshness } from '../../views/marketPresentation.js';
 import { marketFrameHtml } from '../../views/stationFrames.js';
@@ -684,26 +686,28 @@ function parseHistoryPoints(points) {
   return out;
 }
 
-function windowHistory(points, nowS) {
+// Long Memory (Trading) doubles the window: spanS comes from traderHistorySpanS(state).
+function windowHistory(points, nowS, spanS = TEN_MIN_S) {
   const now = Number(nowS);
   const timed = points.filter((point) => Number.isFinite(point.t));
   if (Number.isFinite(now) && timed.length) {
-    const cut = now - TEN_MIN_S;
+    const cut = now - spanS;
     const windowed = points.filter((point) => !Number.isFinite(point.t) || point.t >= cut);
     if (windowed.length) return windowed;
   }
-  return points.length > TEN_MIN_SAMPLES ? points.slice(-TEN_MIN_SAMPLES) : points;
+  const samples = Math.round(TEN_MIN_SAMPLES * spanS / TEN_MIN_S);
+  return points.length > samples ? points.slice(-samples) : points;
 }
 
-function priceHistory(points, entry, def, nowS) {
-  const values = windowHistory(parseHistoryPoints(points), nowS).map((point) => point.mid);
+function priceHistory(points, entry, def, nowS, spanS = TEN_MIN_S) {
+  const values = windowHistory(parseHistoryPoints(points), nowS, spanS).map((point) => point.mid);
   // A missing worker-side ring is not a flat market. Keep an actual singleton when one
   // exists, and let the row presenter label an empty/singleton series as unavailable.
   return values;
 }
 
-function priceHistorySeries(points, entry, def, nowS) {
-  const windowed = windowHistory(parseHistoryPoints(points), nowS);
+function priceHistorySeries(points, entry, def, nowS, spanS = TEN_MIN_S) {
+  const windowed = windowHistory(parseHistoryPoints(points), nowS, spanS);
   // The graph must contain recorded samples only. In particular, do not turn a pending
   // backfill into [current,current], which reads as a confirmed flat market.
   return windowed;
@@ -892,12 +896,27 @@ export function marketPriceHistorySeries(points, entry, def, nowS) {
   return priceHistorySeries(points, entry, def, nowS);
 }
 
+// Market Sense (Trading): the chart names the trend and how long it has run ("Climbing for 12
+// min"); without the skill no trend is named — the player reads the shape (ruling 2026-11-20).
 function liveRegimeWord(state, sid, commodityId) {
   const regime = state && sid && commodityId
     ? marketRegimeStateFor(state, sid, commodityId, state.simTime || 0)
     : null;
-  return regimeLabel(regime ? regime.kind : 'steady');
+  return traderTrendLine(state, regime);
 }
+
+// Best Buyer (Trading): the best price the player remembers for a held good, where and how old.
+function bestBuyerLine(state, sid, commodityId, held) {
+  if (!(held > 0) || !traderHasBestBuyer(state)) return '';
+  const memory = state && state.player && state.player.marketMemory;
+  const best = bestKnownSell(memory, commodityId, state && state.simTime);
+  if (!best || !Number.isFinite(Number(best.sell))) return '';
+  const name = STATION_NAME_BY_ID.get(best.stationId) || String(best.stationId).replace(/^station_/, '').replace(/_/g, ' ');
+  const here = best.stationId === sid ? ' (here)' : '';
+  const age = best.ageLabel === 'fresh' ? 'just now' : `${best.ageLabel} ago`;
+  return `Best price you know: ${Math.round(Number(best.sell)).toLocaleString()} cr at ${name}${here}, seen ${age}.`;
+}
+const STATION_NAME_BY_ID = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
 
 // The docked chart says "fresh quote" from the live feed in renderStage.
 // Opening the market restamps seenAt, so a word computed only from that
@@ -1603,7 +1622,7 @@ export function createMarketScreen(ctx) {
 
   function commodityRowHtml(r, state, tracked_, selected, order = 0) {
     const sid = stationId(state);
-    const hist = priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state && state.simTime);
+    const hist = priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state && state.simTime, traderHistorySpanS(state));
     const buy = unitBuy(r.entry, r.def);
     const sell = unitSell(r.entry, r.def);
     const stock = Math.max(0, Math.floor(Number(r.entry && r.entry.stock) || 0));
@@ -1876,7 +1895,8 @@ export function createMarketScreen(ctx) {
     const def = r.def, entry = r.entry;
     const sid = stationId(state);
     ensureMarketHistory(state, sid);
-    const hist = priceHistorySeries(laneHistoryPoints(sid, r.id, entry), entry, def, state && state.simTime);
+    const historySpanS = traderHistorySpanS(state);
+    const hist = priceHistorySeries(laneHistoryPoints(sid, r.id, entry), entry, def, state && state.simTime, historySpanS);
     const forecast = sid ? predictPriceCurve(state, sid, r.id) : [];
     const buyQ = counterQuote(def, 'buy');
     const sellQ = counterQuote(def, 'sell');
@@ -1895,7 +1915,8 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
     stageEl.setAttribute('aria-label', def.name);
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
-    const dispositionText = mode === 'sell' ? sellDispositionText(state, r.id, heldQty(state, r.id)) : '';
+    const dispositionText = [mode === 'sell' ? sellDispositionText(state, r.id, heldQty(state, r.id)) : '',
+      bestBuyerLine(state, sid, r.id, heldQty(state, r.id))].filter(Boolean).join(' ');
     quoteEl.innerHTML = (dispositionText
       ? `<p class="k-sentence sx-mkt-disposition" data-disposition="sell">${escapeHtml(dispositionText)}</p>`
       : '') + marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
@@ -1903,6 +1924,7 @@ export function createMarketScreen(ctx) {
       demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
+      historyWord: historySpanS > TEN_MIN_S ? 'Last twenty minutes' : 'Last ten minutes',
       quoteAge: 'fresh', quoteSource: 'live',
       survey: rememberedSurveyFreshness(state, r.id),
       cause,

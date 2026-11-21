@@ -14,6 +14,8 @@
 // inside tick N must finish before tick N+1 applies input.
 
 import { createSimulation, SIM_DT } from '../../src/core/sim.js';
+import { pilotHas } from '../../src/data/pilotTree.js';
+import { TRADER_LONG_MEMORY_HISTORY } from '../../src/data/pilotWork.js';
 import { snapshotSimState } from '../../src/core/simSnapshot.js';
 import { createPresentationJournal, createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../../src/core/presentationJournal.js';
 import { scenarioRuntime } from '../../src/systems/scenarioRuntime.js';
@@ -1689,14 +1691,16 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const stationId = (args && args.stationId) || '';
         const rows = marketRowsFor(state, stationId);
         if (!rows || !Object.keys(rows).length) return { stationId, histories: null };
+        // Long Memory (Trading): a longer grid so the chart can show twice the history.
+        const historyOpts = pilotHas(state, 'trader_long_memory') ? TRADER_LONG_MEMORY_HISTORY : null;
         if (args && args.commodityId) {
           return { stationId, commodityId: args.commodityId,
-            history: marketHistoryFor(state, stationId, args.commodityId) };
+            history: marketHistoryFor(state, stationId, args.commodityId, historyOpts) };
         }
         const result = { stationId };
         if (args.includeObservedComparisons !== true) {
           const histories = {};
-          for (const cid of Object.keys(rows)) histories[cid] = marketHistoryFor(state, stationId, cid);
+          for (const cid of Object.keys(rows)) histories[cid] = marketHistoryFor(state, stationId, cid, historyOpts);
           result.histories = histories;
         }
         if (args.includeObservedComparisons === true && state.ui?.docked

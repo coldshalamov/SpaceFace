@@ -267,6 +267,8 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
   const tipCosts = new Map();
   /** id -> short "4 regocrete + 1 control unit", '' when the key is affordable. */
   let shortfalls = Object.create(null);
+  /** id -> true when a Building skill has not opened this machine kind yet (greyed, its line in the tip). */
+  let lockedIds = Object.create(null);
 
   function ensureKey(id) {
     let b = keys.get(id);
@@ -288,7 +290,7 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
       if (!b) return;
       const armed = id === selectedId;
       const short = shortfalls[id] || '';
-      b.dataset.keyState = armed ? 'armed' : (short ? 'unaffordable' : 'ready');
+      b.dataset.keyState = armed ? 'armed' : (lockedIds[id] ? 'locked' : short ? 'unaffordable' : 'ready');
       b.classList.toggle('armed', armed);
       b.classList.toggle('poor', !!short);
       b.setAttribute('aria-pressed', String(armed));
@@ -309,7 +311,7 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
    *   shortfall {Record<string, Record<string, number>>} id -> missing goods (unaffordable state)
    *   settle    {boolean} allow the §9 mount animation (false while a session is booting)
    */
-  function sync({ present = [], shortfall = {}, settle = true } = {}) {
+  function sync({ present = [], shortfall = {}, locked = {}, settle = true } = {}) {
     const want = PALETTE_ITEMS.map((it) => it.id).filter((id) => present.includes(id));
     const changed = want.length !== visible.length || want.some((id, i) => visible[i] !== id);
 
@@ -323,7 +325,8 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
     shortfalls = Object.create(null);
     for (const id of visible) {
       const miss = shortfall[id];
-      shortfalls[id] = miss && Object.keys(miss).length ? shortfallText(miss) : '';
+      shortfalls[id] = locked[id] || (miss && Object.keys(miss).length ? shortfallText(miss) : '');
+      lockedIds[id] = !!locked[id];
     }
 
     if (!visible.length) { unmount({ keepPlanner: true }); return { mounted: false, changed }; }

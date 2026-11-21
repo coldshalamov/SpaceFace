@@ -14,7 +14,7 @@ test('Adventure: every branch with live skills, capstones at depth 3, evolutions
   const view = readPilotTree(adventure([], 2, {}));
   assert.equal(view.door, 'adventure');
   assert.ok(view.branches.some((b) => b.id === 'prospector'), 'Mining shows in Adventure');
-  assert.ok(!view.branches.some((b) => b.id === 'trader'), 'a branch with no live skill is not drawn');
+  assert.ok(view.branches.some((b) => b.id === 'trader') && view.branches.some((b) => b.id === 'builder'), 'Trading and Building show in Adventure');
   const gold = view.nodes.find((n) => n.id === 'gunner_gold_thread');
   const execution = view.nodes.find((n) => n.id === gold.prereqs[0]);
   assert.equal(execution.card.tier, 3, 'the capstone hangs off tier 3');

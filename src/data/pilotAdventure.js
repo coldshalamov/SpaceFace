@@ -22,7 +22,7 @@ export const ADVENTURE_PILOT_SCHEMA = 1;
 
 /** A fresh Adventure pilot record (state.player.pilot). */
 export function createAdventurePilot() {
-  return { schema: ADVENTURE_PILOT_SCHEMA, xp: 0, level: 1, points: {}, nodes: [], banked: 0, respecs: 0 };
+  return { schema: ADVENTURE_PILOT_SCHEMA, xp: 0, level: 1, points: {}, nodes: [], granted: [], banked: 0, respecs: 0 };
 }
 
 /** Total XP needed to have reached `level` (level 1 costs nothing). */
@@ -70,9 +70,14 @@ export function normalizeAdventurePilot(raw) {
   }
   const nodes = Array.isArray(raw.nodes)
     ? [...new Set(raw.nodes.filter((id) => typeof id === 'string' && id))] : [];
+  // Skills granted free (the v25->26 migration's Building skills for machines an older save had
+  // already built) hold their branch points but cost none of the pilot's.
+  const granted = Array.isArray(raw.granted)
+    ? [...new Set(raw.granted.filter((id) => typeof id === 'string' && nodes.includes(id)))] : [];
   const level = adventureLevelForXp(xp);
   const spent = Object.values(points).reduce((s, v) => s + v, 0)
-    + nodes.filter((id) => id.startsWith('evolution_')).length;
+    + nodes.filter((id) => id.startsWith('evolution_')).length
+    - granted.length;
   const banked = Math.max(0, level - 1 - spent);
   return {
     schema: ADVENTURE_PILOT_SCHEMA,
@@ -80,6 +85,7 @@ export function normalizeAdventurePilot(raw) {
     level,
     points,
     nodes,
+    granted,
     banked,
     respecs: Number.isInteger(raw.respecs) && raw.respecs > 0 ? raw.respecs : 0,
   };

@@ -24,6 +24,7 @@ import {
 } from '../world/resourceBodyRecords.js';
 
 import { normalizeAdventurePilot } from '../data/pilotAdventure.js';
+import { builderSkillsCovering } from '../data/pilotWork.js';
 export { CURRENT_VERSION } from '../data/saveVersion.js';
 
 function finiteXZ(value) {
@@ -505,12 +506,30 @@ export const MIGRATIONS = [
     // The Adventure Pilot Tree (progression lead 2026-11-20): XP, level, points and skills ride
     // player.pilot. Saves before v26 never earned any, so the key stays absent (the owner creates it
     // on the first XP); a record that is present is normalized to the v26 shape.
+    // Building gates the advanced claim machines from v26: every Building skill covering a machine
+    // kind the save has already built is granted free, so nobody's board shrinks on load.
     fn(data) {
       if (!data || typeof data !== 'object' || Array.isArray(data)) return;
       const player = data.player;
-      if (!player || typeof player !== 'object' || !Object.hasOwn(player, 'pilot')) return;
-      if (player.pilot == null) { delete player.pilot; return; }
-      player.pilot = normalizeAdventurePilot(player.pilot);
+      if (!player || typeof player !== 'object') return;
+      if (Object.hasOwn(player, 'pilot') && player.pilot == null) delete player.pilot;
+      const built = [];
+      const byId = data.sites && data.sites.byId;
+      if (byId && typeof byId === 'object') {
+        for (const site of Object.values(byId)) {
+          for (const m of (site && Array.isArray(site.machines) ? site.machines : [])) if (m && typeof m.defId === 'string') built.push(m.defId);
+        }
+      }
+      const grant = builderSkillsCovering(built);
+      if (!grant.length && !Object.hasOwn(player, 'pilot')) return;
+      const pilot = normalizeAdventurePilot(player.pilot);
+      for (const id of grant) {
+        if (pilot.nodes.includes(id)) continue;
+        pilot.nodes.push(id);
+        pilot.granted.push(id);
+        pilot.points.builder = (pilot.points.builder || 0) + 1;
+      }
+      player.pilot = normalizeAdventurePilot(pilot);
     },
   },
 ];

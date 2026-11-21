@@ -433,13 +433,13 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
   return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">If sold: ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
 }
 
-function chartKeyHtml(hasForecast, origins, statedRate) {
+function chartKeyHtml(hasForecast, origins, statedRate, historyWord = 'Last ten minutes') {
   const modelled = origins && origins.modelled ? '<span data-modelled>Estimated</span>' : '';
   const observed = origins && origins.observed ? '<span data-observed>Observed</span>' : '';
   const rate = Number.isFinite(statedRate)
     ? `<span data-stated-rate="${statedRate}">${Math.round(statedRate * 100)}%</span>`
     : '';
-  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span>${modelled}${observed}<span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}${rate}</p>`;
+  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>${historyWord}</span>${modelled}${observed}<span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}${rate}</p>`;
 }
 
 // What each price driver is ABOUT, so its short word can stand alone on the reading line.
@@ -470,7 +470,7 @@ function readoutsHtml({ buy, sell, avg, demandWord }) {
   return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${quoteFmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${quoteFmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Local spread', 'margin', `${quoteFmt(buy == null || sell == null ? null : Math.max(0, Number(buy) - Number(sell)))} cr`, 'buy \u2212 sell')}</dl>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType, cause = null }) {
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', historyWord = 'Last ten minutes', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType, cause = null }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
   const forecastPts = forecastSamples(forecast);
@@ -498,7 +498,7 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     ${coneReadoutHtml({ regime, quoteAge, quoteSource, survey })}
     ${cause && cause.text ? `<p class="k-sentence sx-mkt-cause"${cause.eventId ? ` data-cause-event="${escapeHtml(cause.eventId)}"` : ''}>${escapeHtml(cause.text)}</p>` : ''}
     ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now, buy, sell })}
-    ${chartKeyHtml(forecastPts.length > 0, origins, statedRate)}
+    ${chartKeyHtml(forecastPts.length > 0, origins, statedRate, historyWord)}
     ${readoutsHtml({ buy, sell, avg, demandWord })}
     ${saleLineHtml({ sell, saleQty, saleQuote })}`;
 }

@@ -112,8 +112,10 @@ export function placementReason(check) {
     'out-of-bounds': 'Outside the survey grid.',
     'core-locked': 'The Core does not dismantle.',
     'survey-stale': 'Survey readings no longer match this rock — the assayed formation changed. Pulse the survey scanner again before anchoring.',
+    'skill-locked': 'Needs a Building skill from the Pilot Tree.',
   };
   let text = reasons[check.reason] || 'Placement blocked.';
+  if (check.reason === 'skill-locked' && check.skill && check.skill.line) text = check.skill.line;
   if (check.reason === 'materials' && check.missing) {
     const parts = Object.keys(check.missing).sort().map((g) => `${check.missing[g]} ${commodityName(g)}`);
     text = `Missing: ${parts.join(', ')}. Site stores and ship hold are both checked.`;
@@ -139,6 +141,7 @@ const GHOST_BLOCK = {
   'out-of-bounds': 'Outside the grid',
   'core-locked': 'The Core does not dismantle',
   'survey-stale': 'Survey no longer matches',
+  'skill-locked': 'Needs a Building skill',
 };
 
 // ------------------------------------------------------------------ the chip bank (law §6.4)

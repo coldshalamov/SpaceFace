@@ -132,3 +132,45 @@ test('save: the record round-trips through the player envelope; v25→v26 normal
   step.fn(stray);
   assert.deepEqual(stray.player.pilot, normalizeAdventurePilot({ xp: 250, nodes: ['gunner_drum'], points: { gunner: 1 } }));
 });
+
+test('Building: the basic kit is open, advanced machines open by skill, old saves keep what they built', async () => {
+  const { builderMachineLock, builderSkillsCovering } = await import('../src/data/pilotWork.js');
+  const fresh = { run: { kind: 'adventure', phase: 'inactive' }, player: {} };
+  for (const basic of ['sm_massline_core', 'sm_extractor', 'sm_cargo_port', 'sm_refinery', 'sm_relay']) {
+    assert.equal(builderMachineLock(fresh, basic), null, `${basic} is in the basic kit`);
+  }
+  const lock = builderMachineLock(fresh, 'sm_fabricator');
+  assert.equal(lock.nodeId, 'builder_foundations');
+  assert.equal(lock.line, 'Learn Foundations (Building) in the Pilot Tree to build this.');
+  const skilled = { ...fresh, player: { pilot: { nodes: ['builder_foundations'], points: { builder: 1 } } } };
+  assert.equal(builderMachineLock(skilled, 'sm_fabricator'), null);
+  assert.equal(builderMachineLock(skilled, 'sm_mass_driver').nodeId, 'builder_yard_hand');
+
+  assert.deepEqual(builderSkillsCovering(['sm_extractor', 'sm_charge_press']), ['builder_foundations', 'builder_tight_packing']);
+  const step = MIGRATIONS.find((m) => m.from === 25 && m.to === 26);
+  const save = { player: {}, sites: { byId: { site_1: { machines: [{ defId: 'sm_massline_core' }, { defId: 'sm_charge_press' }] } } } };
+  step.fn(save);
+  assert.deepEqual(save.player.pilot.nodes, ['builder_foundations', 'builder_tight_packing']);
+  assert.deepEqual(save.player.pilot.granted, ['builder_foundations', 'builder_tight_packing']);
+  assert.equal(save.player.pilot.banked, 0, 'granted free: no points owed');
+  assert.equal(save.player.pilot.level, 1);
+  const later = normalizeAdventurePilot({ ...save.player.pilot, xp: 200 });
+  assert.equal(later.banked, 1, 'the first earned point is still the player\'s to spend');
+});
+
+test('Trading: the chart names no trend without Market Sense; Long Memory doubles the window', async () => {
+  const { traderTrendLine, traderHistorySpanS, traderHasBestBuyer } = await import('../src/data/pilotWork.js');
+  const { marketQuoteHtml } = await import('../src/ui/views/marketPresentation.js');
+  const plain = { run: { kind: 'adventure', phase: 'inactive' }, player: {} };
+  const reader = { ...plain, player: { pilot: { nodes: ['trader_market_sense', 'trader_long_memory', 'trader_best_buyer'], points: { trader: 3 } } } };
+  const climbing = { kind: 'climb', elapsed: 725 };
+  assert.equal(traderTrendLine(plain, climbing), '', 'no skill: the player reads the shape');
+  assert.equal(traderTrendLine(reader, climbing), 'Climbing for 12 min');
+  assert.equal(traderHistorySpanS(plain), 600);
+  assert.equal(traderHistorySpanS(reader), 1200);
+  assert.equal(traderHasBestBuyer(plain), false);
+  assert.equal(traderHasBestBuyer(reader), true);
+  const hist = [{ t: 0, mid: 10 }, { t: 15, mid: 11 }];
+  const longKey = marketQuoteHtml({ id: 'x', name: 'X', buy: 10, sell: 9, avg: 10, hist, now: 15, historyWord: 'Last twenty minutes' });
+  assert.match(longKey, /Last twenty minutes/);
+});
