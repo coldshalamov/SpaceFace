@@ -7442,12 +7442,12 @@ export const save = {
         // enemies|records) yields at phase boundaries so the loading shell paints between
         // spawn bricks — spawn order and the sector:enter emit tail are identical to the
         // sync lane. Enter-side yields pass through as restore paint points.
-        for (const _ of worldSys.enterSectorChunked(sectorId, { restoreDurableRecords: true, sliceNeighbors: true })) {
+        for (const _ of worldSys.enterSectorChunked(sectorId, { restoreDurableRecords: true, sliceNeighbors: true, restoredSession: true })) {
           this._reportRestoreProgress(0.16, 'Rebuilding the saved sector');
           yield 'sector-materialize-step';
         }
       } else if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
-        worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true });
+        worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true, restoredSession: true });
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
