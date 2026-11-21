@@ -21,6 +21,8 @@ const TELL_COLORS = Object.freeze({
 
 const TAU = Math.PI * 2;
 const PLOW_KEYS = Object.freeze(['plow:a', 'plow:b', 'plow:c']);
+// Pilot tree branch tints (progression lead).
+const BRANCH_HEX = Object.freeze({ gunner: 0xf2b950, bruiser: 0xff6f4a, rigger: 0x4fd3e8, conjurer: 0xb68cff, juggernaut: 0x86d96f, ghost: 0x9fb6dc, trader: 0xe7c873, prospector: 0xdba466, builder: 0x8fc7a8 });
 // Arena machinery registers its fields with `planted: true`; a power's deploy receipt does not.
 // Reach cards (Wide Bore) grow a power well past any fixed size, so size never decides this.
 export const POWER_FIELD_MAX_RADIUS = 220; // legacy export: the boundary-line weight for unknown fields
@@ -1112,6 +1114,36 @@ export class PowerFx {
     }
     if (targetId != null) this.trails.set(targetId, { from: t, until: t + 1.2, r: 3, g: 1.6, b: 6 });
     return true;
+  }
+
+  /** Pilot level up: a short bright flash and an expanding ring on the ship (~0.6 s, no shake). */
+  levelUp(p, state) {
+    const e = p && state && state.entities && state.entities.get ? state.entities.get(p.entityId != null ? p.entityId : state.playerId) : null;
+    if (!e || !e.pos) return;
+    const { x, z } = this._toLocal(e.pos.x, e.pos.z);
+    const t = this.time;
+    const rad = Number.isFinite(e.radius) ? e.radius : 10;
+    this._spark(x, 2.6, z, 0, 0, 0, t, 0.14, rad * 2.2, rad * 3.2, 0, 0, 9, 8.5, 6, 3, 2.4, 1.2, SPARK_SHAPE.GLOW, SPARK_ADD);
+    for (let k = 0; k < 2; k++) {
+      Object.assign(this.s, { x, y: 1.6, z, birth: t + 0.08 * k, from: rad, to: rad * (6 - k), life: 0.6, halfWidth: 2.4 - k, r: 4.5, g: 3.8, b: 2, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: 0, arcSpan: 0, seed: 0.21 + 0.3 * k });
+      this.shells.emit(this.s);
+    }
+  }
+
+  /** Skill picked: a smaller pulse in the branch colour; a capstone or evolution is bigger. */
+  nodeTaken(p, state) {
+    const e = p && state && state.entities && state.entities.get ? state.entities.get(p.entityId != null ? p.entityId : state.playerId) : null;
+    if (!e || !e.pos) return;
+    const hex = BRANCH_HEX[p.branch] || 0xf2b950;
+    const big = p.kind === 'capstone' || p.kind === 'evolution';
+    const k = big ? 2.4 : 1.6;
+    const r = ((hex >> 16) & 255) / 255 * k * 2; const g = ((hex >> 8) & 255) / 255 * k * 2; const b = (hex & 255) / 255 * k * 2;
+    const { x, z } = this._toLocal(e.pos.x, e.pos.z);
+    const t = this.time;
+    const rad = Number.isFinite(e.radius) ? e.radius : 10;
+    this._spark(x, 2.5, z, 0, 0, 0, t, big ? 0.16 : 0.1, rad * (big ? 2 : 1.3), rad * (big ? 2.8 : 1.8), 0, 0, r * 2, g * 2, b * 2, r, g, b, SPARK_SHAPE.GLOW, SPARK_ADD);
+    Object.assign(this.s, { x, y: 1.6, z, birth: t, from: rad, to: rad * (big ? 5 : 3), life: big ? 0.55 : 0.4, halfWidth: big ? 2.6 : 1.6, r, g, b, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: 0, arcSpan: 0, seed: 0.43 });
+    this.shells.emit(this.s);
   }
 
   _bodyHits(state, gx, gz, cx, cz, R, t0, seed, scale) {
