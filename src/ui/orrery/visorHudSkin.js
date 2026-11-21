@@ -272,9 +272,11 @@ ${S} #hud > .sf-leftcontext:has(.sf-mt--delivery) { width:min(306px, 32vw); max-
   }
   /* The chip style above is !important; a chip its owner hid (the race tape's Recover / Restart /
      Leave run / Select pod / Close outside a race) must stay hidden, not print in the calm row. */
+  /* (Specificity must beat the compact race-tape chip rule: .race-tape[data-compact] ... button.) */
+  :root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-visor-utility-row .race-tape[data-compact="true"] .race-tape-actions button:is([hidden], .race-tape-options-close),
   :root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-visor-utility-row :is(
-    .fb-pill-btn, .race-tape-actions button, .sf-comm-backlog-btn, .sf-contact-hail__button, .sf-band-hud__button
-  ):is([hidden], .race-tape-options-close) { display:none !important; }
+    .fb-pill-btn, .sf-comm-backlog-btn, .sf-contact-hail__button, .sf-band-hud__button
+  )[hidden] { display:none !important; }
   :root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-visor-utility-row :is(
     .fb-pill-btn, .race-tape[data-compact="true"] .race-tape-actions button,
     .sf-comm-backlog-btn, .sf-contact-hail__button, .sf-band-hud__button
