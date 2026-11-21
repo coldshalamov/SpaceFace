@@ -752,6 +752,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _pushZoomDecay = 0;     // per-second decay rate (derived from duration at push time)
   let _pushZoomPeak = 0;      // rise target while easing in; 0 once the peak has been reached
   let _pushZoomRise = 0;      // per-second rise rate (derived from duration at push time)
+  let _pushZoomHoldS = 0;     // seconds an establishing push holds wide before it eases back
   // Shake noise is resampled at a fixed rate so shake FREQUENCY does not track display refresh.
   let _shakeNoiseT = 0;
   const _shakeNoise = [0, 0, 0, 0];   // posX, posZ, roll, pitch — held between resample steps
@@ -1029,9 +1030,20 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
     // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
     // top of the dynamic zoom and decays smoothly.
-    pushZoom(factor, durationS) {
+    pushZoom(factor, durationS, opts = null) {
       const f = Number.isFinite(factor) ? factor : 0;
       const d = Math.max(0.05, durationS || 0.5);
+      // `from: true` — an establishing shot: the view OPENS at the offset and eases back over
+      // `durationS` (nothing to rise into; the first frame is already wide).
+      if (opts && opts.from === true) {
+        _pushZoom = f;
+        _pushZoomPeak = 0;
+        _pushZoomDecay = 3.0 / d;
+        _pushZoomHoldS = Math.max(0, Number(opts.holdS) || 0);
+        // Cut to the wide frame (the eased zoom would otherwise spend the shot widening out).
+        if (Number.isFinite(_dynamicZoom) && _dynamicZoom > 0) _dynamicZoom *= (1 + f);
+        return;
+      }
       // Ease IN to the peak rather than jumping to it. The docstring above has always promised
       // "eases in then back out", but this used to be `_pushZoom = f` — a single-frame step. The
       // biggest caller is uiRoot.js's dock fly-in at pushZoom(-0.45, 1.2), so the camera snapped 45%
@@ -1573,6 +1585,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           // Hand off to the decay phase once the rise has essentially arrived, so a push always
           // returns to 0 even if the peak is never reached exactly.
           if (Math.abs(_pushZoomPeak - _pushZoom) <= Math.abs(_pushZoomPeak) * 0.06) _pushZoomPeak = 0;
+        } else if (_pushZoomHoldS > 0) {
+          _pushZoomHoldS = Math.max(0, _pushZoomHoldS - frameDt); // an establishing shot holds wide first
         } else {
           _pushZoom = damp(_pushZoom, 0, _pushZoomDecay, frameDt);
           if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;

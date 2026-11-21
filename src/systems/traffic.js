@@ -201,6 +201,8 @@ const SPEED = 28;              // wu/s — slow, reads as a heavy freighter
 export const DOCK_RANGE = 60;         // how close before "docking" (trading)
 export const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
 const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station for sensor density
+// R16: no ambient hull is seated this close to the player (station seats mirror to the far apron).
+const TRAFFIC_PLAYER_CLEAR_WU = 400;
 
 // SEED-PC-01 — a hull the player is watching does not materialize or vanish inside this
 // radius. Arrival wears an existing burn profile; departure wears the spine wake. Both
@@ -2091,6 +2093,22 @@ export const traffic = {
   // Chunked cook-provider twin: yields between atomic spawn units so the sliced sector
   // census can interleave presentation between hulls. Dedupe stamps mint in the first
   // synchronous step (pre-loop); a yield never separates spawnEntity from its record link.
+  /**
+   * R16 seat rule for every station-launched hull (roster, yard tugs, salvors): the seat at
+   * (angle, radius) around the station, mirrored to the station's far side when the near one would
+   * put the hull inside the player's clear radius. Same draws, same count; no RNG consumed here.
+   */
+  _apronSeatAwayFromPlayer(anchor, ang, r) {
+    const pos = { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
+    const player = this.state.playerId != null && this.state.entities
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (player && player.pos
+      && Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) < TRAFFIC_PLAYER_CLEAR_WU) {
+      return { x: anchor.x - Math.cos(ang) * r, z: anchor.z - Math.sin(ang) * r };
+    }
+    return pos;
+  },
+
   *_onSectorEnterSteps(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
     // A standalone circuit has its own grid and scripted crossings. Campaign freighters
@@ -2271,22 +2289,17 @@ export const traffic = {
         station = stations.find((candidate) => this._leftoverStationOpenForTopUp(candidate, leftoverDisrupted)) || null;
         if (!station) continue;
       }
-      // Arrival greeting: the first two hulls anchor on the player's materialized position —
-      // the placed arrival point on boot/jump, the live pose on continuous handoff — so the
-      // sector opens with traffic in sensor range, not a silent sky over the gate.
-      const playerEnt = this.state.playerId != null && this.state.entities
-        ? this.state.entities.get(this.state.playerId) : null;
-      const arrivalPos = playerEnt && playerEnt.pos;
-      const anchor = (i < Math.min(2, need)
-        && arrivalPos && sectorMembershipAtGlobal(arrivalPos) === sectorId)
-        ? arrivalPos
-        : station.pos;
-      // spawn near the anchor but offset so they don't overlap it
+      // FIRST HOUR / R16 (2026-11-21): traffic lives at stations and on lanes, never on the player.
+      // (The old "arrival greeting" anchored the first two hulls on the player's own position, so
+      // ships appeared out of nothing beside the pilot and drifted onto them.) A hull whose station
+      // seat would land inside the player's clear radius takes the mirrored seat on the station's
+      // far side — same draws, same count, just the apron the player is not sitting on.
+      const anchor = station.pos;
       const ang = this._rng() * Math.PI * 2;
       const r = clustered
         ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
         : (140 + this._rng() * 120);
-      const pos = { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
+      const pos = this._apronSeatAwayFromPlayer(anchor, ang, r);
       const aiSpec = {
         archetype: def.archetype,
         passive: true, // traffic never opens fire on a clean player
@@ -3276,7 +3289,7 @@ export const traffic = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ang = ((hash32(seed, 'helios_arclight_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
     const r = 168;
-    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const pos = this._apronSeatAwayFromPlayer(station.pos, ang, r); // R16
     const laneFaction = (sector && sector.factionId) || 'faction_free';
     const spec = makeShipEntitySpec(def.ship, {
       team: def.team,
@@ -3331,7 +3344,7 @@ export const traffic = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ang = ((hash32(seed, 'helios_tanker_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
     const r = 220;
-    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const pos = this._apronSeatAwayFromPlayer(station.pos, ang, r); // R16
     const laneFaction = (sector && sector.factionId) || 'faction_free';
     const spec = makeShipEntitySpec(def.ship, {
       team: def.team,
@@ -3386,7 +3399,7 @@ export const traffic = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ang = ((hash32(seed, 'helios_customs_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
     const r = 125;
-    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const pos = this._apronSeatAwayFromPlayer(station.pos, ang, r);
     const laneFaction = (sector && sector.factionId) || 'faction_free';
     const spec = makeShipEntitySpec(def.ship, {
       team: def.team,

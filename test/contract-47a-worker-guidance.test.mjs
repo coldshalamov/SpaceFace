@@ -80,9 +80,11 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
       data: { defId: 'ship_kestrel', fittings: [], intent: {}, ai: {} } });
     state.playerId = player.id;
     state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
-    state.onboarding = { active: true, finished: false, currentBeat: 0, beatDoneAt: {}, firedFollowups: {} };
+    state.onboarding = { active: true, finished: false, currentBeat: BEATS.findIndex((beat) => beat.key === 'thrust'), beatDoneAt: {}, firedFollowups: {} };
     const owner = registry.get('missions');
     const tutorial = registry.get('onboarding');
+    // FIRST HOUR (2026-11-21): BEATS[0] is now the berth; the flight drill is the lesson whose mark is the 47-A site.
+    const FLIGHT_DRILL = BEATS.find((beat) => beat.key === 'thrust');
     owner._installContract47aColdStart();
     const mission = state.missions.active.find(m => m.storyTag === 'campaign47a:b0:recovery');
     // OPENING-1: install now binds the source on the first frame — the old-save shape the
@@ -90,7 +92,7 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     const legacyHeliosFix = { ...mission.params.samplePos };
     delete mission.params.sampleSource;
     state.world.currentSectorId = 'sector_ceres_belt';
-    tutorial._enterBeat(BEATS[0]);
+    tutorial._enterBeat(FLIGHT_DRILL);
     await publish();
     assert.equal(main.world.currentSectorId, 'sector_ceres_belt');
     assert.notEqual(main.nav.waypoint?.label, '47-A Recovery Site',
@@ -98,7 +100,7 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     assert.deepEqual(mission.params.samplePos, legacyHeliosFix, 'guidance must preserve the saved fix');
 
     state.world.currentSectorId = 'sector_helios_prime';
-    tutorial._enterBeat(BEATS[0]);
+    tutorial._enterBeat(FLIGHT_DRILL);
     await publish();
     assert.equal(main.nav.waypoint?.label, '47-A Recovery Site');
     assert.deepEqual(main.nav.waypoint?.pos, legacyHeliosFix,
@@ -121,7 +123,7 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     // game:started enters the flight drill (beat 0 under the story-first rail), whose waypoint
     // is the bound 47-A site. The zero-steps publish never ticks the system, so enter the beat
     // the way the route does; the missions writer itself stays suppressed behind the rail.
-    tutorial._enterBeat(BEATS[0]);
+    tutorial._enterBeat(FLIGHT_DRILL);
     await publish();
     let mirrored = main.missions.active.find(m => m.id === mission.id);
     assert.deepEqual(main.nav.waypoint.pos, { x: source.pos.x, z: source.pos.z });

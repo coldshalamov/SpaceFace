@@ -325,6 +325,14 @@ const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long befor
 // the static pacing/one-voice checks still read this literal from source so the audit sees the
 // authored copy, not the imported object.
 export const BEATS = [
+  { // FIRST HOUR (director ruling 2026-11-21): the game opens in sight of Helios and the first
+    // objective is the berth — the arrival page, the first job and the shops all live there. The
+    // line names the live fly-to-berth key; the berth autopilot flies the approach from any
+    // distance. (The later B4 'dock' beat is the sample delivery, unchanged.)
+    key: 'berth',
+    line: 'Dock at Helios Station.',
+    done: 'docked',
+  },
   { // FIRST TETHER — the signature verb. Attach lands inside the first minutes of control.
     key: 'tether',
     // OPENING-1b: the first latch is the light rescue rock 90 wu out (the derelict sits just
@@ -428,6 +436,11 @@ const V1_BEAT_KEYS = Object.freeze([
 const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
   // Beat lines, keyed by beat.key; followups, keyed by the firedFollowups id (beat.key + ':' + fu.on).
   // A string value appends that action's key; a function composes the whole line (SEED-ST-05).
+  // Dock at Helios Station. — names the key that flies the approach to the berth.
+  berth: (state, line) => {
+    const key = verbBindingLabel(state, 'dock');
+    return key ? `${line} Press ${key} to fly to the berth.` : line;
+  },
   thrust: 'forward',            // Thrust until speed passes forty.
   tether: 'tether',             // Latch the loose rock.
   'tether:target:acquired': 'tether', // Latch it. Massline.
@@ -2106,7 +2119,7 @@ export const onboarding = {
       this._bindSeamMiningTarget();
       this._setObjectiveWaypoint(true);
     }
-    else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'dock' || beat.key === 'berth') this._setObjectiveWaypoint(true);
     else if (beat.key === 'choice') this._openChoice();
   },
 
@@ -5519,7 +5532,7 @@ export const onboarding = {
       }
       return;
     }
-    else if (beat && beat.key === 'dock') target = this._findHelios();
+    else if (beat && (beat.key === 'dock' || beat.key === 'berth')) target = this._findHelios();
     // The drills land the player back in open space; the job pick waits at the same berth.
     else if (beat && beat.key === 'choice') target = this._findHelios();
     if (!target || !target.pos) {

@@ -3,6 +3,8 @@ import { FLIGHT_DRILL_SPEED_WU, FLIGHT_DRILL_BRAKE_WU } from './flightDrill.js';
 // OPENING-1b: the step strip follows the beat order — latch and raid first; the flight and gun
 // drills wait behind the first dock.
 export const ONBOARDING_TRACKER_STEPS = Object.freeze([
+  // FIRST HOUR (2026-11-21): the berth is the first objective.
+  Object.freeze({ id: 'berth', beats: Object.freeze(['berth']) }),
   Object.freeze({ id: 'latch', beats: Object.freeze(['tether']) }),
   Object.freeze({ id: 'raid', beats: Object.freeze(['raid']) }),
   Object.freeze({ id: 'claimed', beats: Object.freeze(['claimed']) }),

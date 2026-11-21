@@ -95,7 +95,9 @@ export const SHIPS = [
     },
   },
   {
-    id: 'ship_wasp', name: 'Wasp', role: 'fighter', tier: 1, requiresTech: 'tech_combat_basics',
+    // FIRST HOUR (2026-11-21): the starter fighter is bought with credits alone — a research gate in
+    // front of the first combat hull stood between a new pilot and the fight the game is about.
+    id: 'ship_wasp', name: 'Wasp', role: 'fighter', tier: 1,
     hull: 150, shield: 110, baseShieldRegen: 10, cargo: 120, mass: 16, handling: 1.4,
     outfitSpace: 22, weaponCapacity: 7, engineCapacity: 9, designMass: 31,
     bankFactor: 1.00,

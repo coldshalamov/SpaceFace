@@ -1954,6 +1954,9 @@ export const trafficRoleOps = {
     }
     const out = [];
     forEachJobInteractable(this.state, (e) => {
+      // The tutorial's own lesson bodies are the pilot's to use, not the yard's to clear: a
+      // salvor sent for them flew straight into the calm opening beside the player (R16).
+      if (e && e.data && (e.data.onboarding === true || e.data.rescueRole)) return;
       if (this._isSalvageableBody(e)) out.push(e);
     });
     // Stable order for deterministic assignment under the concurrent cap.
@@ -2448,7 +2451,8 @@ export const trafficRoleOps = {
     const ang = ((hash32((this.state.meta && this.state.meta.seed) || 1, 'salvor_spawn', sectorId, seq) >>> 0)
       / 0xffffffff) * Math.PI * 2;
     const r = 100 + (seq % 3) * 28;
-    const pos = { x: home.pos.x + Math.cos(ang) * r, z: home.pos.z + Math.sin(ang) * r };
+    // R16: a yard hull launches from the station apron the pilot is not sitting on.
+    const pos = this._apronSeatAwayFromPlayer(home.pos, ang, r);
     const spec = makeShipEntitySpec(factionHullFor(def.ship, controllingFaction, () => 0.5), {
       team: def.team,
       factionId: controllingFaction,

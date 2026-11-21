@@ -93,6 +93,12 @@ const CORE_SECTORS = [
     // CROWD-THIN: tpm 12 -> ambientCountForSector 4 (tpm/3 at the core floor), matching the
     // authored activity cast so no filler top-up spawns onto the opening frame. 18 drew six-plus.
     trafficPerMin: 12, enemyDensity: 0, enemyLevel: [1, 2],
+    // FIRST HOUR (world lead, 2026-11-21; R16): a new Adventure game opens in sight of the harbour.
+    // The pilot starts at rest on the station's south approach, nose to the berth: Helios Station
+    // (anchored at 1280,-420 in sectorAnchors.js) sits ~340 WU straight up-screen (+z is screen up),
+    // the Candle Fleet memorial glows ~400 WU off to one side, and the starter belt lies ~760 WU away.
+    // Only the live new-game route seats here; the deterministic harness keeps its origin spawn.
+    openingSeat: { x: 1280, z: -760, heading: Math.PI / 2 },
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],

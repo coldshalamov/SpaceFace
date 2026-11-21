@@ -175,8 +175,8 @@ function departureFuelChip(state) {
     kind,
     label: 'Fuel',
     text: fmtPercent(frac) + ' · ' + fmtDepartUnits(current) + ' of ' + fmtDepartUnits(max),
-    targetTab: 'services',
-    actionLabel: kind === 'ok' ? 'Open Services to review launch supplies' : 'Open Services to refuel',
+    targetTab: 'concourse',
+    actionLabel: kind === 'ok' ? 'Open the Concourse to review launch supplies' : 'Open the Concourse to refuel',
   };
 }
 
@@ -189,8 +189,8 @@ function departureHeatChip(state) {
     kind: 'bad',
     label: 'Heat',
     text: 'WANTED' + clock,
-    targetTab: 'services',
-    actionLabel: 'Open Services before you undock wanted',
+    targetTab: 'concourse',
+    actionLabel: 'Open the Concourse before you undock wanted',
   };
 }
 
@@ -203,8 +203,8 @@ function departureHullChip(state) {
     kind,
     label: 'Hull',
     text: fmtPercent(frac) + ' · ' + fmtDepartUnits(ship.hull || 0) + ' of ' + fmtDepartUnits(ship.hullMax),
-    targetTab: 'services',
-    actionLabel: kind === 'ok' ? 'Open Services to review ship readiness' : 'Open Services to repair hull',
+    targetTab: 'concourse',
+    actionLabel: kind === 'ok' ? 'Open the Concourse to review ship readiness' : 'Open the Concourse to repair hull',
   };
 }
 
@@ -225,8 +225,8 @@ function departureYardChip(state) {
     kind: 'warn',
     label: 'Yard',
     text,
-    targetTab: 'services',
-    actionLabel: 'Open Services to watch the yard finish the job',
+    targetTab: 'concourse',
+    actionLabel: 'Open the Concourse to watch the yard finish the job',
   };
 }
 
@@ -310,25 +310,27 @@ export function firstDockHandoffSteps(state = {}) {
   const missionDone = activeJobs > 0 || beatDoneAt.choice != null || ob.finished === true;
   const departureChips = departureReadinessChips(state);
   const departure = departureReadinessSummary(departureChips);
-  const marketDone = beatDoneAt.dock != null;
+  // FIRST HOUR (2026-11-21): the first dock is now the game's first objective, so "the dock beat
+  // is done" no longer means anything was sold. The step reads the hold itself: something aboard
+  // → sell it; nothing aboard → say so and open the prices (the click goes where the title says).
   const hasCargo = cargoUsedUnits(state) > 0;
+  const stats = state.player && state.player.stats;
+  const sold = !!(stats && Number(stats.tradesCount) > 0);
+  const marketDone = !hasCargo;
   return [
     {
       // Sell path opens Market → Selling (trade desk), not the Hold manifest.
-      // Hold is inventory-only; Market is where buy/sell and price intel live.
       key: 'hold',
       label: 'Cargo',
-      title: marketDone
-        ? 'Cargo sold — hold is ready'
-        : (hasCargo ? 'Sell what you hauled' : 'Open your hold'),
-      text: marketDone
-        ? 'Credits banked, hold clear for the next run.'
-        : (hasCargo
-            ? 'Sell it at the Market, then refill the hold.'
-            : 'Hold is empty. Check Market prices or undock to mine.'),
+      title: hasCargo ? 'Sell what you hauled' : (sold ? 'Cargo sold — hold is clear' : 'Nothing to sell yet'),
+      text: hasCargo
+        ? 'Open the Market and sell it, then refill the hold.'
+        : (sold
+            ? 'Credits banked, hold clear for the next run.'
+            : 'Your hold is empty. Open the Market to see what Helios pays for ore.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
-      targetTab: hasCargo ? 'market' : 'hold',
+      targetTab: 'market',
       tradeMode: hasCargo ? 'sell' : null,
     },
     {
@@ -350,7 +352,7 @@ export function firstDockHandoffSteps(state = {}) {
       title: departure.state === 'ready' ? 'Safe to undock' : 'Fix launch risks',
       text: departure.state === 'ready'
         ? 'Fuel, hull and job all look good.'
-        : departure.status + ' — fix it in ' + stationTabLabel(firstDockDepartureTarget(departureChips)) + ' before you undock.',
+        : departure.status + ' — fix it on the ' + stationTabLabel(firstDockDepartureTarget(departureChips)) + ' before you undock.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),

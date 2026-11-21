@@ -52,6 +52,7 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   const world = options.swarmBoot ? null : registry.get('world');
   if (world && typeof world.enterSector === 'function') {
     world.enterSector(NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime');
+    if (!state.physicsVenueSession && !racingSession) seatOpeningPilot(state, world, player);
   } else if (!options.swarmBoot) {
     // fallback: a single station + asteroid ring so the build is still playable
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
@@ -63,8 +64,50 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   if (!state.physicsVenueSession && !racingSession && !options.swarmBoot) {
     const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
     light47aOpeningLandmarks(scene);
-    drift47aOpeningTowardMark(state, player, helpers);
+    wake47aMarkedBoulder(state, helpers);
+    // FIRST HOUR (2026-11-21): no scripted drift. R23 — the ship moves for the player's input,
+    // physics the player can see, or a moment the player started; the opening is calm and the
+    // first move is the player's own (the dock, or anything they choose to fly to).
   }
+}
+
+// FIRST HOUR (world lead, 2026-11-21; director ruling + R16): a new Adventure game opens in sight of
+// the harbour. The pilot is seated at rest on the start sector's authored opening seat (Helios
+// Station ~340 WU ahead, up-screen), and the camera is asked for one establishing shot: it opens
+// pulled back far enough to show the harbour, then eases in to the ship (render/trailerStaging.js
+// consumes `state.nav.openingEstablishing` once, through the camera gate as cause `establishing`).
+// The flight camera shows ~95 WU ahead at rest (measured 2026-11-21); ×5 shows the station's ~350.
+export const OPENING_ESTABLISHING = Object.freeze({ zoom: 4.5, seconds: 3, holdS: 1.8 });
+export function seatOpeningPilot(state, world, player) {
+  if (!state || !world || !player || !player.pos) return false;
+  const sectorId = state.world && state.world.currentSectorId;
+  const sector = sectorId && state.world.sectors && state.world.sectors[sectorId];
+  const seat = sector && sector.openingSeat;
+  if (!seat || !Number.isFinite(seat.x) || !Number.isFinite(seat.z)) return false;
+  const origin = typeof world._sectorOrigin === 'function' ? world._sectorOrigin(sectorId) : { x: 0, z: 0 };
+  const entry = { x: origin.x + seat.x, z: origin.z + seat.z, heading: Number.isFinite(seat.heading) ? seat.heading : 0 };
+  if (typeof world.relocatePlayerInSector === 'function') world.relocatePlayerInSector(entry, { reason: 'opening_seat' });
+  else { player.pos.x = entry.x; player.pos.z = entry.z; }
+  if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
+  player.angVel = 0;
+  // Rides state.nav: a whole-root mirror, so the presenting thread sees it in the worker lane too.
+  state.nav = state.nav || {};
+  state.nav.openingEstablishing = { sectorId, atSimTime: Number(state.simTime) || 0,
+    zoom: OPENING_ESTABLISHING.zoom, seconds: OPENING_ESTABLISHING.seconds, holdS: OPENING_ESTABLISHING.holdS };
+  return true;
+}
+
+// The 47-A contract is bound to the authored rim boulder (its marked rock): wake that shelf row so
+// it is a live, lit body the contract and its recovery marker can name from the first frame.
+export function wake47aMarkedBoulder(state, helpers) {
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !field.byId || !helpers) return null;
+  for (const row of field.byId.values()) {
+    if (row && row.alive !== false && row.data && row.data.authoredBoulderId === 'helios_boulder_rim') {
+      return promoteAsteroidFieldRock(state, row.id, helpers, '47a-opening');
+    }
+  }
+  return null;
 }
 
 // OPENING-1b (design/game/20 beat 1): the ship is already drifting toward the marked rock when the

@@ -91,6 +91,8 @@ function titleCaseWords(v) { return String(v || '').replace(/_/g, ' ').replace(/
 const TARGET_MAP = {
   market: 'market', hold: 'market', missions: 'contracts', shipyard: 'shipworks',
   outfit: 'shipworks', manufacture: 'industry', factions: 'factions', bar: 'bar', services: null,
+  // Ship services (refuel, repair) live on the arrival concourse's Service ship button.
+  concourse: 'concourse',
 };
 
 // `services` legitimately maps to no destination — services are verbs on the fascia now, not a

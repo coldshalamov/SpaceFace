@@ -44,9 +44,34 @@ export function createTrailerStaging(state, bus) {
     });
     return true;
   };
+  // FIRST HOUR (2026-11-21): a new Adventure game asks for one establishing shot. The sim stamps
+  // state.nav.openingEstablishing at the opening seat; the camera opens pulled back over the harbour and
+  // eases in to the ship. Same gate cause as the authored-place beats; reduced motion skips it.
+  let openingKey = null;
+  // The shot is for the player's eyes: it starts when the loading veil lifts, not when the sim
+  // enters flight underneath it (the first measured run spent the whole move behind the veil).
+  let veilDown = false;
+  bus?.on?.('ui:loadingHidden', () => { veilDown = true; });
+  bus?.on?.('game:new', () => { veilDown = false; });
+  const stepOpening = (camera) => {
+    const ask = state.nav && state.nav.openingEstablishing;
+    if (!ask || !veilDown || state.mode !== 'flight' || ask.sectorId !== state.world?.currentSectorId) return;
+    const key = `${state.meta?.seed}:${ask.sectorId}:${ask.atSimTime}`;
+    if (key === openingKey) return;
+    openingKey = key;
+    const now = Number(state.simTime) || 0;
+    // A Continue long after the opening never replays it (loading can run the sim a while).
+    if (now - (Number(ask.atSimTime) || 0) > 120) return;
+    const reduced = state.settings?.video?.motionReduce || state.settings?.accessibility?.reducedMotion;
+    if (reduced || typeof camera?.pushZoom !== 'function') return;
+    const zoom = gateOf().motion('zoom', 'establishing', Number(ask.zoom) || 3, now);
+    if (zoom !== 0) camera.pushZoom(zoom, Number(ask.seconds) || 3, { from: true, holdS: Number(ask.holdS) || 0 });
+    lastAt = now; // authored-place beats wait their 12 s behind the opening shot
+  };
   return {
     seen,
     step(camera) {
+      stepOpening(camera);
       const now = Number(state.simTime) || 0;
       if (now < lastAt || epoch !== state.meta?.seed) { seen.clear(); nextAt = -Infinity; epoch = state.meta?.seed; }
       if (now < nextAt) return;
