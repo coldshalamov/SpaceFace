@@ -409,9 +409,15 @@ if (process.platform === 'win32') {
 // workers); commit follows use, so the cost is reserved address space, not RSS.
 // SPACEFACE_SEMI_SPACE_MB overrides the size for probe boxes; 'default' unsets it.
 const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '64').trim());
-if (Number.isInteger(SEMI_SPACE_MB) && SEMI_SPACE_MB >= 8 && SEMI_SPACE_MB <= 512) {
-  app.commandLine.appendSwitch('js-flags',
-    `--min-semi-space-size=${SEMI_SPACE_MB} --max-semi-space-size=${SEMI_SPACE_MB}`);
+{
+  const jsFlags = [];
+  if (Number.isInteger(SEMI_SPACE_MB) && SEMI_SPACE_MB >= 8 && SEMI_SPACE_MB <= 512) {
+    jsFlags.push(`--min-semi-space-size=${SEMI_SPACE_MB}`, `--max-semi-space-size=${SEMI_SPACE_MB}`);
+  }
+  // Isolated evidence only: a garbage-collector trace on stdout (every isolate, the sim worker
+  // included) so a probe can price collector pauses. Never on a player launch.
+  if (launchConfig.isolatedEvidence === true && process.env.SPACEFACE_EVIDENCE_TRACE_GC === '1') jsFlags.push('--trace-gc');
+  if (jsFlags.length) app.commandLine.appendSwitch('js-flags', jsFlags.join(' '));
 }
 // Browser-chrome subsystems a localhost game shell never uses — keeps their periodic
 // discovery/sync work out of the process.

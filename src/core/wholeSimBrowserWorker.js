@@ -101,6 +101,7 @@ const LOCAL_MAX_STEPS = 4;
 // determinism and the replay golden are untouched. Explicit-step directives
 // (tape/replay/verification) carry no budget and always run exactly.
 const LOCAL_WORK_BUDGET_MS = 14;
+const LOCAL_DETAIL_INTERVAL_MS = 100;
 // ENGINE slice 5 — dilate, do not shed. The world clock owes elapsed × scale × dilation. When the
 // worker cannot keep up, dilation eases down (never faster than LOCAL_DILATION_DOWN_PER_S) so the
 // whole world — sim, and the picture that measures its rate — slows smoothly instead of dropping
@@ -1125,12 +1126,22 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   const needsReply = force || steps > 0 || commands.length > 0 || ackJournalEnd > 0;
   if (!needsReply) return;
 
+  // NO-FREEZE world speed (allocation): the reliable read-model detail (entity vitals walk and
+  // the domain diff) is the largest per-directive allocator (~180 KB/step measured). Both are
+  // shadow/diff based, so building them at most every LOCAL_DETAIL_INTERVAL_MS defers changes
+  // without losing any; motion and the player's dials ride the pose table every step. Any
+  // directive that carries commands, explicit steps, or runs paused builds them at once.
+  const detailNow = localNowMs();
+  const replyDetail = force || hasExplicitSteps || commands.length > 0 || !(localClock.scale > 0)
+    || detailNow - (localClock.lastDetailAtMs || 0) >= LOCAL_DETAIL_INTERVAL_MS;
+  if (replyDetail) localClock.lastDetailAtMs = detailNow;
   let reply = await tick({
     kind: 'tick',
     seq: `local-directive-${++localClock.directiveTick}`,
     tick: localClock.directiveTick,
     steps,
     workBudgetMs: hasExplicitSteps ? undefined : LOCAL_WORK_BUDGET_MS,
+    replyDetail,
     commands,
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,

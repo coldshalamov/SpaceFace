@@ -42,6 +42,8 @@ const PAD = argv.pad ? String(argv.pad) : null;
 const REAL_PROFILE = argv['real-profile'] === true;
 const VISIBLE = argv.visible === true;
 const PROFILE = argv.profile === true;
+// --alloc: garbage-collector trace (every isolate) and a heap-sampling profile of the SIM WORKER.
+const ALLOC = argv.alloc === true;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/no-freeze/${ROUTE}${LEGACY ? '-legacy' : ''}`));
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -56,6 +58,7 @@ const launch = createIsolatedElectronLaunch({ root: ROOT, taskId: `no-freeze-${R
   // Never steal focus from what the owner is watching: shown inactive, never activated, and kept
   // un-throttled so it renders and measures like a foreground window.
   ...(VISIBLE ? {} : { SPACEFACE_EVIDENCE_SHOW_INACTIVE: '1', SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' }),
+  ...(ALLOC ? { SPACEFACE_EVIDENCE_TRACE_GC: '1', ELECTRON_ENABLE_LOGGING: '1' } : {}),
 } });
 function readPlayerProfilePairs() {
   const { createRequire } = require_();
@@ -129,6 +132,16 @@ function createHand(cdp, viewport) {
 
 try {
   app = await electron.launch(launch.options);
+  const gcLines = [];
+  if (ALLOC) {
+    const t0gc = Date.now();
+    const onOut = (buf) => {
+      for (const line of String(buf).split(/\r?\n/)) {
+        if (/ ms: (Scavenge|Mark-Compact|Mark-Sweep|Minor)/.test(line)) gcLines.push([Date.now() - t0gc, line]);
+      }
+    };
+    try { app.process().stdout.on('data', onOut); app.process().stderr.on('data', onOut); } catch (_) { /* no stdio */ }
+  }
   const page = await app.firstWindow({ timeout: 180000 });
   installCspSafePlaywrightPolling(page);
   await installFirstLightPromptHandler(page, () => {});
@@ -264,6 +277,45 @@ try {
   });
   const vp = { w: report.realm.w || 1280, h: report.realm.h || 720 };
   const cdp = cdp0;
+  // ---- sim-worker heap sampling over CDP (child-target session, non-flattened) ----
+  const workerCdp = { sessionId: null, nextId: 1, pending: new Map() };
+  const workerSend = (method, params = {}) => new Promise((resolve, reject) => {
+    if (!workerCdp.sessionId) { reject(new Error('no worker session')); return; }
+    const id = workerCdp.nextId++;
+    workerCdp.pending.set(id, { resolve, reject });
+    cdp.send('Target.sendMessageToTarget', { sessionId: workerCdp.sessionId, message: JSON.stringify({ id, method, params }) }).catch(reject);
+  });
+  if (ALLOC) {
+    cdp.on('Target.receivedMessageFromTarget', (ev) => {
+      if (ev.sessionId !== workerCdp.sessionId) return;
+      let msg = null;
+      try { msg = JSON.parse(ev.message); } catch (_) { return; }
+      const w = msg && workerCdp.pending.get(msg.id);
+      if (!w) return;
+      workerCdp.pending.delete(msg.id);
+      if (msg.error) w.reject(new Error(msg.error.message)); else w.resolve(msg.result);
+    });
+    const attached = new Promise((resolve) => {
+      cdp.on('Target.attachedToTarget', (ev) => {
+        const info = ev.targetInfo || {};
+        if (info.type === 'worker' && /wholeSimBrowserWorker|simLane/i.test(info.url || '')) {
+          workerCdp.sessionId = ev.sessionId;
+          resolve(info.url);
+        }
+      });
+    });
+    await cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: false })
+      .catch((e) => console.log('autoattach', String(e)));
+    const url = await Promise.race([attached, new Promise((r) => setTimeout(() => r(null), 5000))]);
+    console.log('sim worker attached', url);
+    if (workerCdp.sessionId) {
+      await workerSend('HeapProfiler.enable').catch((e) => console.log('heap enable', String(e)));
+      await workerSend('HeapProfiler.startSampling', { samplingInterval: 16384,
+        includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true })
+        .catch((e) => console.log('sampling', String(e)));
+      report.allocStart = { atMs: Date.now(), ticks: await page.evaluate(() => window.SF.simLaneDiag().poseTable.tick).catch(() => null) };
+    }
+  }
   const hand = createHand(cdp, vp);
   hand.start();
   const setPhase = (name) => page.evaluate((n) => { window.__nf.phase = n; window.__SF_POSE_AGE__ && window.__SF_POSE_AGE__.reset(); }, name);
@@ -341,6 +393,55 @@ try {
     report.phases.push({ name, age, freezeEpisodes: freezeAfter.slice(freezeBefore) });
   }
   hand.stop();
+  if (ALLOC && workerCdp.sessionId) {
+    const ticks = await page.evaluate(() => window.SF.simLaneDiag().poseTable.tick).catch(() => null);
+    const prof = await workerSend('HeapProfiler.stopSampling').catch((e) => ({ error: String(e) }));
+    const sites = new Map();
+    let total = 0;
+    const short = (u) => String(u || '').replace(/^.*\/(src|scripts|vendor)\//, '$1/');
+    // Builtins (push, join, Map.set...) carry no url: charge them to the nearest JS caller.
+    const walk = (node, owner) => {
+      if (!node) return;
+      const cf = node.callFrame || {};
+      const own = cf.url ? (cf.functionName || '(anon)') + ' ' + short(cf.url) + ':' + ((cf.lineNumber | 0) + 1) : null;
+      const key = own || ((owner || '(root)') + ' [' + (cf.functionName || 'native') + ']');
+      if (node.selfSize) { sites.set(key, (sites.get(key) || 0) + node.selfSize); total += node.selfSize; }
+      for (const c of node.children || []) walk(c, own || owner);
+    };
+    walk(prof && prof.profile && prof.profile.head, null);
+    const steps = Number.isFinite(ticks) && Number.isFinite(report.allocStart && report.allocStart.ticks)
+      ? ticks - report.allocStart.ticks : null;
+    report.alloc = {
+      sampledBytes: total, steps, wallS: (Date.now() - report.allocStart.atMs) / 1000,
+      bytesPerStep: steps ? Math.round(total / steps) : null,
+      top: [...sites.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25)
+        .map(([k, v]) => [k, v, steps ? Math.round(v / steps) : null]),
+      error: prof && prof.error ? prof.error : undefined,
+    };
+    console.log('worker alloc', JSON.stringify({ bytesPerStep: report.alloc.bytesPerStep, steps, MB: +(total / 1048576).toFixed(1), error: report.alloc.error }));
+    for (const [k, , per] of report.alloc.top.slice(0, 15)) console.log('   ' + String(per).padStart(8) + ' B/step  ' + k);
+  }
+  if (ALLOC) {
+    const iso = new Map();
+    const re = /\[(\d+):([0-9a-fA-Fx]+)\]\s+(\d+) ms: (\S+)[^,]*?([\d.]+) \(([\d.]+)\) -> ([\d.]+) \(([\d.]+)\) MB, (?:pooled: [\d.]+ MB, )?([\d.]+) \/ ([\d.]+) ms/;
+    for (const [, line] of gcLines) {
+      const m = line.match(re);
+      if (!m) continue;
+      const key = m[1] + ':' + m[2];
+      const r = iso.get(key) || { kinds: {}, count: 0, maxPause: 0, totalPause: 0, over8: 0, allocMB: 0, lastAfter: null };
+      const kind = m[4]; const before = +m[5]; const after = +m[7]; const pause = +m[9];
+      r.kinds[kind] = (r.kinds[kind] || 0) + 1;
+      r.count++; r.totalPause += pause;
+      if (pause > r.maxPause) r.maxPause = pause;
+      if (pause > 8) r.over8++;
+      if (r.lastAfter != null) r.allocMB += Math.max(0, before - r.lastAfter);
+      r.lastAfter = after;
+      iso.set(key, r);
+    }
+    report.gc = [...iso.entries()].map(([k, r]) => ({ isolate: k, ...r, totalPause: +r.totalPause.toFixed(1), allocMB: +r.allocMB.toFixed(1) }));
+    report.gcLinesSample = gcLines.slice(0, 6).map((x) => x[1]);
+    console.log('gc lines', gcLines.length, JSON.stringify(report.gc));
+  }
   report.hand = hand.counts();
   report.realmEnd = await page.evaluate(() => ({ hasFocus: document.hasFocus(), visibility: document.visibilityState,
     padCalls: window.__padCalls ? window.__padCalls() : null })).catch(() => null);

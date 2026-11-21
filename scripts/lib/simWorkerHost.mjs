@@ -2956,8 +2956,11 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
     }
 
     const events = drainEvents();
+    // A light directive (worker-local, replyDetail === false) defers the diff-based read-model
+    // detail to the next detail directive; nothing is lost, the shadows still hold the last sent.
+    const replyDetail = msg.replyDetail !== false;
     const entityVitals = production
-      ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen, true)
+      ? (replyDetail ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen, true) : [])
       : null;
     // This single authored body may become ready or fail without a normal vital
     // changing. Ship its complete vitals each existing packet so coalescing keeps
@@ -3011,7 +3014,9 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
     host.auxUpsertsTotal += aux.upserts.length;
     host.auxRemovalsTotal += aux.removals.length;
     const auxJournalBreaches = host.auxVerify ? verifyAuxJournal(state) : 0;
-    const domains = diffDomains(state, host.domainDiffSeq++);
+    const domains = replyDetail
+      ? diffDomains(state, host.domainDiffSeq++)
+      : { updates: [], probe: null, shipBytes: 0, marketShipBytes: 0, diffMs: 0 };
     const warmStubs = host.warmStubs.length ? host.warmStubs.splice(0) : null;
     const weaponVfxProjectiles = collectWeaponVfxProjectiles(state);
     const boundaryMs = Number(nowNs() - workStart) / 1e6;
