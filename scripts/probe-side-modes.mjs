@@ -312,11 +312,22 @@ async function runJob(page) {
       const { laneInputWrite } = await import('/src/core/simLaneCommands.js');
       laneInputWrite(window.SF.state, 'player.targetId', id);
     }, station.id);
-    for (let i = 0; i < 30; i++) {
-      if (await page.evaluate(() => !!window.SF.state.ui?.docked)) break;
-      await page.keyboard.press('KeyE');
-      await page.waitForTimeout(2500);
+    // E hands the approach to the autopilot; E again, in range, docks. Pressing while the
+    // autopilot is still flying would take the helm back, so wait for it to finish its run.
+    const dockLog = [];
+    for (let i = 0; i < 60; i++) {
+      const st = await page.evaluate((id) => {
+        const s = window.SF.state, me = s.entities.get(s.playerId), e = s.entities.get(id);
+        return { docked: !!s.ui?.docked, auto: !!(s.nav && s.nav.autopilot && s.nav.autopilot.active),
+          dist: me && e ? Math.round(Math.hypot(me.pos.x - e.pos.x, me.pos.z - e.pos.z)) : null,
+          speed: me ? Math.round(Math.hypot(me.vel.x, me.vel.z)) : null };
+      }, station.id);
+      if (i % 4 === 0) dockLog.push(st);
+      if (st.docked) break;
+      if (!st.auto) await page.keyboard.press('KeyE');
+      await page.waitForTimeout(1500);
     }
+    facts.jobDockLog = dockLog;
     facts.jobDocked = await page.evaluate(() => ({ docked: !!window.SF.state.ui?.docked, station: window.SF.state.ui?.dockedStationId }));
     if (!facts.jobDocked.docked) throw new Error('could not dock at Helios by pressing E');
     await page.waitForTimeout(3500);

@@ -541,7 +541,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Textile qualifying',
     brief: 'Helios dispatch grades one lap of the belt from a stern camera. Overhead optics are not the instrument they pay for.',
-    summary: 'One lap through both Helios fields. The stern camera is required.',
+    summary: 'One lap through both Helios fields.',
     gridLine: 'Hold the grid. The belt does not start until the lights drop.',
   }),
   Object.freeze({
@@ -558,7 +558,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Burned canopy',
     brief: 'Customs cooked the overhead picture on the tally. Approach within 70 m of the line at 8 m/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
-    summary: 'Stop and align at the start line (within 70 m, at 8 m/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
+    summary: 'Stop and align at the start line (within 70 m, at 8 m/s or less, no tether), run the tally, then dock at the destination station.',
     gridLine: 'Approach within 70 m, slow to 8 m/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
@@ -573,7 +573,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 1400,
     title: 'Veil ribbon',
     brief: 'Three laps of the wash. The gas eats a top-down frame. The radiation pocket is a burn ring. Leave the ribbon and the leash drags you back.',
-    summary: 'Three laps on the Veil wash. Stern camera required. Burn ring in the radiation pocket.',
+    summary: 'Three laps on the Veil wash. Burn ring in the radiation pocket.',
     gridLine: 'Hold. Three laps. The burn is inside the wash.',
   }),
   Object.freeze({
@@ -588,7 +588,7 @@ const CONTRACTS = Object.freeze([
     tighten: true,
     title: 'Vesper’s mark',
     brief: 'The belt mark is already posted. Beat the tightened clock. The rocks do not rearrange themselves.',
-    summary: 'Same Helios terrain as qualifying. Stern camera. Tighter time bands.',
+    summary: 'Same Helios terrain as qualifying. Tighter time bands.',
     gridLine: 'Hold. The mark is tighter than the qualifying lap.',
   }),
   Object.freeze({
@@ -607,7 +607,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Pace light',
     brief: 'A pace light traces the tally ahead of you. Read its line through the turns; real rivals provide the draft in pack races. The stern camera stays on — that is how dispatch watches the run.',
-    summary: 'The tally circuit again. Follow the pace light through the turns. Stern camera required.',
+    summary: 'The tally circuit again. Follow the pace light through the turns.',
     gridLine: 'Hold. The pace light leaves with you. Read the line ahead.',
   }),
   Object.freeze({
@@ -621,7 +621,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 1200,
     title: 'The tallyman’s rematch',
     brief: 'The dispatch clerk who graded Vesper’s mark disputes the lap. Two circuits of the belt, posted purse, stern camera — he is watching the same rocks you are.',
-    summary: 'Two laps of the Helios belt. Stern camera required. The clerk is grading this one personally.',
+    summary: 'Two laps of the Helios belt. The clerk is grading this one personally.',
     gridLine: 'Hold. Two laps. The tallyman already wrote your time down once.',
   }),
 ]);
@@ -642,7 +642,7 @@ const SECTOR_CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Reef window',
     brief: 'One lap of the Pallas reef. The current shoves on surge and goes quiet on calm — the pilot who reads the window keeps the line.',
-    summary: 'One lap of the Pallas reef. Stern camera required. The surge is the course.',
+    summary: 'One lap of the Pallas reef. The surge is the course.',
     gridLine: 'Hold. The reef keeps its own clock.',
   }),
   Object.freeze({
@@ -657,7 +657,7 @@ const SECTOR_CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Foundry windows',
     brief: 'One lap of the Vesta furnace circuit. The belt gathers and the storm sheet carries, both on the same shift clock.',
-    summary: 'One lap of the Vesta furnace. Stern camera required. Two hazard windows.',
+    summary: 'One lap of the Vesta furnace. Two hazard windows.',
     gridLine: 'Hold. The foundry does not wait for your read.',
   }),
   Object.freeze({
@@ -672,7 +672,7 @@ const SECTOR_CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Wreckrun',
     brief: 'One lap of the Sker approaches. Both banks are the checkpoints and the hazard; the posted purse says the Reach approves.',
-    summary: 'One lap of the Sker wreckrun. Stern camera required. Dense rock on both approaches.',
+    summary: 'One lap of the Sker wreckrun. Dense rock on both approaches.',
     gridLine: 'Hold. The bank does not move for a poster time.',
   }),
 ]);
@@ -691,7 +691,7 @@ const PRACTICE = RACING_CIRCUITS.map((level) => Object.freeze({
   duration_s: level.id === 'level_veil_ribbon' ? 1400 : 900,
   title: `Practice — ${level.name}`,
   brief: level.blurb,
-  summary: 'Practice. The stern camera follows your steering-view setting; it is not locked.',
+  summary: 'Practice. Fly it in whichever camera view you have set.',
   gridLine: 'Hold the grid. Practice does not lock the camera.',
 }));
 
