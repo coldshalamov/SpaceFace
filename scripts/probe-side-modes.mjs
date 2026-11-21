@@ -264,9 +264,13 @@ async function enterSector(page, sectorId) {
   }, sectorId);
 }
 
-const pickRock = (page) => page.evaluate(() => {
+// --rock=ast_icy --sector=sector_pallas_drift sets the rover down in a chosen rock type.
+const ROCK_TYPE = arg('rock', '');
+const ROCK_SECTOR = arg('sector', '');
+const pickRock = (page) => page.evaluate((wantType) => {
   const st = window.SF.state;
-  const rocks = st.entityList.filter((e) => e && e.alive !== false && e.type === 'asteroid' && (e.data?.yieldU || 0) > 6);
+  const rocks = st.entityList.filter((e) => e && e.alive !== false && e.type === 'asteroid' && (e.data?.yieldU || 0) > 6
+    && (!wantType || e.data?.typeId === wantType));
   let best = null;
   for (const r of rocks) {
     let n = 0;
@@ -275,7 +279,7 @@ const pickRock = (page) => page.evaluate(() => {
   }
   return best ? { id: best.r.id, x: best.r.pos.x, z: best.r.pos.z, radius: best.r.radius || 10,
     typeId: best.r.data?.typeId, rocks: rocks.length, cluster: best.n } : null;
-});
+}, ROCK_TYPE);
 
 // One works contract, start to finish, the way a player does it: dock at Helios, take "First Cut"
 // off the board, undock, set the rover down on a rock, cut four iron by hand, and get paid.
@@ -471,14 +475,76 @@ async function runJob(page) {
 
 // The rover by the ordinary route: target a rock, put the Line on it, press the drill key.
 async function runRover(page) {
-  const shot = shooter(page, 'rover');
+  const shot = shooter(page, ROCK_TYPE ? `rover-${ROCK_TYPE.replace('ast_', '')}` : 'rover');
   try {
-    const rock = await pickRock(page);
+    if (ROCK_SECTOR) {
+      // Arrival places the ship itself a few seconds after the jump: let that finish, then fly to
+      // the belt that carries the wanted rock type so its rocks are streamed in around the ship.
+      await enterSector(page, ROCK_SECTOR);
+      await page.waitForTimeout(9000);
+      const belt = await page.evaluate(async ({ sectorId, type }) => {
+        const { SECTORS } = await import('/src/data/sectors.js');
+        const sector = SECTORS.find((row) => row.id === sectorId);
+        const field = sector && (sector.fields || []).find((row) => row && row.type === type && row.center);
+        const { sectorLocalToGlobalForSector } = await import('/src/data/sectorCoordinates.js');
+        const at = field ? sectorLocalToGlobalForSector(field.center, sectorId) : null;
+        return at ? { x: at.x, z: at.z } : null;
+      }, { sectorId: ROCK_SECTOR, type: ROCK_TYPE }).catch(() => null);
+      facts.roverBelt = belt;
+      if (belt) { await relocate(page, { x: belt.x, z: belt.z, heading: 0 }); await page.waitForTimeout(6000); }
+    }
+    let rock = null;
+    for (let attempt = 0; attempt < 4 && !rock; attempt++) {
+      rock = await pickRock(page);
+      if (!rock) await page.waitForTimeout(2000);
+    }
+    // A belt is clusters and lanes, not a disc: its centre can be empty. Walk out from the centre
+    // until a rock of the wanted type is streamed in beside the ship.
+    if (!rock && facts.roverBelt) {
+      const hops = [];
+      for (const r of [900, 1800, 2700]) for (let k = 0; k < 6; k++) hops.push([Math.cos(k * Math.PI / 3) * r, Math.sin(k * Math.PI / 3) * r]);
+      for (const [dx, dz] of hops) {
+        await relocate(page, { x: facts.roverBelt.x + dx, z: facts.roverBelt.z + dz, heading: 0 });
+        await page.waitForTimeout(2500);
+        rock = await pickRock(page);
+        if (rock) { facts.roverBeltHop = { dx: Math.round(dx), dz: Math.round(dz) }; break; }
+      }
+    }
     facts.roverRock = rock;
-    if (!rock) throw new Error('no rock in the opening sector');
+    if (!rock) {
+      // Say what IS around the ship, so a missing rock type can be told from an empty belt.
+      facts.roverNear = await page.evaluate(() => {
+        const st = window.SF.state; const p = st.entities.get(st.playerId);
+        const kinds = {}; let nearest = null;
+        for (const e of st.entityList) {
+          if (!e || e.alive === false || !e.pos || !p) continue;
+          const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+          const key = `${e.type}:${e.data?.typeId || e.data?.kind || ''}:${(e.data?.yieldU || 0) > 6 ? 'rich' : 'thin'}`;
+          kinds[key] = (kinds[key] || 0) + 1;
+          if (e.type === 'asteroid' && (!nearest || d < nearest.d)) nearest = { d: Math.round(d), typeId: e.data?.typeId, yieldU: e.data?.yieldU, radius: e.radius };
+        }
+        return { sector: st.world.currentSectorId, at: p && { x: Math.round(p.pos.x), z: Math.round(p.pos.z) }, kinds, nearest, total: st.entityList.length };
+      }).catch((error) => String(error));
+      throw new Error('no rock in the opening sector');
+    }
     const stand = rock.radius + 26;
-    await relocate(page, { x: rock.x - stand, z: rock.z, heading: 0 });
-    await page.waitForTimeout(2500);
+    // Rocks drift and a relocation can be nudged clear of a hull: go to where the rock is NOW,
+    // and go again if the ship did not end up beside it.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const live = await page.evaluate((id) => {
+        const e = window.SF.state.entities.get(id);
+        return e && e.pos ? { x: e.pos.x, z: e.pos.z } : null;
+      }, rock.id);
+      if (live) { rock.x = live.x; rock.z = live.z; }
+      await relocate(page, { x: rock.x - stand, z: rock.z, heading: 0 });
+      await page.waitForTimeout(2500);
+      const gap = await page.evaluate((id) => {
+        const st = window.SF.state; const e = st.entities.get(id); const p = st.entities.get(st.playerId);
+        return e && p ? Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) : null;
+      }, rock.id);
+      facts.roverGap = gap;
+      if (gap != null && gap < stand + 60) break;
+    }
     await page.evaluate(async (id) => {
       const { laneInputWrite } = await import('/src/core/simLaneCommands.js');
       laneInputWrite(window.SF.state, 'player.targetId', id);
@@ -519,7 +585,8 @@ async function runRover(page) {
       const d = window.SF.state.drill;
       const root = document.querySelector('[data-screen="drill"]') || document.body;
       const text = root.textContent.split(/[ \n\t]+/).join(' ').trim().slice(0, 900);
-      return { asteroidId: d.asteroidId, avatar: { col: d.avatar.col, row: d.avatar.row }, text };
+      return { asteroidId: d.asteroidId, avatar: { col: d.avatar.col, row: d.avatar.row }, text,
+        family: d.boreFamily ?? null, keys: Object.keys(d).join(',') };
     });
     await page.locator('.ast-canvas').click({ position: { x: 400, y: 200 } }).catch(() => {});
     await page.keyboard.down('ArrowDown');

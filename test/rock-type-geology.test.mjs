@@ -90,3 +90,21 @@ test('a stamp is final; a bored rock without one keeps the old interior; an unto
   assert.equal(resolveBoreFamily(null, 'ast_crystalline'), 'ast_crystalline');
   assert.equal(resolveBoreFamily({}), LEGACY_GEOLOGY_FAMILY);
 });
+
+test('each rock type is its own stone on the board, and the board is told which rock it is in', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { worksHostStone } = await import('../src/ui/asteroid/asteroidRenderer3d.js');
+  const stones = new Set();
+  for (const family of Object.keys(ROCK_GEOLOGY)) {
+    const stone = worksHostStone(family);
+    assert.equal(stone.length, 3, `${family} has a stone`);
+    assert.ok(stone.every((channel) => channel > 0.3 && channel < 1.8), `${family} stays a rock colour`);
+    stones.add(stone.join(','));
+  }
+  assert.equal(stones.size, Object.keys(ROCK_GEOLOGY).length, 'no two rock types share a stone');
+  assert.deepEqual([...worksHostStone('ast_common_rock')], [1, 1, 1], 'the common rock is the stone the board always had');
+  assert.deepEqual([...worksHostStone(LEGACY_GEOLOGY_FAMILY)], [1, 1, 1], 'a rock bored before the rule keeps its look');
+  // The session says which rock this is, and the display side is sent that field.
+  assert.match(readFileSync(new URL('../src/systems/drill.js', import.meta.url), 'utf8'), /fieldId: rock\.fieldId,[^]*?\n\s+boreFamily,/);
+  assert.match(readFileSync(new URL('../scripts/lib/simReadModel.mjs', import.meta.url), 'utf8'), /'fieldId','boreFamily'/);
+});

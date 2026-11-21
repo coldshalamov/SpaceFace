@@ -1150,6 +1150,26 @@ const INCLUSION_KIT_FIT = {
   scar: [0.74, 0.04],
 };
 
+// EACH ROCK TYPE IS ITS OWN STONE. The six host materials above say what a CELL is; this says
+// what BODY the rover is inside. It multiplies the per-cell tint of the anonymous hosts (matrix,
+// basalt, the metal seam host) and of the crust, skirt and tunnel floor, so the whole cross-section
+// shifts together and the special cells (ice lens, exotic host, gas) keep their own identity
+// against it. Keyed by the rock's geology family (drillFieldModel ROCK_GEOLOGY); an unknown or
+// legacy family is the warm common stone the board always had.
+const HOST_STONE = Object.freeze({
+  ast_common_rock: Object.freeze([1.0, 1.0, 1.0]),
+  ast_metallic: Object.freeze([0.84, 0.70, 0.66]),     // iron-dark, rust in the shadows
+  ast_icy: Object.freeze([0.70, 1.08, 1.58]),          // pale, cold blue-grey
+  ast_crystalline: Object.freeze([0.66, 1.02, 0.94]),  // green-grey slate
+  ast_gas_cloud: Object.freeze([1.02, 1.12, 0.62]),    // sulphur ochre
+  ast_rare_exotic: Object.freeze([0.52, 0.46, 0.96]),  // charcoal violet
+});
+const HOST_STONE_PLAIN = HOST_STONE.ast_common_rock;
+export function worksHostStone(family) { return HOST_STONE[family] || HOST_STONE_PLAIN; }
+// How much of the body's stone each bucket takes. Basalt keeps most of its own dark so it still
+// reads as the hard band in every body.
+const HOST_STONE_SHARE = Object.freeze({ matrix: 1, metal: 0.8, basalt: 0.55 });
+
 // The one classifier. Returns null only for a cell that is not there.
 function materialIdFor(tile) {
   if (!tile || tile.type === 'empty') return null;
@@ -1500,6 +1520,11 @@ export function patchRockUvWindow(mat) {
   return mat;
 }
 
+// MEASURED 2026-11-21: these three do not decide how strongly the cell joints read. Raising them
+// to 0.64 / 0.42 / 0.42 moved a joint from luminance 80 to 84 against a pad at 134. The joint is
+// the shadow of the block shapes themselves (pad inset and lift in makeCellBlockGeos, which the
+// inclusion kits and contact brackets are seated on). Making the cut face read as one body of
+// rock (05_ADVENTURE 3.1) means changing that geometry, not these numbers.
 export const WORKS_CELL_GEOMETRY_OPTIONS = Object.freeze({
   jointOcclusion: 0.38, wallTopOcclusion: 0.30, grooveDepthScale: 0.75,
 });
@@ -2954,6 +2979,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const previous = backWall.material;
         backWall.material = makeCavityFloorMaterial(surface);
         previous.dispose();
+        paintBackWall();
       }
       rockSurfaceReady = true;
       for (const b of ROCK_BUCKETS) old[b].dispose();
@@ -4378,6 +4404,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   //      noisy quilt; what reads as geology is LOW-FREQUENCY banding on a slightly tilted axis,
   //      with broad patches over it and only a whisper of per-cell grain. Two sinusoids at
   //      different periods give wide beds with the occasional thin seam between them.
+  // The body's stone (HOST_STONE), set when a session begins.
+  let hostStone = HOST_STONE_PLAIN;
+  function applyHostStone(out, share = 1) {
+    if (hostStone === HOST_STONE_PLAIN || !(share > 0)) return out;
+    out.r *= 1 + (hostStone[0] - 1) * share;
+    out.g *= 1 + (hostStone[1] - 1) * share;
+    out.b *= 1 + (hostStone[2] - 1) * share;
+    return out;
+  }
+  function paintBackWall() {
+    if (!backWall || !backWall.material || !backWall.material.color) return;
+    backWall.material.color.setRGB(1.02, 0.94, 0.80);
+    applyHostStone(backWall.material.color, 0.9);
+  }
+
   function rockInstanceColor(c, r, _bucket, out) {
     const depthT = r / ROWS;
     const bed = r + c * 0.22;                                          // beds dip slightly
@@ -4387,7 +4428,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const tint = Math.max(0.05, 1 + strata + patch + grain - depthT * 0.10);
     const warm = Math.sin(c * 0.16 - r * 0.12) * 0.012 + depthT * 0.08 - 0.03 + strata * 0.5;
     out.setRGB(Math.max(0, tint + warm), tint, Math.max(0, tint - warm * 1.2));
-    return out;
+    return applyHostStone(out, HOST_STONE_SHARE[_bucket] || 0);
   }
 
   // Geology tells on the rock itself: a fracture plane reads as a darker cracked face, a rich
@@ -4538,6 +4579,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       backWall.receiveShadow = true;
       rockGroup.add(backWall);
     }
+    paintBackWall();
   }
 
   // The surface strip: a jagged plateau row above the field + the winch derrick over the entry
@@ -4567,7 +4609,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // Crust caps: the same stone, a touch cooler and dimmer than the interior because this is
       // the face that has been staring at cold starlight, not sitting in the work-light pool.
       const t = 0.86 + rnd01(c, 78, 'pt') * 0.1;
-      plateauInst.setColorAt(i, colScratch.setRGB(t * 0.97, t, t * 1.05));
+      plateauInst.setColorAt(i, applyHostStone(colScratch.setRGB(t * 0.97, t, t * 1.05)));
     }
     plateauInst.instanceMatrix.needsUpdate = true;
     if (plateauInst.instanceColor) plateauInst.instanceColor.needsUpdate = true;
@@ -4697,7 +4739,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       skirtInst.setMatrixAt(i, dummy.matrix);
       // crust: darker and cooler toward the rim, still the same stone family
       const t = 0.92 - cell.edge * 0.3 + rnd01(cell.c + 3, cell.r + 9, 'skt') * 0.06;
-      skirtInst.setColorAt(i, colScratch.setRGB(t * 0.95, t, t * 1.08));
+      skirtInst.setColorAt(i, applyHostStone(colScratch.setRGB(t * 0.95, t, t * 1.08)));
     });
     skirtInst.instanceMatrix.needsUpdate = true;
     if (skirtInst.instanceColor) skirtInst.instanceColor.needsUpdate = true;
@@ -8777,6 +8819,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     flashPresentation = worksFlashPresentation(opts);
     const d = readWorksDrillSession(getDrill());
     field = d ? d.field : null;
+    hostStone = worksHostStone(d && d.boreFamily);
     buildDomOverlay();
     resize();
     // clear per-session content
