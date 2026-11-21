@@ -3011,6 +3011,8 @@ export function createSimLaneRuntime({
     generation: lifecycleGeneration,
     profile: 'production',
     clockMode: workerClockMode,
+    // The worker compiles its combat paths in a throwaway fight before the real game (behind boot).
+    bootRehearsal: workerClockMode === 'worker-local',
     timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
     timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,

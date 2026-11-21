@@ -887,8 +887,13 @@ function localDisarmStaleAckWatchdog() {
 function localRecoverStaleAck(watchdog) {
   if (localClock.ackWatchdog !== watchdog) return;
   localDisarmStaleAckWatchdog();
-  if (localClock.stopped || !localClock.sentAwaitingAck
-    || localClock.unackedSequences[0] !== watchdog.clockSequence) return;
+  if (localClock.stopped || !localClock.unackedSequences.length) return;
+  if (localClock.unackedSequences[0] !== watchdog.clockSequence) {
+    // The head moved without a re-arm: watch the new head instead of going quiet. A silent
+    // return here left credits held for good.
+    localArmStaleAckWatchdog(localClock.unackedSequences[0]);
+    return;
+  }
   // Free the credits. The channel is FIFO: every posted range still arrives in order, so the
   // next publish stays incremental. (A full rebuild here was the old 'blip'.) The SAB envelope
   // ring, which can genuinely refuse a post, folds instead of parking (publishLocalReply).
@@ -898,6 +903,15 @@ function localRecoverStaleAck(watchdog) {
   if (localClock.legacy) localClock.needsRebuildOnSend = true;
   localClock.staleAckRecoveries++;
   localSetBackpressure(false);
+  if (localClock.latestReply && (!localClock.active || localClock.scale <= 0)) {
+    // The clock is idle (loading, paused): no tick will come to carry the retained reply, and it
+    // may hold the very RPC ack main is waiting on (a new game's boot). Publish it now, in order.
+    // Measured 2026-11-21: a Swarm "Run it again" sat on "Getting the ship ready" for minutes.
+    chain = chain.then(() => runLocalClockTick(true)).catch((error) => {
+      self.postMessage({ kind: 'error', message: error?.message || String(error), stack: error?.stack || null });
+    });
+    return;
+  }
   scheduleLocalClock();
 }
 
@@ -1259,6 +1273,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     // collapsing into a growing blob.
     localClock.latestReply = localMergeReply(localClock.latestReply, reply);
     localRefreshDurablePressure();
+    // Whatever is retained now waits on an ACK: make sure something is watching for a lost one.
+    if (!localClock.ackWatchdog) localArmStaleAckWatchdog(localClock.unackedSequences[0]);
   } else {
     if (localClock.latestReply) {
       localClock.latestReply = localMergeReply(localClock.latestReply, reply);
@@ -1574,7 +1590,9 @@ async function dispatchDirective(msg) {
       // its own host so the combat paths are compiled and optimised before the player's first
       // fight instead of inside it. Once per worker; never on the legacy stop-and-wait lane.
       let bootRehearsal = null;
-      if (!rehearsed && msg.profile === 'production' && msg.bootRehearsal !== false && msg.legacyStopAndWait !== true) {
+      if (!rehearsed && msg.profile === 'production' && msg.bootRehearsal === true && msg.legacyStopAndWait !== true
+        // A real browser worker only (node fixtures drive this module through a stub self).
+        && typeof WorkerGlobalScope !== 'undefined') {
         rehearsed = true;
         bootRehearsal = await rehearseSimWorkload(createSimHost, { scenarioContract: msg.scenarioContract || null });
         // The rehearsal ran in this realm: give storage and the Crucible record runtime back clean.

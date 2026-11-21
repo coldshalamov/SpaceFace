@@ -375,6 +375,7 @@ try {
 
   // A busy hand: thrust + turn held (+ strafe), the trigger held, powers tapped, fingers lifted.
   let notFlying = 0;
+  let loadingBeats = 0;
   const play = async (ms) => {
     const end = Date.now() + ms;
     let beat = 0;
@@ -406,8 +407,16 @@ try {
         if (b) b.click();
       }).catch(() => {});
       // A Swarm run that ended (death, results screen) is relaunched so every phase flies.
-      const flying = await page.evaluate(() => window.SF.state.mode === 'flight').catch(() => true);
-      notFlying = flying ? 0 : notFlying + 1;
+      const mode = await page.evaluate(() => window.SF.state.mode).catch(() => 'flight');
+      // A run that is loading is left to load (relaunching over it restarts the load); one that has
+      // sat on the loading screen for a minute is a stuck load, counted as such, then relaunched.
+      if (mode === 'loading') {
+        loadingBeats++;
+        if (loadingBeats * 1.5 >= 60) { report.stuckLoads = (report.stuckLoads || 0) + 1; loadingBeats = 0; notFlying = 3; }
+      } else {
+        loadingBeats = 0;
+        notFlying = mode === 'flight' ? 0 : notFlying + 1;
+      }
       if (ROUTE === 'swarm' && notFlying >= 3) {
         notFlying = 0;
         report.relaunches = (report.relaunches || 0) + 1;

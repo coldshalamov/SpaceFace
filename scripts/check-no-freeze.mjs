@@ -75,6 +75,9 @@ for (const routeName of ROUTES) {
     if (r.silentHoldMs > 0) why.push(`world held at time scale 0 for ${r.silentHoldMs} ms with no pause plate or screen`);
     if (r.freezeLog > 0) why.push(`${r.freezeLog} freeze-log entr${r.freezeLog === 1 ? 'y' : 'ies'}`);
     if (!(r.wallS > 0)) why.push('no unpaused flight samples');
+    // A run that sat on its loading screen for a minute (a new Swarm run that never started) is
+    // the world stopping for the player as surely as a freeze in flight.
+    if (r.phase === 'dense input' && report.stuckLoads > 0) why.push(`${report.stuckLoads} new run(s) stuck on the loading screen over 60 s`);
     rows.push({ route: routeName, ...r, verdict: why.length ? 'FAIL' : 'pass', why: why.join('; ') });
     if (why.length) failed = true;
   }
