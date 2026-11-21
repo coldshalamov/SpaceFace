@@ -286,7 +286,7 @@ try {
         unacked: c.unacked ?? null, bp: c.backpressured === true, stale: c.staleAckRecoveries ?? null,
         workP95: c.perfWindow ? c.perfWindow.workMsP95 : null, dil: c.dilation ?? null,
         held: g ? g.heldReplies : 0,
-        wSeq: pt ? pt.workerReplySequence : null, mSeq: pt ? pt.mainReceivedSequence : null, wUnacked: pt ? pt.workerUnacked : null, wRet: pt ? pt.workerRetained : null, tick: pt ? pt.tick : null,
+        wSeq: pt ? pt.workerReplySequence : null, mSeq: pt ? pt.mainReceivedSequence : null, wUnacked: pt ? pt.workerUnacked : null, wRet: pt ? pt.workerRetained : null, tick: pt ? pt.tick : null, wSim: pt ? pt.simTime : null, wWall: pt ? pt.workerWallMs : null,
       });
     }, 50);
   });
@@ -335,6 +335,37 @@ try {
         .catch((e) => console.log('sampling', String(e)));
       report.allocStart = { atMs: Date.now(), ticks: await page.evaluate(() => window.SF.simLaneDiag().poseTable.tick).catch(() => null) };
     }
+  }
+  // Long animation frames (Chromium LoAF): every main-thread frame over 150 ms with the scripts
+  // that ran inside it (invoker, function, file) and its render/layout share — the owners of the
+  // frame gaps, without a trace.
+  await page.evaluate(() => {
+    window.__nfLoaf = [];
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) {
+          if (e.duration < 150) continue;
+          const end = e.startTime + e.duration;
+          window.__nfLoaf.push({ at: Math.round(e.startTime), ms: Math.round(e.duration), blocking: Math.round(e.blockingDuration || 0),
+            renderMs: e.renderStart ? Math.round(end - e.renderStart) : 0,
+            layoutMs: e.styleAndLayoutStart ? Math.round(end - e.styleAndLayoutStart) : 0,
+            scripts: (e.scripts || []).map((x) => ({ ms: Math.round(x.duration), invoker: x.invoker, type: x.invokerType,
+              fn: x.sourceFunctionName || '', url: String(x.sourceURL || '').replace(/^.*\/(src|scripts|vendor)\//, '$1/'),
+              at: x.sourceCharPosition, forcedLayoutMs: Math.round(x.forcedStyleAndLayoutDuration || 0) }))
+              .sort((a, b) => b.ms - a.ms).slice(0, 6) });
+          if (window.__nfLoaf.length > 400) window.__nfLoaf.shift();
+        }
+      }).observe({ type: 'long-animation-frame', buffered: false });
+      window.__nfLoafOk = true;
+    } catch (err) { window.__nfLoafOk = String(err); }
+  });
+  // --worst: a sampling CPU profile of the page too, sliced later by the long frames.
+  let pageProfStart = null;
+  if (WORST) {
+    await cdp.send('Profiler.enable').catch(() => {});
+    await cdp.send('Profiler.setSamplingInterval', { interval: 500 }).catch(() => {});
+    await cdp.send('Profiler.start').catch((e) => console.log('page profiler start', String(e)));
+    pageProfStart = await page.evaluate(() => performance.now()).catch(() => null);
   }
   const hand = createHand(cdp, vp);
   hand.start();
@@ -420,6 +451,46 @@ try {
     report.phases.push({ name, age, freezeEpisodes: freezeAfter.slice(freezeBefore) });
   }
   hand.stop();
+  {
+    const loaf = await page.evaluate(() => ({ ok: window.__nfLoafOk, frames: window.__nfLoaf || [] })).catch(() => ({ ok: 'read failed', frames: [] }));
+    report.longFrames = loaf;
+    if (WORST && pageProfStart != null) {
+      const res = await cdp.send('Profiler.stop').catch(() => null);
+      const prof = res && res.profile;
+      if (prof) {
+        const byId = new Map(); for (const n of prof.nodes) byId.set(n.id, n);
+        for (const n of prof.nodes) for (const c of n.children || []) { const ch = byId.get(c); if (ch) ch.parent = n.id; }
+        const label = (n) => { const cf = n.callFrame || {}; const u = String(cf.url || '').replace(/^.*\/(src|scripts|vendor)\//, '$1/'); return (cf.functionName || '(anon)') + (u ? ' ' + u + ':' + ((cf.lineNumber | 0) + 1) : ''); };
+        const samples = []; let t = prof.startTime;
+        for (let i = 0; i < prof.samples.length; i++) { t += prof.timeDeltas[i] || 0; samples.push([pageProfStart + (t - prof.startTime) / 1000, prof.samples[i]]); }
+        const generic = /presentationRunner|^frame |^\(anon\) $|requestAnimationFrame/;
+        report.longFrameOwners = [];
+        for (const f of [...loaf.frames].sort((a, b) => b.ms - a.ms).slice(0, 6)) {
+          const self = new Map(); const incl = new Map(); let n = 0;
+          for (const [ms, id] of samples) {
+            if (ms < f.at || ms > f.at + f.ms) continue;
+            const node = byId.get(id); if (!node) continue; n++;
+            self.set(label(node), (self.get(label(node)) || 0) + 1);
+            const seen = new Set();
+            for (let k = node; k; k = k.parent != null ? byId.get(k.parent) : null) { const L = label(k); if (seen.has(L) || !(k.callFrame && k.callFrame.url) || generic.test(L)) continue; seen.add(L); incl.set(L, (incl.get(L) || 0) + 1); }
+          }
+          const share = (m, k) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, k).map(([x, c]) => x + ' ' + Math.round(c / Math.max(1, n) * 100) + '%');
+          const row = { ms: f.ms, atS: +(f.at / 1000).toFixed(1), samples: n, self: share(self, 6), inclusive: share(incl, 10) };
+          report.longFrameOwners.push(row);
+          console.log('  long frame ' + row.ms + ' ms at ' + row.atS + ' s (' + n + ' samples) self: ' + row.self.join(' | '));
+          console.log('      incl: ' + row.inclusive.join(' | '));
+        }
+      }
+    }
+    report.bootRehearsal = await page.evaluate(() => window.__SF_BOOT_REHEARSAL__ || null).catch(() => null);
+    console.log('boot rehearsal: ' + JSON.stringify(report.bootRehearsal));
+    console.log('main-thread long frames (' + (loaf.ok === true ? loaf.frames.length + ' over 150 ms' : 'LoAF unavailable: ' + loaf.ok) + '):');
+    for (const f of [...loaf.frames].sort((a, b) => b.ms - a.ms).slice(0, 12)) {
+      const scriptMs = f.scripts.reduce((t, x) => t + x.ms, 0);
+      console.log('  ' + f.ms + ' ms at ' + (f.at / 1000).toFixed(1) + ' s  scripts ' + scriptMs + '  render ' + f.renderMs + '  layout ' + f.layoutMs
+        + '  | ' + f.scripts.map((x) => x.ms + 'ms ' + x.type + ':' + x.invoker + (x.fn ? ' ' + x.fn : '') + (x.url ? ' ' + x.url : '') + (x.forcedLayoutMs ? ' forcedLayout ' + x.forcedLayoutMs : '')).join(' | '));
+    }
+  }
   if (CPUPROF && workerCdp.sessionId) {
     const res = await workerSend('Profiler.stop').catch((e) => ({ error: String(e) }));
     const prof = res && res.profile;
@@ -507,6 +578,27 @@ try {
       }
     }
     console.log('gc trace (' + traceChunks.length + ' events)');
+    {
+      const mainKey = [...threadNames.entries()].find(([, n]) => n === 'CrRendererMain');
+      if (mainKey) {
+        const [mk] = mainKey;
+        const evs = traceChunks.filter((e) => e.ph === 'X' && (e.pid + ':' + e.tid) === mk && e.dur > 0);
+        const tops = evs.filter((e) => /^(ThreadControllerImpl::RunTask|RunTask)$/.test(e.name) && e.dur > 150000).sort((a, b) => b.dur - a.dur).slice(0, 8);
+        report.mainLongTasks = tops.map((t) => {
+          const end = t.ts + t.dur;
+          const kids = evs.filter((e) => e !== t && e.ts >= t.ts && e.ts + e.dur <= end + 1 && e.dur > 15000
+            && /FunctionCall|EventDispatch|TimerFire|FireAnimationFrame|v8\.callFunction|ParseHTML|UpdateLayoutTree|Layout|Paint|CompositeLayers|GPUTask|MinorGC|MajorGC|V8\.Compile|v8\.compile|HandlePostMessage|RunMicrotasks|Commit/.test(e.name));
+          const name = (e) => {
+            const d = (e.args && e.args.data) || {};
+            const where = d.functionName ? d.functionName + (d.url ? ' ' + String(d.url).replace(/^.*\/(src|scripts)\//, '$1/') + ':' + d.lineNumber : '') : (d.type || '');
+            return e.name + (where ? '(' + where + ')' : '') + ' ' + (e.dur / 1000).toFixed(0) + 'ms';
+          };
+          return { ms: +(t.dur / 1000).toFixed(0), parts: kids.sort((a, b) => b.dur - a.dur).slice(0, 6).map(name) };
+        });
+        console.log('main-thread long tasks:');
+        for (const t of report.mainLongTasks) console.log('  ' + t.ms + ' ms: ' + t.parts.join(' | '));
+      }
+    }
     if (WORST) {
       const begins = new Map(); const dirs = [];
       for (const e of traceChunks) {
@@ -557,6 +649,21 @@ try {
         workerKeys.sort((a, b) => b[1] - a[1]);
         simWorkerThreadKey = workerKeys.length ? workerKeys[0][0] : null;
       }
+      {
+        // Every compile on the sim worker over the run, by file: what still compiles mid-play.
+        const byFile = new Map(); let total = 0; let count = 0;
+        for (const e of traceChunks) {
+          if (e.ph !== 'X' || !(e.dur > 0) || (e.pid + ':' + e.tid) !== simWorkerThreadKey) continue;
+          if (!/Compile|Optimize|Deopt|Lazy|Maglev|Turbofan|Sparkplug/i.test(e.name) || /GC/.test(e.name)) continue;
+          const d = (e.args && (e.args.data || e.args)) || {};
+          const url = String(d.url || d.fileName || d.scriptName || '?').replace(/^.*\/(src|scripts|vendor)\//, '$1/');
+          const k = e.name + ' ' + url;
+          byFile.set(k, (byFile.get(k) || 0) + e.dur); total += e.dur; count++;
+        }
+        report.workerCompile = { totalMs: +(total / 1000).toFixed(1), events: count,
+          top: [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => k + ' ' + (v / 1000).toFixed(1) + 'ms') };
+        console.log('sim worker compile over the run: ' + report.workerCompile.totalMs + ' ms in ' + count + ' events: ' + report.workerCompile.top.join(' | '));
+      }
       report.worstDirectives = dirs.slice(0, 10).map((d) => {
         const end = d.ts + d.dur;
         let compile = 0; let gc = 0;
@@ -585,6 +692,39 @@ try {
         const share = (m, k) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, k).map(([x, c]) => x + ' ' + Math.round((c / Math.max(1, n)) * 100) + '%');
         return { ms: +(d.dur / 1000).toFixed(1), compileMs: +(compile / 1000).toFixed(1), gcMs: +(gc / 1000).toFixed(1), samples: n, programOrIdle: programIdle, self: share(self, 5), inclusive: share(incl, 8) };
       });
+      // The busiest 5 s of the worker (sustained overload, e.g. a sector materialising over many
+      // directives): which functions own it.
+      if (prof && samples.length) {
+        const busy = samples.map(([ts, id]) => { const n = byId.get(id); const fn = n && (n.callFrame || {}).functionName; return [ts, n && !/^\((idle|program)\)$/.test(fn || '') ? 1 : 0, id]; });
+        const wins = []; let j = 0; let busyCount = 0;
+        for (let i = 0; i < busy.length; i++) {
+          while (j < busy.length && busy[j][0] - busy[i][0] < 5e6) { busyCount += busy[j][1]; j++; }
+          // Only windows that really span 5 s (the tail of the profile would score a handful of samples).
+          if (j < busy.length || (busy[j - 1][0] - busy[i][0]) >= 4.9e6) wins.push({ i, j, frac: busyCount / Math.max(1, j - i) });
+          busyCount -= busy[i][1];
+        }
+        wins.sort((a, b) => b.frac - a.frac);
+        const picked = [];
+        for (const w of wins) { if (picked.length >= 3) break; if (picked.every((p) => w.j <= p.i || w.i >= p.j)) picked.push(w); }
+        report.busiestWindows = [];
+        for (const best of picked) {
+          const incl = new Map(); let n = 0;
+          for (let k = best.i; k < best.j; k++) {
+            if (!busy[k][1]) continue;
+            n++;
+            const seen = new Set();
+            for (let node = byId.get(busy[k][2]); node; node = node.parent != null ? byId.get(node.parent) : null) {
+              const L = label(node);
+              if (seen.has(L) || !(node.callFrame && node.callFrame.url) || generic.test(L)) continue;
+              seen.add(L); incl.set(L, (incl.get(L) || 0) + 1);
+            }
+          }
+          const bw = { busyFraction: +best.frac.toFixed(2), atS: +((busy[best.i][0] - busy[0][0]) / 1e6).toFixed(1), busySamples: n,
+            inclusive: [...incl.entries()].sort((x, y) => y[1] - x[1]).slice(0, 14).map(([k, c]) => k + ' ' + Math.round(c / Math.max(1, n) * 100) + '%') };
+          report.busiestWindows.push(bw);
+          console.log('busy 5 s of the worker (busy ' + bw.busyFraction + ' at ' + bw.atS + ' s, ' + n + ' samples): ' + bw.inclusive.join(' | '));
+        }
+      }
       console.log('worst directives (' + dirs.length + ' measured):');
       for (const w of report.worstDirectives) {
         console.log('  ' + w.ms + ' ms  compile ' + w.compileMs + '  gc ' + w.gcMs + '  samples ' + w.samples + '  self: ' + w.self.join(' | '));
@@ -698,6 +838,29 @@ try {
         if (minWin == null || v < minWin) minWin = v;
       }
     }
+    // World speed on the WORKER's own clock: sim time against the worker's wall stamp written with it.
+    let wwAcc = 0; let wsAcc = 0; const wacc = [{ w: 0, sim: 0 }];
+    {
+      let prev = null;
+      for (const d of samples) {
+        if (!live(d) || !Number.isFinite(d.wWall) || !Number.isFinite(d.wSim)) { prev = null; continue; }
+        if (prev && d.wWall !== prev.wWall) {
+          const dt = (d.wWall - prev.wWall) / 1000; const ds = d.wSim - prev.wSim;
+          if (dt > 0 && dt <= 1.5 && ds >= 0 && ds <= dt * 1.5 + 0.1) { wwAcc += dt; wsAcc += ds; wacc.push({ w: wwAcc, sim: wsAcc }); }
+        }
+        if (!prev || d.wWall !== prev.wWall) prev = d;
+      }
+    }
+    let workerMinWin = null;
+    if (wwAcc >= 30) {
+      for (let i = 0; i < wacc.length; i += 20) {
+        const j = wacc.findIndex((d, k) => k > i && d.w - wacc[i].w >= 10);
+        if (j < 0) break;
+        const v = (wacc[j].sim - wacc[i].sim) / (wacc[j].w - wacc[i].w);
+        if (workerMinWin == null || v < workerMinWin) workerMinWin = v;
+      }
+    }
+    const workerSpeed = wwAcc > 0 ? wsAcc / wwAcc : null;
     const wall = +wAcc.toFixed(1);
     const speed = wAcc > 0 ? simAcc / wAcc : null;
     report.rows.push({
@@ -705,6 +868,9 @@ try {
       wallS: +wall.toFixed(1),
       worldSpeed: speed == null ? null : +speed.toFixed(3),
       worstWindow10s: minWin == null ? null : +minWin.toFixed(3),
+      workerWorldSpeed: workerSpeed == null ? null : +workerSpeed.toFixed(3),
+      workerWorstWindow10s: workerMinWin == null ? null : +workerMinWin.toFixed(3),
+      workerWallS: +wwAcc.toFixed(1),
       poseAgeMaxMs: ph.age ? ph.age.worstPoseAgeMs : null,
       playerPoseAgeMaxMs: ph.age ? ph.age.worstPlayerPoseAgeMs : null,
       dataAgeMaxMs: ph.age ? ph.age.worstDataAgeMs : null,
@@ -730,7 +896,7 @@ try {
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
   for (const r of report.rows) {
-    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms net ${r.netPoseAgeMs} (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs} (>100ms x${r.frameGapsOver100})  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  ghost ${r.ghostMs}  uncoveredStop ${r.uncoveredStopMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
+    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms net ${r.netPoseAgeMs} (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs} (>100ms x${r.frameGapsOver100})  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s}; worker clock x${r.workerWorldSpeed}, worst 10s ${r.workerWorstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  ghost ${r.ghostMs}  uncoveredStop ${r.uncoveredStopMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
   }
   if (report.errors.length) console.log('page errors:', report.errors.slice(0, 5).join(' | '));
 } catch (e) {

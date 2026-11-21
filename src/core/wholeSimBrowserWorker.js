@@ -29,6 +29,8 @@ import {
 } from '../../scripts/lib/simWorkerHost.mjs';
 import { nowNs } from '../../scripts/lib/simRealm.mjs';
 import { loadModelTruthCensus } from '../data/modelTruth.js';
+import { rehearseSimWorkload } from '../../scripts/lib/simRehearsal.mjs';
+import { resetCrucibleMetaForTests as resetCrucibleRuntime } from '../systems/survivalRecords.js';
 import { createPoseTableWriter } from './simPoseTable.js';
 import {
   bindSabEnvelopeChannel,
@@ -64,7 +66,7 @@ function postPoseTableTransfer() {
   if (buffer) self.postMessage({ kind: 'poseTable', buffer }, [buffer]);
 }
 
-const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
+const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable, reclaimLaneStorage,
   applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({
   onAsyncSaveReady: requestAsyncSaveReply,
   onStep: writePoseTable,
@@ -72,6 +74,7 @@ const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
 });
 
 let chain = Promise.resolve();
+let rehearsed = false;
 let sabEnv = null;
 
 // The browser production lane can keep authoritative time moving while the
@@ -1567,7 +1570,19 @@ async function dispatchDirective(msg) {
       // Simulation publishes authored source strings; locale selection belongs to the main
       // presentation owner. Optional keyed catalogs must not delay this realm's init.
       await loadModelTruthCensus(msg.modelTruthCensusUrl);
+      // Boot rehearsal: before the real game exists, a throwaway Swarm fight runs a few seconds in
+      // its own host so the combat paths are compiled and optimised before the player's first
+      // fight instead of inside it. Once per worker; never on the legacy stop-and-wait lane.
+      let bootRehearsal = null;
+      if (!rehearsed && msg.profile === 'production' && msg.bootRehearsal !== false && msg.legacyStopAndWait !== true) {
+        rehearsed = true;
+        bootRehearsal = await rehearseSimWorkload(createSimHost, { scenarioContract: msg.scenarioContract || null });
+        // The rehearsal ran in this realm: give storage and the Crucible record runtime back clean.
+        reclaimLaneStorage();
+        try { resetCrucibleRuntime(); } catch (_) { /* nothing to reset */ }
+      }
       const result = await init(msg);
+      if (bootRehearsal) result.bootRehearsal = bootRehearsal;
       localClock.enabled = msg.clockMode === 'worker-local';
       localClock.legacy = msg.legacyStopAndWait === true;
       localClock.directiveMarks = msg.directiveMarks === true;

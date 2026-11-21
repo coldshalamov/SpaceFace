@@ -1032,10 +1032,11 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
   // worker-side writes relay back through the tick reply's storageOps so
   // durable persistence stays main-owned.
   const pendingStorageOps = [];
-  installLaneStorage(globalThis, { onWrite: (op, key, value) => {
+  const onLaneStorageWrite = (op, key, value) => {
     pendingStorageOps.push({ op, key, value });
     if (op === 'check') onAsyncSaveReady?.();
-  } });
+  };
+  installLaneStorage(globalThis, { onWrite: onLaneStorageWrite });
   // Reply attachment for ANY reply kind — writes must not wait for the next
   // tickDone (init-ready/finalize/done/bye replies carry them too).
   const drainStorageOps = () => (pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined);
@@ -2116,7 +2117,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
         return {
           journalRebuildReasons: { ...host.rebuildReasons },
           committedJournalSequence: host.committedJournalSequence,
-          physicsDiag: (() => { try { const o = registry.get('physics')?._sg02; if (!o) return null; const d = o.diagnostics(); let sleeping = 0, dyn = 0; for (const rec of o.dynamicRecords || []) { dyn++; try { if (rec.body && rec.body.isSleeping()) sleeping++; } catch (_) {} } return { ...d, dynamicCount: dyn, sleepingCount: sleeping }; } catch (e) { return String(e); } })(),
+          physicsDiag: (() => { try { const o = registry.get('physics')?._sg02; if (!o) return null; const d = o.diagnostics(); let sleeping = 0, dyn = 0; for (const rec of o.dynamicRecords || []) { dyn++; try { if (rec.body && rec.body.isSleeping()) sleeping++; } catch (_) {} } const pd = registry.get('physics')?._diag || {}; return { ...d, dynamicCount: dyn, sleepingCount: sleeping, impactReceiptsMaxPerTick: pd.impactReceiptsMaxPerTick ?? null, impactCarryMax: pd.impactCarryMax ?? null, impactCarriedTotal: pd.impactCarriedTotal ?? null }; } catch (e) { return String(e); } })(),
           lifeLog: args && Array.isArray(args.lifeFor) ? (host.lifeLog || []).filter((r) => args.lifeFor.includes(r[1])) : undefined,
           tick: state.tick,
           seed: state.meta?.seed ?? null,
@@ -3171,6 +3172,12 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
     async finalize() { return handleFinalize(); },
     shutdown() { handleShutdown(); },
     drainStorageOps,
+    /** Take the realm's storage back after another host (the boot rehearsal) ran in this realm:
+     * its writes are cleared from the staged snapshot and this host's write relay is reinstalled. */
+    reclaimLaneStorage() {
+      stageLaneStorage({});
+      installLaneStorage(globalThis, { onWrite: onLaneStorageWrite });
+    },
     hasPendingDurable() { return pendingStorageOps.length > 0 || host.pendingEvents.length > 0; },
     applyPresentationTimeEffects,
     /** E2: the realm's per-system step profile (also rides the tick reply while enabled). */

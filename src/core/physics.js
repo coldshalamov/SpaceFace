@@ -175,6 +175,10 @@ export const physics = {
     // rewritten per receipt — including writing undefined over a prior receipt's measured fields.
     // Kept separate from _impactOptionsScratch so the custom-backend path never inherits stale
     // player-receipt fields if the backend flips on load.
+    // Impact receipts past the per-tick fan-out cap wait here for the next tick (in order, each
+    // with the tick it happened on). See _emitSg02ContactImpacts.
+    this._sg02ImpactCarry = [];
+    this._sg02ImpactCarryNext = [];
     this._sg02ImpactOptionsScratch = {
       backend: 'rapier-dynamic',
       tick: 0,
@@ -1006,14 +1010,56 @@ export const physics = {
 
   _emitSg02ContactImpacts(state) {
     if (!this._sg02 || typeof this._sg02.drainContactImpacts !== 'function') return 0;
-    const receipts = this._sg02.drainContactImpacts();
-    if (!Array.isArray(receipts) || !receipts.length) return 0;
+    const drained = this._sg02.drainContactImpacts();
+    const fresh = Array.isArray(drained) ? drained : [];
+    const carried = this._sg02ImpactCarry;
+    if (!fresh.length && !carried.length) return 0;
+    // Bus fan-out is the cost of an impact burst (a rock pile collapsing, a horde shoved into a
+    // wall): every receipt runs every physics:impact listener. Cap the non-player receipts
+    // delivered per tick and carry the rest, in order, to the next tick — nothing is dropped,
+    // a carried receipt keeps the tick it happened on, and one whose body died or whose id was
+    // recycled in between is skipped. Receipts touching the player always go now.
+    const cap = SG02_IMPACT_FANOUT_CAP;
+    const next = this._sg02ImpactCarryNext;
+    next.length = 0;
+    let delivered = 0;
     let emitted = 0;
-    const options = this._sg02ImpactOptionsScratch;
-    for (const receipt of receipts) {
+    const playerId = state && state.playerId;
+    for (let pass = 0; pass < 2; pass++) {
+      const list = pass === 0 ? carried : fresh;
+      for (let i = 0; i < list.length; i++) {
+        const receipt = list[i];
+        const touchesPlayer = playerId != null && (receipt.aId === playerId || receipt.bId === playerId);
+        if (!touchesPlayer && delivered >= cap && next.length < SG02_IMPACT_CARRY_MAX) {
+          if (pass === 1) receipt.carriedFromTick = state.tick;
+          next.push(receipt);
+          continue;
+        }
+        if (!touchesPlayer) delivered++;
+        if (this._emitOneSg02Impact(state, receipt, pass === 0)) emitted++;
+      }
+    }
+    // Swap the carry buffers: what waited this tick and still waits becomes the new carry.
+    this._sg02ImpactCarry = next;
+    this._sg02ImpactCarryNext = carried;
+    carried.length = 0;
+    const diag = this._diag;
+    if (diag) {
+      // How big bursts really are, and how much waits: read by the no-freeze probe.
+      if (!(diag.impactReceiptsMaxPerTick >= fresh.length)) diag.impactReceiptsMaxPerTick = fresh.length;
+      if (!(diag.impactCarryMax >= next.length)) diag.impactCarryMax = next.length;
+      diag.impactCarriedTotal = (diag.impactCarriedTotal || 0) + next.length;
+    }
+    return emitted;
+  },
+
+  _emitOneSg02Impact(state, receipt, carried) {
+    {
       const a = impactBodyForReceipt(state, receipt.aId);
       const b = impactBodyForReceipt(state, receipt.bId);
-      if (!a || !b || a.alive === false || b.alive === false) continue;
+      if (!a || !b || a.alive === false || b.alive === false) return false;
+      if (carried && (staleImpactGeneration(a, receipt.aGeneration) || staleImpactGeneration(b, receipt.bGeneration))) return false;
+      const options = this._sg02ImpactOptionsScratch;
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
       // Every option field is rewritten per receipt; receipt fields absent on non-player
       // receipts come through as undefined, matching the old literal's Number.isFinite checks.
@@ -1022,7 +1068,7 @@ export const physics = {
       options.bGeneration = receipt.bGeneration;
       // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
       // provenance/status expiry belongs to the canonical simulation tick.
-      options.tick = state.tick;
+      options.tick = Number.isFinite(receipt.carriedFromTick) ? receipt.carriedFromTick : state.tick;
       options.normal = receipt.normal;
       options.causalActorId = receipt.causalActorId;
       options.preSolveClosingSpeed = receipt.preSolveClosingSpeed;
@@ -1036,9 +1082,8 @@ export const physics = {
       options.appliedPlayerHeadingRad = receipt.appliedPlayerHeadingRad;
       options.appliedPlayerCourseRad = receipt.appliedPlayerCourseRad;
       const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, options);
-      if (dp > 0) emitted++;
+      return dp > 0;
     }
-    return emitted;
   },
 
   _syncSg02FrameOrigin(state) {
@@ -1048,6 +1093,8 @@ export const physics = {
 
   _resetSg02AfterLoad() {
     const state = this.state;
+    // Receipts carried from before the load name bodies of the old world.
+    this._sg02ImpactCarry.length = 0;
     if (!usesSg02DynamicAuthority(state)) {
       this._disableSg02DynamicAuthority();
     } else if (!this._nativeRestoreDeferred) {
@@ -1153,6 +1200,7 @@ export const physics = {
   },
 
   _disableSg02DynamicAuthority() {
+    if (this._sg02ImpactCarry) this._sg02ImpactCarry.length = 0;
     if (this._sg02 || this._sg02Init) this._sg02Token++;
     this._sg02DiagnosticsOwner = null;
     // A teardown (load boundary, backend change) ends the episode being timed; a fresh one starts.
@@ -1845,6 +1893,17 @@ function usesSg02DynamicAuthority(state) {
  * Contact-receipt body resolution: solver bodies that are not entities (solid dressing rows)
  * still owe their contact receipts an impact event, so fall back to the dressing table.
  */
+// Non-player impact receipts delivered to the bus per tick; the rest wait for the next tick.
+// The carry itself is bounded: past it, receipts deliver inline rather than wait (never lost).
+export const SG02_IMPACT_FANOUT_CAP = 32;
+const SG02_IMPACT_CARRY_MAX = 512;
+
+// A carried receipt whose body id now names a different occupant is not this impact's body.
+function staleImpactGeneration(entity, generation) {
+  return Number.isSafeInteger(generation) && Number.isSafeInteger(entity.occupantGeneration)
+    && entity.occupantGeneration !== generation;
+}
+
 function impactBodyForReceipt(state, id) {
   const entity = state && state.entities && state.entities.get
     ? state.entities.get(id)

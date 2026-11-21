@@ -391,6 +391,14 @@ function captureProxyFingerprint(entity, fp) {
   return fp;
 }
 
+// The sim-step epoch for the resolve cache. Zero (the default: main thread, tools, tests that
+// never step through the worker stepper) means every call checks the full fingerprint.
+let proxyResolveEpoch = 0;
+/** Called once at the top of each worker sim step. */
+export function advanceCollisionProxyResolveEpoch() {
+  proxyResolveEpoch = proxyResolveEpoch >= 0x3fffffff ? 1 : proxyResolveEpoch + 1;
+}
+
 function proxyFingerprintMatches(entity, fp) {
   if (!fp || fp.length !== PROXY_FP_LENGTH) return false;
   const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
@@ -436,7 +444,32 @@ function proxyFingerprintMatches(entity, fp) {
 export function resolveCollisionProxyManifest(entity) {
   if (entity && typeof entity === 'object') {
     const slot = entity._collisionProxyResolve;
-    if (slot && proxyFingerprintMatches(entity, slot.fp)) return slot.manifest;
+    if (slot) {
+      // Validated once per sim step: a body asked many times in one step (line checks, witness
+      // occluders, dock reads, impact consequences) pays the full 33-field fingerprint once and
+      // a 4-field identity check after. A body, data shell, revision or type swap is still seen
+      // at once; an in-place edit of a data field is seen from the next step.
+      if (proxyResolveEpoch > 0 && slot.epoch === proxyResolveEpoch) {
+        const fp = slot.fp;
+        const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+        const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
+        // The in-place edits that really happen mid-step (hull swap rewrites data.defId, a stamped
+        // proxy, a collides toggle, a resize, a body reshape) are still seen at once.
+        if (fp[PROXY_FP_BODY] === entity.physicsBody && fp[PROXY_FP_DATA] === entity.data
+          && fp[PROXY_FP_TYPE] === entity.type && fp[PROXY_FP_COLLIDES] === entity.collides
+          && fp[PROXY_FP_RADIUS] === entity.radius
+          && fp[PROXY_FP_BODY_REVISION] === (body ? body.revision : entity.physicsBody)
+          && fp[PROXY_FP_BODY_SHAPE] === (body ? body.shape : undefined)
+          && fp[PROXY_FP_BODY_MANIFEST] === (body ? body.collisionProxyManifest : undefined)
+          && fp[PROXY_FP_DATA_DEF_ID] === (data ? data.defId : undefined)
+          && fp[PROXY_FP_DATA_PROXY] === (data ? data.collisionProxy : undefined)) {
+          return slot.manifest;
+        }
+      } else if (proxyFingerprintMatches(entity, slot.fp)) {
+        slot.epoch = proxyResolveEpoch;
+        return slot.manifest;
+      }
+    }
     const manifest = resolveCollisionProxyManifestInner(entity);
     // A sealed or frozen body can't take the slot — it resolves fresh every call,
     // exactly as before the cache existed.
@@ -444,6 +477,7 @@ export function resolveCollisionProxyManifest(entity) {
       entity._collisionProxyResolve = {
         fp: captureProxyFingerprint(entity, slot && slot.fp ? slot.fp : new Array(PROXY_FP_LENGTH)),
         manifest,
+        epoch: proxyResolveEpoch,
       };
     }
     return manifest;

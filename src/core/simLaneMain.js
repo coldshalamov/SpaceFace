@@ -1003,6 +1003,8 @@ export function createSimLaneRuntime({
     pending.delete(msg.seq);
     try {
       if (msg.kind === 'ready') {
+        // The worker's boot rehearsal receipt (how long, how many steps), for the lane probes.
+        if (msg.bootRehearsal && typeof window !== 'undefined') window.__SF_BOOT_REHEARSAL__ = msg.bootRehearsal;
         applyInitReply(msg);
         ready = true;
         tracked.resolve?.(msg);
@@ -2933,6 +2935,9 @@ export function createSimLaneRuntime({
           facadeRows: poseFacadeRows,
           tick: poseFeed.snapshot ? poseFeed.snapshot.tick : null,
           simTime: poseFeed.snapshot ? poseFeed.snapshot.simTime : null,
+          // The worker's own clock at that write (its performance.now): world speed measured on the
+          // worker, independent of when the main thread looks.
+          workerWallMs: poseFeed.snapshot ? poseFeed.snapshot.wallMs : null,
           ageMs: poseFeedLastAdvanceAtMs >= 0 ? Math.max(0, nowMs() - poseFeedLastAdvanceAtMs) : null,
           transferArrivals: poseTransferArrivals,
           generationMismatchFrames: poseGenerationMismatchFrames,

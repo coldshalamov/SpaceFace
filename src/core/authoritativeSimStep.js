@@ -22,6 +22,7 @@
 import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { updateQueueForThisStep } from './catchupPolicy.js';
 import { getSimStepProfiler, nowNs } from './simStepProfiler.js';
+import { advanceCollisionProxyResolveEpoch } from '../data/collisionProxyManifests.js';
 
 export function createAuthoritativeStepper({
   state,
@@ -64,6 +65,7 @@ export function createAuthoritativeStepper({
         }
         return;
       }
+      advanceCollisionProxyResolveEpoch();
       if (profiler.active) {
         // Begin the measured tick before the pre-step so the ranking includes the ~2 ms of
         // step preamble it used to omit: core.preStep, input.update and the input-command
@@ -112,6 +114,9 @@ export function createAuthoritativeStepper({
         }
         if (core && typeof core.lifetimeSweep === 'function') core.lifetimeSweep(dt, state);
       }
+      // Between steps (RPCs, saves, a sector materialising) the resolve cache starts a fresh
+      // epoch, so an edit made there is checked in full on its first read.
+      advanceCollisionProxyResolveEpoch();
     },
 
     /** Manifest ids that this stepper can step — used by lane probes. */
