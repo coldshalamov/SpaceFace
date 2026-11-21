@@ -2189,6 +2189,12 @@ async function mountFlightHud(opts = {}) {
   const minimapT = Number(params.get('minimapT'));
   if (Number.isFinite(minimapT) && minimapT !== 0) state.simTime += minimapT;
   // `?minimapCast=1`: a composed round announces its cast (the composer's event, through the bus).
+  // `?minimapBerth=1` (with minimap=calm): the fly-to-berth autopilot is taking the ship to Helios.
+  if (params.get('minimapBerth') && state.entities.has(320)) {
+    state.nav.autopilot = { ...(state.nav.autopilot || {}), active: true, targetEntityId: 320 };
+    state.ui.berthAutopilotStationId = 320;
+    state.nav.waypoint = null; // the lane alone, not the objective course on the same path
+  }
   if (params.get('minimapCast')) {
     bus.emit('encounter:castAnnounced', { wave: 4, recipeId: 'bench', line: 'A rushing pack, with a sniper on the rim', answer: 'Break its line with a rock', jobs: ['rush', 'reach', 'deny'], groups: [], tick: 0 });
   }

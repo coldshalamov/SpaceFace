@@ -1079,6 +1079,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     colorOf = null,
     jobColors = true,
     castAnnounce = null,
+    berthTarget = null,
   }) {
     const t0 = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
     const cut = chamferSize(width);
@@ -1708,6 +1709,36 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       }
       if (!fits) cleanTitle = 'OBJECTIVE';
       objectiveText = distStr ? `${cleanTitle} · ${distStr}` : cleanTitle;
+    }
+
+    // 11b. Fly-to-berth autopilot: a thin dashed amber lane from the ship to the berth station
+    // (pinned to the rim when the station is off the scope), the route line's weight.
+    if (berthTarget) {
+      const bt = project(berthTarget.x, berthTarget.z);
+      const bdx = bt.x - cx;
+      const bdy = bt.y - cy;
+      const blen = Math.hypot(bdx, bdy);
+      if (blen > 16) {
+        const end = pointInsideChamfer(bt.x, bt.y, width, height, 12, cut)
+          ? bt : intersectChamferRim(cx, cy, bdx, bdy, width, height, 12, cut);
+        ctx.save();
+        // A dark underlay keeps the lane legible where it crosses a rock field.
+        ctx.strokeStyle = 'rgba(4, 12, 18, 0.75)';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(cx + (bdx / blen) * 12, cy + (bdy / blen) * 12);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        ctx.strokeStyle = COLOR_COURSE;
+        ctx.globalAlpha = 0.95;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(cx + (bdx / blen) * 12, cy + (bdy / blen) * 12);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // 12. Directional hull-hit rim flashes

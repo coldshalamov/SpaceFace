@@ -2530,6 +2530,13 @@ export function createRadar(ctx) {
         stanceOf: (entity) => shipState(entity, playerTeam, state, hostileOf),
         colorOf: (entity) => contactColor(entity, playerTeam, colorblindMode, state, hostileOf),
         jobColors: colorblindMode === 'none',
+        // The fly-to-berth autopilot (E): the minimap draws its approach lane to the station.
+        berthTarget: (() => {
+          const ap = state.nav && state.nav.autopilot;
+          if (!ap || !ap.active || ap.targetEntityId == null || state.ui?.berthAutopilotStationId !== ap.targetEntityId) return null;
+          const st = state.entities && typeof state.entities.get === 'function' ? state.entities.get(ap.targetEntityId) : null;
+          return st && st.pos && Number.isFinite(st.pos.x) && Number.isFinite(st.pos.z) ? st.pos : null;
+        })(),
         castAnnounce: castAnnounce && Number.isFinite(state.simTime) && state.simTime - castAnnounce.atS < 6
           ? { jobs: castAnnounce.jobs, ageS: state.simTime - castAnnounce.atS } : null,
       });
