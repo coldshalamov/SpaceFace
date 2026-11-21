@@ -90,7 +90,18 @@ const allowEvidenceBackgroundExecution = launchConfig.isolatedEvidence === true
   && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION === '1';
 const hideEvidenceWindow = launchConfig.isolatedEvidence === true
   && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW === '1';
+// A visible-but-never-activated probe window (2026-11-21, owner: test windows must not pop in
+// front of what he is watching). Shown with showInactive(), never focused; it renders on screen
+// through the normal GPU path (unlike the offscreen hide mode) so timings match a player window.
+const inactiveEvidenceWindow = launchConfig.isolatedEvidence === true
+  && process.env.SPACEFACE_EVIDENCE_SHOW_INACTIVE === '1';
 const backgroundThrottling = !allowEvidenceBackgroundExecution;
+if (allowEvidenceBackgroundExecution) {
+  // The window may be unfocused or occluded; keep Chromium from backgrounding it.
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('disable-background-timer-throttling');
+}
 const RECEIPT_PATH = process.env.SPACEFACE_LAUNCH_RECEIPT || '';
 const receipt = (status, details = {}) => appendLaunchReceipt(RECEIPT_PATH, status, details);
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
@@ -542,7 +553,8 @@ function systemLifecycleSuspended() {
 function deriveWindowLifecycleState(win) {
   if (systemLifecycleSuspended()) return 'system-suspended';
   // An explicitly hidden isolated probe presents offscreen without stealing focus.
-  if (hideEvidenceWindow && allowEvidenceBackgroundExecution && win && !win.isDestroyed()) {
+  if ((hideEvidenceWindow || inactiveEvidenceWindow) && allowEvidenceBackgroundExecution
+    && win && !win.isDestroyed()) {
     return 'foreground-visible';
   }
   if (!win || win.isDestroyed() || win.isMinimized() || !win.isVisible()) {
@@ -1340,7 +1352,8 @@ async function createWindow() {
   };
   let focusWhenReady = false;
   const focusGameWindow = () => {
-    if (startupAbandoned || win.isDestroyed() || appQuitting || hideEvidenceWindow) return;
+    if (startupAbandoned || win.isDestroyed() || appQuitting || hideEvidenceWindow
+      || inactiveEvidenceWindow) return;
     if (win.isMinimized()) win.restore();
     win.focus();
   };
@@ -1515,7 +1528,8 @@ async function createWindow() {
       evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
       fullscreen: !launchConfig.isolatedEvidence,
     });
-    if (!hideEvidenceWindow) win.show();
+    if (inactiveEvidenceWindow) win.showInactive();
+    else if (!hideEvidenceWindow) win.show();
     if (focusWhenReady) {
       focusWhenReady = false;
       focusGameWindow();
@@ -1554,6 +1568,49 @@ async function createWindow() {
     if (initialCanonicalLoadPending) canonicalRetryAvailable = false;
     receipt('navigation-failed', failure);
   });
+  // NO-FREEZE recorder (owner bug 2026-11-21): every freeze the game itself detects
+  // lands in userData/freeze-log.jsonl — one JSON line per episode, carrying what
+  // the simulation was waiting on (the detector's own attribution) and which input
+  // devices were connected. The owner's next real session is then the reproduction
+  // no synthetic test can stand in for. Isolated evidence launches write to their
+  // own temp userData, so probes never pollute the owner's log.
+  const freezeLogPath = path.join(app.getPath('userData'), 'freeze-log.jsonl');
+  let freezeLogWrites = 0;
+  const FREEZE_LOG_MAX_LINES = 400;
+  function appendFreezeRecord(record) {
+    try {
+      if (freezeLogWrites === 0 && fs.existsSync(freezeLogPath)
+        && fs.statSync(freezeLogPath).size > 2 * 1024 * 1024) {
+        try { fs.renameSync(freezeLogPath, `${freezeLogPath}.1`); } catch (_) { /* keep appending */ }
+      }
+      if (freezeLogWrites >= FREEZE_LOG_MAX_LINES) return;
+      freezeLogWrites++;
+      fs.appendFileSync(freezeLogPath, `${JSON.stringify(record)}\n`, 'utf8');
+    } catch (_) { /* the recorder must never disturb the game */ }
+  }
+  // A device list is fetched per episode (never per frame): a phantom pad or a
+  // drifting stick is a freeze suspect, so its presence belongs on the record.
+  async function freezeDeviceSnapshot() {
+    try {
+      const source = await Promise.race([
+        win.webContents.executeJavaScript(
+          '(() => { try { return JSON.stringify([...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean).map((g) => g.id)); } catch (_) { return "[]"; } })()',
+          true,
+        ),
+        new Promise((resolve) => setTimeout(() => resolve('[]'), 1500)),
+      ]);
+      const ids = JSON.parse(source);
+      return Array.isArray(ids) ? ids : [];
+    } catch (_) { return []; }
+  }
+  let recordedVersion = null;
+  try { recordedVersion = (publicBuildInfo && publicBuildInfo().version) || app.getVersion(); } catch (_) { /* cosmetic */ }
+  appendFreezeRecord({
+    at: new Date().toISOString(),
+    kind: 'session-start',
+    version: recordedVersion,
+    note: 'freeze recorder armed: world-motion holds and sim-lane freeze episodes land here with connected input devices',
+  });
   let motionHoldReceipts = 0;
   win.webContents.on('console-message', (details) => {
     const message = details && details.message;
@@ -1561,6 +1618,17 @@ async function createWindow() {
       && motionHoldReceipts < 8) {
       motionHoldReceipts++;
       receipt('world-motion-hold', { message: message.slice(0, 8192) });
+    }
+    if (typeof message === 'string'
+      && (message.startsWith('[world-motion-hold] ') || message.includes('[simLane] freeze episode'))) {
+      freezeDeviceSnapshot().then((devices) => {
+        appendFreezeRecord({
+          at: new Date().toISOString(),
+          kind: message.includes('freeze episode') ? 'freeze-episode' : 'motion-hold',
+          devices,
+          message: message.slice(0, 8192),
+        });
+      });
     }
     if (isAssetPreloadFailureMessage(message)) {
       receipt('asset-preload-failed', { message: receiptText(message) });
