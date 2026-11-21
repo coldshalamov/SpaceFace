@@ -1,4 +1,5 @@
 import { createPauseFrame } from '../views/menuFrames.js';
+import { worksNextStep } from '../../data/worksContractWords.js';
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
 // The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, pause, amended by Task B §1.4):
 // the world held, not hidden — the frozen game at 0 % scrim; "Paused" at screen-title size top-left;
@@ -199,6 +200,8 @@ function missionNextStep(m) {
       return 'Next: buy or carry ' + missionCommodity(m) + ', then sell at the destination market.';
     case 'mining_quota':
       return 'Next: mine ' + missionCommodity(m) + ' and keep cargo room free.';
+    case 'works_contract':
+      return worksNextStep(m);
     case 'bounty_hunt':
     case 'patrol_clear':
       return 'Next: follow tracked nav. Expect a fight before the timer runs out.';

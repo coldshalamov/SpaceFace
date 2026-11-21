@@ -58,6 +58,7 @@ const TASK_TIME_FALLBACK = {
   bulk_trade: 30,
   bounty_hunt: 60,
   mining_quota: 45,
+  works_contract: 240,
   salvage_retrieval: 30,
   escort: 90,
   patrol_clear: 45,

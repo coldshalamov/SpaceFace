@@ -1,4 +1,5 @@
 import { getCinderglassJobMapMarkers } from '../features/cinderglassJob/integration.js';
+import { worksObjectiveLine } from '../data/worksContractWords.js';
 import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
 import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { commodityDisplayName } from './commodityNames.js';
@@ -3884,6 +3885,7 @@ function missionSummary(mission) {
   if (!mission) return 'Proceed to the objective';
   const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
   const target = Math.max(1, Number(mission.objectiveTarget) || 1);
+  if (mission.params && mission.params.works) return worksObjectiveLine(mission);
   if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
   if (mission.type === 'bulk_haul') return `Haul ${progress}/${target} bulk units`;
   if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;

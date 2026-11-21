@@ -4,6 +4,7 @@
 // missionLog.js re-exports objectiveText/continueRecap for its existing screen importers.
 
 import { SECTORS } from '../../data/sectors.js';
+import { worksObjectiveLine } from '../../data/worksContractWords.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { starterRamSentence } from '../../data/starterJobs.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
@@ -177,6 +178,8 @@ export function objectiveText(m) {
       return `Sell ${Math.max(0, tgt - prog)} units ${cmdtyName(p.cmdtyId)} at ${dest}`;
     case 'mining_quota':
       return `Mine ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
+    case 'works_contract':
+      return worksObjectiveLine(m);
     case 'bounty_hunt':
       return starterRamSentence(p) || 'Eliminate target';
     case 'patrol_clear':

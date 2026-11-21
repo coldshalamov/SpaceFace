@@ -9,6 +9,12 @@ import {
   DIONE_TARGET_PRACTICE, clearDionePractice, dionePracticeResult, dionePracticeWaypoint,
   driveDionePractice, onDionePracticeImpact, onDionePracticeShot, onDionePracticeThrow,
 } from '../missions/dioneTargetPractice.js';
+import {
+  WORKS_CONTRACT_TYPE, grantWorksKit, isWorksContract, onWorksCourierDelivered, onWorksDefenseDeployed,
+  onWorksDrillBreak, onWorksDrillYield, onWorksGasHit, onWorksLinkCreated, onWorksMachineInstalled,
+  onWorksPlanetHarvest, onWorksRigHurt, worksContractDebrief, worksContractLossText,
+  worksContractPreflight, worksContractWaypoint, worksObjectiveTarget,
+} from '../missions/worksContractRuntime.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 // W-TENDER — the authored Tender run. The offer/tuning are data (missionsData.js); this module
 // owns the authorship guard, the rival-queue ledger, the drive adjudicator, the weigh stamps, and
@@ -872,6 +878,16 @@ export const missions = {
     for (const event of ['mission:completed', 'mission:failed', 'mission:expired']) {
       this._unsubs.push(bus.on(event, (p) => clearDionePractice(this, p?.missionId)));
     }
+    // Works contracts: the rover, the site system and the planet already say what happened.
+    this._unsubs.push(bus.on('drill:yield', (p) => onWorksDrillYield(this, p)));
+    this._unsubs.push(bus.on('drill:break', (p) => onWorksDrillBreak(this, p)));
+    this._unsubs.push(bus.on('drill:gasHit', (p) => onWorksGasHit(this, p)));
+    this._unsubs.push(bus.on('drill:backblast', (p) => onWorksRigHurt(this, p)));
+    this._unsubs.push(bus.on('site:machineInstalled', (p) => onWorksMachineInstalled(this, p)));
+    this._unsubs.push(bus.on('site:courierDelivered', (p) => onWorksCourierDelivered(this, p)));
+    this._unsubs.push(bus.on('site:linkCreated', (p) => onWorksLinkCreated(this, p)));
+    this._unsubs.push(bus.on('site:defenseDeployed', (p) => onWorksDefenseDeployed(this, p)));
+    this._unsubs.push(bus.on('planet:harvest', (p) => onWorksPlanetHarvest(this, p)));
     this._unsubs.push(bus.on('projectile:hit', (p) => this._onCapitalBossGunHit(p)));
     this._unsubs.push(bus.on('combat:tumbled', (p) => this._onCapitalBossTumbled(p)));
 
@@ -1599,6 +1615,7 @@ export const missions = {
     }
     state.missions.active.push(inst);
     if (inst.params?.workingBattlefield) grantWorkingBattlefieldPolymers(this, inst, addCargo);
+    if (isWorksContract(inst)) grantWorksKit(this, inst, addCargo);
     // B5 is a real choice: once one loop is accepted, withdraw the two tutorial siblings before
     // synchronous mission:accepted listeners run. The accepted instance remains an ordinary live
     // mission; only the unchosen board invitations disappear.
@@ -1955,6 +1972,10 @@ export const missions = {
       const ready = workingBattlefieldPreflight(this.state);
       if (!ready.ok) return ready;
     }
+    if (offer?.params?.works) {
+      const ready = worksContractPreflight(this, offer);
+      if (!ready.ok) return ready;
+    }
     if (offer?.type === 'race' && (this.state.missions.active || []).some(m => m?.status === 'active' && m.type === 'race')) {
       return { ok: false, reason: 'Finish or leave the current run before accepting another.' };
     }
@@ -2206,6 +2227,7 @@ export const missions = {
   _objectiveTarget(typeId, params) {
     switch (typeId) {
       case DIONE_TARGET_PRACTICE: return 3;
+      case WORKS_CONTRACT_TYPE: return worksObjectiveTarget(params && params.works && params.works.goal);
       case 'bulk_trade': return params.qty;
       // W-TENDER: the desk's count is the lot — 440 u of iron ore sold into the intake.
       case TENDER_HAUL_TYPE: return Math.max(1, Math.round(Number(params && params.qty) || 1));
@@ -2561,6 +2583,8 @@ export const missions = {
     }
     const dionePractice = dionePracticeWaypoint(this.state, m);
     if (dionePractice) return { ...base, ...dionePractice };
+    const worksFocus = worksContractWaypoint(this, m);
+    if (worksFocus) return { ...base, ...worksFocus };
     const waspFocus = firstWaspRouteFocus(m, this.state);
     if (waspFocus) return { ...base, ...waspFocus };
     const buoyFocus = starterBuoyRouteFocus(m, this.state);
@@ -4623,6 +4647,7 @@ export const missions = {
   },
 
   _missionSuccessDebriefText(m) {
+    if (isWorksContract(m)) return worksContractDebrief(m);
     if (isShortageGateRepair(m)) {
       const restored = this.state.economyContracts?.shortageRepairs?.[m.cause.shortageEventId];
       if (restored) return restored.text;
@@ -4734,6 +4759,7 @@ export const missions = {
 
   _missionLossDebriefText(m, reason) {
     const dest = this._destName(m);
+    if (isWorksContract(m)) return worksContractLossText(m, reason);
     if (m.type === DIONE_TARGET_PRACTICE) {
       if (reason === 'range_foul') return 'Sorrel: Foul. The score does not stand.';
       if (reason === 'range_no_score') return 'Sorrel: No score. Try the rail again.';

@@ -37,6 +37,7 @@ import { SET_PIECE_FOLLOW_ON_SOURCE } from '../data/sandboxSetPieceFollowOns.js'
 import { releasableContractUnits, sellableCargoQuantity } from './cargo.js';
 import { isSpineBreakOperation, SPINE_BREAK_CONFIG } from '../missions/spineBreakWorksite.js';
 import { workingBattlefieldObjective } from './workingBattlefieldRuntime.js';
+import { worksObjectiveLine } from '../data/worksContractWords.js';
 import { pluralWord } from '../core/numberFormat.js';
 
 
@@ -1067,6 +1068,7 @@ export function missionNavReason(m, station, sector) {
   if (isReportInRestitution(m)) return `Dock at ${stationName} to report in`;
   if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty}u ${cargo}, then deliver to ${stationName}`;
   if (p.workingBattlefield) return workingBattlefieldObjective(m);
+  if (p.works) return worksObjectiveLine(m);
   // W-TENDER fail-forward spot row: a qty-less carriage row, so it names its own errand rather
   // than the cargo_delivery default's empty quantity. The dock truth: berthing completes the
   // row — the rail-market sale is unverified income, never the contract's term.

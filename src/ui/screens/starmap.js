@@ -4,6 +4,7 @@
 // danger/economy/influence from private save fields, and it does not own simulation math. The same
 // transit forecast shown here is the function used by sectorSim on jump arrival.
 import { SECTORS, dangerTier } from '../../data/sectors.js';
+import { worksObjectiveLine } from '../../data/worksContractWords.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { FACTION_META } from '../../data/factions.js';
@@ -608,6 +609,7 @@ function missionSummary(mission) {
   if (!mission) return 'Proceed to the objective';
   const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
   const target = Math.max(1, Number(mission.objectiveTarget) || 1);
+  if (mission.params && mission.params.works) return worksObjectiveLine(mission);
   if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
   if (mission.type === 'bulk_haul') return `Haul ${progress}/${target} bulk units`;
   if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;

@@ -1,5 +1,6 @@
 import { isWeighingOperation } from '../missions/weighingWorksite.js';
 import { syncDioneTargetPracticeOffer } from '../missions/dioneTargetPractice.js';
+import { syncWorksContractOffers } from '../missions/worksContractRuntime.js';
 import { starterWorkSite, STARTER_WORKDAY_VERSION } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -90,7 +91,8 @@ export const missionBoardOps = {
       const captainChanged = syncCaptainStandingOrders(this, info, board);
       const reyChanged = syncColdburnBid(this, info, board);
       const dioneChanged = syncDioneTargetPracticeOffer(this, info, board);
-      if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
+      const worksChanged = syncWorksContractOffers(this, info, board);
+      if (worksChanged || storyChanged || setPieceChanged || heistChanged || breakawayChanged
         || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || tenderChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged || captainChanged || reyChanged || dioneChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
@@ -268,6 +270,7 @@ export const missionBoardOps = {
     syncCaptainStandingOrders(this, info, board);
     syncColdburnBid(this, info, board);
     syncDioneTargetPracticeOffer(this, info, board);
+    syncWorksContractOffers(this, info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
   },

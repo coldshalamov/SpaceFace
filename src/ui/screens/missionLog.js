@@ -1,4 +1,5 @@
 import { authoredCinderRoute, cinderJournalAction, CINDER_TAG } from '../../missions/cinderRoute.js';
+import { worksNextStep } from '../../data/worksContractWords.js';
 import { patrolPaperworkAction, patrolContractBrief } from '../../missions/patrolPaperwork.js';
 import { seedCharterOffer, SEED_CHARTER_STATION } from '../../systems/seedCharter.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
@@ -539,6 +540,8 @@ function nextStepText(m, state) {
       return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell at the destination market.';
     case 'mining_quota':
       return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field and keep cargo space free.';
+    case 'works_contract':
+      return worksNextStep(m);
     case 'salvage_retrieval':
       return 'Next: recover the marked cargo, keep enough hold space, and deliver it to ' + dest + '.';
     case 'bounty_hunt': {
