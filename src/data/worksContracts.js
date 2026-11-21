@@ -311,8 +311,8 @@ export const WORKS_CONTRACTS = Object.freeze([
     id: 'works_phoebe_echo_forty_megawatts', rung: 'build', stationId: 'station_phoebe_echo', reward_cr: 5200, repeat: false,
     requires: ['works_beltout_first_claim'],
     title: 'Forty Megawatts at Phoebe', client: 'Echo Shrine Keepers',
-    brief: 'The keepers at the Echo Shrine run their instruments off claim power and want one claim that can carry the load alone. Build one claim in Phoebe Echo until it generates forty megawatts by itself.',
-    summary: 'Building job. One of your claims in Phoebe Echo generates 40 MW or more. Power spread across two claims does not add up. A Line Core makes 12 MW, a Gas Tap adds 8 MW for each sealed gas pocket cell it touches, and a solar sail from Field Build adds 8 MW.',
+    brief: 'The keepers at the Echo Shrine run their instruments off claim power and want one claim that can carry the whole load. Bring one claim in Phoebe Echo up to forty megawatts.',
+    summary: 'Building job. One of your claims in Phoebe Echo runs on 40 MW or more. A Line Core makes 12 MW, a Gas Tap adds 8 MW for each sealed gas pocket cell it touches, a solar sail from Field Build adds 8 MW, and power sent over a tether from a second claim counts where it arrives.',
     goal: { kind: 'power', mw: 40 },
   }),
   job({

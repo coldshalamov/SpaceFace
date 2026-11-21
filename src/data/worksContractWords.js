@@ -78,7 +78,7 @@ export function worksObjectiveLine(mission) {
     case 'claims': line = `Hold ${have}/${want} claims in this sector at once`; break;
     case 'power': {
       const best = Math.max(0, Math.floor(Number(works.bestMw) || 0));
-      line = `Get one claim here generating ${goal.mw} MW (best so far ${best} MW)`;
+      line = `Get one claim here running on ${goal.mw} MW (best so far ${best} MW)`;
       break;
     }
     default: line = mission.title || 'Works contract';
@@ -102,7 +102,7 @@ export function worksNextStep(mission) {
     case 'defense': return 'Next: fly to your claims and open Field Build (Shift+B).';
     case 'skim': return 'Next: fly the marked band of the planet with the scoop open, and climb out before the hull cooks.';
     case 'claims': return 'Next: set the rover down in a rock and install a machine. The first machine anchors the claim.';
-    case 'power': return 'Next: on one claim, seat Gas Taps against sealed gas pockets, and add solar sails from Field Build, until it makes the power.';
+    case 'power': return 'Next: on one claim, seat Gas Taps against sealed gas pockets and add solar sails from Field Build. A power tether from a second claim counts too.';
     default: return 'Next: follow the tracked marker.';
   }
 }

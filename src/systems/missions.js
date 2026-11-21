@@ -11,6 +11,7 @@ import {
 } from '../missions/dioneTargetPractice.js';
 import {
   WORKS_CONTRACT_TYPE, driveWorksContract, grantWorksKit, isWorksContract, onWorksCourierDelivered, onWorksDefenseDeployed,
+  onWorksYardChanged,
   onWorksDrillBreak, onWorksDrillYield, onWorksGasHit, onWorksLinkCreated, onWorksMachineInstalled,
   onWorksPlanetHarvest, onWorksRigHurt, worksContractDebrief, worksContractLossText,
   worksContractPreflight, worksContractWaypoint, worksObjectiveTarget,
@@ -888,6 +889,10 @@ export const missions = {
     this._unsubs.push(bus.on('site:linkCreated', (p) => onWorksLinkCreated(this, p)));
     this._unsubs.push(bus.on('site:defenseDeployed', (p) => onWorksDefenseDeployed(this, p)));
     this._unsubs.push(bus.on('planet:harvest', (p) => onWorksPlanetHarvest(this, p)));
+    for (const name of ['site:machineInstalled', 'site:machineRemoved', 'site:machineMode', 'site:defenseDeployed',
+      'site:linkCreated', 'site:linkRemoved', 'site:anchored', 'site:lost', 'site:blueprintApplied']) {
+      this._unsubs.push(bus.on(name, () => onWorksYardChanged(this)));
+    }
     this._unsubs.push(bus.on('projectile:hit', (p) => this._onCapitalBossGunHit(p)));
     this._unsubs.push(bus.on('combat:tumbled', (p) => this._onCapitalBossTumbled(p)));
 

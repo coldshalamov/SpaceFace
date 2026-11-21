@@ -219,46 +219,93 @@ test('every job is posted at a real station, under its own title, behind a job t
   assert.ok(new Set(WORKS_CONTRACTS.map((row) => row.stationId)).size >= 24, 'the jobs reach across the galaxy');
 });
 
-test('a claims job counts the anchored claims standing in its sector, and a lost one counts down', () => {
-  const yard = [];
-  const sites = { sectorNetworkProjection: (sectorId) => ({ sites: yard.filter((s) => s.sectorId === sectorId) }) };
-  const h = harness('works_sedna_three_rocks', { sites });
+// The two yard goals read the REAL site system: claims staked by installing machines through
+// asteroidSites over a real generated rock, the way the bench and the contact-ring tests do it.
+const YARD_POCKET = [[14, 2], [14, 0], [14, 1], [13, 2], [15, 2], [13, 1], [15, 1], [13, 3], [14, 3]];
+async function yardHarness(id) {
+  const { asteroidSites } = await import('../src/systems/asteroidSites.js');
+  const { generateDrillField, tileIndex } = await import('../src/systems/drill.js');
+  const { resolveBoreFamily } = await import('../src/systems/drillFieldModel.js');
+  const box = { sites: null };
+  const h = harness(id, { sites: new Proxy({}, { get: (_, key) => (typeof box.sites[key] === 'function' ? box.sites[key].bind(box.sites) : box.sites[key]) }) });
+  const items = h.state.player.cargo.items;
+  Object.assign(items, { cmdty_regocrete: 60, cmdty_control_unit: 12, cmdty_refined_metals: 20 });
+  box.sites = Object.create(asteroidSites);
+  box.sites.init({ state: h.state, bus: h.bus, helpers: {}, registry: { get: () => null } });
+  const stake = (asteroidId, sectorId = h.offer.destSectorId) => {
+    const here = h.state.world.currentSectorId;
+    h.state.world.currentSectorId = sectorId;
+    const ent = { id: asteroidId, type: 'asteroid', alive: true, pos: { x: 100 + asteroidId, z: 40 }, radius: 9,
+      data: { typeId: 'ast_common_rock', yieldU: 18, drillCleared: [], fieldId: 'field_1' } };
+    h.state.entities.set(asteroidId, ent); h.state.entityList.push(ent);
+    ent.data.boreFamily = resolveBoreFamily(ent.data);
+    const field = generateDrillField(asteroidId, ent.data.boreFamily);
+    for (const [c, r] of YARD_POCKET) field[c][r] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+    ent.data.drillCleared = YARD_POCKET.map(([c, r]) => tileIndex(c, r));
+    h.state.drill = { active: true, asteroidId, field, avatar: { col: 14, row: 2 } };
+    const bore = () => { h.state.drill = { active: true, asteroidId, field, avatar: { col: 14, row: 2 } }; };
+    const anchor = () => {
+      bore();
+      h.state.world.currentSectorId = sectorId;
+      const core = box.sites.installMachine({ asteroidId, defId: 'sm_massline_core', col: 14, row: 1 });
+      assert.equal(core.ok, true, `core on rock ${asteroidId}: ${core.reason}`);
+      h.state.world.currentSectorId = here;
+      return core.siteId;
+    };
+    h.state.world.currentSectorId = here;
+    return { ent, anchor };
+  };
+  const beat = () => { h.state.tick = (h.state.tick | 0) + 60; h.host.update(1 / 60, h.state); };
+  return { ...h, sitesSys: box.sites, stake, beat };
+}
+
+test('a claims job counts real anchored claims in its sector, even after their rocks stream out', async () => {
+  const h = await yardHarness('works_proteus_two_quiet_rocks');
   h.accept();
   const m = h.active();
-  const here = m.destSectorId;
-  const beat = () => { h.state.tick = (h.state.tick | 0) + 60; h.state.tick -= h.state.tick % 60; h.host.update(1 / 60, h.state); };
-  assert.equal(m.objectiveTarget, 3);
-  assert.match(worksObjectiveLine(m), /Hold 0\/3 claims in this sector at once/);
-  yard.push({ sectorId: here, anchored: true }, { sectorId: here, anchored: false }, { sectorId: 'elsewhere', anchored: true });
-  beat();
-  assert.equal(m.objectiveProgress, 1, 'a bare tunnel and a claim in another sector do not count');
-  yard[1].anchored = true;
-  beat();
-  assert.equal(m.objectiveProgress, 2);
-  yard.shift();
-  beat();
-  assert.equal(m.objectiveProgress, 1, 'a claim that was lost is no longer held');
-  assert.equal(m.status, 'active');
-  yard.push({ sectorId: here, anchored: true }, { sectorId: here, anchored: true });
-  beat();
+  assert.equal(m.objectiveTarget, 2);
+  assert.match(worksObjectiveLine(m), /Hold 0\/2 claims in this sector at once/);
+  h.stake(9001).anchor();
+  h.stake(9002, 'sector_helios_prime').anchor();
+  h.beat();
+  assert.equal(m.objectiveProgress, 1, 'a claim in another sector does not count');
+  h.stake(9003);
+  h.beat();
+  assert.equal(m.objectiveProgress, 1, 'a rock nobody anchored does not count');
+  // Fly away: the first rock leaves the streamed world. Its claim is still held.
+  h.state.entities.delete(9001);
+  h.state.entityList = h.state.entityList.filter((e) => e.id !== 9001);
+  h.stake(9004).anchor();
+  h.beat();
   assert.equal(m.status, 'completed');
-  assert.equal(h.paid(), 5800);
+  assert.equal(h.paid(), 3700);
 });
 
-test('a power job wants the megawatts on one claim, and shows the best so far', () => {
-  const yard = [];
-  const sites = { sectorNetworkProjection: (sectorId) => ({ sites: yard.filter((s) => s.sectorId === sectorId) }) };
-  const h = harness('works_phoebe_echo_forty_megawatts', { sites });
+test('a power job reads what one real claim runs on, shows the best so far, and stays cheap', async () => {
+  const h = await yardHarness('works_phoebe_echo_forty_megawatts');
   h.accept();
   const m = h.active();
-  const here = m.destSectorId;
-  const beat = () => { h.state.tick = (h.state.tick | 0) + 60; h.state.tick -= h.state.tick % 60; h.host.update(1 / 60, h.state); };
-  yard.push({ sectorId: here, anchored: true, totalPowerGenMw: 28 }, { sectorId: here, anchored: true, totalPowerGenMw: 20 });
-  beat();
-  assert.equal(m.status, 'active', 'two claims do not add up');
-  assert.match(worksObjectiveLine(m), /generating 40 MW \(best so far 28 MW\)/);
-  yard[1].totalPowerGenMw = 44;
-  beat();
+  const siteId = h.stake(9101).anchor();
+  h.stake(9102).anchor();
+  h.beat();
+  assert.equal(m.status, 'active', 'two 12 MW cores are not one 40 MW claim');
+  assert.match(worksObjectiveLine(m), /running on 40 MW \(best so far 12 MW\)/);
+  // Reading a claim is the site system's full readout and costs milliseconds, so the job reads
+  // only while the yard is changing: once a second for ten seconds after a build, then every 30.
+  let reads = 0;
+  const real = h.sitesSys.projection;
+  h.sitesSys.projection = function counted(...args) { reads++; return real.apply(this, args); };
+  const run = (ticks) => { for (let i = 0; i < ticks; i++) { h.state.tick++; h.host.update(1 / 60, h.state); } };
+  run(600); reads = 0;                  // let the ten seconds after the two installs pass
+  run(1700);
+  assert.ok(reads <= 2, `a quiet yard is read once per 30 s per claim at most (${reads})`);
+  // Power arriving over a tether from the second claim counts where it lands. The tether is a
+  // yard change, so the job looks again within the second.
+  h.state.sites.byId[siteId].sharedPowerInMw = 30;
+  h.bus.emit('site:linkCreated', { fromSiteId: 'x', toSiteId: siteId, kind: 'power' });
+  reads = 0;
+  run(61);
+  assert.ok(reads > 0, 'a yard change is read within a second');
   assert.equal(m.status, 'completed');
   assert.equal(h.paid(), 5200);
 });

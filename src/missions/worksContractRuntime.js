@@ -258,32 +258,66 @@ export function onWorksDefenseDeployed(owner, p) {
 // the yard as it is now. A claim can already exist when the job is taken and can be lost while it
 // is open, so these two goals are re-read on a slow beat instead of being counted up from events.
 export const WORKS_SITE_POLL_TICKS = 60;
+// Reading what a claim runs on costs a few milliseconds (it is the site system's full readout),
+// so the power goal reads it once a second only for a short while after the yard changed, and
+// otherwise on a slow safety beat. Counting claims is a record scan and keeps the fast beat.
+export const WORKS_POWER_IDLE_POLL_TICKS = 1800;
+export const WORKS_YARD_HOT_TICKS = 600;
 
-function sectorSites(owner, sectorId) {
-  const sites = owner.registry && owner.registry.get && owner.registry.get('asteroidSites');
-  const net = sites && typeof sites.sectorNetworkProjection === 'function' ? sites.sectorNetworkProjection(sectorId) : null;
-  return (net && Array.isArray(net.sites)) ? net.sites : [];
+/** A machine, sail, tether or claim changed somewhere: power goals look again for the next ten seconds. */
+export function onWorksYardChanged(owner) {
+  owner._worksYardHotUntil = (owner.state.tick | 0) + WORKS_YARD_HOT_TICKS;
 }
 
-/** Per-tick drive for one works contract. Cheap: only the two yard goals do anything, once a second. */
+/** Anchored claims standing in a sector, straight off the site records: a read, no projection. */
+function anchoredClaims(owner, sectorId) {
+  const sites = owner.state.sites;
+  const byId = (sites && sites.byId) || {};
+  const order = sites && Array.isArray(sites.order) ? sites.order : Object.keys(byId);
+  const out = [];
+  for (const id of order) {
+    const site = byId[id];
+    if (site && site.anchored && site.sectorId === sectorId) out.push(site);
+  }
+  return out;
+}
+
+/**
+ * Per-tick drive for one works contract. Only the two yard goals do anything, on a beat kept as a
+ * last-polled tick so a mission system that is not stepped on every tick still polls. Claims are
+ * counted off the records. Power asks the site system for one claim at a time, never the
+ * sector-wide summary (supply matrix, weather, empire), and only while the yard is changing.
+ */
 export function driveWorksContract(owner, mission, index) {
   const works = mission.params.works;
   const goal = works.goal;
   if (goal.kind !== 'claims' && goal.kind !== 'power') return;
-  if (((owner.state.tick | 0) % WORKS_SITE_POLL_TICKS) !== 0) return;
-  const nodes = sectorSites(owner, mission.destSectorId);
+  const tick = owner.state.tick | 0;
+  const due = owner._worksSitePollDue || (owner._worksSitePollDue = new Map());
+  const last = due.get(mission.id);
+  const beat = goal.kind === 'claims' || tick < (owner._worksYardHotUntil | 0)
+    ? WORKS_SITE_POLL_TICKS : WORKS_POWER_IDLE_POLL_TICKS;
+  if (last != null && tick >= last && tick < last + beat) return;
+  due.set(mission.id, tick);
+  const claims = anchoredClaims(owner, mission.destSectorId);
   if (goal.kind === 'claims') {
-    const held = Math.min(mission.objectiveTarget, nodes.filter((site) => site && site.anchored).length);
+    const held = Math.min(mission.objectiveTarget, claims.length);
     if (held === mission.objectiveProgress) return;
     mission.objectiveProgress = held;
-    if (held >= mission.objectiveTarget) settle(owner, mission, index);
+    if (held >= mission.objectiveTarget) { due.delete(mission.id); settle(owner, mission, index); }
     else touch(owner, mission);
     return;
   }
+  const sitesSys = owner.registry && owner.registry.get && owner.registry.get('asteroidSites');
   let best = 0;
-  for (const site of nodes) best = Math.max(best, Number(site && site.totalPowerGenMw) || 0);
+  if (sitesSys && typeof sitesSys.projection === 'function') {
+    for (const site of claims) {
+      const view = sitesSys.projection(site.id);
+      best = Math.max(best, Number(view && view.totalPowerGenMw) || 0);
+    }
+  }
   const rounded = Math.floor(best);
-  if (best >= goal.mw) { works.bestMw = rounded; advance(owner, mission, index, 1); return; }
+  if (best >= goal.mw) { works.bestMw = rounded; due.delete(mission.id); advance(owner, mission, index, 1); return; }
   if (rounded !== (works.bestMw | 0)) { works.bestMw = rounded; touch(owner, mission); }
 }
 
@@ -328,7 +362,7 @@ export function worksContractWaypoint(owner, mission) {
         : 'Fly the skim band with the scoop open.' };
   }
   if (goal.kind === 'deliver') return { ...out, reason: 'Set goods to Ship at a powered Cargo Port on one of your claims.' };
-  if (goal.kind === 'power') return { ...out, reason: 'Build generation on one of your claims here: gas taps inside, solar sails outside.' };
+  if (goal.kind === 'power') return { ...out, reason: 'Build power on one of your claims here: gas taps inside, solar sails outside, a tether from a second claim.' };
   if (!here) return { ...out, reason: 'The work is in this sector.' };
   const rocks = [];
   for (const entity of state.entityList || []) {
