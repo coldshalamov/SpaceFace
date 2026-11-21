@@ -373,24 +373,28 @@ function mountHold(hosted) {
   };
 }
 
+// CARGO-BAG-UI: the cargo key opens the bag (cargoBag.js); a fuel cell is picked from its slot
+// grid and cracked with the bag's own "Crack cell" action (the old manifest inspector is retired).
 function selectLot(doc, commodityId) {
-  const block = doc.querySelector(`.sf-cargo-block[data-id="${commodityId}"]`);
-  assert.ok(block, `the hold paints ${commodityId}`);
+  const block = doc.querySelector(`.sf-bag__slot[data-id="${commodityId}"]`);
+  assert.ok(block, `the bag paints ${commodityId}`);
   const clicks = block._listeners.get('click') || [];
-  assert.ok(clicks.length > 0, 'the lot block has the hold\'s own click');
+  assert.ok(clicks.length > 0, 'the slot has the bag\'s own click');
   clicks[0]({ stopPropagation() {} });
 }
 
 function crackControl(doc) {
-  return doc.querySelector('.sf-btn-crack');
+  const button = doc.querySelector('.sf-bag__act--crack');
+  return button && !button.hidden ? button : null;
 }
 
 function clickCrack(doc) {
   const button = crackControl(doc);
   assert.ok(button, 'Crack is painted');
-  assert.equal(button.textContent, 'Crack');
-  assert.equal(typeof button.onclick, 'function', 'Crack uses the inspector\'s own click');
-  button.onclick();
+  assert.equal(button.textContent, 'Crack cell');
+  const clicks = button._listeners.get('click') || [];
+  assert.ok(clicks.length > 0, 'Crack uses the bag\'s own click');
+  clicks[0]({ stopPropagation() {} });
   return button;
 }
 

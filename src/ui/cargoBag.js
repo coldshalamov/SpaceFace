@@ -231,11 +231,12 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
   const splitBtn = mkAct('Split', '', () => splitPicked());
   const sortBtn = mkAct('Sort', '', () => { bus.emit('cargo:sortBag', {}); clearPick(); });
   // A fuel cell is used from the bag: crack one into the tank.
-  const crackBtn = mkAct('Crack cell', '', () => {
+  const crackBtn = mkAct('Crack cell', 'sf-bag__act--crack', () => {
     const plan = planFuelCrack(state);
     if (!plan || plan.mode === 'refuse') return;
     bus.emit('audio:cue', { id: 'ui_click' });
     bus.emit('fuel:crackCell', {});
+    clearPick();
   });
   crackBtn.hidden = true;
   const hint = el(doc, 'div', 'sf-bag__hint', 'Drag a stack out of the bag to drop it in space.');
@@ -281,9 +282,9 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
       const worth = (() => { try { return calculateHoldWorth(state, ctx || { state }); } catch { return null; } })();
       const mass = Number(state.player && state.player.cargo && state.player.cargo.usedMass) || 0;
       meta.innerHTML = '';
-      const used = el(doc, 'span'); used.append('Slots ', el(doc, 'b', model.overCapacity ? 'is-over' : '', `${model.slots.filter(Boolean).length} / ${model.slotCount}`));
-      const val = el(doc, 'span'); val.append('Worth ', el(doc, 'b', '', worth ? `≈ ${formatCount(worth.totalWorth, state)} cr` : '—'));
-      const m = el(doc, 'span'); m.append('Mass ', el(doc, 'b', '', `${mass >= 10 ? Math.round(mass) : mass.toFixed(1)} t`));
+      const used = el(doc, 'span'); used.append(el(doc, 'span', null, 'Slots '), el(doc, 'b', model.overCapacity ? 'is-over' : '', `${model.slots.filter(Boolean).length} / ${model.slotCount}`));
+      const val = el(doc, 'span'); val.append(el(doc, 'span', null, 'Worth '), el(doc, 'b', '', worth ? `≈ ${formatCount(worth.totalWorth, state)} cr` : '—'));
+      const m = el(doc, 'span'); m.append(el(doc, 'span', null, 'Mass '), el(doc, 'b', '', `${mass >= 10 ? Math.round(mass) : mass.toFixed(1)} t`));
       meta.append(used, val, m);
       if (model.overCapacity) meta.appendChild(el(doc, 'span', 'is-over', 'Over capacity: drop a stack'));
     } else if (tab === 'gear') {
@@ -311,11 +312,13 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
     b.classList.toggle('is-empty', !s);
     b.classList.toggle('is-over', !!(s && s.over));
     if (!s) {
+      b.dataset.id = '';
       b.setAttribute('aria-label', `Empty slot ${i + 1}`);
       b.tabIndex = -1;
       return;
     }
     b.tabIndex = 0;
+    b.dataset.id = s.commodityId || s.defId || '';
     const def = s.kind === 'commodity' ? CMDTY.get(s.commodityId) : null;
     const thumbInput = s.kind === 'module'
       ? { id: s.defId, kind: 'module' }

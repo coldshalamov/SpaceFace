@@ -92,7 +92,8 @@ test('Cargo owns Pad Back and Pad Accept has to focus the timed decision deliber
     const root = child => ({ contains: node => node === child, querySelectorAll: () => [child] });
     const cargo = root(holdButton);
     const deck = root(choice);
-    f.doc.querySelector = selector => selector === '#hud .sf-cargo-panel.open' ? cargo : null;
+    // CARGO-BAG-UI: the open bag (#hud .sf-bag.is-open) is the cargo surface the pad drives.
+    f.doc.querySelector = selector => String(selector).includes('#hud .sf-bag.is-open') ? cargo : null;
     setPromptDeck({ el: deck, size: 1, gamepadCapture() { throw new Error('automatic deck acceptance stole Cargo'); } });
     f.bus.on('ui:closeCargo', () => { seen.push('Close cargo hold'); f.state.ui.cargoPanelOpen = false; });
 
