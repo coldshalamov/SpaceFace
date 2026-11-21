@@ -1062,6 +1062,16 @@ const ORE_FAMILY = {
   cmdty_gem_ruby: 'exotic',
   cmdty_gem_diamond: 'ice',
   cmdty_exotic_amazonite: 'exotic',
+  // What each rock type carries inside (drillFieldModel ROCK_GEOLOGY): the same materials the
+  // laser cuts from that rock, in the host family whose surface they share.
+  cmdty_ore_titanium: 'metal',
+  cmdty_ore_platinoid: 'metal',
+  cmdty_ice_water: 'ice',
+  cmdty_volatiles: 'ice',
+  cmdty_gas_helium3: 'ice',
+  cmdty_crystal_silica: 'exotic',
+  cmdty_crystal_lumin: 'exotic',
+  cmdty_exotic_xenium: 'exotic',
 };
 
 // Seam count chips read `Fe 9` (law §3.5). Two glyphs, mono, no prose.
@@ -1078,6 +1088,14 @@ const ORE_SYMBOL = {
   cmdty_gem_ruby: 'Ru',
   cmdty_gem_diamond: 'Di',
   cmdty_exotic_amazonite: 'Px',
+  cmdty_ore_titanium: 'Ti',
+  cmdty_ore_platinoid: 'Pd',
+  cmdty_ice_water: 'Ic',
+  cmdty_volatiles: 'Vo',
+  cmdty_gas_helium3: 'He',
+  cmdty_crystal_silica: 'Qz',
+  cmdty_crystal_lumin: 'Lu',
+  cmdty_exotic_xenium: 'Xe',
 };
 
 // One host material per row of the law's table. Six instanced buckets instead of two: hue alone
@@ -2790,7 +2808,40 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // Hemisphere: the law's warm/cool split (§3.5) expressed as a SOFT GRADIENT over surface
   // orientation instead of a hard directional. Up-facing stone catches cold sky, down-facing stone
   // catches warm bounce off the bore floor, and nothing gets a hard painted edge out of it.
-  scene.add(new THREE.HemisphereLight(0x8fa6cf, 0x7a5636, 1.1));
+  const hemi = new THREE.HemisphereLight(0x8fa6cf, 0x7a5636, 1.1);
+  scene.add(hemi);
+  // DARK INSIDE, LIT BY YOU. The rig above is the light at the mouth of the bore: sun on the cut
+  // face. It does not follow the rover down. As the rig descends the sun terms fall away and the
+  // rover's own lamps take over, so the heart of a rock is a pool of work light in the dark and
+  // what the lamp reaches is what the pilot can read. Real lights and real shadows throughout —
+  // the same key, the same spot — only their balance moves with depth.
+  const DEPTH_LIGHT = Object.freeze({
+    fullDarkRow: 16,                 // rows down at which the sun terms have bottomed out
+    key: [9.4, 1.9], fill: [1.3, 0.34], rim: [1.2, 0.12], hemi: [1.1, 0.3],
+    head: [52, 210], headReach: [8, 14], glow: [3.2, 85], glowReach: [3.4, 11],
+  });
+  const depthLight = { t: 0 };
+  function applyDepthLight(row, dt, powered) {
+    const raw = Math.max(0, Math.min(1, (Number(row) || 0) / DEPTH_LIGHT.fullDarkRow));
+    const target = raw * raw * (3 - 2 * raw);
+    // Ease toward the target so a fast climb does not snap the exposure.
+    depthLight.t += (target - depthLight.t) * (dt > 0 ? -Math.expm1(-dt / 0.6) : 1);
+    const t = depthLight.t;
+    const mix = (pair) => pair[0] + (pair[1] - pair[0]) * t;
+    key.intensity = mix(DEPTH_LIGHT.key);
+    fill.intensity = mix(DEPTH_LIGHT.fill);
+    rim.intensity = mix(DEPTH_LIGHT.rim);
+    hemi.intensity = mix(DEPTH_LIGHT.hemi);
+    if (headlight) {
+      headlight.intensity = powered ? mix(DEPTH_LIGHT.head) : 12;
+      headlight.distance = S * mix(DEPTH_LIGHT.headReach);
+    }
+    if (roverGlowLight) {
+      roverGlowLight.intensity = powered ? mix(DEPTH_LIGHT.glow) : 1.2;
+      roverGlowLight.distance = S * mix(DEPTH_LIGHT.glowReach);
+    }
+  }
+  let roverGlowLight = null;
 
   // ---------------------------------------------------------------- space + body extents
   // Warm-white stars behind the rock (law §3.5): the only billboard-style exception in the game,
@@ -3907,6 +3958,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const roverGlow = new THREE.PointLight(0xffd9a8, 3.2, S * 3.4, 2);
   roverGlow.position.set(0, S * 0.3, S * 0.4);
   rover.add(roverGlow);
+  roverGlowLight = roverGlow;
   const roverAnim = {
     flipY: 0, armAim: -Math.PI / 2, bite: 0, wheelSpin: 0, lean: 0, bob: 0,
     trackPhase: 0, hopStage: -1, lid: 0, lastTemp: 0, vent: 0, ventTick: 0,
@@ -9037,7 +9089,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // A dead battery dims the whole rig, glass included: a lens still glowing under a lamp that is
     // off is a sticker, not a light.
     const powered = !d.energyDepleted;
-    headlight.intensity = powered ? 52 : 12;
+    applyDepthLight(d.avatar ? d.avatar.row : 0, dt, powered);
     if (authoredRoverState.materialSets.lamp.length) {
       setAuthoredMaterials(authoredRoverState.materialSets.lamp, powered ? 0.55 : 0.12);
     } else if (roverBuilt.dyn.lampMat) roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;

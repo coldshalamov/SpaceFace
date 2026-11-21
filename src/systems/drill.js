@@ -1,4 +1,4 @@
-import { COLS, ROWS, DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, RUBBLE_TILE, drillTierReqForOre, tileIndex, entryShaftIndex, normalizeClearedTiles, recoverClearedGeometry, applyClearedTiles, fractureTile, applyRubbleTiles, applyFlaggedTiles, seededDrillRng, stratumForDepth, generateFormations, generateDrillField } from './drillFieldModel.js';
+import { COLS, ROWS, DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, RUBBLE_TILE, drillTierReqForOre, tileIndex, entryShaftIndex, normalizeClearedTiles, recoverClearedGeometry, applyClearedTiles, fractureTile, applyRubbleTiles, applyFlaggedTiles, seededDrillRng, stratumForDepth, generateFormations, generateDrillField, resolveBoreFamily } from './drillFieldModel.js';
 export { DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, drillTierReqForOre, tileIndex, entryShaftIndex, normalizeClearedTiles, recoverClearedGeometry, applyClearedTiles, applyRubbleTiles, applyFlaggedTiles, stratumForDepth, generateFormations, generateDrillField } from './drillFieldModel.js';
 // Drill lens system (V2 §7 / cut-list #27). The deep-core extraction verb. When active, this owns a 2D
 // vein cross-section the player drills into with WASD / Arrow keys. Yields real ore into cargo
@@ -887,10 +887,13 @@ export const drill = {
     }
 
     // The bore seed follows the rock record across rematerialization, including before staking.
+    // The family is resolved BEFORE the seed is stamped: an unstamped rock that already carries a
+    // seed was bored under the old single interior and keeps it; an untouched rock takes its type's.
+    const boreFamily = resolveBoreFamily(data);
     const seed = Number.isFinite(data?.boreSeed) ? data.boreSeed : asteroidId;
     const boreSeed = (seed >>> 0) || 1;
-    if (data) data.boreSeed = boreSeed;
-    const field = generateDrillField(boreSeed);
+    if (data) { data.boreSeed = boreSeed; data.boreFamily = boreFamily; }
+    const field = generateDrillField(boreSeed, boreFamily);
     // Carve an entry shaft at the surface center so the avatar always has a legal start cell.
     const startCol = Math.floor(COLS / 2);
     field[startCol][0] = EMPTY_TILE();

@@ -127,7 +127,40 @@ for (const { name, breakApproach, reason } of [
   });
 }
 
-function harness({ targetAnchorLocal = { x: -16, z: 0 } } = {}) {
+test('one press sets the rover down: with no line on the rock, the line owner latches it and reels in', () => {
+  const h = harness({ line: false });
+  const latched = [];
+  h.bus.on('tether:latched', (payload) => latched.push({ ...payload }));
+  h.bus.emit('drill:approachRequested', { asteroidId: h.asteroid.id, attachmentId: null });
+  tick(h);
+  const lines = h.attachments.list
+    ? h.attachments.list().filter((a) => a.state === 'active')
+    : Object.values(h.state.combat.attachments.byId).filter((a) => a.state === 'active');
+  assert.equal(lines.length, 1, 'the press put exactly one line on the rock');
+  assert.equal(lines[0].targetId, h.asteroid.id);
+  assert.equal(lines[0].defId, 'tether_standard');
+  assert.equal(latched.length, 1);
+  tick(h);
+  assert.equal(h.events.started.length, 1, 'the approach begins from that latch');
+  assert.equal(h.events.started[0].asteroidId, h.asteroid.id);
+  assert.equal(h.events.started[0].attachmentId, lines[0].id);
+  for (let i = 0; i < 6; i++) tick(h);
+  assert.equal(lines.length, 1);
+  assert.equal(h.events.cancelled.length, 0);
+});
+
+test('a rover press that goes stale is dropped, never replayed as a surprise latch', () => {
+  const h = harness({ line: false });
+  h.bus.emit('drill:approachRequested', { asteroidId: h.asteroid.id, attachmentId: null });
+  h.state.simTime += 10;
+  tick(h);
+  const lines = Object.values(h.state.combat.attachments.byId || {}).filter((a) => a.state === 'active');
+  assert.equal(lines.length, 0);
+  tick(h);
+  assert.equal(h.events.started.length, 0);
+});
+
+function harness({ targetAnchorLocal = { x: -16, z: 0 }, line = true } = {}) {
   const player = entity('player', 'ship', 0, 0, {
     radius: 8,
     mass: 40,
@@ -176,6 +209,7 @@ function harness({ targetAnchorLocal = { x: -16, z: 0 } } = {}) {
   };
   const system = Object.create(tetherGameplay);
   system.init({ state, bus, helpers: { combatPhysics: physics }, registry });
+  if (!line) return { state, player, asteroid, line: null, bus, events, physics, attachments, system };
   const created = attachments.create({
     defId: 'tether_standard',
     ownerId: player.id,

@@ -46,6 +46,15 @@ export const ORE_TINTS = {
   cmdty_gem_ruby: { vein: '#b8434f', glint: '#f0a8b0', glow: null },
   cmdty_gem_diamond: { vein: '#b9d6d8', glint: '#e6f5f6', glow: null },
   cmdty_exotic_amazonite: { vein: '#2fb8a6', glint: '#b8f0e6', glow: null },
+  // Rock-type interiors (drillFieldModel ROCK_GEOLOGY). Same law as above: albedo, no glow.
+  cmdty_ore_titanium: { vein: '#8e95a3', glint: '#d3d9e4', glow: null },
+  cmdty_ore_platinoid: { vein: '#a9a08c', glint: '#e6dfcc', glow: null },
+  cmdty_ice_water: { vein: '#9fc4d6', glint: '#e2f2f8', glow: null },
+  cmdty_volatiles: { vein: '#a8b6a0', glint: '#dfe8d8', glow: null },
+  cmdty_gas_helium3: { vein: '#c7b98a', glint: '#f0e6c0', glow: null },
+  cmdty_crystal_silica: { vein: '#b7a9d6', glint: '#e6dcf7', glow: null },
+  cmdty_crystal_lumin: { vein: '#6fb7c9', glint: '#c9eef5', glow: null },
+  cmdty_exotic_xenium: { vein: '#a35fc4', glint: '#e0b8f2', glow: null },
 };
 
 export const STATUS_COLORS = {

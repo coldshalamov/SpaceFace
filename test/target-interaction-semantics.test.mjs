@@ -218,15 +218,15 @@ test('legacy asteroid Massline keeps accurate drill guidance but does not reques
   press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
 
   assert.equal(h.events.some((event) => event.name === 'drill:approachRequested'), false);
-  assert.match(latestToast(h.events), /legacy Massline has no drill winch/i);
-  assert.match(latestToast(h.events), /relatch with the standard Massline/i);
+  assert.match(latestToast(h.events), /legacy line has no drill winch/i);
+  assert.match(latestToast(h.events), /relatch with the standard line/i);
   h.input.dispose();
 });
 
-test('B keeps the generic no-target drill guidance when no semantic target exists', () => {
+test('B with no rock in reach says to fly up to one', () => {
   const h = inputHarness();
   press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
-  assert.match(latestToast(h.events), /No asteroid targeted/i);
+  assert.match(latestToast(h.events), /No rock in reach\. Fly up to an asteroid and press B to set the rover down\./i);
   h.input.dispose();
 });
 

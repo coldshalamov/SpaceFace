@@ -611,8 +611,8 @@ export const tetherGameplay = {
         this._lastLineControlDenial = null;
       }
       if (approach && this._drillApproach) {
-        if (this._drillApproachSettled(attachments, player, target)) this._completeDrillApproach(state);
-        else this._queueDrillApproachAssist(attachments, player, target, dt);
+        if (this._drillApproachSettled(attachments, player, target, state)) this._completeDrillApproach(state);
+        else this._queueDrillApproachAssist(attachments, player, target, dt, state);
       }
       this._emitStrain(attachments, state, dt);
       const att = attachments.get(this._active.attachmentId);
@@ -640,7 +640,8 @@ export const tetherGameplay = {
     this._reelStrength = 0;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
-    const wantsLatch = !!(actions && actions.tetherFire);
+    const drillIntent = this._takeDrillLatchIntent(now);
+    const wantsLatch = !!(actions && actions.tetherFire) || !!drillIntent;
     if (wantsLatch && playerTetherSpoolOut(state, player)) {
       this.bus.emit('tether:latchDenied', { reason: 'spool_out' });
       return;
@@ -681,7 +682,7 @@ export const tetherGameplay = {
     // Ctrl-nearest (src/systems/input.js:1074) is an explicit manual override of the scored pick:
     // "not that one — the one I am closest to". It bypasses the receipt entirely, so it must not
     // publish or consume one either.
-    const nearestOnly = state.input?.tetherMode === 'nearest';
+    const nearestOnly = state.input?.tetherMode === 'nearest' || !!drillIntent;
     // Keyboard input can arrive after the worker has stepped or the camera has reprojected the
     // cursor. Resolve the press against its sampled preview and revalidate that body's current life.
     const keyboardReceipt = wantsLatch && !nearestOnly ? actions.tetherPreview : null;
@@ -709,18 +710,22 @@ export const tetherGameplay = {
     // Readable failure reasons (T04): never fail latch silently. The ORDER below is load-bearing —
     // cooldown outranks a missing def (pinned by T04 §3 in test/tether-latch-eligibility.test.mjs).
     this._lastLatchDenial = null;
-    const commandLatch = nearestOnly && def ? this._acquireCommandTarget(player, def, state) : null;
+    const commandLatch = !nearestOnly || !def ? null
+      : drillIntent ? this._acquireDrillTarget(player, def, state, drillIntent.asteroidId)
+        : this._acquireCommandTarget(player, def, state);
     const selectionReceipt = nearestOnly ? null : keyboardReceipt || state.masslineAcquisition;
     const candidate = nearestOnly ? commandLatch?.entity
       : state.entities.get(selectionReceipt?.selected?.targetId);
     if (now < this._noRelatchUntil && (this._noRelatchTargetId == null
         || !candidate || candidate.id === this._noRelatchTargetId)) {
       this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
+      this._sayRoverRefused(drillIntent, 'cooldown');
       return;
     }
     if (!def) {
       // Attachment authority's established reason when the def is absent from the catalog.
       this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
+      this._sayRoverRefused(drillIntent, 'unknown_attachment_def');
       return;
     }
     const latch = nearestOnly
@@ -730,6 +735,7 @@ export const tetherGameplay = {
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
       this.bus.emit('tether:latchDenied', denial);
+      this._sayRoverRefused(drillIntent, denial.reason);
       return;
     }
     // OPENING-1b: until the first latch lands, the marked loose rock outranks passing traffic freight
@@ -774,6 +780,7 @@ export const tetherGameplay = {
         reason: (result && result.reason) || 'create_failed',
         targetId: target.id,
       });
+      this._sayRoverRefused(drillIntent, (result && result.reason) || 'create_failed');
       return;
     }
 
@@ -788,6 +795,10 @@ export const tetherGameplay = {
     this._lastStrainT = -Infinity;
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
+    if (drillIntent) {
+      // The promoted rock may carry a new id; the approach names the body the line is really on.
+      this._pendingDrillApproach = { asteroidId: target.id, attachmentId: result.attachment.id };
+    }
     // Truthfulness receipt: the latch reports WHICH rendered candidate it consumed, so a mismatch
     // between what the player saw and what they got is observable rather than a bug report.
     const selectedEntry = selectionReceipt && selectionReceipt.selected;
@@ -1550,7 +1561,15 @@ export const tetherGameplay = {
   _requestDrillApproach(payload = {}) {
     const asteroidId = payload && payload.asteroidId;
     const attachmentId = payload && payload.attachmentId;
-    if (asteroidId == null || attachmentId == null) return false;
+    if (asteroidId == null) return false;
+    if (attachmentId == null) {
+      // One press sets the rover down: with no line on the rock yet, the Line is put on it by
+      // this owner on its next tick, and the approach begins from that latch.
+      const state = this.state;
+      const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+      this._drillLatchIntent = { asteroidId, untilT: now + 2.5 };
+      return true;
+    }
     if (this._drillApproach
         && this._drillApproach.asteroidId === asteroidId
         && this._drillApproach.attachmentId === attachmentId) return false;
@@ -1560,6 +1579,43 @@ export const tetherGameplay = {
     this._cancelDrillApproach('superseded');
     this._pendingDrillApproach = { asteroidId, attachmentId };
     return true;
+  },
+
+  /** A rover press that could not put the Line on its rock says why, in the pilot's terms. */
+  _sayRoverRefused(drillIntent, reason) {
+    if (!drillIntent || !this.bus || typeof this.bus.emit !== 'function') return;
+    const text = reason === 'blocked'
+      ? 'No clear line to that rock: something is in the way. Move until you can see it, then set the rover down again.'
+      : reason === 'out-of-range' ? 'Too far to set the rover down. Fly closer to the rock.'
+        : reason === 'cooldown' ? 'The Line is still rewinding. Set the rover down again in a moment.'
+          : 'The Line could not take hold of that rock. Try from another side.';
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 4.5 });
+  },
+
+  /** The rover press waiting for a line, taken once. A stale press is dropped, never replayed. */
+  _takeDrillLatchIntent(now) {
+    const intent = this._drillLatchIntent;
+    if (!intent) return null;
+    this._drillLatchIntent = null;
+    return now <= intent.untilT ? intent : null;
+  },
+
+  /** The rock the rover was sent to, admitted by the same reach and line-of-sight rules as any latch. */
+  _acquireDrillTarget(player, def, state, asteroidId) {
+    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390))
+      * tetherReachScale(state, player);
+    const entity = state.entities && state.entities.get ? state.entities.get(asteroidId) : null;
+    if (!entity || entity.alive === false || entity.type !== 'asteroid') {
+      this._lastLatchDenial = { reason: 'no-target', maxLength };
+      return null;
+    }
+    const obstacles = collectAcquisitionObstacles(this, state, player, [entity], maxLength);
+    const refusal = validateAcquisitionTarget(this, player, entity, def, state, obstacles);
+    if (refusal) {
+      this._lastLatchDenial = { reason: refusal, targetId: entity.id, maxLength };
+      return null;
+    }
+    return { entity, targetWorld: surfacePointToward(entity, player.pos) };
   },
 
   _startPendingDrillApproach(attachments, state, player) {
@@ -1646,7 +1702,7 @@ export const tetherGameplay = {
       : 0;
   },
 
-  _queueDrillApproachAssist(attachments, player, asteroid, dt) {
+  _queueDrillApproachAssist(attachments, player, asteroid, dt, state) {
     if (!this._drillApproach || !(dt > 0)) return false;
     const attachment = attachments && typeof attachments.get === 'function'
       ? attachments.get(this._drillApproach.attachmentId)
@@ -1678,7 +1734,7 @@ export const tetherGameplay = {
     });
   },
 
-  _drillApproachSettled(attachments, player, asteroid) {
+  _drillApproachSettled(attachments, player, asteroid, state) {
     const approach = this._drillApproach;
     const attachment = approach && attachments && typeof attachments.get === 'function'
       ? attachments.get(approach.attachmentId)

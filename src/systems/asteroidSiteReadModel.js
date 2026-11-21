@@ -2,7 +2,7 @@
 // No init/update/production/materialization authority is reachable through this module.
 // Runtime reconciliation operates only on caller-owned records: the native owner supplies its
 // durable record; the public mirror boundary below first clones that one site's save-safe data.
-import { COLS, ROWS, generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, tileIndex, entryShaftIndex } from './drillFieldModel.js';
+import { COLS, ROWS, generateDrillField, resolveBoreFamily, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, tileIndex, entryShaftIndex } from './drillFieldModel.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization } from '../data/sites.js';
 import { contactProfile, machineCapability, clamp01, round3 } from './siteProduction.js';
@@ -181,7 +181,7 @@ export const asteroidSiteReadMethods = {
     if (rt.field && sealedDeadDropCapMissing(rt.field, site)) rt.fieldDirty = true;
     if (rt.fieldDirty || !rt.field) {
       const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
-      rt.field = generateDrillField((seed >>> 0) || 1);
+      rt.field = generateDrillField((seed >>> 0) || 1, resolveBoreFamily(site));
       applyClearedTiles(rt.field, site.cleared);
       // A fallen slab is rock again, painted after the cleared list reopens the cell.
       paintStructuralFalls(rt.field, site.structure);

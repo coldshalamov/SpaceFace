@@ -27,6 +27,7 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveDockDeny } from './dockDenyBanner.js';
 import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
+import { laneInputWrite } from '../core/simLaneCommands.js';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
 import { isSwarmControls } from '../data/swarmControls.js';
 import { contextUiAllowed } from '../data/inputContexts.js';
@@ -1085,7 +1086,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       }
     }
     if (astId == null) {
-      bus.emit('toast', { text: 'No asteroid targeted — target a rock and press ' + BINDINGS.drill.label + ' to drill', kind: 'warn', ttl: 3 });
+      // Nothing selected: the rock you are parked beside is the one you mean.
+      const me = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+      let bestGap = 220;
+      for (const e of (me && me.pos ? state.entityList || [] : [])) {
+        if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+        const gap = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) - (e.radius || 0) - (me.radius || 0);
+        if (gap < bestGap) { bestGap = gap; astId = e.id; }
+      }
+    }
+    if (astId == null) {
+      bus.emit('toast', { text: 'No rock in reach. Fly up to an asteroid and press ' + BINDINGS.drill.label + ' to set the rover down.', kind: 'warn', ttl: 3.5 });
       return;
     }
 
@@ -1097,7 +1108,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       const dist = Math.hypot(dx, dz);
       const surfaceDist = Math.max(0, dist - (ast.radius || 0) - (player.radius || 0));
       if (surfaceDist > 220) {
-        bus.emit('toast', { text: 'Too far to drill. Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
+        bus.emit('toast', { text: 'Too far to set the rover down. Fly closer to the rock.', kind: 'warn', ttl: 3 });
         return;
       }
     }
@@ -1107,12 +1118,20 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       (att) => att.state === 'active' && att.ownerId === state.playerId && att.targetId === astId && DRILL_MASSLINE_DEF_IDS.has(att.defId)
     );
     if (!activeTether) {
-      // Live tether binding label — never hard-code a latch key (rebinds / empty must not lie).
-      const tetherKey = resolveActionLabel(state, 'tether');
-      const latchHint = tetherKey
-        ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
-        : 'Launch a tether to lock onto the asteroid first.';
-      bus.emit('toast', { text: `No line link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
+      // One press sets the rover down. A line already on something else has to come off first;
+      // otherwise the line owner puts the Line on this rock and reels in from that latch.
+      const busy = Object.values(state.combat?.attachments?.byId || {}).some((att) => att
+        && att.state === 'active' && att.ownerId === state.playerId && DRILL_MASSLINE_DEF_IDS.has(att.defId));
+      if (busy) {
+        const tetherKey = resolveActionLabel(state, 'tether');
+        bus.emit('toast', {
+          text: `The Line is on something else. Let it go${tetherKey ? ` (${tetherKey})` : ''}, then press ${BINDINGS.drill.label} again.`,
+          kind: 'warn', ttl: 4,
+        });
+        return;
+      }
+      laneInputWrite(state, 'player.targetId', astId);
+      bus.emit('drill:approachRequested', { asteroidId: astId, attachmentId: null });
       return;
     }
     if (activeTether.defId !== 'tether_standard') {
