@@ -30,6 +30,9 @@ import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack
 const STYLE_ID = 'sf-bag-css';
 const COLS = CARGO_SLOTS.rowSize;
 const DRAG_START_PX = 6;
+// Swarm's one money word is Scrap; everywhere else credits read cr.
+let moneyState = null;
+function money() { const r = moneyState && moneyState.run; return r && r.kind === 'survival' && r.phase && r.phase !== 'inactive' ? 'Scrap' : 'cr'; }
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 let MODULE_BY_ID = null;
 function moduleDef(id) {
@@ -192,6 +195,7 @@ function el(doc, tag, cls, text) {
  * @param {{ root: HTMLElement, state: object, bus: object, ctx?: object }} opts
  */
 export function createCargoBag({ root, state, bus, ctx = null }) {
+  moneyState = state;
   const doc = root.ownerDocument || document;
   injectStyle(doc);
   try { injectItemThumbnailStyles(doc); } catch { /* thumbnails fall back to text */ }
@@ -265,7 +269,9 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
     b.type = 'button';
     b.dataset.slot = String(i);
     b.setAttribute('role', 'gridcell');
-    b.addEventListener('click', () => onSlotActivate(i));
+    // Blur after a pointer click (detail > 0) so Space/Enter in flight never re-fires a slot;
+    // keyboard and pad activation (detail 0) keep focus so they keep their place.
+    b.addEventListener('click', (ev) => { onSlotActivate(i); if (ev && ev.detail > 0) { try { b.blur(); } catch { /* fine */ } } });
     b.addEventListener('pointerdown', (ev) => onPointerDown(ev, i));
     b.addEventListener('focus', () => showCard(i));
     b.addEventListener('mouseenter', () => showCard(i));
@@ -284,7 +290,7 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
       const mass = Number(state.player && state.player.cargo && state.player.cargo.usedMass) || 0;
       meta.innerHTML = '';
       const used = el(doc, 'span'); used.append(el(doc, 'span', null, 'Slots '), el(doc, 'b', model.overCapacity ? 'is-over' : '', `${model.slots.filter(Boolean).length} / ${model.slotCount}`));
-      const val = el(doc, 'span'); val.append(el(doc, 'span', null, 'Worth '), el(doc, 'b', '', worth ? `≈ ${formatCount(worth.totalWorth, state)} cr` : '—'));
+      const val = el(doc, 'span'); val.append(el(doc, 'span', null, 'Worth '), el(doc, 'b', '', worth ? `≈ ${formatCount(worth.totalWorth, state)} ${money()}` : '—'));
       const m = el(doc, 'span'); m.append(el(doc, 'span', null, 'Mass '), el(doc, 'b', '', `${mass >= 10 ? Math.round(mass) : mass.toFixed(1)} t`));
       meta.append(used, val, m);
       if (model.overCapacity) meta.appendChild(el(doc, 'span', 'is-over', 'Over capacity: drop a stack'));
@@ -359,20 +365,20 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
     let each = 0;
     try { const q = resolveCargoSellPrice(state, ctx || { state }, s.commodityId); each = q && !q.unsellable ? q.unitSell : 0; } catch { each = 0; }
     card.appendChild(el(doc, 'div', null, each > 0
-      ? `${formatCount(each, state)} cr each · ${formatCount(each * s.qty, state)} cr for this stack`
+      ? `${formatCount(each, state)} ${money()} each · ${formatCount(each * s.qty, state)} ${money()} for this stack`
       : 'No buyer in reach for this'));
     const lots = state.player && state.player.tradeLots && state.player.tradeLots[s.commodityId];
     let origin = 'Mined or found';
     if (Array.isArray(lots) && lots.length) {
       let c = 0; let q = 0;
       for (const lot of lots) { c += (lot.qty || 0) * (lot.unit || 0); q += lot.qty || 0; }
-      if (q > 0) origin = `Bought for about ${formatCount(Math.round(c / q), state)} cr each`;
+      if (q > 0) origin = `Bought for about ${formatCount(Math.round(c / q), state)} ${money()} each`;
     }
     card.appendChild(el(doc, 'div', null, origin));
     let best = null;
     try { best = bestKnownSellFor(state, s.commodityId); } catch { best = null; }
     const where = best && best.stationName && !/_/.test(best.stationName) ? best.stationName : 'a station you visited';
-    if (best && best.sell > 0) card.appendChild(el(doc, 'div', null, `Best price you know: ${where} · ${formatCount(best.sell, state)} cr`));
+    if (best && best.sell > 0) card.appendChild(el(doc, 'div', null, `Best price you know: ${where} · ${formatCount(best.sell, state)} ${money()}`));
     if (s.sealed) card.appendChild(el(doc, 'div', null, 'Sealed for a contract: dropping it fails the job.'));
     else if (s.illegal) card.appendChild(el(doc, 'div', null, 'Illegal in lawful space.'));
   }
@@ -567,8 +573,8 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
       closeKey.textContent = 'Esc';
       title.textContent = `Bag · ${promptLabel('cargo').replace(/^\[\s*|\s*\]$/g, '')}`;
       render();
-      const first = slotEls.find((b) => b && b.parentNode && b.tabIndex === 0) || tabBtns.get(tab);
-      try { first && first.focus({ preventScroll: true }); } catch { /* pointer still works */ }
+      // No focus is taken on open: flight keys (Space, Enter) stay with the ship. Tab, arrows
+      // after a click, or the pad's d-pad move into the grid.
       // Opening shows the grid; a stack's card appears when the pilot points at or picks one.
       card.hidden = true; hint.hidden = false;
     } else {

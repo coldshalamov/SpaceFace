@@ -60,8 +60,10 @@ export function resolveFlightSteerer(state) {
   if (frame && frame.orbitAssist && frame.orbitAssist.active === true) {
     return { id: 'orbit', title: 'Orbit assist', detail: 'holding the swing', takeover: 'steer to take over' };
   }
-  const dock = state.dockingPresentation && state.dockingPresentation.readout;
-  if (dock && dock.inCapture === true && !dock.berthed) {
+  // The corridor's capture tug names itself only while it actually pushes (its applied impulse),
+  // not merely because the hull sits in the capture volume.
+  const dock = state.dockingCorridor;
+  if (dock && dock.assist && (dock.assist.ax || dock.assist.az) && dock.berthed !== true) {
     return { id: 'dock', title: 'Docking guide', detail: 'easing you into the berth', takeover: '' };
   }
   if (frame && frame.pursuitSlot && frame.pursuitSlot.active === true) {
@@ -108,9 +110,10 @@ const CSS = `
 .sf-helm-offer::after { background:linear-gradient(145deg,rgb(17 29 35 / .93),rgb(10 21 28 / .85)); z-index:-2; }
 .sf-helm-offer kbd { display:inline-grid; place-items:center; min-width:24px; min-height:21px; padding:2px 6px;
   background:#faf0d0; color:#15202b; border-radius:3px; font:700 13px/1 var(--visor-font, sans-serif); }
-.sf-helm-offer__name { color:rgb(255 242 210 / .78); font-weight:500; font-size:13px; }
-.sf-helm-offer__arrow { display:inline-block; width:11px; height:11px; flex:0 0 auto; background:#ecf07e;
-  clip-path:polygon(0 0, 100% 50%, 0 100%, 22% 50%); }
+.sf-helm-offer__name { color:rgb(255 242 210 / .78); font-weight:500; font-size:13px; margin-right:-5px; }
+.sf-helm-offer__dist { display:inline-block; min-width:52px; color:rgb(255 242 210 / .78); font-weight:500; font-size:13px; font-variant-numeric:tabular-nums; }
+.sf-helm-offer__arrow { display:inline-block; width:16px; height:9px; flex:0 0 auto; background:#ecf07e;
+  clip-path:polygon(0 0, 100% 50%, 0 100%, 30% 50%); }
 .sf-helm-offer__arrow[hidden] { display:none; }
 .sf-helm-lane { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .sf-helm-lane[hidden] { display:none; }
@@ -162,7 +165,8 @@ export function createFlightHelm(root, state, hooks = {}) {
   const arrow = doc.createElement('span');
   arrow.className = 'sf-helm-offer__arrow';
   arrow.setAttribute('aria-hidden', 'true');
-  offer.append(offerKey, offerVerb, offerName, arrow);
+  const offerDist = doc.createElement('span'); offerDist.className = 'sf-helm-offer__dist';
+  offer.append(offerKey, offerVerb, offerName, offerDist, arrow);
   root.appendChild(offer);
 
   // --- the approach lane ---
@@ -179,6 +183,8 @@ export function createFlightHelm(root, state, hooks = {}) {
   // Written-value caches: the DOM is touched only when a value changes.
   let modeSig = '';
   let offerText = '';
+  let offerPick = null;
+  let offerResolveIn = 0;
   let offerW = 0;
   let offerH = 0;
   let offerTransform = '';
@@ -219,23 +225,33 @@ export function createFlightHelm(root, state, hooks = {}) {
 
   function hideOffer() { setHidden(offer, true); }
 
-  function updateOffer(w, h) {
+  function updateOffer(dt, w, h) {
     const fight = typeof hooks.attention === 'function' && hooks.attention() === 'fight';
     const dockInRange = typeof hooks.dockInRange === 'function' && hooks.dockInRange();
-    const pick = resolveBerthOffer(state, { fight, dockInRange });
-    if (!pick) { hideOffer(); return; }
+    // The pick (a station scan) resolves at ~5 Hz; the chip's placement follows every overlay tick.
+    offerResolveIn -= finite(dt, 1 / 30);
+    if (offerResolveIn <= 0) {
+      offerResolveIn = 0.2;
+      offerPick = resolveBerthOffer(state, { fight, dockInRange });
+    } else if (dockInRange) offerPick = null;
+    const pick = offerPick;
+    if (!pick || !pick.station || pick.station.alive === false) { hideOffer(); return; }
     const station = pick.station;
     const player = state.entities.get(state.playerId);
     if (!player || !player.pos) { hideOffer(); return; }
     const dist = Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z);
     const key = promptLabel('dock').replace(/^\[\s*|\s*\]$/g, '');
-    const text = `${key}|${stationDisplayName(station)} · ${formatDistance(dist)}`;
+    // Only the key or the station's name changes the chip's width (the distance sits in a
+    // fixed-width span), so the one layout read happens on a new station, not as the ship moves.
+    const text = `${key}|${stationDisplayName(station)}`;
     if (text !== offerText) {
       offerText = text;
       offerKey.textContent = key;
-      offerName.textContent = `${stationDisplayName(station)} · ${formatDistance(dist)}`;
+      offerName.textContent = `${stationDisplayName(station)} ·`;
       offerW = 0; // re-measured below once, after the text write
     }
+    const distText = formatDistance(dist);
+    if (offerDist.textContent !== distText) offerDist.textContent = distText;
     scratchWorld.x = station.pos.x; scratchWorld.y = station.pos.y || 0; scratchWorld.z = station.pos.z;
     const at = project(scratchWorld, sOffer);
     if (!at) { hideOffer(); return; }
@@ -326,7 +342,7 @@ export function createFlightHelm(root, state, hooks = {}) {
     frame(dt, w, h) {
       if (!state || state.mode !== 'flight') { setHidden(mode, true); modeSig = ''; hideOffer(); hideLane(); return; }
       updateMode();
-      updateOffer(w, h);
+      updateOffer(dt, w, h);
       updateLane(finite(dt, 1 / 30), w, h);
     },
     /** The viewport changed: re-measure the chip on its next show. */

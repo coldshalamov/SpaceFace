@@ -68,7 +68,9 @@ test('each assist that steers is named in plain words, and the pilot flying alon
   assert.equal(resolveFlightSteerer(world({ extra: { state: { heroManeuverReadModel: { mode: 'boomerang', phase: 'bank' } } } })).title, 'Boomerang run');
   assert.equal(resolveFlightSteerer(world({ extra: { state: { heroManeuverReadModel: { mode: 'boomerang', phase: 'ready' } } } })), null,
     'a manoeuvre that is only ready is not steering');
-  assert.equal(resolveFlightSteerer(world({ extra: { state: { dockingPresentation: { readout: { inCapture: true } } } } })).title, 'Docking guide');
+  assert.equal(resolveFlightSteerer(world({ extra: { state: { dockingCorridor: { inCapture: true, assist: { ax: 0.4, az: 0 } } } } })).title, 'Docking guide');
+  assert.equal(resolveFlightSteerer(world({ extra: { state: { dockingCorridor: { inCapture: true, assist: null } } } })), null,
+    'sitting in the capture volume with no tug applied is the pilot flying');
   const docked = world({ autopilot: { active: true, label: 'x' } });
   docked.ui.docked = true;
   assert.equal(resolveFlightSteerer(docked), null);
