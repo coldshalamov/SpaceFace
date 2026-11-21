@@ -237,6 +237,7 @@ try {
   }).catch(() => null);
   console.log('lane', JSON.stringify(report.lane0));
 
+  await page.evaluate(() => { window.__SF_LIFE_FORENSICS__ = []; window.__SF_PACK_ARRIVALS__ = []; });
   // ---- in-page sampler: 20 Hz, so a stalled probe process cannot hide a stall in the game ----
   await page.evaluate(() => {
     const w = { samples: [], phase: 'boot' };
@@ -253,6 +254,7 @@ try {
         unacked: c.unacked ?? null, bp: c.backpressured === true, stale: c.staleAckRecoveries ?? null,
         workP95: c.perfWindow ? c.perfWindow.workMsP95 : null, dil: c.dilation ?? null,
         held: g ? g.heldReplies : 0,
+        wSeq: pt ? pt.workerReplySequence : null, mSeq: pt ? pt.mainReceivedSequence : null, wUnacked: pt ? pt.workerUnacked : null, wRet: pt ? pt.workerRetained : null, tick: pt ? pt.tick : null,
       });
     }, 50);
   });
@@ -337,6 +339,21 @@ try {
   const samples = await page.evaluate(() => { clearInterval(window.__nf.timer); return window.__nf.samples; });
   report.workerProbe = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); const q = r && (r.result || r); const g = window.SF.simLaneDiag(); const rr = window.SF.registry.get('render'); const samples = []; for (let i = 0; i < 20; i++) { const r2 = await window.SF.laneRpc('probeState'); const q2 = r2 && (r2.result || r2); samples.push({ worker: q2.committedJournalSequence, main: window.SF.simLaneDiag().journal.writeSequence, presented: rr && rr._presentationPublisher ? rr._presentationPublisher.getLastAppliedSequence() : null }); await new Promise((ok) => setTimeout(ok, 100)); } return { journalRebuildReasons: q.journalRebuildReasons, lag: samples }; } catch (e) { return String(e); } }).catch(() => null);
   console.log('worker journal rebuilds', JSON.stringify(report.workerProbe));
+  // Identity forensics for the worst stale bodies: what the worker journaled vs what main applied.
+  {
+    const worstIds = [...new Set(report.phases.flatMap((ph) => (ph.age && ph.age.episodes) || [])
+      .filter((e) => e.worst && e.poseAgeMs > 300).sort((x, y) => y.poseAgeMs - x.poseAgeMs).map((e) => e.worst.id))].slice(0, 4);
+    if (worstIds.length) {
+      report.lifeForensics = await page.evaluate(async (ids) => {
+        const r = await window.SF.laneRpc('probeState', { lifeFor: ids });
+        const q = r && (r.result || r);
+        const main = (window.__SF_LIFE_FORENSICS__ || []).filter((x) => ids.includes(x[1]));
+        const facade = ids.map((id) => { const e = window.SF.state.entities.get(id); return e ? { id, occ: e.occupantGeneration, type: e.type, alive: e.alive } : { id, missing: true }; });
+        const w = window.SF.registry.get('render')._presentationWorld; const world = ids.map((id) => { const sl = w.getSlotForEntityId(id); return { id, slot: sl, gen: sl >= 0 ? w.sourceGenerations[sl] : null, occ: sl >= 0 ? w.occupantGenerations[sl] : null }; }); const arrivals = window.__SF_PACK_ARRIVALS__ || []; const arrivalOf = (seq) => { const a = arrivals.find((r) => seq > r[0] && seq <= r[1]); return a || null; }; const mainWithArrival = main.map((x) => [...x, arrivalOf(x[3])]); return { ids, worker: q && q.lifeLog, main: mainWithArrival, facade, world, now: Math.round(performance.now()), lastArrivals: arrivals.slice(-5) };
+      }, worstIds).catch((e) => String(e));
+      console.log('life forensics', JSON.stringify(report.lifeForensics).slice(0, 4000));
+    }
+  }
   report.end = await page.evaluate(() => {
     const g = window.SF.simLaneDiag();
     return { clock: g.workerClockLastDiagnostics, poseTable: g.poseTable, profile: g.workerSystemProfile || null,

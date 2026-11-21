@@ -30429,6 +30429,15 @@ export const render = {
       if (world.applySharedPose(rows[o], rows[o + 1], rows[o + 2], rows[o + 3], rows[o + 4],
         rows[o + 5], rows[o + 6], rows[o + 7], rows[o + 8])) applied++;
     }
+    if (typeof world.hideRowsRetiredBy === 'function' && snap.writes !== this._poseFeedRetireWrites) {
+      this._poseFeedRetireWrites = snap.writes;
+      const gens = this._poseFeedGenScratch || (this._poseFeedGenScratch = new Map());
+      const occs = this._poseFeedOccScratch || (this._poseFeedOccScratch = new Map());
+      gens.clear();
+      occs.clear();
+      for (let i = 0, o = 0; i < snap.count; i++, o += POSE_ROW_STRIDE) { gens.set(rows[o], rows[o + 1]); occs.set(rows[o], rows[o + 2]); }
+      world.hideRowsRetiredBy(gens, occs);
+    }
     out.active = true;
     out.writes = snap.writes;
     out.simTime = snap.simTime;

@@ -52,6 +52,10 @@ function writePoseTable(state, journal) {
     lifecycleGeneration: localClock.lifecycleGeneration,
     appliedCommandSequence: localClock.appliedCommandSequence,
     steps: localClock.stepCount,
+    replySequence: localClock.replySequence,
+    unacked: localClock.unackedSequences.length,
+    // 1 + durable rows when a reply is being retained (not yet published), 0 otherwise.
+    retained: localClock.latestReply ? 1 + (localClock.durableCount | 0) : 0,
   });
 }
 function postPoseTableTransfer() {
@@ -143,7 +147,12 @@ function localCommandEnvelopeStale(env) {
 // merely late is never a lost range. Past this age the worker frees the outstanding reply
 // credits and keeps publishing incrementally — bookkeeping only, never a rebuild, never a stop.
 // Poses ride the shared pose table, so a slow consumer cannot freeze the picture either way.
-const LOCAL_STALE_ACK_MS = 250;
+// Measured 2026-11-21 (Electron Swarm): a 250 ms credit release let the worker post 30-67 replies
+// ahead of a busy main thread whose own message queue was holding the ACKs, so spawns/destroys
+// reached the picture seconds late (bodies drawn under an old identity). A late ACK now means
+// "main is behind": the worker keeps merging into one retained reply instead of flooding the
+// queue. Credits are freed only after a genuinely silent main (2 s), still without a rebuild.
+const LOCAL_STALE_ACK_MS = 2000;
 // Dev A/B only (init `legacyStopAndWait`, from localStorage sf.laneLegacy=1): the pre-2026-11-21
 // stop-and-wait rules, kept so the no-freeze gate can show the old freeze on the same build.
 const LEGACY_STALE_ACK_MS = 3000;
@@ -152,7 +161,8 @@ const LEGACY_STALE_ACK_MS = 3000;
 // blob — bigger applies feed back into slower ACKs until the lane collapses
 // into multi-second update cycles. A small window keeps per-tick replies
 // small under mild congestion; the retained merge still bounds deep stalls.
-const LOCAL_MAX_UNACKED = 4;
+// Two in flight: one being applied, one queued. More only deepens main's message backlog.
+const LOCAL_MAX_UNACKED = 2;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_MAX_CONSECUTIVE_TASK_WAKES = 4;
 // Main-thread presentation heartbeat. Every rAF callback posts one; a stall stops the beats.

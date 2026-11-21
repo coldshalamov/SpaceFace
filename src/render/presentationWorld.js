@@ -806,6 +806,29 @@ export function createPresentationWorld(options = {}) {
     return changed;
   }
 
+  // Shared pose table: a drawn row whose life the simulation no longer has (its id is absent from
+  // the table, or the table holds a newer generation of that id) is hidden at once, instead of
+  // standing frozen until the journal's destroy arrives. The journal still owns the retirement;
+  // a fresh allocation or bind clears the mark. Returns how many rows were hidden this call.
+  function hideRowsRetiredBy(tableGenerations, tableOccupants = null) {
+    let hidden = 0;
+    for (let s = 0; s < activeCount; s++) {
+      const slot = world.activeSlots[s];
+      if (world.alive[slot] !== 1 || world.doomed[slot] === 1) continue;
+      const tableGen = tableGenerations.get(world.entityIds[slot]);
+      if (tableGen !== undefined && tableGen <= world.sourceGenerations[slot]) continue;
+      // A transport rebuild re-mints every generation but keeps each occupant: same body, not retired.
+      if (tableGen !== undefined && tableOccupants && tableOccupants.get(world.entityIds[slot]) === world.occupantGenerations[slot]) continue;
+      if (tableGen === undefined && world.sourceGenerations[slot] === 0) continue; // fallback rows carry no life
+      world.doomed[slot] = 1;
+      world.visible[slot] = 0;
+      markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+      hidden++;
+    }
+    if (hidden) diagnostics.tableRetiredHidden = (diagnostics.tableRetiredHidden | 0) + hidden;
+    return hidden;
+  }
+
   function applyVisual(record, entity = null) {
     const slot = applyTransform(record, entity);
     world.visualRevisions[slot] = Number.isSafeInteger(record && record.visualRevision)
@@ -1556,6 +1579,7 @@ export function createPresentationWorld(options = {}) {
     applyTransform,
     applyVisual,
     applySharedPose,
+    hideRowsRetiredBy,
     canRetainOccupant,
     rebuildRecord,
     retireUnpublishedRecords,

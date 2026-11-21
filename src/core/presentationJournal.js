@@ -122,6 +122,8 @@ function poseChanged(entity) {
  */
 export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, options = {}) {
   const suppressTransforms = typeof options.suppressTransforms === 'function' ? options.suppressTransforms : null;
+  // Diagnostic hook (no-freeze identity forensics): every spawn/destroy the journal publishes.
+  const onLifeRecord = typeof options.onLifeRecord === 'function' ? options.onLifeRecord : null;
   const size = Math.max(1, Math.floor(Number.isFinite(capacity)
     ? capacity
     : DEFAULT_RECORD_CAPACITY));
@@ -395,6 +397,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     );
     journaledEntities.add(entity);
     spawnCount++;
+    if (onLifeRecord) onLifeRecord('spawn', entityId, generation, sequence, tick, entity && entity.occupantGeneration, rebuilding === true);
     return sequence;
   }
 
@@ -433,6 +436,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     // forward from a slot whose refresh predicate would reject it anyway.
     lastAnySequence[entityId] = 0;
     destroyCount++;
+    if (onLifeRecord) onLifeRecord('destroy', entityId, generation, sequence, tick, source && source.occupantGeneration, false);
     return sequence;
   }
 

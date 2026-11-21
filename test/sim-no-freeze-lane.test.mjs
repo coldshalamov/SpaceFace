@@ -223,3 +223,17 @@ test('a throw inside a pose-table write never leaves the seqlock odd (readers wo
   assert.equal(snapshot.simTime, 0.2);
   assert.equal(snapshot.writeErrors, 1, 'main sees the swallowed throw');
 });
+
+test('a drawn row whose life the simulation no longer has is hidden at once; a rebuilt same body is not', () => {
+  const world = createPresentationWorld();
+  world.allocateRecord({ entityId: 5, generation: 1, x: 0, z: 0 }, { id: 5, occupantGeneration: 50 });
+  world.allocateRecord({ entityId: 6, generation: 1, x: 0, z: 0 }, { id: 6, occupantGeneration: 60 });
+  world.allocateRecord({ entityId: 7, generation: 1, x: 0, z: 0 }, { id: 7, occupantGeneration: 70 });
+  // id 5 recycled into a new occupant; id 6 re-minted by a transport rebuild (same occupant); id 7 retired.
+  const gens = new Map([[5, 2], [6, 2]]);
+  const occs = new Map([[5, 51], [6, 60]]);
+  assert.equal(world.hideRowsRetiredBy(gens, occs), 2);
+  assert.equal(world.doomed[world.getSlotForEntityId(5)], 1, 'recycled id: the old life is hidden');
+  assert.equal(world.doomed[world.getSlotForEntityId(6)], 0, 'rebuilt same body stays drawn');
+  assert.equal(world.doomed[world.getSlotForEntityId(7)], 1, 'retired body is hidden');
+});

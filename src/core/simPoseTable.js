@@ -34,6 +34,10 @@ const H_APPLIED_COMMAND = 9;
 const H_STEPS = 10;
 const H_TRUNCATED = 11;
 const H_WRITE_ERRORS = 12;
+// Live worker transport facts (forensics; read without waiting for a reply).
+const H_REPLY_SEQ = 13;
+const H_UNACKED = 14;
+const H_RETAINED = 15;
 const HEADER_INTS = 16;
 // Float64 header cells (after the Int32 header).
 const F_SIM_TIME = 0;
@@ -164,6 +168,9 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
     header[H_APPLIED_COMMAND] = Number.isSafeInteger(meta.appliedCommandSequence) ? meta.appliedCommandSequence : 0;
     header[H_STEPS] = Number.isSafeInteger(meta.steps) ? (meta.steps & 0x7fffffff) : 0;
     header[H_TRUNCATED] = stats.truncated & 0x7fffffff;
+    header[H_REPLY_SEQ] = Number.isSafeInteger(meta.replySequence) ? meta.replySequence & 0x7fffffff : 0;
+    header[H_UNACKED] = Number.isSafeInteger(meta.unacked) ? meta.unacked : 0;
+    header[H_RETAINED] = Number.isSafeInteger(meta.retained) ? meta.retained : 0;
     writes++;
     header[H_WRITES] = writes & 0x7fffffff;
     } catch (error) {
@@ -250,6 +257,9 @@ export function createPoseTableReader() {
     target.steps = header[H_STEPS];
     target.writes = header[H_WRITES];
     target.truncated = header[H_TRUNCATED];
+    target.replySequence = header[H_REPLY_SEQ];
+    target.unacked = header[H_UNACKED];
+    target.retained = header[H_RETAINED];
     target.writeErrors = header[H_WRITE_ERRORS];
     target.simTime = scalars[F_SIM_TIME];
     target.wallMs = scalars[F_WALL_MS];

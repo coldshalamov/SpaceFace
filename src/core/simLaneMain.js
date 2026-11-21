@@ -1465,6 +1465,11 @@ export function createSimLaneRuntime({
       journal.applyPack(msg.pack);
       journalLo = msg.pack.start; journalHi = msg.pack.end;
     }
+    if (journalHi > journalLo && typeof window !== 'undefined' && window.__SF_PACK_ARRIVALS__) {
+      const ring = window.__SF_PACK_ARRIVALS__;
+      ring.push([journalLo, journalHi, Math.round(nowMs()), msg.stateTick, msg.clockSequence, msg.__laneArrivedAtMs ? Math.round(msg.__laneArrivedAtMs) : null, msg.completedTickCount || null]);
+      if (ring.length > 4000) ring.splice(0, 500);
+    }
 
     if (Array.isArray(msg.spawnInfos) && msg.spawnInfos.length) {
       applySpawnInfos(readModel, msg.spawnInfos, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
@@ -2891,6 +2896,10 @@ export function createSimLaneRuntime({
           generationMismatchFrames: poseGenerationMismatchFrames,
           generationMismatchLiveFrames: poseGenerationMismatchLiveFrames,
           truncatedWrites: poseFeed.snapshot ? poseFeed.snapshot.truncated || 0 : 0,
+          workerReplySequence: poseFeed.snapshot ? poseFeed.snapshot.replySequence : null,
+          workerUnacked: poseFeed.snapshot ? poseFeed.snapshot.unacked : null,
+          workerRetained: poseFeed.snapshot ? poseFeed.snapshot.retained : null,
+          mainReceivedSequence: workerClockLastReceivedSequence,
           writeErrors: poseFeed.snapshot ? poseFeed.snapshot.writeErrors || 0 : 0,
           reader: poseReader.getStats(),
         },

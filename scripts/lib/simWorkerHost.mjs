@@ -2116,6 +2116,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
         return {
           journalRebuildReasons: { ...host.rebuildReasons },
           committedJournalSequence: host.committedJournalSequence,
+          lifeLog: args && Array.isArray(args.lifeFor) ? (host.lifeLog || []).filter((r) => args.lifeFor.includes(r[1])) : undefined,
           tick: state.tick,
           seed: state.meta?.seed ?? null,
           runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,
@@ -2256,7 +2257,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
       ? msg.journalCapacity
       : undefined;
-    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms });
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms, onLifeRecord: (kind, id, gen, seq, tick, occ, rebuilding) => { const log = host.lifeLog || (host.lifeLog = []); log.push([kind, id, gen, seq, tick, occ, rebuilding ? 1 : 0]); if (log.length > 6000) log.splice(0, 1000); } });
     host.journal = journal;
     host.scratch = createPresentationJournalRecord();
     host.suppressedSpawns = [];
@@ -2443,7 +2444,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
       ? msg.journalCapacity
       : undefined;
-    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms });
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms, onLifeRecord: (kind, id, gen, seq, tick, occ, rebuilding) => { const log = host.lifeLog || (host.lifeLog = []); log.push([kind, id, gen, seq, tick, occ, rebuilding ? 1 : 0]); if (log.length > 6000) log.splice(0, 1000); } });
     host.journal = journal;
     host.scratch = createPresentationJournalRecord(); // visitRange copies each record into this
 

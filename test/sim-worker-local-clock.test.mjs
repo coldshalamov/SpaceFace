@@ -722,16 +722,17 @@ test('the first freed reply credit sends the contiguous retained tail before the
     send({ kind: 'finalize', seq: 'fifo-barrier' });
     await waitFor(() => replies.some(reply => reply.seq === 'fifo-barrier'));
     const before = ticks();
-    assert.equal(before.length, 4, 'one reply remains retained while all four credits are used');
+    // NO-FREEZE: two credits (one applying, one queued); the other three ticks merge into one retained reply.
+    assert.equal(before.length, 2, 'the rest is retained while both credits are used');
     send({ kind: 'clockAck', lifecycleGeneration: 0, clockSequence: before[0].clockSequence,
       ackJournalEnd: before[0].journalEnd });
     const after = ticks();
-    assert.equal(after.length, 5, 'the freed credit sends the retained reply during ACK ingress');
-    assert.equal(after[4].clockSequence, after[3].clockSequence + 1);
-    assert.equal(after[4].journalStart, after[3].journalEnd);
-    assert.equal(after[4].journalFullRebuild, false);
-    assert.equal(after[4].spawnInfos.length, 1);
-    assert.equal(after[4].commandSequence, 5);
+    assert.equal(after.length, 3, 'the freed credit sends the retained reply during ACK ingress');
+    assert.equal(after[2].clockSequence, after[1].clockSequence + 1);
+    assert.equal(after[2].journalStart, after[1].journalEnd);
+    assert.equal(after[2].journalFullRebuild, false);
+    assert.equal(after[2].spawnInfos.length, 3, 'the merged reply carries every retained spawn in order');
+    assert.equal(after[2].commandSequence, 5);
   } finally {
     send({ kind: 'shutdown', seq: 'fifo-shutdown' });
     await waitFor(() => replies.some(reply => reply.seq === 'fifo-shutdown'));
@@ -2186,7 +2187,7 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
     const cancel = globalThis.clearTimeout;
     t.mock.method(globalThis, 'setTimeout', (callback, delay, ...args) => {
       const handle = schedule(callback, delay, ...args);
-      if (delay === 250) ackTimers.add(handle);
+      if (delay === 2000) ackTimers.add(handle);
       return handle;
     });
     t.mock.method(globalThis, 'clearTimeout', (handle) => {
@@ -2255,7 +2256,7 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
   }
 });
 
-test('a lost presentation ACK frees its reply credit in a quarter second and keeps publishing incrementally (no rebuild, no stop)', { timeout: 30000 }, async () => {
+test('a lost presentation ACK frees its reply credit after two silent seconds and keeps publishing incrementally (no rebuild, no stop)', { timeout: 30000 }, async () => {
   const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
   const previousSelf = globalThis.self;
   const workerReplies = [];
@@ -2306,10 +2307,10 @@ test('a lost presentation ACK frees its reply credit in a quarter second and kee
     const repliesBeforeWedge = workerReplies.filter((reply) => reply.kind === 'clockTick').length;
 
     // No ACK is ever sent. NO-FREEZE rule (2026-11-21): the reply channel is FIFO, so a late
-    // ACK is never a lost range. Within a quarter second the worker frees the credit and keeps
+    // ACK is never a lost range. After two silent seconds the worker frees the credit and keeps
     // publishing ordered incremental replies — never a full rebuild (the old 3 s 'blip').
     await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
-      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 3000);
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 6000);
 
     const recovered = workerReplies.filter((reply) => reply.kind === 'clockTick'
       && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1).at(-1);
@@ -2361,7 +2362,7 @@ test('foreground heartbeats recover an expired reply even when the watchdog time
     await waitFor(() => replies.some(reply => reply.kind === 'ready'));
     t.mock.method(performance, 'now', () => now() + wallOffset);
     t.mock.method(globalThis, 'setTimeout', (fire, delay, ...args) => {
-      if (delay !== 250) return setTimer(fire, delay, ...args);
+      if (delay !== 2000) return setTimer(fire, delay, ...args);
       watchdogTimer = fire;
       return fire;
     });
@@ -2608,4 +2609,48 @@ test('freeze recorder stays quiet while paused or outside flight', async (t) => 
   assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 1,
     're-entering advancing flight re-arms the recorder');
   assert.equal(f.lane.getDiagnostics().freezeActive, true);
+});
+
+test('an id recycled three times inside one merged reply ends with its newest life on main (facade and drawn world)', async (t) => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  let worker;
+  try {
+    worker = await import(`../src/core/wholeSimBrowserWorker.js?recycle3-${Date.now()}`);
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf; else delete globalThis.self;
+  }
+  const f = makeFixture(t);
+  // Three ticks, each recycling id 9 into a new life, merged into ONE retained reply on the worker.
+  const tickReply = (n, start, rows, infos) => ({
+    kind: 'clockTick', clockSequence: n, lifecycleGeneration: 0, journalValid: true,
+    journalStart: start, journalEnd: start + rows.length, pack: journalPack(start, rows),
+    completedTick: { sequence: n, tick: n, journalStart: start, journalEnd: start + rows.length },
+    spawnInfos: infos, stateTick: n, simTime: n / 60,
+  });
+  const first = tickReply(1, 0, [
+    { kind: 1, entityId: 9, generation: 1, type: 'ship', tick: 1, x: 1 },
+  ], [{ entityId: 9, type: 'ship', occupantGeneration: 101 }]);
+  const second = tickReply(2, 1, [
+    { kind: 2, entityId: 9, generation: 1, type: 'ship', tick: 2 },
+    { kind: 1, entityId: 9, generation: 2, type: 'ship', tick: 2, x: 2 },
+  ], [{ entityId: 9, type: 'ship', occupantGeneration: 102 }]);
+  const third = tickReply(3, 3, [
+    { kind: 2, entityId: 9, generation: 2, type: 'ship', tick: 3 },
+    { kind: 1, entityId: 9, generation: 3, type: 'ship', tick: 3, x: 3 },
+  ], [{ entityId: 9, type: 'ship', occupantGeneration: 103 }]);
+  const merged = worker.localMergeReply(worker.localMergeReply(first, second), third);
+  worker.localMaterializePack(merged);
+  assert.equal(merged.pack.count, 5, 'the middle life keeps both its spawn and its destroy');
+  f.receive(merged);
+  assert.equal(f.state.entities.get(9)?.occupantGeneration, 103, 'the facade holds the newest occupant');
+  const world = createPresentationWorld();
+  const publisher = createPresentationPublisher(world, f.state, { journal: f.lane.journal });
+  publisher.consume({ journal: f.lane.journal, journalStart: 0, journalEnd: merged.pack.end,
+    journalValid: true, completedTickCount: 3, lifecycleGeneration: 0 }, { atomic: true });
+  const slot = world.getSlotForEntityId(9);
+  assert.ok(slot >= 0);
+  assert.equal(world.sourceGenerations[slot], 3, 'the drawn world holds the newest journal life');
+  assert.equal(world.x[slot], 3);
 });
