@@ -988,15 +988,29 @@ export class Sg02DynamicBodyOwner {
         rec._impulseStampTick = tick - episode.impulseAgeTicks;
       }
       if (entity.isPlayer !== true) continue;
+      // A stale episode is still honest provenance: older envelopes serialized the world tick
+      // as 0, so a real saved lastTick reads as "from the future" here, and an episode older
+      // than the bridge window simply resets its give budget at the next live contact (the
+      // consumer already compares tickNow - lastTick against PLAYER_CONTACT_EVENT_BRIDGE_TICKS).
+      // Dropping either case loses the throw/contact history the save contract preserves.
       if (!episode || !Number.isSafeInteger(episode.lastTick) || episode.lastTick < 0
-        || episode.lastTick > tick || tick - episode.lastTick > PLAYER_CONTACT_EVENT_BRIDGE_TICKS
         || !Number.isFinite(episode.cumulativeDeltaV) || episode.cumulativeDeltaV < 0) continue;
       if (![entity.pos?.x, entity.pos?.z, entity.vel?.x, entity.vel?.z, entity.rot, entity.angVel].every(Number.isFinite)) continue;
       const spec = resolvePhysicsBodySpec(entity);
+      // The contract embedded at capture pins the spec AS AUTHORED THEN; a shipped content
+      // revision bump (the field that forces this rebuild) makes that pin differ from today's
+      // spec even when the body's physical terms are identical. Spec equivalence is enforced
+      // above against the live record; here the contract must match on the terms that describe
+      // the body — manifest, material, groups, proportions, scale, sleep — not the authoring
+      // provenance that legitimately moved.
+      const savedContract = saved.contract && typeof saved.contract === 'object'
+        ? saved.contract : null;
+      const contractMatches = savedContract != null && spec
+        && sameNativeValue({ ...nativeBodyContract(entity, spec), spec: savedContract.spec }, savedContract);
       if (!spec || !sameNativeValue(spec, rec.spec)
         || !sameNativeValue(nativeEntityIdentity(entity), saved.identity)
         || !sameNativeValue(nativeEntityKinematics(entity), saved.state)
-        || !sameNativeValue(nativeBodyContract(entity, spec), saved.contract)) continue;
+        || !contractMatches) continue;
       rec._playerContactLastTick = episode.lastTick;
       rec._playerContactCumulativeDeltaV = episode.cumulativeDeltaV;
     }
