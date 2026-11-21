@@ -1624,7 +1624,8 @@ export const tetherGameplay = {
     const obstacles = collectAcquisitionObstacles(this, state, player, [entity], maxLength);
     const refusal = validateAcquisitionTarget(this, player, entity, def, state, obstacles);
     if (refusal) {
-      this._lastLatchDenial = { reason: refusal, targetId: entity.id, maxLength };
+      this._lastLatchDenial = { reason: refusal, targetId: entity.id, maxLength,
+        ...(refusal === 'blocked' && this._lastLineBlocker ? { blocker: { ...this._lastLineBlocker } } : {}) };
       return null;
     }
     return { entity, targetWorld: surfacePointToward(entity, player.pos) };
