@@ -408,7 +408,7 @@ if (process.platform === 'win32') {
 // js-flags is forwarded to every isolate the shell spawns (renderer + decode
 // workers); commit follows use, so the cost is reserved address space, not RSS.
 // SPACEFACE_SEMI_SPACE_MB overrides the size for probe boxes; 'default' unsets it.
-const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '64').trim());
+const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '128').trim());
 {
   const jsFlags = [];
   if (Number.isInteger(SEMI_SPACE_MB) && SEMI_SPACE_MB >= 8 && SEMI_SPACE_MB <= 512) {
@@ -417,6 +417,9 @@ const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '64')
   // Isolated evidence only: a garbage-collector trace on stdout (every isolate, the sim worker
   // included) so a probe can price collector pauses. Never on a player launch.
   if (launchConfig.isolatedEvidence === true && process.env.SPACEFACE_EVIDENCE_TRACE_GC === '1') jsFlags.push('--trace-gc');
+  // Isolated evidence only: an old-generation size experiment (heap-shape probe).
+  const oldMb = Number(String(process.env.SPACEFACE_EVIDENCE_OLD_SPACE_MB || '').trim());
+  if (launchConfig.isolatedEvidence === true && Number.isInteger(oldMb) && oldMb >= 64 && oldMb <= 4096) jsFlags.push(`--max-old-space-size=${oldMb}`);
   if (jsFlags.length) app.commandLine.appendSwitch('js-flags', jsFlags.join(' '));
 }
 // Browser-chrome subsystems a localhost game shell never uses — keeps their periodic

@@ -44,6 +44,12 @@ const VISIBLE = argv.visible === true;
 const PROFILE = argv.profile === true;
 // --alloc: garbage-collector trace (every isolate) and a heap-sampling profile of the SIM WORKER.
 const ALLOC = argv.alloc === true;
+// --gctrace: a DevTools performance trace (v8 GC categories) over the dense phase; every minor and
+// major collection on the sim worker's thread is counted with its length and time.
+const GCTRACE = argv.gctrace === true;
+// --semi=<MB> / --old=<MB>: heap-shape experiment for every isolate (launcher js-flags override).
+const SEMI_MB = argv.semi ? String(argv.semi) : null;
+const OLD_MB = argv.old ? String(argv.old) : null;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/no-freeze/${ROUTE}${LEGACY ? '-legacy' : ''}`));
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -59,6 +65,8 @@ const launch = createIsolatedElectronLaunch({ root: ROOT, taskId: `no-freeze-${R
   // un-throttled so it renders and measures like a foreground window.
   ...(VISIBLE ? {} : { SPACEFACE_EVIDENCE_SHOW_INACTIVE: '1', SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' }),
   ...(ALLOC ? { SPACEFACE_EVIDENCE_TRACE_GC: '1', ELECTRON_ENABLE_LOGGING: '1' } : {}),
+  ...(SEMI_MB ? { SPACEFACE_SEMI_SPACE_MB: SEMI_MB } : {}),
+  ...(OLD_MB ? { SPACEFACE_EVIDENCE_OLD_SPACE_MB: OLD_MB } : {}),
 } });
 function readPlayerProfilePairs() {
   const { createRequire } = require_();
@@ -382,6 +390,13 @@ try {
     return false;
   };
   phases.push(['dense input', async () => play(SECONDS * 1000)]);
+  const traceChunks = [];
+  if (GCTRACE) {
+    cdp.on('Tracing.dataCollected', (ev) => { for (const e of ev.value || []) traceChunks.push(e); });
+    await cdp.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: {
+      includedCategories: ['__metadata', 'v8', 'devtools.timeline', 'disabled-by-default-v8.gc'],
+      excludedCategories: ['*'] } }).catch((e) => console.log('tracing start', String(e)));
+  }
   for (const [name, run] of phases) {
     await ensureFlight();
     await setPhase(name);
@@ -393,6 +408,47 @@ try {
     report.phases.push({ name, age, freezeEpisodes: freezeAfter.slice(freezeBefore) });
   }
   hand.stop();
+  if (GCTRACE) {
+    const done = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+    await cdp.send('Tracing.end').catch((e) => console.log('tracing end', String(e)));
+    await Promise.race([done, new Promise((r) => setTimeout(r, 20000))]);
+    const threadNames = new Map();
+    for (const e of traceChunks) if (e.ph === 'M' && e.name === 'thread_name') threadNames.set(e.pid + ':' + e.tid, e.args && e.args.name);
+    const gcByThread = new Map();
+    for (const e of traceChunks) {
+      if (e.ph !== 'X' || !(e.dur > 0)) continue;
+      const kind = /^(MinorGC|V8\.GC_SCAVENGER|ScavengeGC)$/.test(e.name) ? 'minor'
+        : /^(MajorGC|V8\.GC_MARK_COMPACTOR|V8\.GC_FINALIZE_MC)$/.test(e.name) ? 'major' : null;
+      if (!kind) continue;
+      const key = e.pid + ':' + e.tid;
+      const r = gcByThread.get(key) || { thread: threadNames.get(key) || key, minor: [], major: [] };
+      r[kind].push(e.dur / 1000);
+      gcByThread.set(key, r);
+    }
+    const sum = (a) => a.reduce((x, y) => x + y, 0);
+    report.gcTrace = [...gcByThread.values()].map((r) => ({
+      thread: r.thread,
+      minorCount: r.minor.length, minorMaxMs: +Math.max(0, ...r.minor).toFixed(1), minorTotalMs: +sum(r.minor).toFixed(1),
+      majorCount: r.major.length, majorMaxMs: +Math.max(0, ...r.major).toFixed(1), majorTotalMs: +sum(r.major).toFixed(1),
+      over8: r.minor.concat(r.major).filter((d) => d > 8).length,
+      majorDurations: r.major.map((d) => +d.toFixed(1)).slice(0, 40),
+    }));
+    // Long tasks on the busiest worker thread: wall (dur) vs thread CPU time (tdur). A large gap
+    // means the thread was descheduled (CPU contention), not doing work.
+    {
+      const counts = new Map();
+      for (const e of traceChunks) if (e.ph === 'X') { const k = e.pid + ':' + e.tid; counts.set(k, (counts.get(k) || 0) + 1); }
+      const busiest = [...counts.entries()].filter(([k]) => /DedicatedWorker/.test(threadNames.get(k) || '')).sort((a, b) => b[1] - a[1])[0];
+      if (busiest) {
+        const long = traceChunks.filter((e) => e.ph === 'X' && (e.pid + ':' + e.tid) === busiest[0] && e.dur > 25000)
+          .sort((a, b) => b.dur - a.dur).slice(0, 15).map((e) => ({ name: e.name, wallMs: +(e.dur / 1000).toFixed(1), cpuMs: e.tdur ? +(e.tdur / 1000).toFixed(1) : null }));
+        report.workerLongTasks = long;
+        console.log('worker long tasks (wall vs cpu):', JSON.stringify(long).slice(0, 1200));
+      }
+    }
+    console.log('gc trace (' + traceChunks.length + ' events)');
+    for (const r of report.gcTrace) console.log('   ' + JSON.stringify(r).slice(0, 400));
+  }
   if (ALLOC && workerCdp.sessionId) {
     const ticks = await page.evaluate(() => window.SF.simLaneDiag().poseTable.tick).catch(() => null);
     const prof = await workerSend('HeapProfiler.stopSampling').catch((e) => ({ error: String(e) }));
@@ -414,7 +470,7 @@ try {
     report.alloc = {
       sampledBytes: total, steps, wallS: (Date.now() - report.allocStart.atMs) / 1000,
       bytesPerStep: steps ? Math.round(total / steps) : null,
-      top: [...sites.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25)
+      top: [...sites.entries()].sort((a, b) => b[1] - a[1]).slice(0, 80)
         .map(([k, v]) => [k, v, steps ? Math.round(v / steps) : null]),
       error: prof && prof.error ? prof.error : undefined,
     };
