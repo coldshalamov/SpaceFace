@@ -1327,12 +1327,13 @@ export const world = {
       || state.world.enterSerial !== producerEpoch;
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
-    // Free-flight membership jitter must not inflate visitedCount.
+    // Free-flight membership jitter must not inflate visitedCount — and neither must a save
+    // restore: the session you continue was already in this sector, it never left.
     const disc = arenaOnly ? null : this._discoveryFor(sectorId);
     const firstVisit = !!disc && !disc.discovered;
     if (disc) {
       disc.discovered = true;
-      if (!continuous) disc.visitedCount = (disc.visitedCount || 0) + 1;
+      if (!continuous && opts.restoredSession !== true) disc.visitedCount = (disc.visitedCount || 0) + 1;
     }
 
     // Corridor-global outer fence (not a per-sector disk trap). Non-corridor intentional
