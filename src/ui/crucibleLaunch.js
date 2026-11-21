@@ -118,14 +118,21 @@ export function crucibleSetupFor({
  */
 export function crucibleHullSetupFor({
   hullId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
-  startWave = 1, swarmThreats = null,
+  startWave = 1, swarmThreats = null, loadout = null,
 } = {}) {
   const shipDef = SHIPS.find((entry) => entry && entry.id === hullId);
   if (!shipDef) return { ok: false, issues: [{ path: 'hullId', message: 'Unknown hull' }] };
+  // SAVE-AND-SOAK-1 Part B: a resume rebuild names its fittings — the slot list the
+  // interrupted run flew — where a bare-hull launch stays empty on purpose.
+  const fitting = Array.isArray(loadout)
+    ? loadout
+      .filter((entry) => entry && Number.isInteger(entry.slotIndex) && typeof entry.defId === 'string')
+      .map((entry) => ({ slotIndex: entry.slotIndex, defId: entry.defId }))
+    : [];
   const result = validateCombatLabSetup({
     schema: 'spaceface.combatLabSetup.v1',
     hullId,
-    loadout: [],
+    loadout: fitting,
     enemyPackageId: 'wasp_flight',
     arenaId: ruleset === POWERED_CONVEYOR_RULESET ? CRUCIBLE_ARENA_ID : arenaId,
     seed: normalizeSeed(seed),
@@ -230,6 +237,9 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
     zeroScrapOpening: extras.zeroScrapOpening,
     retryOpeningEquipment: extras.retryOpeningEquipment,
     openArmoryBeforeRound1: extras.openArmoryBeforeRound1 === false ? false : undefined,
+    swarmResume: extras.swarmResume && typeof extras.swarmResume === 'object'
+      ? extras.swarmResume
+      : undefined,
   });
 }
 
@@ -286,6 +296,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   delete launchSetup.openArmoryBeforeRound1;
   delete launchSetup.zeroScrapOpening;
   delete launchSetup.retryOpeningEquipment;
+  delete launchSetup.resume;
   // The stake travels beside the setup like the ruleset — never inside the closed schema.
   const swarmStake = typeof setup.swarmStake === 'string' ? normalizeSwarmStake(setup.swarmStake) : null;
   // SWARM-06: same seam for the Threat wager and an explicit perk pick. The door's perks live
@@ -338,6 +349,9 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
     openArmoryBeforeRound1,
     zeroScrapOpening,
     retryOpeningEquipment: setup.retryOpeningEquipment,
+    // SAVE-AND-SOAK-1 Part B: the door's Resume word sends the interrupted run's record —
+    // it rides beside the setup like the stake and lands on run:beginRequested.
+    swarmResume: setup.resume && typeof setup.resume === 'object' ? setup.resume : undefined,
   }));
   return true;
 }

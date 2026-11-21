@@ -201,6 +201,53 @@ export const runSession = {
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
       next.telemetry.startWave = startWave;
     }
+    // SAVE-AND-SOAK-1 Part B: an interrupted run's round-start record rides the begin request
+    // as `resume`. The envelope is still created by createRunState; the record's wallet, build,
+    // pilot and mutator list restore on top, so the commit below — and every later owner read —
+    // sees an ordinary valid run. The resumed wave is the record's own start boundary
+    // (run.wave at the draft that opened the round), never a mid-fight position.
+    const resume = request && request.resume && typeof request.resume === 'object'
+      ? request.resume : null;
+    let resumePilot = null;
+    if (resume && next.kind === 'survival' && isSwarmRuleset(ruleset)) {
+      const rr = resume.run && typeof resume.run === 'object' ? resume.run : null;
+      if (rr) {
+        if (Number.isInteger(rr.wave) && rr.wave >= 0) {
+          next.wave = rr.wave;
+          next.telemetry.startWave = rr.wave + 1;
+        }
+        for (const key of ['block', 'act', 'xp', 'score', 'credits']) {
+          if (Number.isInteger(rr[key]) && rr[key] >= 0) next[key] = rr[key];
+        }
+        if (Number.isInteger(rr.level) && rr.level >= 1) next.level = rr.level;
+        for (const key of ['modifiers', 'draftHistory', 'shopHistory', 'arenaMutators']) {
+          if (Array.isArray(rr[key])) next[key] = rr[key];
+        }
+        if (rr.pilot && typeof rr.pilot === 'object' && !Array.isArray(rr.pilot)) {
+          // Applied after createPilotProgress() stamps below — the tree's own record first,
+          // the interrupted one on top.
+          resumePilot = {
+            points: rr.pilot.points && typeof rr.pilot.points === 'object' ? { ...rr.pilot.points } : {},
+            nodes: Array.isArray(rr.pilot.nodes) ? rr.pilot.nodes.slice() : [],
+            banked: Number.isInteger(rr.pilot.banked) && rr.pilot.banked > 0 ? rr.pilot.banked : 0,
+            offer: null,
+          };
+        }
+        if (rr.style && typeof rr.style === 'object' && !Array.isArray(rr.style)) {
+          const style = cloneRun(rr.style);
+          if (style && Number.isFinite(style.multiplier)) next.style = style;
+        }
+        if (typeof rr.buildCode === 'string') next.buildCode = rr.buildCode;
+        // The record's telemetry is the run's own contract — stake, threats, hangar stamp,
+        // bank ordinal — restored wholesale, then re-anchored to today's profile hangar so a
+        // stale stamp can never outlive a profile change.
+        if (rr.telemetry && typeof rr.telemetry === 'object' && !Array.isArray(rr.telemetry)) {
+          const hangar = next.telemetry.hangar;
+          next.telemetry = { ...cloneRun(rr.telemetry), hangar };
+          next.telemetry.startWave = (Number.isInteger(rr.wave) && rr.wave >= 0 ? rr.wave : startWave - 1) + 1;
+        }
+      }
+    }
     // The swarm stake rides telemetry (schema-free, run-lifelong, never serialized): the wave
     // planner reads it to scale pressure, and the results surface reads it to say what the
     // run cost. Absent means the tuned baseline — the door only sends it for swarm runs.
@@ -218,8 +265,11 @@ export const runSession = {
     // record (06 §2). Adventure and inactive envelopes stay pilot-free by contract; nothing
     // earned in a run outlives the run.
     if (next.kind !== 'adventure') next.pilot = createPilotProgress();
+    if (resumePilot) next.pilot = resumePilot;
     if (next.kind === 'survival') {
-      next.practice = request?.practice === true;
+      // A resume keeps the interrupted run's own practice flag — the door's payload may not name it.
+      next.practice = request?.practice === true
+        || (resume != null && resume.run != null && resume.run.practice === true);
       this._retireSerial = (this._retireSerial || 0) + 1;
       next.retireToken = this._retireSerial;
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};

@@ -55,8 +55,10 @@ import {
 import {
   armGhostPlayback,
   beginGhostRecording,
+  clearSwarmResume,
   loadCrucibleMeta,
   sampleGhostPoseFromState,
+  writeSwarmResume,
 } from './survivalRecords.js';
 import { applyHangarToPlayer } from './swarmHangar.js';
 import { ownedSwarmLegendaryIds, SWARM_LEGENDARY_RECORD_KIND } from '../data/swarmDraft.js';
@@ -143,7 +145,7 @@ export const survivalRun = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', (payload) => this._onStarted(payload)));
     this._unsubs.push(this.bus.on('run:transitioned', (payload) => this._onTransitioned(payload)));
-    this._unsubs.push(this.bus.on('run:ended', () => this._resetMachine()));
+    this._unsubs.push(this.bus.on('run:ended', (payload) => this._onRunEnded(payload)));
     this._unsubs.push(this.bus.on('run:loadoutReady', (payload) => this._onLoadoutReady(payload)));
     this._unsubs.push(this.bus.on('run:openingPrepareRequested', (payload) => this._prepareOpening(payload)));
     this._unsubs.push(this.bus.on('run:arenaIntroComplete', () => this._onArenaIntroComplete()));
@@ -270,6 +272,72 @@ export const survivalRun = {
     this._breathEnded = false;
   },
 
+  /**
+   * SAVE-AND-SOAK-1 Part B — the interrupted-run record. Written when a Swarm run's draft
+   * opens (`_onTransitioned` above): `wave + 1` is the round the resume will replan, and the
+   * ship, purse, build and pilot are exactly the values that round starts with. The record is
+   * durable (crucible meta, shared store) so a closed window resumes the same way a menu quit
+   * does. Non-swarm rulesets and malformed bags write nothing.
+   */
+  _writeSwarmResume(run) {
+    if (!isSwarmRuleset(run && run.ruleset)) return;
+    const p = this.state && this.state.player;
+    const owned = p && Array.isArray(p.ownedShips)
+      ? p.ownedShips[Number.isInteger(p.activeShipIndex) ? p.activeShipIndex : 0]
+      : null;
+    const defId = owned && typeof owned.defId === 'string' ? owned.defId : null;
+    if (!defId) return;
+    const fittings = Array.isArray(owned.fittings) ? owned.fittings : [];
+    const loadout = [];
+    for (let i = 0; i < fittings.length; i += 1) {
+      const entry = fittings[i];
+      const fitted = entry && typeof entry === 'object' ? entry.defId : entry;
+      if (typeof fitted === 'string' && fitted) loadout.push({ slotIndex: i, defId: fitted });
+    }
+    try {
+      writeSwarmResume({
+        wave: (Number.isInteger(run.wave) ? run.wave : 0) + 1,
+        seed: run.seed,
+        arenaId: run.arenaId,
+        ruleset: run.ruleset,
+        ship: { defId, loadout },
+        run: {
+          wave: run.wave,
+          block: run.block,
+          act: run.act,
+          xp: run.xp,
+          level: run.level,
+          score: run.score,
+          credits: run.credits,
+          modifiers: run.modifiers,
+          draftHistory: run.draftHistory,
+          shopHistory: run.shopHistory,
+          arenaMutators: run.arenaMutators,
+          pilot: run.pilot,
+          style: run.style,
+          buildCode: run.buildCode,
+          practice: run.practice,
+          telemetry: run.telemetry,
+        },
+        savedAt: new Date().toISOString(),
+      });
+    } catch { /* the slot is best-effort — a store failure must never stall a transition */ }
+  },
+
+  /**
+   * Part B — only a real ending retires the slot: victory, defeat and the player's own
+   * retire clear it. An exit to the menu (or a closed window, which emits nothing) keeps it —
+   * that quit is exactly what Resume exists for.
+   */
+  _onRunEnded(payload) {
+    const reason = payload && typeof payload.reason === 'string' ? payload.reason : '';
+    const outcome = payload && payload.outcome;
+    if (outcome === 'victory' || outcome === 'defeat' || reason === 'player_retired') {
+      try { clearSwarmResume(); } catch { /* best-effort */ }
+    }
+    this._resetMachine();
+  },
+
   _onStarted(payload) {
     this._resetMachine();
     const queued = takeQueuedChallenge();
@@ -339,6 +407,12 @@ export const survivalRun = {
     )) {
       this._draftResolved = true;
     }
+
+    // SAVE-AND-SOAK-1 Part B: a draft opening is the round's own start boundary — the purse,
+    // build, mutators and pilot are all settled and no pick is in flight. Stamping the
+    // interrupted-run slot here means a quit at any later beat of the round replays the whole
+    // round — the shop re-offers and the wave replans — never a resume mid-fight or mid-write.
+    if (phase === 'draft' && isSwarmRuleset(run.ruleset)) this._writeSwarmResume(run);
 
     if (phase === 'wave_intro') {
       this._planCurrentWaveIntro(run);

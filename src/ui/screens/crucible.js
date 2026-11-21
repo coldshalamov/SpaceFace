@@ -106,6 +106,7 @@ import {
   ghostRaceOffer,
   lastGhostRowByHash,
   loadCrucibleMeta,
+  swarmResumeFor,
   weeklyMutatorForNow,
   bestLineRows,
   normalizeBestLine,
@@ -2591,6 +2592,40 @@ export const crucibleScreen = {
       launchCurrent();
     });
     addWord(footWords, enter);
+    // SAVE-AND-SOAK-1 Part B — the interrupted run's word on the foot row. It appears only
+    // while a Swarm record survives and only on Swarm's own door: the record replays the
+    // round it names — seed, room, hull and kit, purse and pilot — through the ordinary
+    // launch route, beside starting a fresh run.
+    const resumeRec = (() => {
+      try { return swarmResumeFor(loadCrucibleMeta()); } catch { return null; }
+    })();
+    if (resumeRec && ruleset === SWARM_RULESET) {
+      const resumeWord = word(`Resume run — Round ${resumeRec.wave}`, 'k-word--emph k-word--primary');
+      paintKey(resumeWord, 'legend');
+      resumeWord.title = `Pick the interrupted run back up at the start of Round ${resumeRec.wave}`
+        + ' — your seed, room, hull, kit and Scrap as the round began.';
+      resumeWord.setAttribute('aria-label',
+        `Resume run — round ${resumeRec.wave}. Restarts the interrupted Swarm run at the beginning of round ${resumeRec.wave}.`);
+      resumeWord.addEventListener('click', () => {
+        const setup = crucibleHullSetupFor({
+          hullId: resumeRec.ship.defId,
+          loadout: resumeRec.ship.loadout,
+          seed: resumeRec.seed,
+          arenaId: resumeRec.arenaId || CRUCIBLE_ARENA_ID,
+          ruleset: SWARM_RULESET,
+          startWave: resumeRec.wave,
+        });
+        if (!setup.ok || !setup.value) {
+          cue('deny');
+          ctx.bus.emit('toast', { text: 'The interrupted run cannot be rebuilt — start fresh.', kind: 'error', ttl: 5 });
+          return;
+        }
+        cue('confirm');
+        const payload = { ...setup.value, resume: resumeRec };
+        requestSharedCrucibleRun(ctx.bus, payload, SWARM_RULESET);
+      });
+      addWord(footWords, resumeWord);
+    }
     // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
     const back = word('Back', 'k-word--emph sf-back');
     back.setAttribute('aria-label', back.textContent);

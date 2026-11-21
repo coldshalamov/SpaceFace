@@ -748,6 +748,10 @@ export function emptyCrucibleProfile() {
     // Row 489: the between-run Line ledger — which §7.1 head unlocks the fixed-seed
     // records and authored victories earned. Records, not stat boosts.
     lineMeta: emptyLineMeta(),
+    // SAVE-AND-SOAK-1 Part B: the interrupted Swarm run, one slot. Written at each
+    // round's own start boundary, read by the door's Resume word, cleared when the run
+    // truly ends. A quit or a closed window leaves it intact.
+    resume: null,
   };
 }
 
@@ -780,6 +784,103 @@ function mergeLineMeta(a, b) {
     }
   }
   return out;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* SAVE-AND-SOAK-1 Part B — Resume run (round N). The interrupted Swarm run survives quitting or  */
+/* closing the game: the wave owner writes this record each time a run's draft opens — the round's */
+/* own start boundary, purse and build already settled and nothing in flight — and clears it when  */
+/* the run truly ends. The door rebuilds the launch from it; the wave plan replans the same round  */
+/* from the same seed, so the player restarts that round, never mid-fight and never mid-write.    */
+/* ---------------------------------------------------------------------------------------------- */
+
+export const SWARM_RESUME_SCHEMA_VERSION = 1;
+
+function resumeInt(value, fallback = 0) {
+  return Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+function resumeList(value) {
+  return Array.isArray(value) ? (cloneJson(value) || []) : [];
+}
+
+/**
+ * The one durable slot's contract: the round to restart at (`wave` — the wave the resume will
+ * replan, i.e. the run's own `wave + 1` at the clear boundary), everything the launch needs to
+ * rebuild the same run (seed, arena, ruleset, hull and its fittings), and the run-envelope subset
+ * begin() restores (wallet, xp/level, score, build, mutators, pilot, telemetry). Anything absent
+ * or malformed normalizes to null — the door simply offers no Resume row.
+ */
+export function normalizeSwarmResume(raw) {
+  const src = asObject(raw);
+  if (!src) return null;
+  const wave = resumeInt(src.wave);
+  const seed = Number.isInteger(src.seed) && src.seed > 0 ? (src.seed >>> 0) : 0;
+  const ship = asObject(src.ship);
+  const defId = ship && typeof ship.defId === 'string' && ship.defId ? ship.defId : null;
+  const run = asObject(src.run);
+  if (!wave || !seed || !defId || !run) return null;
+  const loadout = Array.isArray(ship.loadout)
+    ? ship.loadout
+      .filter((entry) => entry && Number.isInteger(entry.slotIndex) && entry.slotIndex >= 0
+        && typeof entry.defId === 'string' && entry.defId)
+      .map((entry) => ({ slotIndex: entry.slotIndex, defId: entry.defId }))
+    : [];
+  const pilot = asObject(run.pilot);
+  const telemetry = asObject(run.telemetry) ? cloneJson(run.telemetry) : {};
+  return {
+    schemaVersion: SWARM_RESUME_SCHEMA_VERSION,
+    wave,
+    seed,
+    arenaId: typeof src.arenaId === 'string' && src.arenaId ? src.arenaId : null,
+    ruleset: typeof src.ruleset === 'string' && src.ruleset ? src.ruleset : null,
+    practice: run.practice === true,
+    ship: { defId, loadout },
+    run: {
+      wave: resumeInt(run.wave),
+      block: resumeInt(run.block),
+      act: resumeInt(run.act),
+      xp: resumeInt(run.xp),
+      level: resumeInt(run.level, 1) || 1,
+      score: resumeInt(run.score),
+      credits: resumeInt(run.credits),
+      modifiers: resumeList(run.modifiers),
+      draftHistory: resumeList(run.draftHistory),
+      shopHistory: resumeList(run.shopHistory),
+      arenaMutators: resumeList(run.arenaMutators),
+      pilot: pilot ? {
+        points: asObject(pilot.points) ? cloneJson(pilot.points) : {},
+        nodes: resumeList(pilot.nodes),
+        banked: resumeInt(pilot.banked),
+        offer: null,
+      } : null,
+      style: asObject(run.style) ? cloneJson(run.style) : null,
+      buildCode: typeof run.buildCode === 'string' ? run.buildCode : null,
+      telemetry,
+    },
+    savedAt: typeof src.savedAt === 'string' ? src.savedAt : null,
+  };
+}
+
+/** The door's read: the normalized record on a profile bag, or null. */
+export function swarmResumeFor(profile) {
+  return normalizeSwarmResume(asObject(profile) ? profile.resume : null);
+}
+
+/** Write (or replace) the interrupted-run slot. Returns false when the record is unusable. */
+export function writeSwarmResume(record, storage = liveStorage()) {
+  const normalized = normalizeSwarmResume(record);
+  if (!normalized) return false;
+  const profile = loadCrucibleMeta(storage);
+  profile.resume = normalized;
+  return saveCrucibleMeta(profile, storage);
+}
+
+/** Clear the slot. Returns true when there was nothing to clear or the clear landed. */
+export function clearSwarmResume(storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  if (profile.resume == null) return true;
+  profile.resume = null;
+  return saveCrucibleMeta(profile, storage);
 }
 
 /** Row 489: settle the run onto the Line ledger — the same posture as the
@@ -848,6 +949,7 @@ function migrateProfile(raw) {
     challenges: migrateChallenges(src.challenges),
     lastAdventureDeath: normalizeAdventureDeath(src.lastAdventureDeath),
     lineMeta: migrateLineMeta(src.lineMeta),
+    resume: normalizeSwarmResume(src.resume),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -866,6 +968,8 @@ function migrateProfile(raw) {
         || key === 'perks'
         || key === 'challenges'
         || key === 'lastAdventureDeath'
+        || key === 'lineMeta'
+        || key === 'resume'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }

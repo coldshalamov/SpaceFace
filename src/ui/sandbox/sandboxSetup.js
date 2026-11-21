@@ -198,6 +198,12 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       if (Array.isArray(overrides.swarmPerks) && overrides.swarmPerks.length) {
         out.swarmPerks = overrides.swarmPerks.filter((id) => typeof id === 'string' && id);
       }
+      // SAVE-AND-SOAK-1 Part B: the interrupted run's round-start record rides beside the
+      // setup exactly like the stake — the door's Resume word sends it, runSession.begin
+      // restores the run envelope from it. It carries its own validation downstream.
+      if (overrides.swarmResume && typeof overrides.swarmResume === 'object') {
+        out.swarmResume = overrides.swarmResume;
+      }
       if (overrides.openingLesson === true) out.openingLesson = true;
       if (overrides.practice === true) out.practice = true;
       if (typeof overrides.dailyDateKey === 'string') out.dailyDateKey = overrides.dailyDateKey;
@@ -421,6 +427,7 @@ function gameNewOptionsForSandboxConfig(config) {
       openArmoryBeforeRound1: config.openArmoryBeforeRound1,
       zeroScrapOpening: config.zeroScrapOpening,
       retryOpeningEquipment: config.retryOpeningEquipment,
+      swarmResume: config.swarmResume,
     });
   }
   // Sandbox writes belong to the simulation lane. In worker mode, carry the complete validated
@@ -1409,13 +1416,19 @@ export function applySandboxSetup(ctx, config) {
           startWave: launchRuleset === SWARM_RULESET && Number.isInteger(setup.wave) && setup.wave > 1
             ? setup.wave
             : undefined,
+          // SAVE-AND-SOAK-1 Part B: the interrupted run's round-start record — begin() restores
+          // wallet, build, mutators, pilot and the wave boundary from it. Absent stays absent.
+          resume: launchRuleset === SWARM_RULESET && cfg.swarmResume && typeof cfg.swarmResume === 'object'
+            ? cfg.swarmResume
+            : undefined,
         });
         // The purse is the difficulty you bought at the door: it lands in the run wallet
         // through the wallet's own award seam, BEFORE the opening armory can spend it — and only
         // if the begin landed. begin() is synchronous, so the accepted run is already visible:
         // kind survival at phase loadout with this seed. A refused begin (a live run in the way)
-        // must not credit a foreign wallet.
-        if (launchRuleset === SWARM_RULESET) {
+        // must not credit a foreign wallet. A resume launch carries its wallet inside the
+        // record — a stake or checkpoint purse on top would pay the same purse twice.
+        if (launchRuleset === SWARM_RULESET && !(cfg.swarmResume && typeof cfg.swarmResume === 'object')) {
           const run = ctx.state && ctx.state.run;
           // SWARM-06: Thin Purse takes its factor off the stake purse before the armory ever
           // sees it — the wager's own blurb ("the stake purse halves") is the contract.
