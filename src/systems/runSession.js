@@ -1,6 +1,11 @@
 // Event-only sole writer of state.run (PQ-133 / CRU-002).
 // Init-order only: never registered in PRODUCTION_UPDATE_ORDER, never ticks.
-// Must not emit economy:* events, write state.player.* / state.economy.*, or construct entities.
+// Must not emit economy:* events, write state.player.* / state.economy.*, or construct entities —
+// with ONE exception: it is also the owner of Adventure's saved Pilot Tree record,
+// state.player.pilot (progression lead 2026-11-20), the persistent twin of run.pilot. That record is
+// written only by the awardAdventureXp / takeAdventureNode / respecAdventurePilot handlers below,
+// and the respec fee is paid through the economy's exact-charge request (the economy still writes
+// the credits).
 // Golden-safety: every handler is a strict no-op when state.run is absent or malformed.
 
 import {
@@ -22,7 +27,15 @@ import {
   pilotDoorForRun,
   pilotPicksRemaining,
   untouchedPilotBranches,
+  getPilotBranch,
 } from '../data/pilotTree.js';
+import {
+  ADVENTURE_XP_AWARD_CAP,
+  adventureLevelForXp,
+  adventureRespecFee,
+  createAdventurePilot,
+  normalizeAdventurePilot,
+} from '../data/pilotAdventure.js';
 import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
@@ -160,6 +173,11 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:pilotCardRequested', (payload) => this.choosePilotCard(this.state, payload && payload.index)));
     this._unsubs.push(this.bus.on('run:pilotRerollRequested', () => this.rerollPilotOffer(this.state)));
     this._unsubs.push(this.bus.on('run:threatRequested', (payload) => this.setThreat(payload)));
+    // Adventure's Pilot Tree (progression lead 2026-11-20): XP from the world's sources, a node
+    // chosen from the full tree by id, and a respec at a station for a fee.
+    this._unsubs.push(this.bus.on('pilot:xpEarned', (payload) => this.awardAdventureXp(payload)));
+    this._unsubs.push(this.bus.on('pilot:nodeRequested', (payload) => this.takeAdventureNode(payload && payload.nodeId)));
+    this._unsubs.push(this.bus.on('pilot:respecRequested', () => this.respecAdventurePilot()));
     this._unsubs.push(this.bus.on('game:exitToMenu', (payload) => this._onExitToMenu(payload)));
     // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
     // save cannot inherit a live Survival run and suppress campaign autosaves forever.
@@ -441,6 +459,10 @@ export const runSession = {
     });
     if (committed && picksBanked > 0) {
       this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp, banked: next.pilot.banked });
+      // One level-up beat for both doors (the effects lead draws it on the ship).
+      this._emit('pilot:levelUp', {
+        door: 'swarm', level: next.level, previousLevel, banked: next.pilot.banked, entityId: this.state.playerId,
+      });
       // OVH-01a2: the owner deals at a fixed moment — right after a level-up commit that banked
       // a pick, when no offer is open. The moment (and the state.rng it consumes) is the same
       // whatever the player's display settings are; the screen never draws.
@@ -710,6 +732,7 @@ export const runSession = {
       branch: card.kind === 'evolution' ? null : card.branch,
       banked: next.pilot.banked,
     });
+    if (committed) this._emitNodeTaken('swarm', card);
     // OVH-01a2: a second banked pick gets a fresh hand the moment this choice commits.
     if (committed && next.pilot.banked > 0) this._dealPilotHand();
     return committed;
@@ -755,6 +778,108 @@ export const runSession = {
       totalCredits: next.credits,
     });
     return committed;
+  },
+
+  _emitNodeTaken(door, card) {
+    this._emit('pilot:nodeTaken', {
+      door,
+      nodeId: card.id,
+      name: card.name,
+      branch: card.kind === 'evolution' ? null : card.branch,
+      kind: card.kind === 'evolution' ? 'evolution' : card.tier === 'capstone' ? 'capstone' : 'node',
+      entityId: this.state ? this.state.playerId : null,
+    });
+  },
+
+  // ── Adventure's Pilot Tree (progression lead 2026-11-20) ───────────────────────────────────
+  // The saved record lives on state.player.pilot. Nothing here draws from state.rng: Adventure
+  // chooses from the full tree by node id, so no deal moment exists.
+
+  /** True when Adventure owns the pilot right now (no Swarm or lab run is live). */
+  _adventureDoorOpen() {
+    const state = this.state;
+    if (!state || !state.player) return false;
+    const run = state.run;
+    return !(run && run.kind && run.kind !== 'adventure' && run.phase && run.phase !== 'inactive');
+  },
+
+  /** XP from the world's sources; banks a point per level and announces the level-up beat. */
+  awardAdventureXp(request) {
+    if (!this._adventureDoorOpen()) return false;
+    const xp = Math.min(ADVENTURE_XP_AWARD_CAP, toNonNegativeInt(request && request.xp));
+    if (xp <= 0) return false;
+    const before = normalizeAdventurePilot(this.state.player.pilot);
+    const next = normalizeAdventurePilot({ ...before, xp: before.xp + xp });
+    this.state.player.pilot = next;
+    this._emit('pilot:xpAwarded', {
+      xp,
+      totalXp: next.xp,
+      level: next.level,
+      source: typeof request.source === 'string' ? request.source : null,
+      label: typeof request.label === 'string' ? request.label : null,
+    });
+    if (next.level > before.level) {
+      this._emit('pilot:levelUp', {
+        door: 'adventure',
+        level: next.level,
+        previousLevel: before.level,
+        banked: next.banked,
+        entityId: this.state.playerId,
+      });
+    }
+    return true;
+  },
+
+  /** Spend a banked point on any open node of the full tree (Adventure chooses by id). */
+  takeAdventureNode(nodeId) {
+    if (!this._adventureDoorOpen()) return false;
+    const pilot = normalizeAdventurePilot(this.state.player.pilot);
+    const card = getPilotCard(nodeId);
+    if (pilot.banked <= 0) {
+      this._emit('pilot:nodeRejected', { nodeId, reason: 'no_points' });
+      return false;
+    }
+    if (!card || !isPilotCardEligible(card, pilot, 'adventure')) {
+      this._emit('pilot:nodeRejected', { nodeId, reason: 'not_open' });
+      return false;
+    }
+    pilot.nodes.push(card.id);
+    if (card.kind !== 'evolution') pilot.points[card.branch] = (pilot.points[card.branch] || 0) + 1;
+    this.state.player.pilot = normalizeAdventurePilot(pilot);
+    this._emitNodeTaken('adventure', card);
+    return true;
+  },
+
+  /** Hand every point back for a fee, docked at a station. The economy takes the credits. */
+  respecAdventurePilot() {
+    if (!this._adventureDoorOpen()) return false;
+    const state = this.state;
+    const docked = !!((state.player.flags && state.player.flags.docked) || (state.ui && state.ui.docked));
+    const pilot = normalizeAdventurePilot(state.player.pilot);
+    if (!docked) { this._emit('pilot:respecRejected', { reason: 'not_docked' }); return false; }
+    if (pilot.nodes.length === 0) { this._emit('pilot:respecRejected', { reason: 'nothing_to_refund' }); return false; }
+    const fee = adventureRespecFee(pilot);
+    const credits = Math.round(Number(state.player.credits) || 0);
+    let applied = false;
+    const req = {
+      amount: fee, reason: 'pilot_respec', requireFull: true, expectedCredits: credits,
+      commit: () => {
+        state.player.pilot = normalizeAdventurePilot({ ...pilot, points: {}, nodes: [], respecs: pilot.respecs + 1 });
+        applied = true;
+        return true;
+      },
+      result: false,
+    };
+    // The economy is the credits writer: the exact-charge request runs our commit only when the
+    // full fee is there.
+    if (this.bus) this.bus.emit('economy:chargeCredits', req);
+    if (req.result !== true || !applied) {
+      if (applied) state.player.pilot = pilot; // never refund without the fee
+      this._emit('pilot:respecRejected', { reason: 'insufficient_credits', fee, credits });
+      return false;
+    }
+    this._emit('pilot:respecced', { fee, refunded: pilot.level - 1 });
+    return true;
   },
 
   /** A live, pilot-bearing run object, or null. Adventure and terminal runs never qualify. */
