@@ -10,7 +10,7 @@ import {
   driveDionePractice, onDionePracticeImpact, onDionePracticeShot, onDionePracticeThrow,
 } from '../missions/dioneTargetPractice.js';
 import {
-  WORKS_CONTRACT_TYPE, grantWorksKit, isWorksContract, onWorksCourierDelivered, onWorksDefenseDeployed,
+  WORKS_CONTRACT_TYPE, driveWorksContract, grantWorksKit, isWorksContract, onWorksCourierDelivered, onWorksDefenseDeployed,
   onWorksDrillBreak, onWorksDrillYield, onWorksGasHit, onWorksLinkCreated, onWorksMachineInstalled,
   onWorksPlanetHarvest, onWorksRigHurt, worksContractDebrief, worksContractLossText,
   worksContractPreflight, worksContractWaypoint, worksObjectiveTarget,
@@ -1053,6 +1053,7 @@ export const missions = {
       const m = active[i];
       if (m.status !== 'active') continue;
       if (m.type === DIONE_TARGET_PRACTICE) { driveDionePractice(this, m, i, dt); continue; }
+      if (isWorksContract(m)) { driveWorksContract(this, m, i); if (m.status !== 'active' || active[i] !== m) continue; }
       if (authoredCinderRoute(m) && driveCinderRoute(this, m) && m.status !== 'active') continue;
       if (m.params?.workingBattlefield) { driveWorkingBattlefield(this, m, i); continue; }
       // Expiry by deadline.

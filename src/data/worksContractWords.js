@@ -6,7 +6,7 @@
 export function worksObjectiveTarget(goal) {
   if (!goal) return 1;
   if (goal.kind === 'installSet') return goal.defs.length;
-  if (goal.kind === 'install' || goal.kind === 'link' || goal.kind === 'defense') return 1;
+  if (goal.kind === 'install' || goal.kind === 'link' || goal.kind === 'defense' || goal.kind === 'power') return 1;
   return Math.max(1, Math.round(Number(goal.qty) || 1));
 }
 
@@ -75,6 +75,12 @@ export function worksObjectiveLine(mission) {
     case 'link': line = 'Join two of your claims with a cargo line (Field Build)'; break;
     case 'defense': line = 'Raise a turret pylon over one of your claims (Field Build)'; break;
     case 'skim': line = `Scoop ${have}/${want} ${good} from the Anvil`; break;
+    case 'claims': line = `Hold ${have}/${want} claims in this sector at once`; break;
+    case 'power': {
+      const best = Math.max(0, Math.floor(Number(works.bestMw) || 0));
+      line = `Get one claim here generating ${goal.mw} MW (best so far ${best} MW)`;
+      break;
+    }
     default: line = mission.title || 'Works contract';
   }
   const tails = (works.bonus || []).map((term) => worksBonusState(works, term).text).filter(Boolean);
@@ -95,6 +101,8 @@ export function worksNextStep(mission) {
     case 'link':
     case 'defense': return 'Next: fly to your claims and open Field Build (Shift+B).';
     case 'skim': return 'Next: fly the marked band of the planet with the scoop open, and climb out before the hull cooks.';
+    case 'claims': return 'Next: set the rover down in a rock and install a machine. The first machine anchors the claim.';
+    case 'power': return 'Next: on one claim, seat Gas Taps against sealed gas pockets, and add solar sails from Field Build, until it makes the power.';
     default: return 'Next: follow the tracked marker.';
   }
 }

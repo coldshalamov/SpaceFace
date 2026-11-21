@@ -203,6 +203,66 @@ test('couriers, belt links, pylons and the planet scoop each settle their own jo
   assert.equal(skim.paid(), 1300);
 });
 
+test('every job is posted at a real station, under its own title, behind a job that exists', async () => {
+  const { SECTORS } = await import('../src/data/sectors.js');
+  const stationIds = new Set(SECTORS.flatMap((sector) => (sector.stations || []).map((s) => s.id)));
+  const ids = new Set(), titles = new Set();
+  for (const row of WORKS_CONTRACTS) {
+    assert.ok(stationIds.has(row.stationId), `${row.id} is posted at a station that exists`);
+    assert.ok(!ids.has(row.id), `${row.id} is one job`); ids.add(row.id);
+    assert.ok(!titles.has(row.title), `"${row.title}" names one job`); titles.add(row.title);
+    assert.doesNotMatch(`${row.title} ${row.brief} ${row.summary}`, /[!\u2014]/, `${row.id} keeps the house voice`);
+  }
+  for (const row of WORKS_CONTRACTS) {
+    for (const need of row.requires || []) assert.ok(ids.has(need), `${row.id} waits on a job that exists`);
+  }
+  assert.ok(new Set(WORKS_CONTRACTS.map((row) => row.stationId)).size >= 24, 'the jobs reach across the galaxy');
+});
+
+test('a claims job counts the anchored claims standing in its sector, and a lost one counts down', () => {
+  const yard = [];
+  const sites = { sectorNetworkProjection: (sectorId) => ({ sites: yard.filter((s) => s.sectorId === sectorId) }) };
+  const h = harness('works_sedna_three_rocks', { sites });
+  h.accept();
+  const m = h.active();
+  const here = m.destSectorId;
+  const beat = () => { h.state.tick = (h.state.tick | 0) + 60; h.state.tick -= h.state.tick % 60; h.host.update(1 / 60, h.state); };
+  assert.equal(m.objectiveTarget, 3);
+  assert.match(worksObjectiveLine(m), /Hold 0\/3 claims in this sector at once/);
+  yard.push({ sectorId: here, anchored: true }, { sectorId: here, anchored: false }, { sectorId: 'elsewhere', anchored: true });
+  beat();
+  assert.equal(m.objectiveProgress, 1, 'a bare tunnel and a claim in another sector do not count');
+  yard[1].anchored = true;
+  beat();
+  assert.equal(m.objectiveProgress, 2);
+  yard.shift();
+  beat();
+  assert.equal(m.objectiveProgress, 1, 'a claim that was lost is no longer held');
+  assert.equal(m.status, 'active');
+  yard.push({ sectorId: here, anchored: true }, { sectorId: here, anchored: true });
+  beat();
+  assert.equal(m.status, 'completed');
+  assert.equal(h.paid(), 5800);
+});
+
+test('a power job wants the megawatts on one claim, and shows the best so far', () => {
+  const yard = [];
+  const sites = { sectorNetworkProjection: (sectorId) => ({ sites: yard.filter((s) => s.sectorId === sectorId) }) };
+  const h = harness('works_phoebe_echo_forty_megawatts', { sites });
+  h.accept();
+  const m = h.active();
+  const here = m.destSectorId;
+  const beat = () => { h.state.tick = (h.state.tick | 0) + 60; h.state.tick -= h.state.tick % 60; h.host.update(1 / 60, h.state); };
+  yard.push({ sectorId: here, anchored: true, totalPowerGenMw: 28 }, { sectorId: here, anchored: true, totalPowerGenMw: 20 });
+  beat();
+  assert.equal(m.status, 'active', 'two claims do not add up');
+  assert.match(worksObjectiveLine(m), /generating 40 MW \(best so far 28 MW\)/);
+  yard[1].totalPowerGenMw = 44;
+  beat();
+  assert.equal(m.status, 'completed');
+  assert.equal(h.paid(), 5200);
+});
+
 test('a standing job is posted again at the standing rate, and progress survives a save', () => {
   const h = harness('works_helios_first_cut');
   h.accept();

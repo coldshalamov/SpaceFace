@@ -253,6 +253,40 @@ export function onWorksDefenseDeployed(owner, p) {
   });
 }
 
+// ── Claims and power: read off the site system, not counted from events ─────────────────────────
+// How many anchored claims stand in a sector, and how much one of them generates, are facts about
+// the yard as it is now. A claim can already exist when the job is taken and can be lost while it
+// is open, so these two goals are re-read on a slow beat instead of being counted up from events.
+export const WORKS_SITE_POLL_TICKS = 60;
+
+function sectorSites(owner, sectorId) {
+  const sites = owner.registry && owner.registry.get && owner.registry.get('asteroidSites');
+  const net = sites && typeof sites.sectorNetworkProjection === 'function' ? sites.sectorNetworkProjection(sectorId) : null;
+  return (net && Array.isArray(net.sites)) ? net.sites : [];
+}
+
+/** Per-tick drive for one works contract. Cheap: only the two yard goals do anything, once a second. */
+export function driveWorksContract(owner, mission, index) {
+  const works = mission.params.works;
+  const goal = works.goal;
+  if (goal.kind !== 'claims' && goal.kind !== 'power') return;
+  if (((owner.state.tick | 0) % WORKS_SITE_POLL_TICKS) !== 0) return;
+  const nodes = sectorSites(owner, mission.destSectorId);
+  if (goal.kind === 'claims') {
+    const held = Math.min(mission.objectiveTarget, nodes.filter((site) => site && site.anchored).length);
+    if (held === mission.objectiveProgress) return;
+    mission.objectiveProgress = held;
+    if (held >= mission.objectiveTarget) settle(owner, mission, index);
+    else touch(owner, mission);
+    return;
+  }
+  let best = 0;
+  for (const site of nodes) best = Math.max(best, Number(site && site.totalPowerGenMw) || 0);
+  const rounded = Math.floor(best);
+  if (best >= goal.mw) { works.bestMw = rounded; advance(owner, mission, index, 1); return; }
+  if (rounded !== (works.bestMw | 0)) { works.bestMw = rounded; touch(owner, mission); }
+}
+
 // ── The planet ──────────────────────────────────────────────────────────────────────────────────
 
 export function onWorksPlanetHarvest(owner, p) {
@@ -294,12 +328,14 @@ export function worksContractWaypoint(owner, mission) {
         : 'Fly the skim band with the scoop open.' };
   }
   if (goal.kind === 'deliver') return { ...out, reason: 'Set goods to Ship at a powered Cargo Port on one of your claims.' };
+  if (goal.kind === 'power') return { ...out, reason: 'Build generation on one of your claims here: gas taps inside, solar sails outside.' };
   if (!here) return { ...out, reason: 'The work is in this sector.' };
   const rocks = [];
   for (const entity of state.entityList || []) {
     if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
     const data = entity.data || {};
     if (goal.kind === 'link' || goal.kind === 'defense') { if (data.siteId) rocks.push(entity); continue; }
+    if (goal.kind === 'claims') { if (!data.siteId) rocks.push(entity); continue; }
     if (goal.kind === 'cut' && works.rockTypes && works.rockTypes.length
       && !works.rockTypes.includes(resolveBoreFamily(data))) continue;
     rocks.push(entity);
@@ -309,6 +345,7 @@ export function worksContractWaypoint(owner, mission) {
     : goal.kind === 'blast' ? 'Press B at this rock to set the rover down, then arm bore charges.'
       : goal.kind === 'link' ? 'Open Field Build over your claims.'
         : goal.kind === 'defense' ? 'Open Field Build over your claim.'
+          : goal.kind === 'claims' ? 'Press B at this rock to set the rover down, then install a machine to anchor the claim.'
           : 'Press B at this rock to set the rover down, dig a bay, then build.';
   if (!rock) {
     return { ...out, reason: goal.kind === 'link' || goal.kind === 'defense'
@@ -334,6 +371,8 @@ export function worksContractDebrief(mission) {
     case 'link': return 'Two rocks, one supply. The claims desk has the line on its chart.';
     case 'defense': return 'The pylon is on the outpost’s watch list. Raiders can read that too.';
     case 'skim': return `${worksGoodName(goal.commodityId)} metered in at the exchange.`;
+    case 'claims': return 'The desk has every one of those rocks on its chart, in your name.';
+    case 'power': return 'The meter held at the mark. That claim can carry real machinery now.';
     default: return 'Work signed off and paid.';
   }
 }
