@@ -821,19 +821,24 @@ async function boot() {
       const devSwarmQuery = new URLSearchParams(location.search);
       const { swarmStartAtRound, swarmArcadeSeedFor } = await import('./data/swarmLadder.js');
       const {
-        crucibleSetupFor, requestCrucibleRun, crucibleArenaIdForName, freshSeed,
+        crucibleSetupFor, crucibleHullSetupFor, requestCrucibleRun, crucibleArenaIdForName, freshSeed,
         CRUCIBLE_DEFAULT_STARTER_ID, CRUCIBLE_ARENA_ID,
       } = await import('./ui/crucibleLaunch.js');
       const { SWARM_RULESET } = await import('./data/swarmMode.js');
       const start = swarmStartAtRound(devSwarmQuery.get('swarmRound'));
       const arenaId = crucibleArenaIdForName(devSwarmQuery.get('swarmArena')) || CRUCIBLE_ARENA_ID;
-      const setup = crucibleSetupFor({
-        starterId: CRUCIBLE_DEFAULT_STARTER_ID,
+      // `?swarmHull=<ship id>` flies that hull (bare, armory kit) so a probe can reproduce a
+      // report made in a specific ship; absent, the default starter flies.
+      const devSwarmHull = devSwarmQuery.get('swarmHull');
+      const devSwarmArgs = {
         seed: swarmArcadeSeedFor(arenaId) || freshSeed(),
         arenaId,
         ruleset: SWARM_RULESET,
         startWave: start.startWave,
-      });
+      };
+      const setup = devSwarmHull
+        ? crucibleHullSetupFor({ hullId: devSwarmHull, ...devSwarmArgs })
+        : crucibleSetupFor({ starterId: CRUCIBLE_DEFAULT_STARTER_ID, ...devSwarmArgs });
       if (!setup.ok) {
         console.error('[SpaceFace] dev swarm route: setup invalid',
           (setup.issues || []).map((issue) => `${issue.path}: ${issue.message}`).join('; '));
