@@ -66,6 +66,7 @@ for (const routeName of ROUTES) {
     if (r.worstWindow10s == null && r.worldSpeed != null && r.wallS >= 5 && r.worldSpeed < WORLD_SPEED_FLOOR) {
       why.push(`world x${r.worldSpeed} < ${WORLD_SPEED_FLOOR} (phase shorter than 10 s)`);
     }
+    if (r.uncoveredStopMs > 300) why.push(`simulation stopped ${r.uncoveredStopMs} ms in live flight with no hold plate`);
     if (r.silentHoldMs > 0) why.push(`world held at time scale 0 for ${r.silentHoldMs} ms with no pause plate or screen`);
     if (r.freezeLog > 0) why.push(`${r.freezeLog} freeze-log entr${r.freezeLog === 1 ? 'y' : 'ies'}`);
     if (!(r.wallS > 0)) why.push('no unpaused flight samples');

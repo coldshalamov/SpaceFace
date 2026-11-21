@@ -51,6 +51,8 @@ import {
   POSE_ROW_STRIDE,
   POSE_PLAYER_FIELDS,
 } from './simPoseTable.js';
+import { setWorldHoldPlate } from '../render/focusPausePlate.js';
+const WORLD_HOLD_PLATE_MS = 200;
 import {
   bindSabEnvelopeChannel,
   decodeReplyFromSab,
@@ -851,6 +853,14 @@ export function createSimLaneRuntime({
       poseFeedFrames++;
       if (advanced) poseFeedLastAdvanceAtMs = now;
       applyPoseFeedToFacade(snapshot, poseTableCoastFactor(now));
+      // Ruling: a simulation that cannot step for over a tenth of a second during unpaused flight
+      // is never shown as a silently frozen world — the hold plate covers it (WORLD_HOLD_PLATE_MS
+      // of no table writes while the clock is wanted and nothing else is on screen).
+      const holdMs = poseTableWriteAtMs >= 0 ? now - poseTableWriteAtMs : 0;
+      const screenOpen = !!(state.ui && Array.isArray(state.ui.screenStack) && state.ui.screenStack.length);
+      const wantStep = workerClockRequested === true && state.mode === 'flight' && Number(state.timeScale) > 0
+        && !(state.ui && state.ui.docked === true);
+      setWorldHoldPlate(wantStep && !screenOpen && holdMs > WORLD_HOLD_PLATE_MS);
       // The table carries the worker's applied-command watermark, so a lagging reply stream
       // cannot make the command watchdog declare a live worker dead.
       if (snapshot.appliedCommandSequence > workerClockLastAppliedCommandSequence) {
@@ -3064,6 +3074,7 @@ export function createSimLaneRuntime({
     }
     poseFeed.active = false;
     setActivePoseFeed(null);
+    try { setWorldHoldPlate(false); } catch (_) { /* teardown */ }
     if (domEventFlushTimer !== null) {
       clearTimeout(domEventFlushTimer);
       domEventFlushTimer = null;

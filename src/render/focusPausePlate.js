@@ -59,3 +59,28 @@ export function setFocusPausePlate(visible) {
   plate.addEventListener('pointerdown', (event) => event.preventDefault(), { capture: true });
   (document.body || document.documentElement).appendChild(plate);
 }
+
+// Ruling (coordinator, 2026-11-21): any moment the simulation cannot step for more than a tenth of
+// a second must be covered by a state the player understands. When the worker stops advancing
+// during flight with nothing else on screen (a run boot inside the worker, a long save, a heavy
+// one-off step), this plate dims the frozen world and says so; it lifts the moment steps resume.
+let holdPlate = null;
+export function worldHoldPlateVisible() { return holdPlate !== null; }
+export function setWorldHoldPlate(visible) {
+  if (typeof document === 'undefined') return;
+  if (!visible) {
+    if (holdPlate) { holdPlate.remove(); holdPlate = null; }
+    return;
+  }
+  if (holdPlate) return;
+  holdPlate = document.createElement('div');
+  holdPlate.id = 'sf-world-hold';
+  Object.assign(holdPlate.style, {
+    position: 'fixed', inset: '0', zIndex: '8900', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', background: 'rgba(5, 9, 16, 0.55)', color: '#dfe8f2',
+    fontFamily: 'inherit', fontSize: '15px', letterSpacing: '0.18em', textTransform: 'uppercase',
+    pointerEvents: 'none', userSelect: 'none',
+  });
+  holdPlate.textContent = 'Loading…';
+  (document.body || document.documentElement).appendChild(holdPlate);
+}

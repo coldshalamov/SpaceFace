@@ -44,6 +44,7 @@ const rec = {
   dataChangedAtMs: 0,
   openEpisode: null,
   silentHoldFrames: 0,
+  worstUncoveredDataAgeMs: 0,
   worstGhostMs: 0,
   worstSilentHoldMs: 0,
   // Set by a wall-clock watcher when the game was paused/hidden between two frames (a pause screen
@@ -225,6 +226,9 @@ export function recordPresentedPoseAge(state, meshes, feed, world = null) {
   }
   if (playerAge > rec.worstPlayerPoseAgeMs) rec.worstPlayerPoseAgeMs = playerAge;
   if (dataAge > rec.worstDataAgeMs) rec.worstDataAgeMs = dataAge;
+  // A stopped clock in live flight must be covered (ruling): uncovered = no hold plate on screen.
+  const covered = typeof document !== 'undefined' && !!document.getElementById('sf-world-hold');
+  if (!covered && dataAge > rec.worstUncoveredDataAgeMs) rec.worstUncoveredDataAgeMs = dataAge;
   if (gap > rec.worstFrameGapMs) rec.worstFrameGapMs = gap;
   if (worst > EPISODE_MS) rec.poseAgeOver100Frames++;
   if (dataAge > EPISODE_MS) rec.dataAgeOver100Frames++;
@@ -285,6 +289,7 @@ export function readPoseAge() {
     tracked: rec.tracked.size,
     worstId: rec.worstId,
     silentHoldFrames: rec.silentHoldFrames,
+    worstUncoveredDataAgeMs: Math.round(rec.worstUncoveredDataAgeMs),
     // A drawn body the simulation already retired (its destroy has not reached the picture yet).
     worstGhostMs: Math.round(rec.worstGhostMs),
     worstSilentHoldMs: Math.round(rec.worstSilentHoldMs),
@@ -296,6 +301,7 @@ export function resetPoseAge() {
   rec.worstPoseAgeMs = 0;
   rec.worstId = null;
   rec.silentHoldFrames = 0;
+  rec.worstUncoveredDataAgeMs = 0;
   rec.worstGhostMs = 0;
   rec.worstSilentHoldMs = 0;
   rec.worstPlayerPoseAgeMs = 0;

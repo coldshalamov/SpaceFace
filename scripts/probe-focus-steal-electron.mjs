@@ -106,7 +106,15 @@ try {
     windowsVirtualKeyCode: 87, nativeVirtualKeyCode: 87, autoRepeat, ...(type === 'keyDown' ? { text: 'w' } : {}) }).catch(() => {});
   const phase = (n) => page.evaluate((x) => { window.__fs.phase = x; }, n);
   let repeating = false;
-  const repeater = setInterval(() => { if (repeating) key('keyDown', true); }, 33);
+  // The nose follows the cursor: circle it so a held W flies loops, not into the arena rim.
+  const vp = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+  const t0m = Date.now();
+  const repeater = setInterval(() => {
+    if (!repeating) return;
+    key('keyDown', true);
+    const a = (Date.now() - t0m) / 1000 * 1.8;
+    cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: vp.w / 2 + Math.cos(a) * vp.w * 0.25, y: vp.h / 2 + Math.sin(a) * vp.h * 0.25 }).catch(() => {});
+  }, 33);
   // 1. Fly with W physically held.
   await key('keyDown'); repeating = true;
   await sleep(2000);

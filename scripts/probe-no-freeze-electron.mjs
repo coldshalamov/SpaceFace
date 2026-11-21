@@ -376,10 +376,15 @@ try {
     // judged only for phases of thirty seconds or more.
     const acc = [{ w: 0, sim: 0 }];
     let wAcc = 0; let simAcc = 0;
-    for (let i = 1; i < s.length; i++) {
-      const dt = (s[i].t - s[i - 1].t) / 1000;
-      const ds = s[i].sim - s[i - 1].sim;
-      if (!(dt > 0) || dt > 0.25 || ds < 0 || ds > dt * 2 + 0.1) continue;
+    // Consecutive RAW samples only (a pause or a screen between two kept samples is not a pair).
+    const live = (d) => d && d.ph === ph.name && d.mode === 'flight' && d.ts > 0 && !d.docked;
+    for (let k = 1; k < samples.length; k++) {
+      const a0 = samples[k - 1]; const a1 = samples[k];
+      if (!live(a0) || !live(a1)) continue;
+      const dt = (a1.t - a0.t) / 1000;
+      const ds = a1.sim - a0.sim;
+      // A late sampler turn is still a real interval; a negative or impossible delta is a reset.
+      if (!(dt > 0) || dt > 1.5 || ds < 0 || ds > dt * 1.5 + 0.1) continue;
       wAcc += dt; simAcc += ds; acc.push({ w: wAcc, sim: simAcc });
     }
     let minWin = null;
@@ -407,6 +412,7 @@ try {
       worstId: ph.age ? ph.age.worstId : null,
       silentHoldMs: ph.age ? ph.age.worstSilentHoldMs : null,
       ghostMs: ph.age ? ph.age.worstGhostMs : null,
+      uncoveredStopMs: ph.age ? ph.age.worstUncoveredDataAgeMs : null,
       freezeLog: ph.freezeEpisodes.length,
       maxUnacked: Math.max(0, ...s.map((d) => d.unacked || 0)),
       backpressuredSamples: s.filter((d) => d.bp).length,
@@ -418,7 +424,7 @@ try {
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
   for (const r of report.rows) {
-    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  ghost ${r.ghostMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
+    console.log(`  ${r.phase.padEnd(32)} poseAge ${String(r.poseAgeMaxMs).padStart(5)} ms (player ${r.playerPoseAgeMaxMs}, >100ms frames ${r.poseAgeOver100Frames}, tracked ${r.tracked}, worst ${r.worstId})  dataAge ${r.dataAgeMaxMs}  frameGap ${r.frameGapMaxMs}  world x${r.worldSpeed} (worst 10s ${r.worstWindow10s})  freezeLog ${r.freezeLog}  silentHold ${r.silentHoldMs}  ghost ${r.ghostMs}  uncoveredStop ${r.uncoveredStopMs}  unacked<=${r.maxUnacked} bp ${r.backpressuredSamples} workP95 ${r.workP95} ents ${r.ents}`);
   }
   if (report.errors.length) console.log('page errors:', report.errors.slice(0, 5).join(' | '));
 } catch (e) {
