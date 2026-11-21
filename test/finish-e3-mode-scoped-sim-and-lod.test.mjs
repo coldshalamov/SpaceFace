@@ -23,8 +23,13 @@ import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 test('E3: validateSystemModeDeclarations validates all production update systems', () => {
   const violations = validateSystemModeDeclarations();
   assert.deepEqual(violations, [], 'Production update order must have zero mode declaration violations');
-  // 223 = the E3 manifest plus the systems landed since: plants, swarmCourseTwists, swarmDrops.
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 223);
+  // The rule is the validator above (every running system declared, every declared system
+  // running), not a census: the 220/223 count pins rotted twice in one week as systems landed
+  // (plants, swarmCourseTwists, swarmDrops, then stormChase, convoyRaid, towjaw,
+  // derelictExpedition, kineticCatalysts). What must never change is that each system is
+  // listed exactly once — a duplicate id would run twice every tick.
+  assert.equal(new Set(PRODUCTION_UPDATE_ORDER).size, PRODUCTION_UPDATE_ORDER.length,
+    'every system ticks once');
   // The live working states are scheduling scopes; DOCKED is the only frozen label.
   assert.deepEqual([...ALL_SIM_MODES], [SIM_MODE.FLIGHT, SIM_MODE.SWARM, SIM_MODE.YARD]);
   assert.equal(ALL_SIM_MODES.includes(SIM_MODE.DOCKED), false);
