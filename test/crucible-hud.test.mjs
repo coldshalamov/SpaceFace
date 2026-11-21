@@ -184,7 +184,8 @@ test('level progress is a real fraction of the current level band', () => {
 });
 
 test('an earn receipt names what was earned, and says nothing when nothing was', () => {
-  assert.equal(earnLine({ credits: 2, score: 10, xp: 3 }), '+2 CR   +10 SCORE   +3 XP');
+  // Swarm's one money word is Scrap (ruling R18 / 678f1a9ded): the receipt never says CR.
+  assert.equal(earnLine({ credits: 2, score: 10, xp: 3 }), '+2 SCRAP   +10 SCORE   +3 XP');
   assert.equal(earnLine({ credits: 0, score: 25, xp: 0 }), '+25 SCORE');
   assert.equal(earnLine({ credits: 0, score: 0, xp: 0 }), null);
   assert.equal(earnLine(null), null);

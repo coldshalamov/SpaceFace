@@ -349,7 +349,8 @@ export function levelProgress(run) {
 export function earnLine(award) {
   if (!award) return null;
   const parts = [];
-  if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} CR`);
+  // Swarm says one money word: Scrap (678f1a9ded), never CR.
+  if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} SCRAP`);
   if (award.score > 0) {
     let line = `+${award.score} SCORE`;
     // A style settlement names its acts so the player learns what paid.

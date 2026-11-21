@@ -86,7 +86,9 @@ const CSS = `
 .orr-cluster__next { position:absolute; top:${P.y + 146}px; width:214px; margin:0;
   left: calc(${P.x - 62 + 36}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);
   font-family:var(--dp-face-label, inherit); font-weight:560; line-height:1.25;
-  font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:var(--dp-danger, #ff5038);
+  font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:#ff8a70;
+  /* HUD-2: a warning line over the world needs its own backing to stay legible on any scene. */
+  width:max-content; max-width:240px; padding:2px 8px; background:rgb(8 14 20 / .78); border-left:2px solid #ff644c;
   pointer-events:none; animation:none !important; }
 .orr-cluster__next[hidden] { display:none !important; }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
