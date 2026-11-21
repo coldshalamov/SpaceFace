@@ -127,7 +127,9 @@ test('NXI-003 one deliberate source switch changes the displayed control family 
     assert.equal(syncActiveControlFamily(ctx, valueEl), 'Keyboard & mouse');
     assert.equal(valueEl.count, 1, 'a repeat refresh while the source holds writes nothing');
 
-    // A deliberate stick cross is the ONE pad takeover — the displayed family flips once.
+    // A deliberate stick cross is the ONE pad takeover — the displayed family flips once. The
+    // keyboard is let go first (NO-FREEZE ruling 2026-11-21: a held movement key keeps the helm).
+    host._keys.KeyW = false;
     pads[0].axes[1] = -1;
     step(host, state);
     assert.equal(host.movementSource, 'gamepad');

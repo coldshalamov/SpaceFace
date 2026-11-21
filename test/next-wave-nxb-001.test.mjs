@@ -112,6 +112,11 @@ test('NXB-001 a noisy unused pad never changes the keyboard flight vector', () =
     step(host, state);
     assert.equal(host.movementSource, 'keyboard');
     pads[1].axes[1] = -0.9;
+    // NO-FREEZE ruling (2026-11-21, lane audit C2): while W is still held the keyboard keeps the
+    // helm even against a full stick cross; the pad takes over once the keys are released.
+    step(host, state);
+    assert.equal(host.movementSource, 'keyboard', 'a held movement key keeps the helm against a stick cross');
+    host._keys.KeyW = false;
     const before = host.movementSourceChanges;
     step(host, state);
     assert.equal(host.movementSource, 'gamepad');
@@ -283,6 +288,13 @@ test('NXB-001 a touch shot does not take the helm; a stick cross does', () => {
     step(host, state);
     assert.equal(host.movementSource, 'keyboard');
     assert.equal(state.input.moveZ, owned);
+    touch.axes.leftY = -0.7;
+    step(host, state);
+    // NO-FREEZE ruling (2026-11-21): the held key keeps the helm; release hands it to the stick.
+    assert.equal(host.movementSource, 'keyboard', 'a held movement key keeps the helm');
+    host._keys.KeyW = false;
+    touch.axes.leftY = 0;
+    step(host, state);
     touch.axes.leftY = -0.7;
     step(host, state);
     assert.equal(host.movementSource, 'touch');

@@ -211,7 +211,9 @@ test('PRO-22 the in-flight source rules still hold across a pad-family swap', ()
     assert.equal(host.movementSource, 'keyboard', 'a reconnect alone never steals the helm');
     assert.equal(state.settings.controls.gamepad.glyphSet, 'xb', 'no swap before adoption');
 
-    // The deliberate stick gesture re-acquires: glyphs swap live AND the pad takes the helm.
+    // The deliberate stick gesture re-acquires: glyphs swap live AND the pad takes the helm —
+    // once the movement keys are released (NO-FREEZE ruling 2026-11-21: a held key keeps it).
+    host._keys.KeyW = false;
     pads[0] = fakePad(DS_ID, [0, -0.9, 0, 0]);
     stepFlight(host, state);
     assert.equal(host.gamepad.isConnected(), true);

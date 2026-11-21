@@ -2737,7 +2737,7 @@ function gamepadHelmEdge(gp) {
   return !!(boost && boost.pressed) || !!(brake && brake.pressed);
 }
 
-function resolveMovementOwner(host, {
+export function resolveMovementOwner(host, {
   kbdDrive, gp, tp, pointerHelmEdge = false, pointerOwnsHelm = false,
 }) {
   let source = host._movementSource || null;
@@ -2755,9 +2755,18 @@ function resolveMovementOwner(host, {
   const tpStick = !!(tp && typeof tp.isConnected === 'function' && tp.isConnected()
     && Math.hypot(tp.axes.leftX || 0, tp.axes.leftY || 0) > 0.001);
   let next = source;
-  if (gpEdge) next = 'gamepad';
+  // Ruling (owner, 2026-11-21; lane audit C2): while any keyboard movement key is held the
+  // keyboard keeps the helm. A pad — or any HID device the browser reports as one, drifting or
+  // quiet — takes it only on a deliberate press or stick cross with no movement key held. Before
+  // this, a pad edge mid-hold zeroed the held W/A for the rest of the hold ("the game locks up
+  // when I hold two keys"), since the keyboard only reclaims the helm on a fresh press.
+  if (kbdDrive) next = 'keyboard';
+  else if (gpEdge) next = 'gamepad';
   else if (tpEdge) next = 'touch';
   else if (kbdEdge || pointerHelmEdge) next = 'keyboard';
+  // The keys just let go while a stick is already held out: that stick is the pilot's hand now.
+  else if (host._kbdDrivePrev && next === 'keyboard' && gpStick) next = 'gamepad';
+  else if (host._kbdDrivePrev && next === 'keyboard' && tpStick) next = 'touch';
   else if (next == null) {
     if (kbdDrive || pointerOwnsHelm) next = 'keyboard';
     else if (gpStick) next = 'gamepad';

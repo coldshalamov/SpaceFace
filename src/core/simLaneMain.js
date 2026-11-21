@@ -62,6 +62,10 @@ import {
 import { flattenEventPayload, resolveEventEntityRef } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
+import {
+  PRESENTATION_EXTRAPOLATION_S,
+  EXTRAPOLATION_DECAY_TAU_S,
+} from '../render/snapshotFence.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { normalizePadSensitivity, sampleGamepadFrame } from '../systems/gamepad.js';
 import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
@@ -752,11 +756,36 @@ export function createSimLaneRuntime({
   let poseFacadeRows = 0;
   let posePeekWrites = -1;
   let posePeekChangedAtMs = -1;
+  // Coast state for the table feed. The pack stream glides through worker silence via the
+  // snapshot fence; the pose table is latest-wins, so without this a stalled write froze
+  // every table-fed body dead while the fence-fed picture kept gliding (owner bug
+  // 2026-11-21: drawn ship poses 1.4 s stale in the no-freeze gate). Same glide law as the
+  // fence: velocity decays with the shared tau, so silence reads as bodies easing to a
+  // glide — never a hard stop — and fresh writes (age under one interval) apply untouched.
+  let poseTableWriteCount = -1;
+  let poseTableWriteAtMs = -1;
   function peekPoseWrites() {
     if (poseShared) return poseReader.peekWrites();
     return poseTransferArrivals;
   }
-  function applyPoseFeedToFacade(snap) {
+  // Fresh path stays bit-identical: coasting only begins past one write interval plus a
+  // half-tick of slack, so a healthy table (a write every ~16.7 ms) never extrapolates.
+  const POSE_COAST_START_S = (1 / 60) * 1.5;
+  function poseTableCoastFactor(now) {
+    const writes = peekPoseWrites();
+    if (writes !== poseTableWriteCount) {
+      poseTableWriteCount = writes;
+      poseTableWriteAtMs = now;
+    }
+    if (poseTableWriteAtMs < 0) return 0;
+    const ageS = Math.max(0, now - poseTableWriteAtMs) / 1000;
+    if (ageS <= POSE_COAST_START_S) return 0;
+    // Integral of v0·e^(−t/tau): v0·tau·(1−e^(−age/tau)), age clamped to the same window
+    // the fence extrapolates over. Multiplies each row's velocity once per frame.
+    const e = Math.min(ageS, PRESENTATION_EXTRAPOLATION_S);
+    return EXTRAPOLATION_DECAY_TAU_S * (1 - Math.exp(-e / EXTRAPOLATION_DECAY_TAU_S));
+  }
+  function applyPoseFeedToFacade(snap, coastK = 0) {
     const rows = snap.rows;
     const entities = readModel.entities;
     let touched = 0;
@@ -765,13 +794,18 @@ export function createSimLaneRuntime({
       if (!row || row.alive === false || !row.pos) continue;
       const occupant = rows[o + 2];
       if (occupant > 0 && Number.isSafeInteger(row.occupantGeneration) && row.occupantGeneration !== occupant) continue;
-      const x = rows[o + 3]; const y = rows[o + 4]; const z = rows[o + 5];
+      let x = rows[o + 3]; const y = rows[o + 4]; let z = rows[o + 5];
+      if (coastK > 0) {
+        x += rows[o + 9] * coastK;
+        z += rows[o + 10] * coastK;
+      }
       if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
       if (row.pos.x !== x || row.pos.y !== y || row.pos.z !== z) {
         row.prevPos.x = row.pos.x; row.prevPos.y = row.pos.y; row.prevPos.z = row.pos.z;
         row.pos.x = x; row.pos.y = y; row.pos.z = z;
       }
       if (row.rot !== rows[o + 6]) { row.prevRot = row.rot; row.rot = rows[o + 6]; }
+      if (coastK > 0) row.rot += rows[o + 11] * coastK;
       row.bank = rows[o + 7];
       row.pitch = rows[o + 8];
       if (row.vel && typeof row.vel === 'object') { row.vel.x = rows[o + 9]; row.vel.z = rows[o + 10]; }
@@ -806,7 +840,7 @@ export function createSimLaneRuntime({
     if (poseFeed.active) {
       poseFeedFrames++;
       if (advanced) poseFeedLastAdvanceAtMs = now;
-      applyPoseFeedToFacade(snapshot);
+      applyPoseFeedToFacade(snapshot, poseTableCoastFactor(now));
       // The table carries the worker's applied-command watermark, so a lagging reply stream
       // cannot make the command watchdog declare a live worker dead.
       if (snapshot.appliedCommandSequence > workerClockLastAppliedCommandSequence) {
@@ -1877,6 +1911,11 @@ export function createSimLaneRuntime({
     lastGamepadGeneration = lifecycleGeneration;
   }
 
+  const PAD_COMPARE_DEADZONE = 0.12;
+  function padAxisQuantized(v) {
+    const x = Number(v) || 0;
+    return Math.abs(x) < PAD_COMPARE_DEADZONE ? 0 : Math.round(x * 256) / 256;
+  }
   function sameGamepadFrame(a, b) {
     if (!a || a.captureMode !== b.captureMode || a.pads.length !== b.pads.length) return false;
     for (let i = 0; i < a.pads.length; i++) {
@@ -1885,7 +1924,11 @@ export function createSimLaneRuntime({
       if (left.id !== right.id || left.index !== right.index || left.mapping !== right.mapping
           || left.connected !== right.connected || left.axes.length !== right.axes.length
           || left.buttons.length !== right.buttons.length) return false;
-      for (let j = 0; j < left.axes.length; j++) if (left.axes[j] !== right.axes[j]) return false;
+      // Axis noise inside the stick deadzone is not a change (lane audit C2): a drifting or
+      // phantom pad would otherwise post a command every frame.
+      for (let j = 0; j < left.axes.length; j++) {
+        if (padAxisQuantized(left.axes[j]) !== padAxisQuantized(right.axes[j])) return false;
+      }
       for (let j = 0; j < left.buttons.length; j++) {
         if (left.buttons[j].pressed !== right.buttons[j].pressed
             || left.buttons[j].value !== right.buttons[j].value) return false;
@@ -2835,6 +2878,12 @@ export function createSimLaneRuntime({
         },
         heldReplies: heldReplies.length,
         coalescedPointerEvents,
+        gamepadIds: (() => {
+          try {
+            const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
+            return [...pads].filter(Boolean).map((g) => g.id);
+          } catch (_) { return null; }
+        })(),
         replyQueue: { pending: replyQueue.length, max: replyQueueMax, cosmeticShed: replyCosmeticShed },
         msSinceLastAppliedReply: lastAppliedAtMs >= 0
           ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
