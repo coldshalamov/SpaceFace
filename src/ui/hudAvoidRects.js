@@ -144,12 +144,7 @@ function createRectSnapshot(doc, query, ttl, exclude, perFrameWhenOff = false) {
   // A viewport resize moves every panel at once: re-read on the very next get().
   const invalidateNow = () => { at = -Infinity; };
   doc?.defaultView?.addEventListener?.('resize', invalidateNow, { passive: true });
-  if (doc) {
-    let live = docSnapshots.get(doc);
-    if (!live) docSnapshots.set(doc, live = new Set());
-    live.add(invalidate);
-  }
-  return {
+  const snapshot = {
     get(t) {
       const cacheOn = hudRectCacheOn();
       const coalesceMs = cacheOn ? AVOID_RECT_INVALIDATE_COALESCE_MS : 0;
@@ -162,6 +157,28 @@ function createRectSnapshot(doc, query, ttl, exclude, perFrameWhenOff = false) {
     },
     invalidate,
   };
+  if (doc) {
+    let live = docSnapshots.get(doc);
+    if (!live) docSnapshots.set(doc, live = new Set());
+    live.add(invalidate);
+    let due = dueSnapshots.get(doc);
+    if (!due) dueSnapshots.set(doc, due = new Set());
+    due.add(snapshot);
+  }
+  return snapshot;
+}
+
+const dueSnapshots = new WeakMap();
+
+/**
+ * Read phase for the UI frame: refresh every snapshot that is due BEFORE the HUD starts writing
+ * this frame. A rect read after DOM writes forces a synchronous layout; reading them all first
+ * costs at most one layout (usually none: the browser laid the page out at the last paint), and
+ * every later get() in the frame returns the cached rows. uiRoot.frame calls this first.
+ */
+export function refreshDueAvoidRects(doc, t = (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now())) {
+  const due = doc && dueSnapshots.get(doc);
+  if (due) for (const snapshot of due) snapshot.get(t);
 }
 
 /**

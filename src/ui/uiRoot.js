@@ -11,6 +11,7 @@
 // is missing or throws on import/register does NOT break the HUD or the other screens.
 
 import { createScreenManager } from './screenManager.js';
+import { refreshDueAvoidRects } from './hudAvoidRects.js';
 import { commitDockedUiState } from './dockStateCommit.js';
 import { createEntityLinks } from './entityLinks.js';
 import { mountWhyReveal } from './whyReveal.js';
@@ -2232,6 +2233,9 @@ export const ui = {
   // the flight HUD is visible; hidden modal/docked states keep toasts and safety alerts alive.
   frame(dt, state) {
     try {
+      // Reads before writes: refresh the HUD obstacle rects that are due while layout is still
+      // clean, so no placement pass below forces a synchronous layout mid-frame.
+      if (typeof document !== 'undefined') refreshDueAvoidRects(document);
       // Gamepad UI navigation / global button intents are processed every render frame so menus
       // work even when the sim is paused and input.update is not being stepped.
       if (this.input && this.input.tick) this.input.tick(dt);
