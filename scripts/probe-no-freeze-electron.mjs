@@ -283,6 +283,10 @@ try {
       if (phase === 2) hand.tap(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'][Math.floor(beat / 6) % 5]);
       if (phase === 5) { hand.releaseAll(); } // fingers off the controls
       beat++;
+      if (PROFILE && beat % 8 === 0) {
+        const d = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); const q = r && (r.result || r); return q && q.physicsDiag; } catch (_) { return null; } }).catch(() => null);
+        if (d && typeof d === 'object') (report.physicsSamples || (report.physicsSamples = [])).push({ bodies: d.bodies, dyn: d.dynamicCount, sleeping: d.sleepingCount, ccd: d.ccdBodies, colliders: d.colliders, syncMode: d.syncMode, syncDyn: d.syncDynamicEntities, syncFull: d.syncFullEntities });
+      }
       await sleep(Math.min(1500, Math.max(0, end - Date.now())));
       // Respawn / next round / take a level-up pick if the run paused on a screen.
       await page.evaluate(() => {
@@ -340,7 +344,7 @@ try {
   report.realmEnd = await page.evaluate(() => ({ hasFocus: document.hasFocus(), visibility: document.visibilityState,
     padCalls: window.__padCalls ? window.__padCalls() : null })).catch(() => null);
   const samples = await page.evaluate(() => { clearInterval(window.__nf.timer); return window.__nf.samples; });
-  report.workerProbe = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); const q = r && (r.result || r); const g = window.SF.simLaneDiag(); const rr = window.SF.registry.get('render'); const samples = []; for (let i = 0; i < 20; i++) { const r2 = await window.SF.laneRpc('probeState'); const q2 = r2 && (r2.result || r2); samples.push({ worker: q2.committedJournalSequence, main: window.SF.simLaneDiag().journal.writeSequence, presented: rr && rr._presentationPublisher ? rr._presentationPublisher.getLastAppliedSequence() : null }); await new Promise((ok) => setTimeout(ok, 100)); } return { journalRebuildReasons: q.journalRebuildReasons, lag: samples }; } catch (e) { return String(e); } }).catch(() => null);
+  report.workerProbe = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); const q = r && (r.result || r); const g = window.SF.simLaneDiag(); const rr = window.SF.registry.get('render'); const samples = []; for (let i = 0; i < 20; i++) { const r2 = await window.SF.laneRpc('probeState'); const q2 = r2 && (r2.result || r2); samples.push({ worker: q2.committedJournalSequence, main: window.SF.simLaneDiag().journal.writeSequence, presented: rr && rr._presentationPublisher ? rr._presentationPublisher.getLastAppliedSequence() : null }); await new Promise((ok) => setTimeout(ok, 100)); } return { journalRebuildReasons: q.journalRebuildReasons, physicsDiag: q.physicsDiag, lag: samples.slice(-3) }; } catch (e) { return String(e); } }).catch(() => null);
   console.log('worker journal rebuilds', JSON.stringify(report.workerProbe));
   // Identity forensics for the worst stale bodies: what the worker journaled vs what main applied.
   {
@@ -367,16 +371,28 @@ try {
   // ---- per-phase table ----
   for (const ph of report.phases) {
     const s = samples.filter((d) => d.ph === ph.name && d.mode === 'flight' && d.ts > 0 && !d.docked);
-    let minWin = null;
-    // World speed over every 10 s window (slid by 1 s).
-    for (let i = 0; i < s.length; i += 20) {
-      const j = s.findIndex((d, k) => k > i && d.t - s[i].t >= 10000);
-      if (j < 0) break;
-      const v = (s[j].sim - s[i].sim) / ((s[j].t - s[i].t) / 1000);
-      if (v >= 0 && (minWin == null || v < minWin)) minWin = v;
+    // Gate rule (coordinator, 2026-11-21): simulation time is accumulated per consecutive sample
+    // pair, never across a reset (a relaunched run) or a pause gap; the worst ten-second window is
+    // judged only for phases of thirty seconds or more.
+    const acc = [{ w: 0, sim: 0 }];
+    let wAcc = 0; let simAcc = 0;
+    for (let i = 1; i < s.length; i++) {
+      const dt = (s[i].t - s[i - 1].t) / 1000;
+      const ds = s[i].sim - s[i - 1].sim;
+      if (!(dt > 0) || dt > 0.25 || ds < 0 || ds > dt * 2 + 0.1) continue;
+      wAcc += dt; simAcc += ds; acc.push({ w: wAcc, sim: simAcc });
     }
-    const wall = s.length > 1 ? (s.at(-1).t - s[0].t) / 1000 : 0;
-    const speed = wall > 0 ? (s.at(-1).sim - s[0].sim) / wall : null;
+    let minWin = null;
+    if (wAcc >= 30) {
+      for (let i = 0; i < acc.length; i += 20) {
+        const j = acc.findIndex((d, k) => k > i && d.w - acc[i].w >= 10);
+        if (j < 0) break;
+        const v = (acc[j].sim - acc[i].sim) / (acc[j].w - acc[i].w);
+        if (minWin == null || v < minWin) minWin = v;
+      }
+    }
+    const wall = +wAcc.toFixed(1);
+    const speed = wAcc > 0 ? simAcc / wAcc : null;
     report.rows.push({
       phase: ph.name,
       wallS: +wall.toFixed(1),

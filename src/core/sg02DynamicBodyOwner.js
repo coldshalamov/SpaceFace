@@ -3462,6 +3462,16 @@ export class Sg02DynamicBodyOwner {
         const speed = vel ? Math.hypot(finite(vel.x), finite(vel.z)) : 0;
         desired = rec.ccdEnabled ? speed >= CCD_GATE_DISABLE_SPEED : speed > CCD_GATE_ENABLE_SPEED;
       }
+    } else {
+      // NO-FREEZE world speed (2026-11-21): rocks, wrecks, pods and pickups kept CCD on for life —
+      // measured 140 of 166 dynamic bodies sweeping every step in a busy Swarm round. Sweep only
+      // when the body can tunnel: it travels more than half its own radius in one fixed step
+      // (hysteresis at a third, so a body near the line does not flip every step).
+      const vel = entity && entity.vel;
+      const speed = vel ? Math.hypot(finite(vel.x), finite(vel.z)) : 0;
+      const radius = Math.max(0.5, finite(entity && entity.radius, 1));
+      const travel = speed * this.fixedDt;
+      desired = rec.ccdEnabled ? travel >= radius / 3 : travel > radius / 2;
     }
     if (desired === rec.ccdEnabled) return;
     if (typeof rec.body.enableCcd === 'function') rec.body.enableCcd(desired);

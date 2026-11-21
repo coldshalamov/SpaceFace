@@ -2116,6 +2116,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
         return {
           journalRebuildReasons: { ...host.rebuildReasons },
           committedJournalSequence: host.committedJournalSequence,
+          physicsDiag: (() => { try { const o = registry.get('physics')?._sg02; if (!o) return null; const d = o.diagnostics(); let sleeping = 0, dyn = 0; for (const rec of o.dynamicRecords || []) { dyn++; try { if (rec.body && rec.body.isSleeping()) sleeping++; } catch (_) {} } return { ...d, dynamicCount: dyn, sleepingCount: sleeping }; } catch (e) { return String(e); } })(),
           lifeLog: args && Array.isArray(args.lifeFor) ? (host.lifeLog || []).filter((r) => args.lifeFor.includes(r[1])) : undefined,
           tick: state.tick,
           seed: state.meta?.seed ?? null,
