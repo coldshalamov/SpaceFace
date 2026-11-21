@@ -58,6 +58,7 @@ import { enemyMindTell } from '../presentation/enemyMindTells.js';
 import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { createVisorDockCue } from './orrery/visorDockCue.js';
 import { createFlightHelm } from './flightHelm.js';
+import { createCargoBag } from './cargoBag.js';
 import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -3406,18 +3407,24 @@ export function createHud(ctx, alerts) {
     caption.textContent = p.text;
     caption.hidden = false;
     caption.classList.toggle('assertive', !!p.assertive);
+    // HUD-2 item 15: the fade-in restarts on the next animation frame (remove, then re-add the
+    // class) instead of forcing a synchronous layout with offsetWidth inside the event handler.
     caption.classList.remove('show');
     if (!captionFlushedThisFrame) {
-      void caption.offsetWidth; // restart fade-in (one forced layout per frame at most)
       captionFlushedThisFrame = true;
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(releaseCaptionFlush);
-      else setTimeout(releaseCaptionFlush, 16);
+      const reshow = () => { releaseCaptionFlush(); if (!caption.hidden) caption.classList.add('show'); };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(reshow);
+      else setTimeout(reshow, 16);
+    } else {
+      caption.classList.add('show');
     }
-    caption.classList.add('show');
     invalidateReceiptLane(false);
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
-    const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
+    // Reading time from the words (about 58 characters a line), not a scrollHeight read that
+    // forced layout right after the text write.
+    const captionLines = Math.max(1, Math.ceil(String(p.text || '').length / 58));
+    const readableTtl = Math.max(2400, Math.min(12000, captionLines * 900));
     const ttl = Number.isFinite(p.durationMs) && p.durationMs > 0
       ? Math.max(2400, p.durationMs)
       : Math.max(p.assertive ? 3200 : 2400, readableTtl);
@@ -5122,9 +5129,9 @@ export function createHud(ctx, alerts) {
     const name = cargoDisplayName(p.commodityId);
     pendingSealedDump = p;
     confirm({
-      title: 'Jettison sealed freight?',
-      body: `${p.requested}× ${name} includes ${Math.max(0, Number(p.reserved) || sealedQty)} units sealed for a contract. Dumping them breaches the seal and forfeits the job. Jettison the sealed freight anyway?`,
-      confirmLabel: 'Dump sealed freight',
+      title: 'Drop sealed freight?',
+      body: `${p.requested} ${name}: ${Math.max(0, Number(p.reserved) || sealedQty)} of them are sealed for a contract. The contract will fail.`,
+      confirmLabel: 'Drop it',
       danger: true,
     }).then((ok) => {
       const pending = pendingSealedDump;
@@ -5236,8 +5243,13 @@ export function createHud(ctx, alerts) {
   on('navigation:cleared', updateFlightCargoBar);
 
   // Expose toggle/close for the input system
-  on('ui:toggleCargo', toggleCargoPanel);
-  on('ui:closeCargo', closeCargoPanel);
+  // CARGO-BAG-UI: the cargo key opens the bag (cargoBag.js) — a compact slot grid at the side of
+  // the screen that never pauses flight. The old full-screen manifest no longer opens from flight.
+  const cargoBag = createCargoBag({ root, state, bus: ctx.bus, ctx });
+  if (typeof window !== 'undefined') window.__sfCargoBag = cargoBag;
+  hudUnsubscribers.push(() => { cargoBag.destroy(); if (typeof window !== 'undefined' && window.__sfCargoBag === cargoBag) window.__sfCargoBag = null; });
+  on('ui:toggleCargo', () => { if (cargoPanelOpen) closeCargoPanel(); cargoBag.toggle(); });
+  on('ui:closeCargo', () => { closeCargoPanel(); cargoBag.close(); });
 
   // Close on ESC when panel focus is inside it; ui/input.js handles the global flight case.
   cargoPanel.addEventListener('keydown', (ev) => {

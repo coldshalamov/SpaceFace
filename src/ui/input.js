@@ -657,7 +657,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       }
       // Repeat the open binding to close the same instrument (mission log already does this in
       // onKey; maps do it above). Without this, T/K/F1 open a screen they cannot close.
-      if (def && def.id === 'techTree' && matchesBinding(ev, BINDINGS.techTree)) {
+      if (def && (def.id === 'techTree' || def.id === 'pilotTree') && matchesBinding(ev, BINDINGS.techTree)) {
         ev.preventDefault();
         closeActiveModal(def);
         return;
@@ -851,7 +851,8 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       case BINDINGS.techTree.key:
       case BINDINGS.techTree.label:
         if (!contextUiAllowed(state, 'techTree')) return;
-        ev.preventDefault(); screenManager.pushScreen('techTree'); return;
+        // T opens the Pilot Tree (progression lead 2026-11-20); Research opens from the station.
+        ev.preventDefault(); screenManager.pushScreen('pilotTree'); return;
       case BINDINGS.missionLog.key:
       case BINDINGS.missionLog.label:
         if (!contextUiAllowed(state, 'missionLog')) return;
