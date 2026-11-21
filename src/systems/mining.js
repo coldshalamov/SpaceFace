@@ -1323,7 +1323,11 @@ export const mining = {
       }
       d.depletedAtT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     }
+    // Rock regrowth's quiet clock starts at the last cut (src/data/rockRegrowth.js).
+    d.lastMinedT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     persistTouchedResourceBody(state, ast);
+    // The ledger row now says "spent"; the world leaves a worked-out core at the slot.
+    if (destroyed && !d.isChunk) this.bus.emit('mining:rockSpent', { id: ast.id, fieldId: d.fieldId || null });
     return releaseUnits;
   },
 
