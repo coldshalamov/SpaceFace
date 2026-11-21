@@ -769,6 +769,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   const _glide = createCameraGlide();
   const _racingBlend = createRacingCameraBlend();
   const _racingRig = {};
+  const _racingMotion = { vx: NaN, vz: NaN };
   const _overheadPose = {};
   const _racingPose = {};
   let _exceptionalHold = 0;
@@ -1762,10 +1763,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       const hullRadius = p && Number.isFinite(p.radius) ? Math.max(0, p.radius) : 0;
       _racingRig.distance = Math.max(_racingRig.distance, hullRadius * 2.2);
       _racingRig.height = Math.max(_racingRig.height, hullRadius * 0.8);
+      _racingMotion.vx = p && p.vel ? p.vel.x : NaN;
+      _racingMotion.vz = p && p.vel ? p.vel.z : NaN;
       const pose = stepRacingCameraBlend(_racingBlend, frameDt, stern,
         p ? _playerLocalScratch : c.focus, p && p.rot, playerSpeed,
         _racingRig, _overheadPose, reduced, _racingPose,
-        _deathCam || !!(photo && photo.active) || _fieldBuildBlend > 0.05);
+        _deathCam || !!(photo && photo.active) || _fieldBuildBlend > 0.05, _racingMotion);
       // BOTH views use the same predictive solid-clearance solver. The stern rig is anchored
       // to the presented hull, not the overhead camera's velocity/threat-biased focus.
       let camX = pose.eyeX, camY = pose.eyeY, camZ = pose.eyeZ;

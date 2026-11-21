@@ -16,11 +16,15 @@ import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 export const STEERING_VIEWS = Object.freeze(['overhead', 'racing', 'auto']);
 
+// A higher, longer rig than the first one (58 / 22 / 36). From 22 high the whole course sat on
+// the horizon line: every gate and rock at the same height in the frame. From 36 the ground plane
+// opens up and the next two gates read as near and far.
 export const RACING_RIG_DEFAULT = Object.freeze({
-  distance: 58,
-  height: 22,
-  lookAhead: 36,
+  distance: 62,
+  height: 36,
+  lookAhead: 70,
 });
+const RACING_RIG_FIRST = Object.freeze({ distance: 58, height: 22, lookAhead: 36 });
 
 const DRAFT_MIN_WU = 18;
 const DRAFT_MAX_WU = 150;
@@ -97,9 +101,14 @@ export function racingRigOf(settings, out = {}) {
     if (!Number.isFinite(n)) return fallback;
     return Math.min(hi, Math.max(lo, n));
   };
-  out.distance = num(g.racingDistance, RACING_RIG_DEFAULT.distance, 24, 140);
-  out.height = num(g.racingHeight, RACING_RIG_DEFAULT.height, 6, 64);
-  out.lookAhead = num(g.racingLookAhead, RACING_RIG_DEFAULT.lookAhead, 0, 120);
+  // A profile that still holds the first rig's exact numbers never chose them: the settings
+  // screen wrote its defaults. It gets the current rig. Any other value is the player's own.
+  const untouched = Number(g.racingDistance) === RACING_RIG_FIRST.distance
+    && Number(g.racingHeight) === RACING_RIG_FIRST.height
+    && Number(g.racingLookAhead) === RACING_RIG_FIRST.lookAhead;
+  out.distance = num(untouched ? null : g.racingDistance, RACING_RIG_DEFAULT.distance, 24, 140);
+  out.height = num(untouched ? null : g.racingHeight, RACING_RIG_DEFAULT.height, 6, 64);
+  out.lookAhead = num(untouched ? null : g.racingLookAhead, RACING_RIG_DEFAULT.lookAhead, 0, 120);
   return out;
 }
 
