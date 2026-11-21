@@ -84,12 +84,18 @@ const LOCAL_MAX_STEPS = 4;
 // Explicit-step directives (tape/replay/verification) carry no budget and
 // always run exactly the steps requested.
 // PERF-02: every directive also pays a fixed tail (command drain, vitals walk,
-// domain diff, journal pack, postMessage, wake turnaround) measured at ~15 ms.
-// A heavy scene's ~28 ms step overshot the old 24 ms budget alone, so each
-// directive paid that tail for a single executed step — ~40% overhead on top
-// of step time. Three-step batches amortize the same tail without touching
-// step semantics; the work budget, dilation and the hard debt cap govern bursts.
-const LOCAL_WORK_BUDGET_MS = 72;
+// domain diff, journal pack, postMessage, wake turnaround) measured at ~2 ms
+// since the pose table took poses and vitals off the reply (NO-FREEZE, 2026-11-21).
+// BATCH CAP (owner bug 2026-11-21): a 4-step catch-up batch of today's ~12 ms
+// Swarm steps never reached the old 72 ms budget, so one directive owned the
+// worker for 50-80 ms — poses, replies and heartbeats all queued behind it, the
+// accumulator compounded, and the world diluted to 0.72x while frames kept
+// presenting. 14 ms lets one heavy step (or two light steps) plus its tail fit
+// a directive; the rest stays as bounded accumulator debt for the next timer
+// turn. Step sequence is unchanged — only how steps group into directives — so
+// determinism and the replay golden are untouched. Explicit-step directives
+// (tape/replay/verification) carry no budget and always run exactly.
+const LOCAL_WORK_BUDGET_MS = 14;
 // ENGINE slice 5 — dilate, do not shed. The world clock owes elapsed × scale × dilation. When the
 // worker cannot keep up, dilation eases down (never faster than LOCAL_DILATION_DOWN_PER_S) so the
 // whole world — sim, and the picture that measures its rate — slows smoothly instead of dropping
