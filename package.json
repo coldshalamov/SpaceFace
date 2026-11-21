@@ -838,6 +838,7 @@
       "scripts/lib/gameServer.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
       "scripts/lib/playerSaveStore.cjs",
+      "scripts/lib/playerPresence.cjs",
       "scripts/lib/userContentStore.cjs",
       "scripts/lib/staticCachePolicy.cjs",
       "package.json",

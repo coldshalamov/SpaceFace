@@ -604,6 +604,28 @@ function publishWindowLifecycle(win, reason) {
   }
 }
 
+// While the player's own window is focused: a heartbeat the fleet's game lock reads (test launches
+// wait, so a second copy of the game never competes for this laptop's one integrated GPU while
+// someone is playing), and above-normal scheduling priority for the game's processes so background
+// work yields the CPU to it. Player launches only; probes neither announce nor raise themselves.
+let stopPlayerPresenceHeartbeat = null;
+function startPlayerPresenceHeartbeat() {
+  if (launchConfig.isolatedEvidence || stopPlayerPresenceHeartbeat) return;
+  let presence = null;
+  try { presence = require('../scripts/lib/playerPresence.cjs'); } catch (_) { return; }
+  try {
+    stopPlayerPresenceHeartbeat = presence.startPlayerPresence({
+      isFocused: () => BrowserWindow.getAllWindows().some((w) => !w.isDestroyed()
+        && w.isVisible() && !w.isMinimized() && w.isFocused()),
+      processIds: () => [process.pid, ...app.getAppMetrics().map((m) => m.pid)],
+    });
+    app.once('will-quit', () => {
+      try { if (stopPlayerPresenceHeartbeat) stopPlayerPresenceHeartbeat(); } catch (_) {}
+      stopPlayerPresenceHeartbeat = null;
+    });
+  } catch (_) { /* presence is a courtesy; the game runs without it */ }
+}
+
 function publishAllWindowLifecycles(reason) {
   for (const win of BrowserWindow.getAllWindows()) publishWindowLifecycle(win, reason);
 }
@@ -1825,6 +1847,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady()
     .then(() => {
       void requestGameWindow();
+      startPlayerPresenceHeartbeat();
       // Auto-update is a packaged-route citizen: check once after boot, download quietly, and
       // offer Restart-or-Later when a build lands. Fail-closed everywhere else, and isolated
       // evidence launches (including packaged-startup probes) never touch the feed at all.
