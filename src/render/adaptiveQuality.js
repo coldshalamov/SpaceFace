@@ -765,6 +765,7 @@ export function createAdaptiveResolution(opts = {}) {
       }
     },
     getScale() { return scale; },
+    isEnabled() { return enabled; },
     /** Diagnostics: 'cpu' | 'gpu' | 'unknown' as of the last lowering decision, plus the EMAs. */
     getBound() { return { bound, frameMs: emaMs, cpuMs: cpuEmaMs, gpuMs: gpuEmaMs }; },
   };

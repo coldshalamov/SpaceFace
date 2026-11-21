@@ -57,6 +57,8 @@ const PROFILE = arg('profile', 'on'); // on | off | none — which side gets the
 const SHOTS = arg('shots', '1') !== '0';
 const FLIGHT_TIMEOUT = Number(arg('flightTimeout', 200)) * 1000;
 const CAP = Number(arg('cap', 0));
+// --dynres=1 leaves the game's own dynamic-resolution controller running (to watch what it does).
+const DYNRES = arg('dynres', '0') === '1';
 const QUERY = String(arg('query', ''));
 // Per-frame watch on named scene objects (comma list): visible flag, layer mask, residency hold and
 // whether three actually drew it (onBeforeRender fires per draw).
@@ -106,17 +108,17 @@ try {
   report.loadS = +((Date.now() - t0) / 1000).toFixed(1);
   await page.bringToFront();
   await page.mouse.move(1000, 380);
-  report.setup = await page.evaluate((cap) => {
+  report.setup = await page.evaluate(({ cap, dynres }) => {
     const S = window.SF.state;
     const v = S.settings && S.settings.video;
     if (cap > 0 && v) { v.frameCap = cap; try { window.SF.bus.emit('settings:changed', { section: 'video', key: 'frameCap' }); } catch {} }
     const render = window.SF.registry && window.SF.registry.get && window.SF.registry.get('render');
-    try { render && render._adaptive && render._adaptive.setEnabled(false); } catch {}
+    try { if (!dynres) render && render._adaptive && render._adaptive.setEnabled(false); } catch {}
     const r = S.render.renderer;
     return { gpu: S.render.gpu || null, preset: v && v.qualityPreset, qualityMode: v && v.qualityMode, frameCap: v && v.frameCap, liveCap: S.render.frameCap,
       shadows: v && v.shadows, pixelRatio: r && r.getPixelRatio ? r.getPixelRatio() : null, canvas: r && r.domElement ? [r.domElement.width, r.domElement.height] : null,
-      dynResScale: S.render.dynResScale, dynResPinned: !!(render && render._adaptive) };
-  }, CAP).catch((e) => ({ err: String(e) }));
+      dynResScale: S.render.dynResScale, dynResPinned: !dynres && !!(render && render._adaptive) };
+  }, { cap: CAP, dynres: DYNRES }).catch((e) => ({ err: String(e) }));
   await sleep(SETTLE * 1000);
 
   // ---- toggles + recorder ----
@@ -127,6 +129,8 @@ try {
     const sorter = createOpaqueStateSort(r);
     const apply = {
       sort: (on) => r.setOpaqueSort(on ? sorter : () => 0),
+      // res60: internal resolution 0.6 vs 1.0 — is the scene pass fill-bound?
+      res60: (on) => { const rs = window.SF.registry.get('render'); S.render.dynResScale = on ? 0.6 : 1; rs._applySize(); },
       shadowsOff: (on) => { S.settings.video.shadows = !on; window.SF.bus.emit('settings:changed', { section: 'video', key: 'shadows' }); },
     };
     const perf = S.perfRuntime;
@@ -148,6 +152,27 @@ try {
     R.set = (on) => {
       for (const t of toggles) {
         if (t.startsWith('rfx:')) { (globalThis.__sfRfx ||= {})[t.slice(4)] = on; continue; }
+        // hidedeep:<exact name> — the same for every named node anywhere in the scene (set pieces,
+        // not entity roots: the renderer re-shows those each frame).
+        if (t.startsWith('hidedeep:')) {
+          const name = t.slice(9);
+          S.render.scene.traverse((c) => {
+            if (c.name !== name) return;
+            if (on) { if (c.__ftHidden !== true && c.visible) { c.__ftHidden = true; c.visible = false; } }
+            else if (c.__ftHidden === true) { c.__ftHidden = false; c.visible = true; }
+          });
+          continue;
+        }
+        // hide:<name prefix> — GPU/CPU cost attribution: ON hides every top-level root with that name.
+        if (t.startsWith('hide:')) {
+          const prefix = t.slice(5);
+          for (const c of S.render.scene.children) {
+            if (!String(c.name || '').startsWith(prefix)) continue;
+            if (on) { if (c.__ftHidden !== true && c.visible) { c.__ftHidden = true; c.visible = false; } }
+            else if (c.__ftHidden === true) { c.__ftHidden = false; c.visible = true; }
+          }
+          continue;
+        }
         apply[t](on);
       }
       R.side = on ? 'on' : 'off';
@@ -156,7 +181,8 @@ try {
     const loop = () => {
       if (!R.on) return;
       const now = performance.now();
-      const f = { dt: +(now - R.last).toFixed(2), side: R.side, age: now - (R.sideAt || now), mode: S.mode, dyn: S.render.dynResScale };
+      const f = { dt: +(now - R.last).toFixed(2), side: R.side, age: now - (R.sideAt || now), mode: S.mode, dyn: S.render.dynResScale, bound: S.render.dynResBound, dynEl: S.render.dynResEligible, dynOn: S.render.dynResEnabled,
+        why: S.render.dynResEligible === false ? [S.mode, S.paused, S.timeScale, S.render.openingFirstPictureReady, S.render.flightVeilHoldsSim, S.render.liveSectorGpuAdmission, Number.isFinite(S.render.firstPlayableFrameAt)].join(',') : null };
       R.last = now;
       try {
         const s = perf.readFrameSample(R.sample);
@@ -164,6 +190,7 @@ try {
         if (diag && diag.info) { f.calls = diag.info.calls; f.tris = diag.info.triangles; }
         // Presented draw guard still wrapped after the frame = that pass did not settle.
         f.guard = r.renderBufferDirect === r.__sfUnreadyDrawGuardFn ? 1 : 0;
+        if (R.gpuOn) { try { const rep = S.render.gpuTimers.getReport(); const ps = rep.passes || {}; f.gpu = (ps.bloomScene ? ps.bloomScene.last : 0); f.gpuAll = f.gpu + (ps.bloomComposite ? ps.bloomComposite.last : 0) + (ps.bloomDownsample ? ps.bloomDownsample.last : 0); } catch (_) {} }
         f.programs = r.info && r.info.programs ? r.info.programs.length : null;
         // Programs linked since the last frame: name them (first-use compiles inside the fight).
         if (f.programs != null && R.lastPrograms != null && f.programs > R.lastPrograms && R.newPrograms.length < 200) {
@@ -343,6 +370,38 @@ try {
     const twins = [...groups.values()].filter((n) => n > 1);
     return { drawnMaterials: mats.size, uniqueSignatures: groups.size, twinGroups: twins.length, twinMaterials: twins.reduce((a, b) => a + b, 0), churnByField: churn, churnMaterials: [...mats.values()].filter((r) => r.changes).length, churnExamples };
   }).catch((e) => ({ err: String(e) }));
+  // Draw attribution: visible, in-frustum drawables per top-level root (≈ color-pass draws).
+  report.drawAttribution = await page.evaluate(() => {
+    const S = window.SF.state;
+    const THREE = window.SF.THREE;
+    const cam = S.camera && S.camera.obj;
+    const scene = S.render.scene;
+    if (!cam || !THREE) return null;
+    cam.updateMatrixWorld();
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+    const rows = new Map();
+    let total = 0;
+    for (const child of scene.children) {
+      if (!child.visible) continue;
+      const key = String(child.name || child.type || '?').replace(/_\d+$/, '').slice(0, 44);
+      child.traverseVisible((o) => {
+        if (!(o.isMesh || o.isPoints || o.isLine || o.isSprite)) return;
+        if (o.isInstancedMesh && o.count === 0) return;
+        if (o.frustumCulled !== false) {
+          try { if (o.isSprite ? !frustum.intersectsSprite(o) : !frustum.intersectsObject(o)) return; } catch (_) { return; }
+        }
+        const n = Array.isArray(o.material) ? o.material.length : 1;
+        const row = rows.get(key) || { key, draws: 0, instanced: 0, tris: 0 };
+        row.draws += n; total += n;
+        if (o.isInstancedMesh) row.instanced += n;
+        const g = o.geometry;
+        const idx = g && (g.index ? g.index.count : (g.attributes && g.attributes.position ? g.attributes.position.count : 0));
+        row.tris += Math.floor((idx || 0) / 3) * (o.isInstancedMesh ? o.count : 1);
+        rows.set(key, row);
+      });
+    }
+    return { total, top: [...rows.values()].sort((a, b) => b.draws - a.draws).slice(0, 25) };
+  }).catch((e) => ({ err: String(e) }));
   // Scene census: which top-level subtrees hold the nodes the per-frame matrix walk visits.
   report.census = await page.evaluate(() => {
     const scene = window.SF.state.render.scene;
@@ -386,6 +445,7 @@ try {
       dtP50: pct(fr.map((f) => f.dt), 0.5), dtP95: pct(fr.map((f) => f.dt), 0.95),
       cbP50: pct(fr.map((f) => f.cb), 0.5), cbMean: mean(fr.map((f) => f.cb)),
       renderP50: pct(fr.map((f) => f.render), 0.5), renderMean: mean(fr.map((f) => f.render)),
+      gpuSceneP50: pct(fr.map((f) => f.gpu), 0.5), gpuAllP50: pct(fr.map((f) => f.gpuAll), 0.5),
       presP50: pct(fr.map((f) => f.pres), 0.5), uiP50: pct(fr.map((f) => f.ui), 0.5),
       calls: pct(fr.map((f) => f.calls), 0.5), tris: pct(fr.map((f) => f.tris), 0.5),
       dynRes: [...new Set(fr.map((f) => f.dyn))],
@@ -400,17 +460,19 @@ try {
   const windowsList = [];
   let cur = null;
   for (const f of timed) {
-    if (!cur || cur.side !== f.side) { cur = { side: f.side, cb: [], render: [] }; windowsList.push(cur); }
-    cur.cb.push(f.cb); cur.render.push(f.render);
+    if (!cur || cur.side !== f.side) { cur = { side: f.side, cb: [], render: [], gpu: [] }; windowsList.push(cur); }
+    cur.cb.push(f.cb); cur.render.push(f.render); cur.gpu.push(f.gpu);
   }
   report.pairs = [];
   for (let i = 1; i < windowsList.length; i++) {
     if (windowsList[i].side === 'on' && windowsList[i - 1].side === 'off') {
       const a = windowsList[i - 1], b = windowsList[i];
-      report.pairs.push({ cbRatio: +(pct(b.cb, 0.5) / pct(a.cb, 0.5)).toFixed(3), renderRatio: +(pct(b.render, 0.5) / pct(a.render, 0.5)).toFixed(3), offCb: pct(a.cb, 0.5), onCb: pct(b.cb, 0.5) });
+      report.pairs.push({ cbRatio: +(pct(b.cb, 0.5) / pct(a.cb, 0.5)).toFixed(3), renderRatio: +(pct(b.render, 0.5) / pct(a.render, 0.5)).toFixed(3), offCb: pct(a.cb, 0.5), onCb: pct(b.cb, 0.5),
+        offGpu: pct(a.gpu, 0.5), onGpu: pct(b.gpu, 0.5), gpuRatio: pct(a.gpu, 0.5) ? +(pct(b.gpu, 0.5) / pct(a.gpu, 0.5)).toFixed(3) : null });
     }
   }
   report.sides = sides;
+  report.dynResTrace = data.frames.filter((f, i) => i % 15 === 0).map((f) => [f.dyn, f.bound, f.dynOn, f.dynEl, f.why, Math.round(f.dt), Math.round(f.cb || 0), f.gpu != null ? Math.round(f.gpu) : null]);
   report.longFrames = data.frames.filter((f) => f.dt > 50).slice(0, 60).map((f) => ({ dt: f.dt, cb: f.cb, side: f.side, mode: f.mode, programs: f.programs }));
   if (WATCH.length) {
     const names = await Promise.resolve(WATCH);

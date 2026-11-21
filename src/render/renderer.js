@@ -33401,7 +33401,11 @@ export const render = {
         }
       }
       tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
-      if (adaptiveState.render) adaptiveState.render.dynResBound = this._adaptive.getBound?.().bound;
+      if (adaptiveState.render) {
+        adaptiveState.render.dynResBound = this._adaptive.getBound?.().bound;
+        adaptiveState.render.dynResEligible = eligible;
+        adaptiveState.render.dynResEnabled = this._adaptive.isEnabled?.() ?? null;
+      }
     }
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
     // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full
