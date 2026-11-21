@@ -152,6 +152,18 @@ try {
     R.set = (on) => {
       for (const t of toggles) {
         if (t.startsWith('rfx:')) { (globalThis.__sfRfx ||= {})[t.slice(4)] = on; continue; }
+        // lightoff:<name> drops a light from the lighting census (visible=false); noshadow:<name>
+        // stops it casting. Both change program variants: the first flip of each links programs.
+        if (t.startsWith('lightoff:') || t.startsWith('noshadow:')) {
+          const name = t.slice(t.indexOf(':') + 1);
+          S.render.scene.traverse((c) => {
+            if (!c.isLight || c.name !== name) return;
+            const key = t.startsWith('lightoff:') ? 'visible' : 'castShadow';
+            if (on) { if (c.__ftPrev == null) c.__ftPrev = c[key]; c[key] = false; }
+            else if (c.__ftPrev != null) { c[key] = c.__ftPrev; c.__ftPrev = null; }
+          });
+          continue;
+        }
         // hidedeep:<exact name> — the same for every named node anywhere in the scene (set pieces,
         // not entity roots: the renderer re-shows those each frame).
         if (t.startsWith('hidedeep:')) {
@@ -415,7 +427,10 @@ try {
       if (child.visible) child.traverseVisible(() => { row.visibleNodes++; visible++; });
       rows.set(key, row);
     }
-    return { nodes, auto, visible, top: [...rows.values()].sort((a, b) => b.nodes - a.nodes).slice(0, 30) };
+    const lights = [];
+    scene.traverse((o) => { if (o.isLight) lights.push({ t: o.type, n: String(o.name || '').slice(0, 30), vis: o.visible, i: +Number(o.intensity).toFixed(2), sh: !!o.castShadow }); });
+    const r = window.SF.state.render.renderer;
+    return { nodes, auto, visible, lights, shadowMap: { enabled: r.shadowMap.enabled, type: r.shadowMap.type }, top: [...rows.values()].sort((a, b) => b.nodes - a.nodes).slice(0, 30) };
   }).catch((e) => ({ err: String(e) }));
   await flying;
   const data = await page.evaluate(() => {

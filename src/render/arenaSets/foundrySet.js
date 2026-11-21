@@ -7,6 +7,7 @@ import { loadAuthoredPart } from '../assetLoader.js';
 import { getAssetResidency } from '../assetResidency.js';
 import { isReleaseAssetMode } from '../releaseMode.js';
 import { instantiatePackagedPrimitives } from '../visualFactory.js';
+import { frameCostFixOn } from '../frameCostSwitches.js';
 
 export const FOUNDRY_DECK_Y = -62;
 const BAY = 84;
@@ -188,10 +189,51 @@ function buildMachinery(root, steel, box, fixtures) {
   blocks(root, 'Foundry work-lamp lenses', box, fixtures.lamp, lamps, false);
 }
 
+// The arena camera never brings these set pieces close: a cargo pod is ~40-100 px on screen, a
+// rack or gantry a few hundred. Their LOD0 bodies (12.6k tris a pod, 17k a rack) cost ~250k of
+// the round-20 frame's triangles and ~16 ms of GPU (render lead, same-page hide toggle). The
+// packages ship authored LOD1 bodies (~40 % of the triangles, same silhouette and materials);
+// the set mounts those, the way the whole-ship LOD picks LOD1 below 240 px.
+const SET_PIECE_LOD = 'lod1';
+
+function primitiveLod(primitive) {
+  const tag = primitive && primitive.tags && primitive.tags.lod;
+  if (tag) return String(tag).toLowerCase();
+  const match = /LOD([012])[_-]/i.exec(String(primitive && primitive.name || ''));
+  return match ? `lod${match[1]}` : null;
+}
+
+// One derived record per (source record, lod): the merged-geometry cache in visualFactory is keyed
+// by record identity, so re-entering the Foundry reuses the merged buffers instead of minting new ones.
+const lodRecords = new WeakMap();
+
+/** The record re-expressed at one authored LOD (presented as lod0 so the merge path applies). */
+export function recordAtLod(record, lod = SET_PIECE_LOD) {
+  const primitives = record && Array.isArray(record.primitives) ? record.primitives : null;
+  if (!primitives || !primitives.some((p) => primitiveLod(p) === lod)) return record;
+  let byLod = lodRecords.get(record);
+  if (!byLod) lodRecords.set(record, byLod = new Map());
+  if (byLod.has(lod)) return byLod.get(lod);
+  const picked = [];
+  for (const primitive of primitives) {
+    const level = primitiveLod(primitive);
+    if (level === null) { picked.push(primitive); continue; }
+    if (level !== lod) continue;
+    picked.push({
+      ...primitive,
+      name: String(primitive.name || '').replace(/LOD[012]([_-])/i, 'LOD0$1'),
+      tags: { ...(primitive.tags || {}), lod: 'lod0' },
+    });
+  }
+  const derived = { ...record, primitives: picked };
+  byLod.set(lod, derived);
+  return derived;
+}
+
 function mountPart(root, record, placements, name, batches, own) {
   const model = new THREE.Group();
   model.name = name;
-  instantiatePackagedPrimitives(record, model);
+  instantiatePackagedPrimitives(frameCostFixOn('setLod') ? recordAtLod(record) : record, model);
   const bounds = new THREE.Box3().setFromObject(model);
   if (bounds.isEmpty()) return;
   const centre = bounds.getCenter(new THREE.Vector3());

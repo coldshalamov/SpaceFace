@@ -82,3 +82,15 @@ test('bank foundations use the existing contact footprint and follow the render 
   set.dispose();
   assert.equal(scene.children.length, 0);
 });
+
+test('Foundry set pieces mount their authored LOD1 body, once per source record', async () => {
+  const { recordAtLod } = await import('../src/render/arenaSets/foundrySet.js');
+  const prim = (name, tags) => ({ name, tags, geometry: {}, material: {} });
+  const record = { assetId: 'x', primitives: [prim('COLLISION_HULL'), prim('LOD0_Hull'), prim('LOD1_Hull'), prim('LOD2_Hull'), prim('Trim', { lod: 'lod1' })] };
+  const at = recordAtLod(record);
+  assert.deepEqual(at.primitives.map((p) => p.name), ['COLLISION_HULL', 'LOD0_Hull', 'Trim']);
+  assert.ok(at.primitives.slice(1).every((p) => p.tags.lod === 'lod0'), 'presented as the mount path\'s lod0');
+  assert.equal(recordAtLod(record), at, 'cached per source record');
+  const lod0Only = { primitives: [prim('LOD0_Hull')] };
+  assert.equal(recordAtLod(lod0Only), lod0Only, 'a package without LOD1 is mounted unchanged');
+});

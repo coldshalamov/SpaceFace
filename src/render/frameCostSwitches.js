@@ -8,7 +8,8 @@
 //   ?rfx=-sort      one change off (comma list: ?rfx=-sort,-guard)
 //
 // Names: sort (state-sorted opaque list), gpuDrs (GPU timer queries steer dynamic resolution),
-// hudRects (HUD obstacle rects cached and invalidations coalesced, src/ui/hudAvoidRects.js).
+// hudRects (HUD obstacle rects cached and invalidations coalesced, src/ui/hudAvoidRects.js),
+// setLod (Foundry set pieces mount their authored LOD1 bodies).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).
