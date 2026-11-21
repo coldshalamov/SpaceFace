@@ -39,6 +39,7 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { isRecovering, isTumbling } from '../combat/tumbleStatus.js';
+import { playerFixFor } from '../ai/playerAwareness.js';
 import { turretPhaseEdges as turretPhaseEdgesFor, turretLossCount } from '../combat/turretSubsystems.js';
 import {
   ensureActivityClassified,
@@ -62,6 +63,7 @@ const AI_SPATIAL_MIN_COLLIDABLES = 96;
 // INF-029: reported-track grade for a dispatched offender with a dispatch snapshot. Credible
 // (above the doctrine 0.55 engagement floor) but never certain: the sighting is old.
 const REPORTED_TRACK_CONFIDENCE = 0.6;
+const PILOT_FIX_SCRATCH = {};
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots
@@ -1495,16 +1497,37 @@ function entityContacts(state, self, range, confidenceScale, helpers = null, att
   // still breaks the lock; weapon range and the final firing authority stay unchanged.
   const pilot = self.data?.runCohort === 'survival' && self.data?.ai?.forcePlayerTarget
     ? getEntity(state, state.playerId) : null;
-  if (pilot?.alive && !out.some(c => c.id === pilot.id) && !cloakHidesPlayerFrom(state, self, pilot)) {
-    const hostile = isHostileForAI(state, self, pilot);
-    {
+  // One rule with the pack brain (src/ai/playerAwareness.js): the shared awareness fix decides
+  // whether this hull still sees a cloaked pilot (reaction window, reveals, the Swarm timeout).
+  // Seen: the live track, replacing a fade ghost if the gate left one. Not seen: a reported track
+  // at the last known position — the hull flies there and searches; fire still needs a sighting.
+  if (pilot?.alive) {
+    const fix = playerFixFor(state, self, PILOT_FIX_SCRATCH);
+    let existing = -1;
+    for (let i = 0; i < out.length; i++) if (out[i] && out[i].id === pilot.id) { existing = i; break; }
+    if (fix.seen && (existing < 0 || out[existing].visible === false)) {
+      const hostile = isHostileForAI(state, self, pilot);
       const base = buildContactBase(state, pilot, combatRuntimeFor(state, pilot.id),
         attachmentIndex, 'ship', freeze, cacheOwner);
       const threat = threatFor(state, self, pilot, hostile);
+      const at = existing < 0 ? out.length : existing;
       if (records) {
-        out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, 1, threat, hostile));
+        out[at] = fillSensorContact(ensureSensorContactRecord(records, at), base, 1, threat, hostile);
       } else {
-        out.push({ ...base, confidence: 1, threat, hostile });
+        out[at] = { ...base, confidence: 1, threat, hostile };
+      }
+    } else if (!fix.seen && existing < 0) {
+      const reported = { ...pilot, pos: { x: fix.x, z: fix.z }, vel: { x: 0, z: 0 } };
+      const hostile = isHostileForAI(state, self, pilot);
+      const base = buildContactBase(state, reported, combatRuntimeFor(state, pilot.id),
+        attachmentIndex, 'ship', freeze, cacheOwner);
+      const threat = threatFor(state, self, reported, hostile);
+      if (records) {
+        const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, REPORTED_TRACK_CONFIDENCE, threat, hostile);
+        rec.visible = false;
+        out.push(rec);
+      } else {
+        out.push({ ...base, visible: false, confidence: REPORTED_TRACK_CONFIDENCE, threat, hostile });
       }
     }
   }

@@ -72,6 +72,7 @@ import { isTumbling } from '../combat/tumbleStatus.js';
 import { selectIncomingMassCue, INCOMING_MASS_CUE_KIND, INCOMING_MASS_CUE_TICKS } from '../render/incomingMassCue.js';
 import { driveCounterplay, isCounterplayOwned, rebindCounterplayCast } from '../ai/counterplay/live.js';
 import { PackBrain } from '../ai/pack/packBrain.js';
+import { bindPlayerAwareness, updatePlayerAwareness } from '../ai/playerAwareness.js';
 import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/counterplay/adventure.js';
 
 // Set when this module body runs. The doctrine arena must stay false.
@@ -676,7 +677,7 @@ export function createTacticalAISystem({
       helpers.inspectAIContract = () => handleInspection({ method: 'ai.contract' });
       if (ctx.bus && typeof ctx.bus.on === 'function') {
         listenLifecycle(ctx.bus, 'game:started', () => {
-          if (ctxRef && ctxRef.state) delete ctxRef.state.enemyMind;
+          if (ctxRef && ctxRef.state) { delete ctxRef.state.enemyMind; delete ctxRef.state.aiAwareness; }
           resetRuntime();
         });
         listenLifecycle(ctx.bus, 'save:loaded', restoreRuntime);
@@ -685,6 +686,8 @@ export function createTacticalAISystem({
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
         listenLifecycle(ctx.bus, 'combat:tumbled', handleShoveTumble);
         listenLifecycle(ctx.bus, 'weapons:vent', handleVentPress);
+        // A cloaked player's shot or a collision on its hull reveals it (src/ai/playerAwareness.js).
+        for (const off of bindPlayerAwareness(ctx.bus, () => ctxRef && ctxRef.state)) lifecycleUnsubscribes.push(off);
       }
     },
 
@@ -703,6 +706,8 @@ export function createTacticalAISystem({
     },
 
     update(_dt, state) {
+      // The shared "where is the player" fix every brain reads this tick (cloak, reveals, timeout).
+      updatePlayerAwareness(state);
       emitIncomingMassCue(state, ctxRef && ctxRef.bus);
       if (productionPortDefaults) placeCounterplayAdventure(ctxRef);
       const bindingVersion = entityIndexVersion(state);

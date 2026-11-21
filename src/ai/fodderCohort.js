@@ -19,6 +19,9 @@ import {
   hullClearanceSpacing,
 } from '../data/squadChoreography.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { playerFixFor } from './playerAwareness.js';
+
+const COHORT_FIX_SCRATCH = {};
 
 export {
   COHORT_PHASE,
@@ -186,7 +189,7 @@ export class FodderCohortDirector {
       this.cohorts.set(group.id, cohort);
     }
     syncMembers(cohort, members, recipe);
-    const target = resolveTarget(group, members, targetLookup, cohort);
+    const target = resolveTarget(group, members, targetLookup, cohort, state);
     const mutation = mutationSpec();
     stepCohort(this, cohort, recipe, target, tick, dt, state, mutation);
     publishPlans(this, cohort, recipe, tick);
@@ -505,7 +508,7 @@ function copyLive(rec, entity) {
   rec.live.hullFraction = rec.hullFraction;
 }
 
-function resolveTarget(group, members, targetLookup, cohort) {
+function resolveTarget(group, members, targetLookup, cohort, state = null) {
   let id = group.targetId;
   if (id == null && typeof targetLookup === 'function') {
     for (const entity of members) {
@@ -517,6 +520,21 @@ function resolveTarget(group, members, targetLookup, cohort) {
     }
   }
   const entity = id != null && typeof targetLookup === 'function' ? targetLookup(id) : null;
+  // A cloaked player the cohort cannot see: the cohort's frame closes on the last known position
+  // (the one shared rule, src/ai/playerAwareness.js), judged from the cohort's lead hull.
+  if (entity && entity.pos && state && entity.id === state.playerId && members && members[0]) {
+    const fix = playerFixFor(state, members[0], COHORT_FIX_SCRATCH);
+    if (!fix.seen) {
+      cohort.lastTarget.id = entity.id;
+      cohort.lastTarget.x = fix.x;
+      cohort.lastTarget.z = fix.z;
+      cohort.lastTarget.vx = 0;
+      cohort.lastTarget.vz = 0;
+      cohort.lastTarget.radius = Math.max(4, finite(entity.radius, 8));
+      cohort.targetId = entity.id;
+      return cohort.lastTarget;
+    }
+  }
   if (entity && entity.pos) {
     cohort.lastTarget.id = entity.id;
     cohort.lastTarget.x = finite(entity.pos.x);
