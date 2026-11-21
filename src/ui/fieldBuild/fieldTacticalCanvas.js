@@ -8,10 +8,10 @@ import { BELT_ORBITAL_STRUCTURES } from '../../data/beltEmpireData.js';
 import { readFrameOrigin } from '../../render/frameCoordinates.js';
 
 export const TACTICAL_MAP_MODES = Object.freeze([
-  Object.freeze({ id: 'standard', short: 'TAC', label: 'Tactical' }),
-  Object.freeze({ id: 'power_thermal', short: 'PWR', label: 'Power & Thermal' }),
-  Object.freeze({ id: 'supply_flow', short: 'SUP', label: 'Supply Mesh' }),
-  Object.freeze({ id: 'defense_threat', short: 'DEF', label: 'Defense & Weather' }),
+  Object.freeze({ id: 'standard', short: 'TAC', label: 'Rocks' }),
+  Object.freeze({ id: 'power_thermal', short: 'PWR', label: 'Power and heat' }),
+  Object.freeze({ id: 'supply_flow', short: 'SUP', label: 'Supply lines' }),
+  Object.freeze({ id: 'defense_threat', short: 'DEF', label: 'Defence' }),
 ]);
 
 const ASTEROID_COLOR_BY_TYPE = Object.freeze({

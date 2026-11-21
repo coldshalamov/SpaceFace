@@ -218,13 +218,20 @@
   color: #a9a499;
 }
 
+/* While the belt view is up it owns the screen. The flight instruments, the berth offer and the
+   in-world prompts are for flying the ship; under this view they sat beneath the tool bar and the
+   rock panel and nothing in the lower third could be read. Same rule photo mode uses. */
+body.sf-field-build #hud,
+body.sf-field-build #alerts { opacity: 0 !important; pointer-events: none !important; }
+
 .fb-inspector {
   position: absolute;
   top: 94px;
   right: 16px;
-  bottom: 92px;
+  /* Ends above the tool bar: at 1600 wide the bar ran under the panel and lost its last tool. */
+  bottom: 142px;
   width: 396px;
-  max-height: calc(100vh - 190px);
+  max-height: calc(100vh - 240px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;

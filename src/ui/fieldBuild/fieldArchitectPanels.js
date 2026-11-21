@@ -19,11 +19,11 @@ import { rotateCellOffset } from '../../systems/asteroidInteriorPuzzle.js';
 import { commodityDisplayName } from '../commodityNames.js';
 
 export const ARCHITECT_TABS = Object.freeze([
-  Object.freeze({ id: 'site', label: 'Site' }),
-  Object.freeze({ id: 'orbital', label: 'Orbital' }),
-  Object.freeze({ id: 'matrix', label: 'Matrix' }),
-  Object.freeze({ id: 'doctrines', label: 'Tech' }),
-  Object.freeze({ id: 'charters', label: 'Belt' }),
+  Object.freeze({ id: 'site', label: 'Rock' }),
+  Object.freeze({ id: 'orbital', label: 'Orbit' }),
+  Object.freeze({ id: 'matrix', label: 'Supply' }),
+  Object.freeze({ id: 'doctrines', label: 'Upgrades' }),
+  Object.freeze({ id: 'charters', label: 'Charter' }),
 ]);
 
 const DOCTRINE_BRANCH_LABELS = Object.freeze({
@@ -195,15 +195,15 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
 
   if (!vm.selectedAsteroid && !vm.selectedSite) {
     const head = el('div', 'fb-card-head');
-    head.append(el('h3', 'fb-card-title', 'Belt Overview'), el('span', 'fb-badge', `${vm.network.totals.siteCount} claims`));
+    head.append(el('h3', 'fb-card-title', 'This belt'), el('span', 'fb-badge', `${vm.network.totals.siteCount} claims`));
     panel.appendChild(head);
-    panel.appendChild(el('p', 'fb-tool-sub', 'Click any asteroid to inspect yields, stamp an interior blueprint, commission rigs, or drag across empty space to box-select a cluster.'));
+    panel.appendChild(el('p', 'fb-tool-sub', 'Click a rock to see what is in it. Press 1 to claim it, or 8 to set the rover down and work it by hand. Drag across empty space to pick several rocks.'));
 
     const sec = el('div', 'fb-section');
-    sec.appendChild(el('h4', 'fb-sec-title', 'Active Asteroid Claims'));
+    sec.appendChild(el('h4', 'fb-sec-title', 'Your claims here'));
     const list = el('div', 'fb-list');
     if (!vm.network.sites.length) {
-      list.appendChild(el('div', 'fb-tool-sub', 'No claims anchored in this sector yet. Select any asteroid and press [1] or stamp a Starter Blueprint.'));
+      list.appendChild(el('div', 'fb-tool-sub', 'You have no claim in this sector yet. Pick a rock and press 1.'));
     } else {
       for (const s of vm.network.sites) {
         const row = el('div', 'fb-item-row');

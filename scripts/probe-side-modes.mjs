@@ -151,6 +151,7 @@ async function runRace() {
     const marks = new Map([[2, '02-launch'], [6, '03-first-leg'], [11, '04-turn'], [17, '05-mid'],
       [24, '06-pack'], [32, '07-late'], [RACE_SECONDS - 1, '08-end']]);
     const started = Date.now();
+    let turnSign = 1, errAt = null, errWas = 0;
     const trace = [];
     let lastMark = -1;
     while ((Date.now() - started) / 1000 < RACE_SECONDS) {
@@ -169,16 +170,25 @@ async function runRace() {
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
         return {
-          diff, speed: Math.hypot(p.vel.x, p.vel.z), next: race.params.nextGate | 0, lap: race.params.lap | 0,
+          diff, rot: p.rot, speed: Math.hypot(p.vel.x, p.vel.z), next: race.params.nextGate | 0, lap: race.params.lap | 0,
           dist: g ? Math.hypot(g.x - p.pos.x, g.z - p.pos.z) : null, hold: Number(race.params.gridUntilSimS) > st.simTime,
         };
       }).catch(() => ({ err: true }));
       if (s.done) break;
       if (!s.err) {
-        await set('w', 'KeyW', Math.abs(s.diff) < 1.2);
-        // Positive yaw is counter-clockwise; D (yawRight) raises rot in this build's convention.
-        await set('d', 'KeyD', s.diff > 0.08);
-        await set('a', 'KeyA', s.diff < -0.08);
+        await set('w', 'KeyW', Math.abs(s.diff) < 0.9 && !(s.speed > 150 && Math.abs(s.diff) > 0.35));
+        // Which key closes the angle is learned from the result: if a second and a half of
+        // steering has made the error worse, the keys are the other way round.
+        if (!s.hold && Math.abs(s.diff) > 0.12) {
+          if (errAt == null) { errAt = Date.now(); errWas = Math.abs(s.diff); }
+          else if (Date.now() - errAt > 1500) {
+            if (Math.abs(s.diff) > errWas + 0.25) turnSign = -(turnSign || 1);
+            errAt = Date.now(); errWas = Math.abs(s.diff);
+          }
+        } else errAt = null;
+        const want = s.diff * (turnSign || 1);
+        await set('d', 'KeyD', want > 0.06);
+        await set('a', 'KeyA', want < -0.06);
         trace.push({ t: +((Date.now() - started) / 1000).toFixed(1), ...s, diff: +s.diff.toFixed(2), speed: Math.round(s.speed) });
       }
       const sec = Math.floor((Date.now() - started) / 1000);
@@ -186,7 +196,30 @@ async function runRace() {
       await page.waitForTimeout(120);
     }
     for (const [key, code] of [['w', 'KeyW'], ['a', 'KeyA'], ['d', 'KeyD']]) await set(key, code, false);
-    facts.raceTrace = trace.filter((_, i) => i % 12 === 0);
+    facts.raceTrace = trace.filter((_, i) => i % 12 === 0).map(({ rot, ...rest }) => rest);
+    facts.raceTurnSign = turnSign;
+    // What is the big flat thing? Name every large mesh near the ship that is a plane or a quad.
+    facts.raceBigQuads = await page.evaluate(() => {
+      const st = window.SF.state, scene = st.render && st.render.scene, out = [];
+      if (!scene) return null;
+      const THREE = window.SF.THREE, box = new THREE.Box3(), size = new THREE.Vector3(), pos = new THREE.Vector3();
+      scene.traverse((o) => {
+        if (!o.isMesh || !o.visible || !o.geometry) return;
+        const count = o.geometry.attributes.position ? o.geometry.attributes.position.count : 0;
+        if (count > 8) return;
+        box.setFromObject(o); box.getSize(size); o.getWorldPosition(pos);
+        const big = Math.max(size.x, size.y, size.z);
+        if (big < 60 || big > 4000) return;
+        const m = Array.isArray(o.material) ? o.material[0] : o.material;
+        let chain = '', n = o;
+        for (let i = 0; i < 4 && n; i++, n = n.parent) chain += (n.name || n.type) + ' < ';
+        out.push({ chain: chain.slice(0, 140), size: [Math.round(size.x), Math.round(size.y), Math.round(size.z)],
+          pos: [Math.round(pos.x), Math.round(pos.y), Math.round(pos.z)],
+          color: m && m.color ? '#' + m.color.getHexString() : null, opacity: m ? m.opacity : null,
+          mat: m ? m.type : null, map: !!(m && m.map), blend: m ? m.blending : null });
+      });
+      return out.slice(0, 30);
+    }).catch((e) => String(e));
     facts.raceEnd = await page.evaluate(() => {
       const st = window.SF.state;
       const race = (st.missions?.active || []).find((m) => m.type === 'race');
@@ -349,14 +382,34 @@ async function runField(page) {
       const any = root || [...document.querySelectorAll('body *')].find((n) => /field/i.test(n.className || '') && n.children.length > 2);
       return any ? { cls: any.className, text: any.textContent.replace(/\s+/g, ' ').trim().slice(0, 1600) } : null;
     });
-    // Click a rock near the centre, then walk the tools.
-    await page.mouse.click(VIEWPORT.width / 2 + 40, VIEWPORT.height / 2 + 20);
+    // Click the nearest rock where it actually is on screen, then walk the tools.
+    const rockAt = await page.evaluate(async () => {
+      const st = window.SF.state;
+      const { readFrameOrigin } = await import('/src/render/frameCoordinates.js');
+      const cam = st.render && st.render.camera;
+      const me = st.entities.get(st.playerId);
+      if (!cam || !me) return null;
+      const origin = readFrameOrigin(st, { x: 0, z: 0 });
+      let best = null;
+      for (const e of st.entityList) {
+        if (!e || e.alive === false || e.type !== 'asteroid') continue;
+        const v = new window.SF.THREE.Vector3(e.pos.x - origin.x, 0, e.pos.z - origin.z).project(cam);
+        const x = (v.x * 0.5 + 0.5) * window.innerWidth, y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+        if (x < 260 || x > 1100 || y < 150 || y > 700) continue;
+        const d = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
+        if (!best || d < best.d) best = { x, y, d, id: e.id };
+      }
+      return best;
+    });
+    facts.fieldRockAt = rockAt;
+    const clickX = rockAt ? rockAt.x : VIEWPORT.width / 2 + 40, clickY = rockAt ? rockAt.y : VIEWPORT.height / 2 + 20;
+    await page.mouse.click(clickX, clickY);
     await page.waitForTimeout(700);
     await shot('02-rock-selected');
     for (const digit of ['1', '2', '4', '5', '7']) {
       await page.keyboard.press(`Digit${digit}`);
       await page.waitForTimeout(500);
-      await page.mouse.click(VIEWPORT.width / 2 + 40, VIEWPORT.height / 2 + 20);
+      await page.mouse.click(clickX, clickY);
       await page.waitForTimeout(700);
       await shot(`03-tool-${digit}`);
     }

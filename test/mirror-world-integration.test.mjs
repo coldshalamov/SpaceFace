@@ -62,12 +62,12 @@ test('production worker carries the Anvil player band and heat to the flight HUD
     hud.init({ state: main });
     hud._ensureDom = () => dom;
     hud.update(0, state);
-    assert.match(dom.pillText.textContent, /WORKING BAND.*HEAT 5%/,
+    assert.match(dom.pillText.textContent, /SKIM BAND.*HEAT 5%/,
       'the real reader displays the authoritative state when supplied');
     dom.pillText.textContent = '';
     hud._lastText = '';
     hud.update(0, main);
-    assert.match(dom.pillText.textContent, /WORKING BAND.*HEAT 5%/,
+    assert.match(dom.pillText.textContent, /SKIM BAND.*HEAT 5%/,
       'the visible HUD should present the sim-owned band and heat after the actual worker reply');
     assert.equal(resolveRigTarget(main), 'cone', 'R17: 5 is the Plow in the mirrored band too (the scoop is its own wheel slice)');
     const frame = state.entities.get(state.planet.orchardFrameId);

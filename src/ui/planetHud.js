@@ -18,6 +18,7 @@
 // src/ui/deckplate/): the flight glass face, the etched legend voice, and the warm lamp as the
 // one accent (storm is the lamp lit; reentry is the lamp driven red; the heat reading stays ink).
 
+import { resolveActionLabel } from '../systems/input.js';
 import {
   PLANET_LANE_BASE,
   LANE_PRIORITY,
@@ -51,7 +52,7 @@ export const PLANET_HUD_CSS = `
 `;
 
 const REGION_WORDS = {
-  skim: 'WORKING BAND',
+  skim: 'SKIM BAND',
   danger: 'STORM BAND',
   reentry: 'REENTRY BAND',
 };
@@ -104,7 +105,16 @@ export const planetHud = {
       const stageWord = STAGE_WORDS[p.stage] || null;
       text = stageWord ? `${bandWord} — ${stageWord}` : bandWord;
       text += ` · HEAT ${heatPct}%`;
-      if (p.collectorOn && (p.region === 'skim' || p.region === 'danger')) text += ' · SCOOP';
+      // The scoop has no key of its own (it is a slice of the wheel), so the one instrument that
+      // is on screen in the band says whether it is gathering and, when it is not, how to open it.
+      // A plunge stage is the only thing worth reading while it is up: the hint steps aside.
+      if (!stageWord && (p.region === 'skim' || p.region === 'danger')) {
+        if (p.collectorOn) text += ' · SCOOP OPEN';
+        else {
+          const wheelKey = resolveActionLabel(state, 'contextWheel');
+          text += wheelKey ? ` · SCOOP SHUT: HOLD ${wheelKey}, PICK SCOOP` : ' · SCOOP SHUT: OPEN IT FROM THE WHEEL';
+        }
+      }
       cls = p.region === 'reentry' || p.stage === 'breakup' || p.stage === 'descent'
         ? 'planet-reentry' : p.region === 'danger' || p.stage === 'commit' ? 'planet-storm' : '';
     } else {

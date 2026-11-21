@@ -22,16 +22,18 @@ export { TACTICAL_MAP_MODES, ARCHITECT_TABS };
 const ASTEROID_DEF_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
+// Each tool says what it is and, under it, what the player gets. Plain words: this bar is the
+// first thing a pilot reads when the belt view opens.
 export const FIELD_TOOLS = Object.freeze([
-  Object.freeze({ id: 'select', key: '0', label: 'Inspect', sub: 'Select rock' }),
-  Object.freeze({ id: 'commission', key: '1', label: 'Auto-Rig', sub: 'Stake & mine' }),
-  Object.freeze({ id: 'link_material', key: '2', label: 'Link Cargo', sub: 'Move goods between sites' }),
-  Object.freeze({ id: 'link_power', key: '3', label: 'Link Power', sub: 'Share MW' }),
-  Object.freeze({ id: 'turret', key: '4', label: 'Turret Pylon', sub: 'Belt defense' }),
-  Object.freeze({ id: 'sensor', key: '5', label: 'Sensor Beacon', sub: 'Route relay' }),
-  Object.freeze({ id: 'solar_sail', key: '6', label: 'Solar Sail', sub: '+8 MW orbit' }),
-  Object.freeze({ id: 'drone', key: '7', label: 'Launch Drone', sub: 'Auto harvest' }),
-  Object.freeze({ id: 'open_works', key: '8', label: 'Asteroid Works', sub: 'Interior view' }),
+  Object.freeze({ id: 'select', key: '0', label: 'Look', sub: 'Pick a rock' }),
+  Object.freeze({ id: 'commission', key: '1', label: 'Claim', sub: 'Stake it and start mining' }),
+  Object.freeze({ id: 'link_material', key: '2', label: 'Cargo line', sub: 'Move goods between claims' }),
+  Object.freeze({ id: 'link_power', key: '3', label: 'Power line', sub: 'Share power between claims' }),
+  Object.freeze({ id: 'turret', key: '4', label: 'Turret', sub: 'Guards the claim' }),
+  Object.freeze({ id: 'sensor', key: '5', label: 'Beacon', sub: 'Faster, safer couriers' }),
+  Object.freeze({ id: 'solar_sail', key: '6', label: 'Solar sail', sub: 'Adds 8 MW' }),
+  Object.freeze({ id: 'drone', key: '7', label: 'Drone', sub: 'Mines on its own' }),
+  Object.freeze({ id: 'open_works', key: '8', label: 'Go inside', sub: 'Set the rover down' }),
 ]);
 
 function el(tag, className = '', text = null) {
@@ -248,7 +250,7 @@ export function createFieldBuildMode(ctx) {
   const overlay = el('section', 'fb-root');
   overlay.id = 'field-build-root';
   overlay.hidden = true;
-  overlay.setAttribute('aria-label', 'Field Architect Command Mode');
+  overlay.setAttribute('aria-label', 'Field Build');
 
   const canvas = document.createElement('canvas');
   canvas.id = 'fb-canvas';
@@ -257,18 +259,18 @@ export function createFieldBuildMode(ctx) {
 
   // Top Crest + Map-Mode Bar
   const crest = el('header', 'fb-crest');
-  const crestTitle = el('span', 'fb-crest-title', 'Field Architect');
+  const crestTitle = el('span', 'fb-crest-title', 'Field Build');
   const crestStats = el('div', 'fb-crest-stats');
   const statSites = el('span', 'fb-crest-stat');
   const statPower = el('span', 'fb-crest-stat');
   const statLinks = el('span', 'fb-crest-stat');
   const statDefs = el('span', 'fb-crest-stat');
   crestStats.append(statSites, statPower, statLinks, statDefs);
-  const autoLinkBtn = el('button', 'fb-crest-btn primary', 'Auto-Link [G]');
+  const autoLinkBtn = el('button', 'fb-crest-btn primary', 'Link my claims (G)');
   autoLinkBtn.type = 'button';
-  const centerBtn = el('button', 'fb-crest-btn', 'Center Ship');
+  const centerBtn = el('button', 'fb-crest-btn', 'Find my ship');
   centerBtn.type = 'button';
-  const exitBtn = el('button', 'fb-crest-btn', 'Flight [Shift+B]');
+  const exitBtn = el('button', 'fb-crest-btn', 'Back to flight (Shift+B)');
   exitBtn.type = 'button';
   crest.append(crestTitle, crestStats, autoLinkBtn, centerBtn, exitBtn);
 
@@ -277,7 +279,7 @@ export function createFieldBuildMode(ctx) {
   modeBar.setAttribute('aria-label', 'Tactical Map Overlays & Control Groups');
   const modeButtons = new Map();
   for (const mm of TACTICAL_MAP_MODES) {
-    const b = el('button', `fb-mode-btn ${mm.id === mapMode ? 'active' : ''}`, `${mm.short} · ${mm.label}`);
+    const b = el('button', `fb-mode-btn ${mm.id === mapMode ? 'active' : ''}`, mm.label);
     b.type = 'button';
     b.addEventListener('click', () => setMapMode(mm.id));
     modeBar.appendChild(b);
@@ -355,7 +357,7 @@ export function createFieldBuildMode(ctx) {
 
   // Bottom StarCraft/Mindustry Command Dock
   const dock = el('nav', 'fb-dock');
-  dock.setAttribute('aria-label', 'Field Architect Tools');
+  dock.setAttribute('aria-label', 'Field Build tools');
   const toolButtons = new Map();
   for (const t of FIELD_TOOLS) {
     const btn = el('button', 'fb-tool');
@@ -596,6 +598,9 @@ export function createFieldBuildMode(ctx) {
     if (!state.ui) state.ui = {};
     state.ui.fieldBuildActive = active;
     overlay.hidden = !active;
+    // The belt view owns the screen while it is up: the flight instruments and prompts that belong
+    // to flying the ship step out (styles/field-build.css) and return when it closes.
+    if (typeof document !== 'undefined' && document.body) document.body.classList.toggle('sf-field-build', active);
     pillBtn.classList.toggle('on', active);
     const cam = camCtrl();
     if (cam && typeof cam.setFieldBuildMode === 'function') {
