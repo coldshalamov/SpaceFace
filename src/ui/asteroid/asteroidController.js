@@ -28,9 +28,11 @@ export const MODES = Object.freeze({ DRIVE: 'drive', BUILD: 'build' });
 // lives here so tests and the worker-lane screen path share one formatter.
 export function chargeQuoteText(pv) {
   if (!pv || !pv.ok) return null;
-  const oreWord = (id) => String(id || '').replace(/^cmdty_(ore_)?/, '');
+  // "6 iron", "2 silica": the count and the material, the way a miner says it. No unit word to
+  // get wrong at one, no raw id on the glass.
+  const oreWord = (id) => String(id || '').replace(/^cmdty_(ore_|gem_|crystal_|ice_|exotic_|gas_)?/, '').replace(/_/g, ' ');
   const list = (map) => Object.entries(map || {}).filter(([, q]) => q > 0)
-    .map(([id, q]) => `${q} units ${oreWord(id)}`).join(' · ');
+    .map(([id, q]) => `${q} ${oreWord(id)}`).join(' · ');
   const parts = [`${pv.payloadLabel || 'Bore charge'} — ${pv.cost > 0 ? `${Number(pv.cost).toLocaleString('en-US')} cr` : 'from stock'}`];
   const banked = list(pv.yields);
   if (banked) parts.push(`banks ${banked}`);

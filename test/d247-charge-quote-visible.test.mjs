@@ -30,8 +30,10 @@ test('quote and refusal formatters cover both arms of the banner', () => {
     ok: true, payloadLabel: 'Blast charge', cost: 1200,
     yields: { cmdty_ore_iron: 6 }, spill: {}, gasCount: 1, selfDanger: false,
   });
-  assert.match(text, /1200 cr/);
-  assert.match(text, /banks 6u iron/);
+  assert.match(text, /1,200 cr/, 'money reads grouped');
+  assert.match(text, /banks 6 iron/, 'count and material, no unit word');
+  assert.match(chargeQuoteText({ ok: true, cost: 0, yields: { cmdty_crystal_silica: 1, cmdty_ice_water: 2 }, spill: {} }),
+    /banks 1 silica · 2 water/, 'no raw ids and nothing to get wrong at one');
   assert.match(text, /1 gas/);
   assert.match(text, /R again to set it/);
 });

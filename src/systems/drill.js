@@ -54,6 +54,20 @@ export const MOVE_HOLD_DELAY_S = 0.18;      // a hold shorter than this commits 
 export const MOVE_CRUISE_INTERVAL_S = 0.24; // seconds per cell once the chain is cruising
 export const MOVE_COOLDOWN_BASE = MOVE_CRUISE_INTERVAL_S;
 export const MOVE_COOLDOWN_CARGO = 0.03;    // full holds → 0.27 s/cell, still inside the band
+// The run-up (overhaul 05 §3.2). The first cells of a drive keep the deliberate beat above: that is
+// what makes a tap one cell and lets a pilot stop on the cell they meant. A straight run down a
+// tunnel that is ALREADY OPEN then picks up speed, a little each cell, to twice the starting pace.
+// Only open tunnel accelerates. Rock is still cut at the bit's rate, a turn starts the run again,
+// and so does letting go — so the commute back through your own workings is quick and placing
+// the rig next to a face is exactly as careful as before.
+export const MOVE_SPRINT_INTERVAL_S = 0.12; // the fastest beat, reached after a short straight run
+export const MOVE_RUNUP_STEP_S = 0.03;      // how much each straight open cell shortens the beat
+/** Seconds for the next open cell, `run` straight open cells into a cruise. Cargo still weighs. */
+export function cruiseIntervalForRun(cruiseVal, run) {
+  const base = Number.isFinite(cruiseVal) && cruiseVal > 0 ? cruiseVal : MOVE_COOLDOWN_BASE;
+  const floor = MOVE_SPRINT_INTERVAL_S * (base / MOVE_COOLDOWN_BASE);
+  return Math.max(floor, base - Math.max(0, run | 0) * MOVE_RUNUP_STEP_S);
+}
 
 // A tap against rock is a bite you can see: BORE_BITE_S of bore work delivered in one lump instead
 // of a 1/60 s nibble. It is LOOKAHEAD, not a bonus — the bite pre-pays the next BORE_BITE_S of
@@ -1786,6 +1800,7 @@ export const drill = {
     else if (held.up) { dy = -1; d.avatar.faceDir = 'up'; }
 
     if (dx === 0 && dy === 0) {
+      d.cruiseRun = 0; // letting go ends the run-up
       // A bite outlives the key. The crack stage is drawn off avatar.isDrilling / drillTarget, so
       // retiring them the instant a tap ends would make a short bite literally invisible. Hold the
       // bit in the bitten cell for the rest of BORE_BITE_HOLD_S, then let go.
@@ -1856,9 +1871,14 @@ export const drill = {
       d.avatar.drillBlocked = false;
       recoverRig(d, dt);
       if (d.moveCooldown <= 0) {
-        commitAvatarMove(d, nc, nr, cooldownVal);
+        // A straight held run down open tunnel shortens its own beat; a tap or a turn restarts it.
+        const straight = !impulse && d.cruiseDx === dx && d.cruiseDy === dy;
+        d.cruiseRun = straight ? (d.cruiseRun | 0) + 1 : 0;
+        d.cruiseDx = dx; d.cruiseDy = dy;
+        commitAvatarMove(d, nc, nr, impulse ? cooldownVal : cruiseIntervalForRun(cruiseVal, d.cruiseRun - 1));
       }
     } else {
+      d.cruiseRun = 0; // rock ahead: the bit sets the pace
       // Every cardinal face uses the same bore contract. The rover must be able to route
       // around deposits and cut back upward when making space for contact-fed machinery.
       if (guardGas) {
@@ -2160,6 +2180,8 @@ export const DRILL_CONST = {
   MOVE_CRUISE_INTERVAL_S,
   MOVE_COOLDOWN_BASE,
   MOVE_COOLDOWN_CARGO,
+  MOVE_SPRINT_INTERVAL_S,
+  MOVE_RUNUP_STEP_S,
   BORE_BITE_S,
   BORE_BITE_HOLD_S,
   SCAN_RADIUS,

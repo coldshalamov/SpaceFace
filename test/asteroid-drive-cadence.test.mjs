@@ -26,6 +26,8 @@ import {
   MOVE_CRUISE_INTERVAL_S,
   MOVE_COOLDOWN_BASE,
   MOVE_COOLDOWN_CARGO,
+  MOVE_SPRINT_INTERVAL_S,
+  cruiseIntervalForRun,
   BORE_BITE_S,
   BORE_BITE_HOLD_S,
   moveCooldownForLoad,
@@ -252,21 +254,34 @@ function holdRun(state, controls, direction, holdSteps, settleSteps = 90) {
   const holdSteps = 120; // 2 s
   const commits = holdRun(state, controls, 'down', holdSteps, 120);
 
-  // Cell 1 is the tap and cell 2 is delay-gated; the steady state starts at cell 3.
+  // Cell 1 is the tap and cell 2 is delay-gated. Cell 3 lands one full authored beat after that
+  // (the beat a pilot steers a tunnel by), and from there a straight run down OPEN tunnel shortens
+  // its own beat, a step per cell, to the sprint floor (overhaul 05 §3.2: about 0.12 s per cell,
+  // with acceleration). The run-up is what changed; the deliberate start is what was kept.
   const cruiseGaps = [];
-  for (let i = 3; i < commits.length; i++) cruiseGaps.push(commits[i] - commits[i - 1]);
-  assert.ok(cruiseGaps.length >= 4, `a 2 s hold should cruise several cells, saw ${commits.length}`);
+  for (let i = 2; i < commits.length; i++) cruiseGaps.push(commits[i] - commits[i - 1]);
+  assert.ok(cruiseGaps.length >= 6, `a 2 s hold should cruise several cells, saw ${commits.length}`);
   const mean = cruiseGaps.reduce((a, b) => a + b, 0) / cruiseGaps.length;
-  for (const gap of cruiseGaps) {
-    assert.ok(gap >= CRUISE_BAND[0] - 1e-9 && gap <= CRUISE_BAND[1] + 1e-9,
-      `every cruise beat must sit in ${CRUISE_BAND[0]}–${CRUISE_BAND[1]} s, got ${gap}`);
+  assert.ok(cruiseGaps[0] >= CRUISE_BAND[0] - 1e-9 && cruiseGaps[0] <= CRUISE_BAND[1] + 1e-9,
+    `the first cruise beat must sit in ${CRUISE_BAND[0]}–${CRUISE_BAND[1]} s, got ${cruiseGaps[0]}`);
+  assert.ok(Math.abs(cruiseGaps[0] - MOVE_CRUISE_INTERVAL_S) <= STEP + 1e-9,
+    `the first cruise beat is the authored beat, got ${cruiseGaps[0]} s`);
+  for (let i = 1; i < cruiseGaps.length; i++) {
+    assert.ok(cruiseGaps[i] <= cruiseGaps[i - 1] + 1e-4, `a straight open run never slows down: ${cruiseGaps}`);
+    assert.ok(cruiseGaps[i] >= MOVE_SPRINT_INTERVAL_S - 1e-9,
+      `no beat is shorter than the sprint floor ${MOVE_SPRINT_INTERVAL_S} s, got ${cruiseGaps[i]}`);
   }
-  assert.ok(Math.abs(mean - MOVE_CRUISE_INTERVAL_S) <= STEP + 1e-9,
-    `cruise cadence must be the authored beat, got ${mean} s/cell`);
+  for (const gap of cruiseGaps.slice(-2)) {
+    assert.ok(Math.abs(gap - MOVE_SPRINT_INTERVAL_S) <= STEP + 1e-9,
+      `the run settles at the sprint beat, got ${gap} s`);
+  }
+  assert.equal(cruiseIntervalForRun(MOVE_CRUISE_INTERVAL_S, 0), MOVE_CRUISE_INTERVAL_S, 'the run starts at the authored beat');
+  assert.equal(cruiseIntervalForRun(MOVE_CRUISE_INTERVAL_S, 99), MOVE_SPRINT_INTERVAL_S, 'and bottoms out at the sprint floor');
+  assert.ok(cruiseIntervalForRun(moveCooldownForLoad(1), 99) > MOVE_SPRINT_INTERVAL_S, 'full holds still weigh on the sprint');
 
-  // A 2 s hold is ~8 cells at the authored beat. The 0.06 s rocket did ~30.
-  assert.ok(commits.length <= 12, `a 2 s hold is a walk, not a launch: ${commits.length} cells`);
-  assert.ok(commits.length >= 6, `a 2 s hold must actually travel: ${commits.length} cells`);
+  // A 2 s hold is ~13 cells with the run-up. The 0.06 s rocket did ~30.
+  assert.ok(commits.length <= 16, `a 2 s hold is a drive, not a launch: ${commits.length} cells`);
+  assert.ok(commits.length >= 10, `a 2 s hold down open tunnel must cover ground: ${commits.length} cells`);
 
   // Release stopped the chain: nothing moved during the 2 s of settle ticks after the release.
   const lastCommit = commits[commits.length - 1];

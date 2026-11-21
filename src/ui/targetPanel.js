@@ -1,4 +1,5 @@
 import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';
+import { rockAssayLine } from './asteroid/rockAssay.js';
 import { targetFrameHtml } from './views/targetFrame.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { normalizePatrolPaperwork } from '../missions/patrolPaperwork.js';
@@ -822,7 +823,16 @@ export function objectInfoLine(t, state, p, dist) {
   const d = t.data || {};
   const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
-    facts.push(d.respawnAt != null ? 'Mined out' : 'Ore-bearing');
+    if (d.respawnAt != null) facts.push('Mined out');
+    else {
+      // The scan reads the strata before the pilot commits: what is in there, how deep, how
+      // many pockets. The laser brings up the mix; this is what the rover can go and pick.
+      const assay = rockAssayLine(t, state, (id) => {
+        const c = COMMODITY_BY_ID.get(id);
+        return c && c.name;
+      });
+      facts.push(assay || 'Ore-bearing');
+    }
   } else if (t.type === 'fauna') {
     // The scanner ladder owns the name; at anatomy tier the earned field note rides here.
     const note = faunaFieldNote(t, state);
@@ -944,7 +954,7 @@ export function objectInfoLine(t, state, p, dist) {
     action = 'Inspect only';
   }
   facts.push(action);
-  if (t.type === 'asteroid') facts.push(`Tether, then ${BINDINGS.drill.label} · enter asteroid`);
+  if (t.type === 'asteroid') facts.push(`${BINDINGS.drill.label} · set the rover down`);
   return facts.join(' · ');
 }
 

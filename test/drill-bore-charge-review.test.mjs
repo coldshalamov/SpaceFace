@@ -243,7 +243,7 @@ function quoteCoveringVein() {
   const text = chargeQuoteText(pv);
   assert.ok(text, 'the formatter produces the spoken line for a live preview');
   assert.match(text, /cr$|cr |from stock/, 'the line carries the cost');
-  assert.match(text, /banks \d+u/, 'the line carries the banked ore');
+  assert.match(text, /banks \d+ [a-z]/, 'the line carries the banked ore');
   assert.match(text, /face the cut/, 'the line still coaches the second press');
   assert.equal(chargeQuoteText(null), null, 'no preview, no quote');
   assert.equal(chargeQuoteText({ ok: false }), null, 'a refused preview speaks nothing');
