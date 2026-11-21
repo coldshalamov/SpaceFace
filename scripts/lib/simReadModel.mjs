@@ -1389,7 +1389,7 @@ function projectDrillPresentation(source) {
     return out;
   };
   const point = value => fields(value, ['col', 'row']);
-  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','rockBudget','rockBudgetMax',
+  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','boreFamily','rockBudget','rockBudgetMax',
     'drillDir','moveCooldown','drillTemp','overheated','drillEnergy','energyDepleted','gasHits',
     'tilesCleared','maxDepth','sessionElapsed','chargeArmed','chargePayload','chargeStock','chargeCooldown','chargesSet']);
   const requestId = fields(source, ['_requestId'])._requestId;

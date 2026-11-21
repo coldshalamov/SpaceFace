@@ -946,6 +946,9 @@ export const drill = {
       _requestId: options.requestId ?? null,
       field,
       fieldId: rock.fieldId,
+      // Which interior this rock has (drillFieldModel ROCK_GEOLOGY). The board paints the whole
+      // body in that rock's own stone, so an ice body does not look like a sandstone one inside.
+      boreFamily,
       _sectorId: rock.sectorId,
       rockBudget: rock.budget,
       rockBudgetMax: rock.max,

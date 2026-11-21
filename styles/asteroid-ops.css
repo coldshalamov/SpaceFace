@@ -250,8 +250,8 @@
   background: radial-gradient(ellipse at 50% 46%, rgb(45 37 27 / .55), rgb(23 19 16 / 0) 62%);
 }
 .aw-landing[hidden] { display: none; }
-.aw-landing__name { font: 700 clamp(30px, 4.2vw, 52px)/1.05 var(--aw-name-font); color: var(--aw-ink); }
-.aw-landing__kind { font: 600 14px/1.2 var(--aw-mono); letter-spacing: .04em; color: var(--aw-gold); }
+.aw-landing__name { font: 700 clamp(30px, 4.2vw, 52px)/1.05 var(--aw-font); color: var(--aw-ink); }
+.aw-landing__kind { font: 600 14px/1.2 var(--aw-mono); letter-spacing: .02em; color: var(--aw-gold); }
 .aw-landing__assay { max-width: 62ch; font: 500 17px/1.45 var(--aw-font); color: var(--aw-ink-2); }
 .aw-landing__job { max-width: 62ch; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--aw-line); font: 600 16px/1.45 var(--aw-font); color: var(--aw-ink); }
 .aw-landing__job[hidden] { display: none; }
