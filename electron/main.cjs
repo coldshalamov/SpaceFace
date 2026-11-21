@@ -486,14 +486,23 @@ function ensureGameServerPort() {
 async function listenGameServer(root, requestedPort) {
   let devSimWorkerBundleProvider = null;
   // Development source launches use the measured bundle. Production installs can omit its compiler.
-  const devSimWorkerBundleEnabled = (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
+  // Player parity for probes: the owner's `npm run electron` serves the sim worker as ONE bundled
+  // file, while every isolated probe used to load it as loose source modules, so no test ever ran
+  // the worker artifact the player runs. SPACEFACE_EVIDENCE_PLAYER_WORKER_BUNDLE=1 lets an
+  // isolated probe (throwaway profile, own port) serve the same bundle the player gets.
+  const playerParityWorkerBundle = launchConfig.isolatedEvidence === true
+    && process.env.SPACEFACE_EVIDENCE_PLAYER_WORKER_BUNDLE === '1'
+    && !app.isPackaged
+    && !sourceOverlayManifest
+    && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim();
+  const devSimWorkerBundleEnabled = playerParityWorkerBundle || ((process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
     || (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0' && process.env.NODE_ENV !== 'production'))
     && !app.isPackaged
     && !launchConfig.isolatedEvidence
     && !sourceOverlayManifest
     && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
     && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION !== '1'
-    && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1';
+    && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1');
   if (devSimWorkerBundleEnabled) {
     const { pathToFileURL } = require('node:url');
     const providerUrl = pathToFileURL(path.join(PROJECT_ROOT, 'scripts', 'lib', 'devSimWorkerBundle.mjs')).href;

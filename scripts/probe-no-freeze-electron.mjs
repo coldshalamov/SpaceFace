@@ -204,7 +204,17 @@ try {
   report.realm = await page.evaluate(() => ({
     coi: globalThis.crossOriginIsolated === true, sab: typeof SharedArrayBuffer === 'function',
     ua: navigator.userAgent.slice(0, 90), w: innerWidth, h: innerHeight,
+    dpr: globalThis.devicePixelRatio || 1,
   }));
+  // Which sim worker artifact this run executes: the player's launch serves ONE bundled file
+  // (digest header present); isolated probes serve loose source modules unless
+  // SPACEFACE_EVIDENCE_PLAYER_WORKER_BUNDLE=1 asks for the player's artifact.
+  report.realm.workerBundleDigest = await page.evaluate(async () => {
+    try {
+      const res = await fetch('/src/core/wholeSimBrowserWorker.js', { method: 'HEAD', cache: 'no-store' });
+      return res.headers.get('X-SpaceFace-Dev-Sim-Worker-Digest') || null;
+    } catch (_) { return null; }
+  }).catch(() => null);
   console.log('realm', JSON.stringify(report.realm));
 
   // ---- reach flight on the ordinary route's own launch seams (Electron forbids query strings) ----
