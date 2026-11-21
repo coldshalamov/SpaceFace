@@ -44,6 +44,9 @@ const rec = {
   dataChangedAtMs: 0,
   openEpisode: null,
   silentHoldFrames: 0,
+  worstNetPoseAgeMs: 0,
+  frameGapsOver100: 0,
+  frameGapList: [],
   worstUncoveredDataAgeMs: 0,
   worstGhostMs: 0,
   worstSilentHoldMs: 0,
@@ -226,6 +229,24 @@ export function recordPresentedPoseAge(state, meshes, feed, world = null) {
   }
   if (playerAge > rec.worstPlayerPoseAgeMs) rec.worstPlayerPoseAgeMs = playerAge;
   if (dataAge > rec.worstDataAgeMs) rec.worstDataAgeMs = dataAge;
+  // Ruling 2026-11-21: a body cannot be redrawn in a frame that did not happen, so the freeze is
+  // judged on pose age NET of this frame's gap; the gap itself is a rendering hitch, listed with
+  // the renderer's own hitch attribution.
+  const netAge = Math.max(0, worst - gap);
+  if (netAge > rec.worstNetPoseAgeMs) rec.worstNetPoseAgeMs = netAge;
+  if (gap > 100) {
+    rec.frameGapsOver100++;
+    if (rec.frameGapList.length < 64) {
+      let owner = null;
+      try {
+        const v = state.perfRuntime && typeof state.perfRuntime.getHitchVerdicts === 'function'
+          ? state.perfRuntime.getHitchVerdicts() : null;
+        const last = v && v.length ? v[v.length - 1] : null;
+        if (last) owner = { owner: last.owner, simSystem: last.simSystem || null, frameMs: Math.round(last.frameMs || 0) };
+      } catch (_) { /* attribution is optional */ }
+      rec.frameGapList.push({ atMs: Math.round(now), gapMs: Math.round(gap), attribution: owner });
+    }
+  }
   // A stopped clock in live flight must be covered (ruling): uncovered = no hold plate on screen.
   const covered = typeof document !== 'undefined' && !!document.getElementById('sf-world-hold');
   if (!covered && dataAge > rec.worstUncoveredDataAgeMs) rec.worstUncoveredDataAgeMs = dataAge;
@@ -289,6 +310,9 @@ export function readPoseAge() {
     tracked: rec.tracked.size,
     worstId: rec.worstId,
     silentHoldFrames: rec.silentHoldFrames,
+    worstNetPoseAgeMs: Math.round(rec.worstNetPoseAgeMs),
+    frameGapsOver100: rec.frameGapsOver100,
+    frameGapList: rec.frameGapList.slice(),
     worstUncoveredDataAgeMs: Math.round(rec.worstUncoveredDataAgeMs),
     // A drawn body the simulation already retired (its destroy has not reached the picture yet).
     worstGhostMs: Math.round(rec.worstGhostMs),
@@ -301,6 +325,9 @@ export function resetPoseAge() {
   rec.worstPoseAgeMs = 0;
   rec.worstId = null;
   rec.silentHoldFrames = 0;
+  rec.worstNetPoseAgeMs = 0;
+  rec.frameGapsOver100 = 0;
+  rec.frameGapList.length = 0;
   rec.worstUncoveredDataAgeMs = 0;
   rec.worstGhostMs = 0;
   rec.worstSilentHoldMs = 0;

@@ -61,7 +61,10 @@ for (const routeName of ROUTES) {
   }
   for (const r of report.rows) {
     const why = [];
-    if (r.poseAgeMaxMs == null || r.poseAgeMaxMs > POSE_AGE_LIMIT_MS) why.push(`pose age ${r.poseAgeMaxMs} ms > ${POSE_AGE_LIMIT_MS}`);
+    // Ruling: the freeze is judged on pose age net of the main-thread frame gap; a gap over 250 ms
+    // fails separately as a rendering hitch.
+    if (r.netPoseAgeMs == null || r.netPoseAgeMs > POSE_AGE_LIMIT_MS) why.push(`pose age (net of frame gap) ${r.netPoseAgeMs} ms > ${POSE_AGE_LIMIT_MS}`);
+    if (r.frameGapMaxMs > 250) why.push(`rendering hitch: a ${r.frameGapMaxMs} ms frame gap`);
     if (r.worstWindow10s != null && r.worstWindow10s < WORLD_SPEED_FLOOR) why.push(`world x${r.worstWindow10s} < ${WORLD_SPEED_FLOOR} over 10 s`);
     if (r.worstWindow10s == null && r.worldSpeed != null && r.wallS >= 5 && r.worldSpeed < WORLD_SPEED_FLOOR) {
       why.push(`world x${r.worldSpeed} < ${WORLD_SPEED_FLOOR} (phase shorter than 10 s)`);
@@ -92,9 +95,15 @@ if (FOCUS_STEAL) {
 
 const pad = (v, n) => String(v ?? '-').padEnd(n);
 console.log('\nNO-FREEZE GATE');
-console.log(`${pad('route', 10)}${pad('phase', 33)}${pad('poseAge', 9)}${pad('player', 8)}${pad('dataAge', 9)}${pad('frameGap', 10)}${pad('world', 8)}${pad('worst10s', 10)}${pad('freeze', 8)}${pad('workP95', 9)}verdict`);
+console.log(`${pad('route', 10)}${pad('phase', 33)}${pad('netPose', 9)}${pad('player', 8)}${pad('dataAge', 9)}${pad('frameGap', 10)}${pad('gaps>100', 10)}${pad('world', 8)}${pad('worst10s', 10)}${pad('freeze', 8)}${pad('workP95', 9)}verdict`);
 for (const r of rows) {
-  console.log(`${pad(r.route, 10)}${pad(r.phase, 33)}${pad(r.poseAgeMaxMs, 9)}${pad(r.playerPoseAgeMaxMs, 8)}${pad(r.dataAgeMaxMs, 9)}${pad(r.frameGapMaxMs, 10)}${pad(r.worldSpeed, 8)}${pad(r.worstWindow10s, 10)}${pad(r.freezeLog, 8)}${pad(r.workP95, 9)}${r.verdict}${r.why ? ` — ${r.why}` : ''}`);
+  console.log(`${pad(r.route, 10)}${pad(r.phase, 33)}${pad(r.netPoseAgeMs, 9)}${pad(r.playerPoseAgeMaxMs, 8)}${pad(r.dataAgeMaxMs, 9)}${pad(r.frameGapMaxMs, 10)}${pad(r.frameGapsOver100, 10)}${pad(r.worldSpeed, 8)}${pad(r.worstWindow10s, 10)}${pad(r.freezeLog, 8)}${pad(r.workP95, 9)}${r.verdict}${r.why ? ` — ${r.why}` : ''}`);
+}
+for (const r of rows) {
+  if (!Array.isArray(r.frameGapList) || !r.frameGapList.length) continue;
+  const list = r.frameGapList.slice(0, 8).map((g) => `${g.gapMs} ms (${g.attribution
+    ? g.attribution.owner + (g.attribution.simSystem ? `:${g.attribution.simSystem}` : '') : 'unattributed'})`);
+  console.log(`  frame gaps >100 ms in ${r.route} / ${r.phase}: ${list.join(', ')}`);
 }
 console.log(failed ? '\nNO-FREEZE GATE: FAIL' : '\nNO-FREEZE GATE: PASS');
 process.exitCode = failed ? 1 : 0;

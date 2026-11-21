@@ -65,22 +65,41 @@ export function setFocusPausePlate(visible) {
 // during flight with nothing else on screen (a run boot inside the worker, a long save, a heavy
 // one-off step), this plate dims the frozen world and says so; it lifts the moment steps resume.
 let holdPlate = null;
+let holdShownAt = 0;
+let holdHideTimer = null;
+const HOLD_MIN_VISIBLE_MS = 400; // ruling: once shown it stays at least this long (no flicker)
+const HOLD_FADE_MS = 160;
+const holdNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 export function worldHoldPlateVisible() { return holdPlate !== null; }
 export function setWorldHoldPlate(visible) {
   if (typeof document === 'undefined') return;
   if (!visible) {
-    if (holdPlate) { holdPlate.remove(); holdPlate = null; }
+    if (!holdPlate || holdHideTimer) return;
+    const wait = Math.max(0, HOLD_MIN_VISIBLE_MS - (holdNow() - holdShownAt));
+    const plate = holdPlate;
+    holdHideTimer = setTimeout(() => {
+      holdHideTimer = null;
+      if (holdPlate !== plate) return;
+      plate.style.opacity = '0';
+      setTimeout(() => plate.remove(), HOLD_FADE_MS);
+      holdPlate = null;
+    }, wait);
     return;
   }
+  if (holdHideTimer) { clearTimeout(holdHideTimer); holdHideTimer = null; }
   if (holdPlate) return;
+  holdShownAt = holdNow();
   holdPlate = document.createElement('div');
   holdPlate.id = 'sf-world-hold';
   Object.assign(holdPlate.style, {
     position: 'fixed', inset: '0', zIndex: '8900', display: 'flex', alignItems: 'center',
     justifyContent: 'center', background: 'rgba(5, 9, 16, 0.55)', color: '#dfe8f2',
     fontFamily: 'inherit', fontSize: '15px', letterSpacing: '0.18em', textTransform: 'uppercase',
-    pointerEvents: 'none', userSelect: 'none',
+    pointerEvents: 'none', userSelect: 'none', opacity: '0', transition: 'opacity ' + HOLD_FADE_MS + 'ms ease',
   });
   holdPlate.textContent = 'Loading…';
   (document.body || document.documentElement).appendChild(holdPlate);
+  const shown = holdPlate;
+  const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+  raf(() => { if (holdPlate === shown) shown.style.opacity = '1'; });
 }
