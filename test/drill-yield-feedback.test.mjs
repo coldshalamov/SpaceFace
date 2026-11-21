@@ -12,6 +12,7 @@ import {
 } from '../src/systems/drill.js';
 import { directLawReceiptText } from '../src/ui/sectorLawPresenter.js';
 import { tileLensModel } from '../src/ui/asteroid/inspector.js';
+import { unitsPerSlotFor } from '../src/systems/cargo.js';
 import { world } from '../src/systems/world.js';
 import { applyResourceBodyToEntity, deserializeResourceBodyBag } from '../src/world/resourceBodyRecords.js';
 
@@ -231,12 +232,19 @@ test('budget remaining after a session is lower on the next begin (depletion per
   drill.end();
 });
 
-test('the face quotes the hold and the drill refuses a bulky vein before cutting it', () => {
-  const { state, cargo, events } = harness({ yieldU: 20 }, { usedVolume: 99.5 });
+test('the face quotes the hold and the drill refuses a vein the bag has no room for, before cutting it', () => {
+  // The hold is a slot bag (stacks, then a new slot). Room is open stack space plus free slots;
+  // volume is a readout. One slot, one full stack of the same ore: no room at all.
+  const ore = 'cmdty_silicate';
+  const { state, cargo, events } = harness({ yieldU: 20 });
+  const stack = unitsPerSlotFor(state, ore);
+  cargo.slotCount = 1;
+  cargo.slots = [{ commodityId: ore, qty: stack }];
+  cargo.items[ore] = stack;
+  const setHeld = (qty) => { cargo.slots[0].qty = qty; cargo.items[ore] = qty; };
   drill.begin(42);
   const d = state.drill;
   const { col } = d.avatar;
-  const ore = 'cmdty_silicate';
   const tile = { type: 'vein', ore, yieldU: 6, hp: 4, maxHp: 4, tierReq: 1, hardness: 1 };
   d.field[col][1] = tile;
   const aim = { down: true };
@@ -250,17 +258,16 @@ test('the face quotes the hold and the drill refuses a bulky vein before cutting
   assert.equal(d.drillTemp, 0);
   assert.equal(events.filter(e => e.type === 'drill:cargoFull').length, 1);
 
-  cargo.usedVolume = 98;
-  assert.ok(labels().includes('Bore 2u'));
-  assert.ok(labels().includes('Stays in vein 4u'));
+  setHeld(stack - 2);
+  assert.deepEqual(quote().cut, { bank: 2, kept: 4, spent: 0 }, 'two units of stack room: two bank, four stay');
   drill.tickInput(aim, 0.25);
-  assert.equal(cargo.items[ore], 2);
+  assert.equal(cargo.items[ore], stack);
   assert.equal(tile.yieldU, 4);
   assert.equal(tile.hp, 0);
-  cargo.usedVolume = 96;
-  assert.ok(labels().includes('Collect 4u'));
+  setHeld(stack - 4);
+  assert.deepEqual(quote().cut.bank, 4, 'room for the rest: it is collected');
   drill.tickInput(aim, 1 / 60, { impulse: true });
-  assert.equal(cargo.items[ore], 6);
+  assert.equal(cargo.items[ore], stack);
   assert.equal(d.field[col][1].type, 'empty');
   drill.end();
 });
