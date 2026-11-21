@@ -121,7 +121,8 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
       // Every body the journal still presents gets its pose, dying ones included: a killed hull keeps
       // drifting through its death beat until the journal retires it, instead of freezing mid-air.
       if (!e || !Number.isSafeInteger(e.id) || e.id <= 0) continue;
-      const generation = journal.getActiveGeneration(e.id);
+      const generation = typeof journal.getActiveGenerationFor === 'function'
+        ? journal.getActiveGenerationFor(e) : journal.getActiveGeneration(e.id);
       if (!generation) continue;
       if (count >= cap) { stats.truncated++; break; }
       const o = count * POSE_ROW_STRIDE;

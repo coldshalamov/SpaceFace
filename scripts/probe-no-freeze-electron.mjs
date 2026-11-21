@@ -335,7 +335,7 @@ try {
   report.realmEnd = await page.evaluate(() => ({ hasFocus: document.hasFocus(), visibility: document.visibilityState,
     padCalls: window.__padCalls ? window.__padCalls() : null })).catch(() => null);
   const samples = await page.evaluate(() => { clearInterval(window.__nf.timer); return window.__nf.samples; });
-  report.workerProbe = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); return { journalRebuildReasons: r && (r.result || r).journalRebuildReasons }; } catch (e) { return String(e); } }).catch(() => null);
+  report.workerProbe = await page.evaluate(async () => { try { const r = await window.SF.laneRpc('probeState'); const q = r && (r.result || r); const g = window.SF.simLaneDiag(); const rr = window.SF.registry.get('render'); const samples = []; for (let i = 0; i < 20; i++) { const r2 = await window.SF.laneRpc('probeState'); const q2 = r2 && (r2.result || r2); samples.push({ worker: q2.committedJournalSequence, main: window.SF.simLaneDiag().journal.writeSequence, presented: rr && rr._presentationPublisher ? rr._presentationPublisher.getLastAppliedSequence() : null }); await new Promise((ok) => setTimeout(ok, 100)); } return { journalRebuildReasons: q.journalRebuildReasons, lag: samples }; } catch (e) { return String(e); } }).catch(() => null);
   console.log('worker journal rebuilds', JSON.stringify(report.workerProbe));
   report.end = await page.evaluate(() => {
     const g = window.SF.simLaneDiag();

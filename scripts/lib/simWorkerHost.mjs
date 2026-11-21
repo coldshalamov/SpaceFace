@@ -2115,6 +2115,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
           journalRebuildReasons: { ...host.rebuildReasons },
+          committedJournalSequence: host.committedJournalSequence,
           tick: state.tick,
           seed: state.meta?.seed ?? null,
           runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,

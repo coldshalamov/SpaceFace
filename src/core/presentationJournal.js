@@ -773,6 +773,10 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     isClosed: () => closed,
     // Shared pose table (simPoseTable.js): the live journal generation of an entity, 0 when the
     // journal does not track it. Read-only; never mints or changes a generation.
+    // Same, but only for the very entity object the journal spawned: an id reused by a body the
+    // journal does not present must not inherit the previous occupant's generation.
+    getActiveGenerationFor: (entity) => (entity && journaledEntities.has(entity) && Number.isSafeInteger(entity.id)
+      && entity.id > 0 && entity.id < activeGenerations.length ? activeGenerations[entity.id] : 0),
     getActiveGeneration: (entityId) => (Number.isSafeInteger(entityId) && entityId > 0
       && entityId < activeGenerations.length ? activeGenerations[entityId] : 0),
     needsRebuild: () => rebuildRequired,
