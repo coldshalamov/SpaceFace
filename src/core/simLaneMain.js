@@ -3037,6 +3037,7 @@ export function createSimLaneRuntime({
     // transferable table per tick, still outside the ACK protocol).
     poseTable: poseShared,
     legacyStopAndWait: laneLegacy,
+    directiveMarks: IS_DEV && (() => { try { return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sf.directiveMarks') === '1'; } catch (_) { return false; } })(),
     // E2 profiler: `?simProfile=1` asks the worker realm to measure per-system step time and
     // allocation and ride a bounded summary back on the reply (one per simulated second).
     systemProfile: (() => {

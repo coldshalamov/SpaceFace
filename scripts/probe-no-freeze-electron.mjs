@@ -49,7 +49,10 @@ const ALLOC = argv.alloc === true;
 const GCTRACE = argv.gctrace === true;
 // --cpuprof: a sampling CPU profile of the SIM WORKER; the ten longest busy stretches (worst steps)
 // are listed with the functions that own their time (self and inclusive).
-const CPUPROF = argv.cpuprof === true;
+const CPUPROF = argv.cpuprof === true || argv.worst === true;
+// --worst: per-directive markers + DevTools trace + worker CPU profile; names the ten worst
+// directives with the compile/deopt, collector and function time inside each.
+const WORST = argv.worst === true;
 // --semi=<MB> / --old=<MB>: heap-shape experiment for every isolate (launcher js-flags override).
 const SEMI_MB = argv.semi ? String(argv.semi) : null;
 const OLD_MB = argv.old ? String(argv.old) : null;
@@ -166,15 +169,16 @@ try {
     await page.evaluate((pairs) => { for (const [k, v] of Object.entries(pairs)) localStorage.setItem(k, v); }, prof.pairs);
     console.log('real profile copied (read-only) from', prof.dir, Object.keys(prof.pairs).join(','));
   }
-  await page.evaluate(([legacy, profile]) => {
+  await page.evaluate(([legacy, profile, worst]) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
       if (legacy) sessionStorage.setItem('sf.laneLegacy', '1'); else sessionStorage.removeItem('sf.laneLegacy');
+      if (worst) sessionStorage.setItem('sf.directiveMarks', '1'); else sessionStorage.removeItem('sf.directiveMarks');
       // The per-system profiler times every system call; it costs step time, so it is opt-in
       // (--profile) and never on in the gate's world-speed measurement.
       if (profile) localStorage.setItem('sf.simProfile', '1'); else localStorage.removeItem('sf.simProfile');
     } catch { /* storage gated */ }
-  }, [LEGACY, PROFILE]);
+  }, [LEGACY, PROFILE, WORST]);
   {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 240000 });
@@ -399,10 +403,10 @@ try {
   };
   phases.push(['dense input', async () => play(SECONDS * 1000)]);
   const traceChunks = [];
-  if (GCTRACE) {
+  if (GCTRACE || WORST) {
     cdp.on('Tracing.dataCollected', (ev) => { for (const e of ev.value || []) traceChunks.push(e); });
     await cdp.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: {
-      includedCategories: ['__metadata', 'v8', 'devtools.timeline', 'disabled-by-default-v8.gc'],
+      includedCategories: ['__metadata', 'v8', 'devtools.timeline', 'disabled-by-default-v8.gc', 'blink.user_timing', 'v8.compile', 'disabled-by-default-v8.compile'],
       excludedCategories: ['*'] } }).catch((e) => console.log('tracing start', String(e)));
   }
   for (const [name, run] of phases) {
@@ -419,7 +423,8 @@ try {
   if (CPUPROF && workerCdp.sessionId) {
     const res = await workerSend('Profiler.stop').catch((e) => ({ error: String(e) }));
     const prof = res && res.profile;
-    if (prof) {
+    report.__cpuProfile = prof || null;
+    if (prof && !WORST) {
       const byId = new Map();
       for (const n of prof.nodes) byId.set(n.id, n);
       for (const n of prof.nodes) for (const c of n.children || []) { const ch = byId.get(c); if (ch) ch.parent = n.id; }
@@ -463,7 +468,7 @@ try {
       }
     } else console.log('cpu profile failed', JSON.stringify(res).slice(0, 200));
   }
-  if (GCTRACE) {
+  if (GCTRACE || WORST) {
     const done = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
     await cdp.send('Tracing.end').catch((e) => console.log('tracing end', String(e)));
     await Promise.race([done, new Promise((r) => setTimeout(r, 20000))]);
@@ -502,6 +507,90 @@ try {
       }
     }
     console.log('gc trace (' + traceChunks.length + ' events)');
+    if (WORST) {
+      const begins = new Map(); const dirs = [];
+      for (const e of traceChunks) {
+        if (e.name !== 'sf-directive') continue;
+        const key = e.pid + ':' + e.tid + ':' + (e.id2 ? JSON.stringify(e.id2) : e.id);
+        if (e.ph === 'b') begins.set(key, e);
+        else if (e.ph === 'e' && begins.has(key)) { const b = begins.get(key); dirs.push({ ts: b.ts, dur: e.ts - b.ts, pid: b.pid, tid: b.tid }); begins.delete(key); }
+        else if (e.ph === 'X') dirs.push({ ts: e.ts, dur: e.dur, pid: e.pid, tid: e.tid });
+      }
+      const prof = report.__cpuProfile;
+      if (!dirs.length && prof) {
+        const nodes = new Map();
+        for (const n of prof.nodes) nodes.set(n.id, n);
+        for (const n of prof.nodes) for (const c of n.children || []) { const ch = nodes.get(c); if (ch) ch.parent = n.id; }
+        const inTick = new Map();
+        const isTick = (id) => {
+          if (inTick.has(id)) return inTick.get(id);
+          let v = false;
+          for (let k = nodes.get(id); k; k = k.parent != null ? nodes.get(k.parent) : null) {
+            if ((k.callFrame || {}).functionName === 'handleTick') { v = true; break; }
+          }
+          inTick.set(id, v); return v;
+        };
+        let t = prof.startTime; let cur = null;
+        for (let i = 0; i < prof.samples.length; i++) {
+          t += prof.timeDeltas[i] || 0;
+          if (isTick(prof.samples[i])) { if (!cur) cur = { ts: t, end: t }; cur.end = t; }
+          else if (cur) { dirs.push({ ts: cur.ts, dur: cur.end - cur.ts, pid: null, tid: null, fromSamples: true }); cur = null; }
+        }
+        if (cur) dirs.push({ ts: cur.ts, dur: cur.end - cur.ts, pid: null, tid: null, fromSamples: true });
+      }
+      dirs.sort((a, b) => b.dur - a.dur);
+      let samples = [];
+      const byId = new Map();
+      if (prof) {
+        for (const n of prof.nodes) byId.set(n.id, n);
+        for (const n of prof.nodes) for (const c of n.children || []) { const ch = byId.get(c); if (ch) ch.parent = n.id; }
+        let t = prof.startTime;
+        for (let i = 0; i < prof.samples.length; i++) { t += prof.timeDeltas[i] || 0; samples.push([t, prof.samples[i]]); }
+      }
+      const label = (n) => { const cf = n.callFrame || {}; const u = String(cf.url || '').replace(/^.*\/(src|scripts|vendor)\//, '$1/'); return (cf.functionName || '(anon)') + (u ? ' ' + u + ':' + ((cf.lineNumber | 0) + 1) : ''); };
+      const generic = /runLocalClockTick|handleTick|^tick |wholeSimBrowserWorker.js|^step src\/core\/authoritativeSimStep|dispatchRange|invokeBusListener|^emit src\/core\/eventBus|^bus\.emit/;
+      let simWorkerThreadKey = null;
+      {
+        const gcCount = new Map();
+        for (const e of traceChunks) if (e.ph === 'X' && /^(MinorGC|MajorGC)$/.test(e.name)) gcCount.set(e.pid + ':' + e.tid, (gcCount.get(e.pid + ':' + e.tid) || 0) + 1);
+        const workerKeys = [...gcCount.entries()].filter(([k]) => /DedicatedWorker/.test(threadNames.get(k) || ''));
+        workerKeys.sort((a, b) => b[1] - a[1]);
+        simWorkerThreadKey = workerKeys.length ? workerKeys[0][0] : null;
+      }
+      report.worstDirectives = dirs.slice(0, 10).map((d) => {
+        const end = d.ts + d.dur;
+        let compile = 0; let gc = 0;
+        for (const e of traceChunks) {
+          if (e.ph !== 'X' || !(e.dur > 0)) continue;
+          if (d.tid != null ? (e.tid !== d.tid || e.pid !== d.pid) : (e.pid + ':' + e.tid) !== simWorkerThreadKey) continue;
+          if (e.ts < d.ts || e.ts > end) continue;
+          if (/Compile|Optimize|Deopt|Lazy|Maglev|Turbofan|Sparkplug/i.test(e.name) && !/GC/.test(e.name)) compile += e.dur;
+          else if (/^(MinorGC|MajorGC)$/.test(e.name)) gc += e.dur;
+        }
+        const self = new Map(); const incl = new Map(); let n = 0; let programIdle = 0;
+        for (const [ts, id] of samples) {
+          if (ts < d.ts || ts > end) continue;
+          const node = byId.get(id); if (!node) continue;
+          n++;
+          const fn = (node.callFrame || {}).functionName || '';
+          if (/^\((program|idle|garbage collector)\)$/.test(fn)) { programIdle++; self.set(fn, (self.get(fn) || 0) + 1); continue; }
+          self.set(label(node), (self.get(label(node)) || 0) + 1);
+          const seen = new Set();
+          for (let k = node; k; k = k.parent != null ? byId.get(k.parent) : null) {
+            const L = label(k);
+            if (seen.has(L) || !(k.callFrame && k.callFrame.url) || generic.test(L)) continue;
+            seen.add(L); incl.set(L, (incl.get(L) || 0) + 1);
+          }
+        }
+        const share = (m, k) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, k).map(([x, c]) => x + ' ' + Math.round((c / Math.max(1, n)) * 100) + '%');
+        return { ms: +(d.dur / 1000).toFixed(1), compileMs: +(compile / 1000).toFixed(1), gcMs: +(gc / 1000).toFixed(1), samples: n, programOrIdle: programIdle, self: share(self, 5), inclusive: share(incl, 8) };
+      });
+      console.log('worst directives (' + dirs.length + ' measured):');
+      for (const w of report.worstDirectives) {
+        console.log('  ' + w.ms + ' ms  compile ' + w.compileMs + '  gc ' + w.gcMs + '  samples ' + w.samples + '  self: ' + w.self.join(' | '));
+        console.log('      incl: ' + w.inclusive.join(' | '));
+      }
+    }
     for (const r of report.gcTrace) console.log('   ' + JSON.stringify(r).slice(0, 400));
   }
   if (ALLOC && workerCdp.sessionId) {
@@ -637,6 +726,7 @@ try {
     });
   }
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(samples));
+  delete report.__cpuProfile;
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
   for (const r of report.rows) {

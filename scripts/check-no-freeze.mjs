@@ -68,7 +68,7 @@ for (const routeName of ROUTES) {
     if (r.netPoseAgeMs == null || r.netPoseAgeMs > POSE_AGE_LIMIT_MS) why.push(`pose age (net of frame gap) ${r.netPoseAgeMs} ms > ${POSE_AGE_LIMIT_MS}`);
     if (r.frameGapMaxMs > 250) why.push(`rendering hitch: a ${r.frameGapMaxMs} ms frame gap`);
     if (r.worstWindow10s != null && r.worstWindow10s < WORLD_SPEED_FLOOR) why.push(`world x${r.worstWindow10s} < ${WORLD_SPEED_FLOOR} over 10 s`);
-    if (r.worstWindow10s == null && r.worldSpeed != null && r.wallS >= 5 && r.worldSpeed < WORLD_SPEED_FLOOR) {
+    if (r.worstWindow10s == null && r.worldSpeed != null && r.wallS >= 2 && r.worldSpeed < WORLD_SPEED_FLOOR) {
       why.push(`world x${r.worldSpeed} < ${WORLD_SPEED_FLOOR} (phase shorter than 10 s)`);
     }
     if (r.uncoveredStopMs > 300) why.push(`simulation stopped ${r.uncoveredStopMs} ms in live flight with no hold plate`);

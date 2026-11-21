@@ -1135,6 +1135,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   const replyDetail = force || hasExplicitSteps || commands.length > 0 || !(localClock.scale > 0)
     || detailNow - (localClock.lastDetailAtMs || 0) >= LOCAL_DETAIL_INTERVAL_MS;
   if (replyDetail) localClock.lastDetailAtMs = detailNow;
+  const markStart = localClock.directiveMarks ? localNowMs() : 0;
   let reply = await tick({
     kind: 'tick',
     seq: `local-directive-${++localClock.directiveTick}`,
@@ -1146,6 +1147,11 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
+  // Probe-only (init directiveMarks): one user-timing measure per directive so a DevTools trace can
+  // name the worst steps (and the compile/GC/CPU time inside them). Cleared at once: no buffer.
+  if (localClock.directiveMarks && typeof performance !== 'undefined' && typeof performance.measure === 'function') {
+    try { performance.measure('sf-directive', { start: markStart, end: localNowMs(), detail: { steps } }); performance.clearMeasures('sf-directive'); } catch (_) { /* optional */ }
+  }
   postPoseTableTransfer();
   // NO-FREEZE step 4: the per-frame camera/time-effects envelopes are latest-wins state. Their
   // receipts are read by nobody on the main lane; never let them become durable reply rows.
@@ -1564,6 +1570,7 @@ async function dispatchDirective(msg) {
       const result = await init(msg);
       localClock.enabled = msg.clockMode === 'worker-local';
       localClock.legacy = msg.legacyStopAndWait === true;
+      localClock.directiveMarks = msg.directiveMarks === true;
       poseWriter = localClock.enabled && !localClock.legacy
         ? createPoseTableWriter(msg.poseTable || null) : null;
       localClock.stopped = false;
