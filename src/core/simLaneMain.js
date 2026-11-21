@@ -51,7 +51,7 @@ import {
   POSE_ROW_STRIDE,
   POSE_PLAYER_FIELDS,
 } from './simPoseTable.js';
-import { setWorldHoldPlate } from '../render/focusPausePlate.js';
+import { setWorldHoldPlate, worldHoldPlateVisible } from '../render/focusPausePlate.js';
 const WORLD_HOLD_PLATE_MS = 200;
 import {
   bindSabEnvelopeChannel,
@@ -1836,6 +1836,7 @@ export function createSimLaneRuntime({
   let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
   const replyLagEpisodes = [];
+  let coveredHoldSamples = 0;
   let openReplyLag = null;
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
   // Dev probe harness: block the worker for one turn of `ms` (an authoritative-step spike).
@@ -2099,7 +2100,10 @@ export function createSimLaneRuntime({
         openReplyLag = null;
       }
     }
-    if (advancing && gapMs > FREEZE_GAP_MS) {
+    // A stop the hold plate already covers is a visible state (ruling), not a frozen world; it is
+    // still counted for diagnosis.
+    if (advancing && gapMs > FREEZE_GAP_MS && worldHoldPlateVisible()) coveredHoldSamples++;
+    if (advancing && gapMs > FREEZE_GAP_MS && !worldHoldPlateVisible()) {
       if (!openFreeze) {
         openFreeze = { openedAtMs: nowMs(), gapAtOpenMs: gapMs, snapshot: freezeSnapshot() };
         if (workerClockMode === 'worker-local') {
@@ -2920,6 +2924,7 @@ export function createSimLaneRuntime({
         freezeActive: openFreeze != null,
         freezeEpisodes,
         replyLagEpisodes,
+        coveredHoldSamples,
         poseTable: {
           mode: laneLegacy ? 'legacy-off' : (poseShared ? 'shared' : 'transfer'),
           active: poseFeed.active,
