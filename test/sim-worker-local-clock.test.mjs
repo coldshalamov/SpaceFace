@@ -966,8 +966,10 @@ test('a two-second presentation stall resumes without teleporting the world ahea
     await new Promise((resolve) => setTimeout(resolve, 600));
     const resumed = latest() || {};
     const resumedAdvance = (resumed.stateTick || 0) - heldTick;
-    assert.ok(heldTick <= 45,
-      `during a 2 s stall the clock held (tick reached ${heldTick}, a runaway would be ~120+)`);
+    // NO-FREEZE rule: nothing but the 1 s dead-page hold stops the clock (no ACK/backpressure
+    // throttling before it), so up to ~60 ticks run inside the hold window plus the warm-up.
+    assert.ok(heldTick <= 80,
+      `during a 2 s stall the clock held after the 1 s dead-page window (tick reached ${heldTick}, a runaway would be ~120+)`);
     assert.ok(resumedAdvance <= 60,
       `after the stall the world resumed at run rate (+${resumedAdvance} ticks in ~0.6 s, a teleport would burst ~105)`);
     assert.ok((resumed.simTime || 0) - heldSimTime <= 1.2,
@@ -1458,10 +1460,10 @@ test('a stale local completion cannot close a replacement command', async (t) =>
   assert.equal(f.lane.runner.isClosed(), false);
 });
 
-test('DOM input batches coalesce onto one transport post per window', async (t) => {
+test('pointer motion is latest-wins state: it rides the next frame batch, edges stay ordered and immediate', async (t) => {
   const f = makeWatchdogFixture(t);
   f.lane.runner.setClockActive(true);
-  laneDomEvent({ type: 'resize' });
+  laneDomEvent({ type: 'keydown', code: 'KeyQ', pressed: true });
   const first = f.posts.at(-1);
   assert.equal(first.kind, 'clockCommand', 'the leading event posts immediately');
   f.receive({
@@ -1485,8 +1487,11 @@ test('DOM input batches coalesce onto one transport post per window', async (t) 
   const dragged = f.posts.at(-1);
   assert.equal(dragged.kind, 'clockCommand', 'discrete input still posts immediately');
   assert.notEqual(dragged.commandSequence, first.commandSequence);
-  assert.equal(dragged.commands.filter((env) => env.t === 'dom').length, 4,
-    'the immediate post carries the coalesced stream envelopes ahead of the key');
+  // NO-FREEZE step 4: pointer motion is latest-wins state — one row per pointer event type
+  // (movement summed), landing ahead of the key edge that drags it.
+  const domRows = dragged.commands.filter((env) => env.t === 'dom');
+  assert.equal(domRows.length, 3, 'mousemove + pointermove (one latest row each) ahead of the key');
+  assert.equal(domRows[2].p.d.type, 'keydown', 'the key edge stays last, in order');
   f.receive({
     kind: 'clockTick', clockSequence: 2, commandSequence: dragged.commandSequence,
     clockDiagnostics: { appliedCommandSequence: dragged.commandSequence },
@@ -1498,8 +1503,8 @@ test('DOM input batches coalesce onto one transport post per window', async (t) 
   laneDomEvent({ type: 'pointermove', clientX: 102, clientY: 100 });
   assert.equal(f.posts.length, postsAfterKey, 'a fresh stream event re-enters the window');
 
-  // The trailing flush ships the queued envelope.
-  t.mock.timers.tick(9);
+  // Without a presented frame, the fallback state flush ships the latest pointer row.
+  t.mock.timers.tick(51);
   const batched = f.posts.at(-1);
   assert.equal(batched.kind, 'clockCommand');
   assert.equal(batched.commands.filter((env) => env.t === 'dom').length, 1);
@@ -2181,7 +2186,7 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
     const cancel = globalThis.clearTimeout;
     t.mock.method(globalThis, 'setTimeout', (callback, delay, ...args) => {
       const handle = schedule(callback, delay, ...args);
-      if (delay === 3000) ackTimers.add(handle);
+      if (delay === 250) ackTimers.add(handle);
       return handle;
     });
     t.mock.method(globalThis, 'clearTimeout', (handle) => {
@@ -2250,7 +2255,7 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
   }
 });
 
-test('a lost presentation ACK self-heals through a full rebuild instead of freezing the lane', { timeout: 30000 }, async () => {
+test('a lost presentation ACK frees its reply credit in a quarter second and keeps publishing incrementally (no rebuild, no stop)', { timeout: 30000 }, async () => {
   const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
   const previousSelf = globalThis.self;
   const workerReplies = [];
@@ -2300,16 +2305,17 @@ test('a lost presentation ACK self-heals through a full rebuild instead of freez
     const wedgedSteps = wedgedPublish.clockDiagnostics?.steps || 0;
     const repliesBeforeWedge = workerReplies.filter((reply) => reply.kind === 'clockTick').length;
 
-    // No ACK is ever sent. Within the stale-ack budget the worker must declare
-    // it lost, arm a journal rebuild, and publish again — self-healing instead
-    // of retaining indefinitely.
+    // No ACK is ever sent. NO-FREEZE rule (2026-11-21): the reply channel is FIFO, so a late
+    // ACK is never a lost range. Within a quarter second the worker frees the credit and keeps
+    // publishing ordered incremental replies — never a full rebuild (the old 3 s 'blip').
     await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
-      && reply.journalFullRebuild === true
-      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 8000);
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 3000);
 
     const recovered = workerReplies.filter((reply) => reply.kind === 'clockTick'
-      && reply.journalFullRebuild === true
       && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1).at(-1);
+    assert.equal(workerReplies.some((reply) => reply.kind === 'clockTick' && reply.journalFullRebuild === true
+      && reply.clockSequence > wedgedPublish.clockSequence), false,
+    'a late ACK must never trigger a full journal rebuild');
     assert.ok(
       recovered.clockDiagnostics.steps > wedgedSteps,
       'the authoritative clock kept stepping through the wedged publish instead of stopping',
@@ -2355,7 +2361,7 @@ test('foreground heartbeats recover an expired reply even when the watchdog time
     await waitFor(() => replies.some(reply => reply.kind === 'ready'));
     t.mock.method(performance, 'now', () => now() + wallOffset);
     t.mock.method(globalThis, 'setTimeout', (fire, delay, ...args) => {
-      if (delay !== 3000) return setTimer(fire, delay, ...args);
+      if (delay !== 250) return setTimer(fire, delay, ...args);
       watchdogTimer = fire;
       return fire;
     });
@@ -2384,8 +2390,11 @@ test('foreground heartbeats recover an expired reply even when the watchdog time
     assert.equal(replies.at(-1).unacked, 0, 'a foreground beat clears expired credits without the timer');
     assert.equal(replies.at(-1).staleAckRecoveries, 1);
     advance(3);
+    // NO-FREEZE: the freed credit publishes the next ordered reply; no full rebuild.
     await waitFor(() => replies.some(reply => reply.kind === 'clockTick'
-      && reply.journalFullRebuild === true && reply.clockSequence > wedged.clockSequence));
+      && reply.clockSequence > wedged.clockSequence));
+    assert.equal(replies.some(reply => reply.kind === 'clockTick' && reply.journalFullRebuild === true
+      && reply.clockSequence > wedged.clockSequence), false, 'a late ACK never rebuilds the journal');
     assert.ok(lastTick().clockDiagnostics.steps > wedged.clockDiagnostics.steps);
 
     delayed();

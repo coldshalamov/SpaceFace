@@ -349,6 +349,8 @@ import {
   snapshotHasEntityGeneration,
   snapshotIndexOf,
 } from './snapshotFence.js';
+import { getActivePoseFeed, POSE_ROW_STRIDE } from '../core/simPoseTable.js';
+import { recordPresentedPoseAge, notePoseAgeRebase } from './poseAgeRecorder.js';
 import { createPoseContinuity } from './poseContinuity.js';
 import {
   consumePersistentSubmitUploads,
@@ -30329,6 +30331,7 @@ export const render = {
   /** Reproject all render-owned local caches when frameOriginSeq advances (no sim mutation). */
   _applyFrameOriginRebase(dx, dz) {
     if (!(dx || dz)) return;
+    notePoseAgeRebase(dx, dz);
     for (const m of this._meshes.values()) {
       if (!m || !m.position) continue;
       m.position.x += dx;
@@ -30405,6 +30408,42 @@ export const render = {
     return this._posePackEpoch;
   },
 
+  // Shared pose table (src/core/simPoseTable.js). The lane reads the worker's latest-wins table
+  // once per frame; here every body this world already holds takes that pose AFTER the journal
+  // consume, so a lagging or stalled journal can never hold the picture still (and a late journal
+  // transform can never move a body backwards). Returns the feed facts the fence pack uses.
+  _applySharedPoseFeed() {
+    const out = this._poseFeedResult || (this._poseFeedResult = {
+      active: false, writes: -1, simTime: 0, applied: 0, advancedForPack: false,
+    });
+    out.active = false;
+    out.applied = 0;
+    out.advancedForPack = false;
+    const feed = getActivePoseFeed();
+    const world = this._presentationWorld;
+    if (!feed || feed.active !== true || !world || typeof world.applySharedPose !== 'function') return out;
+    const snap = feed.snapshot;
+    const rows = snap.rows;
+    let applied = 0;
+    for (let i = 0, o = 0; i < snap.count; i++, o += POSE_ROW_STRIDE) {
+      if (world.applySharedPose(rows[o], rows[o + 1], rows[o + 2], rows[o + 3], rows[o + 4],
+        rows[o + 5], rows[o + 6], rows[o + 7], rows[o + 8])) applied++;
+    }
+    out.active = true;
+    out.writes = snap.writes;
+    out.simTime = snap.simTime;
+    out.applied = applied;
+    out.advancedForPack = snap.writes !== this._poseFeedPackedWrites;
+    return out;
+  },
+
+  // The sim moment the newest pack describes: the pose table's when it feeds this frame.
+  _packSimTime() {
+    const feed = this._poseFeedResult;
+    if (feed && feed.active === true) return feed.simTime;
+    return this.state && this.state.simTime;
+  },
+
   _livePosePublicationOptions(presentationFrame) {
     if (presentationFrame?.journalFullRebuild !== true) return LIVE_POSE_PUBLICATION;
     const fence = this._snapshotFence;
@@ -30417,7 +30456,7 @@ export const render = {
       && lifecycle === this._posePackLifecycleGeneration
       && newest?.poseEpoch === this._posePackEpoch
       && this._posePackSectorId === String(this.state.world?.currentSectorId || '')
-      && this.state.simTime >= newest.simTime && this.state.simTime <= fence.presentedTimeS) {
+      && this._packSimTime() >= newest.simTime && this._packSimTime() <= fence.presentedTimeS) {
       return LIVE_POSE_RECOVERY;
     }
     return LIVE_POSE_PUBLICATION;
@@ -32999,6 +33038,8 @@ export const render = {
     serviceCounterweightGeometryPreparation(this);
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
+    // Presented-pose age (poseAgeRecorder.js): measured from the meshes drawn last frame.
+    tryPresentedCall(this, 'pose-age', () => recordPresentedPoseAge(this.state, this._meshes, getActivePoseFeed()));
     // E6 residency: reset the per-frame inline upload wallet. A drawable's first upload is
     // either small enough to pay here or held for the off-screen residency lane.
     if (this._residencyManager) {
@@ -33056,6 +33097,8 @@ export const render = {
         ? this._presentationPublisher.getLastAppliedSequence()
         : null;
     }
+    const poseFeed = tryPresentedCall(this, 'pose-table', () => this._applySharedPoseFeed())
+      || this._poseFeedResult || { active: false, advancedForPack: false };
     // A rebind drive that faulted parks on the service epoch like the residency
     // lanes — the heavy O(_meshes) re-mint suppresses until the next
     // enter/context-restore instead of rethrowing out of prepareFrame every
@@ -33221,7 +33264,8 @@ export const render = {
         || this._snapshotFence.newestSnapshot()?.poseEpoch !== packEpoch
         || (publication.rebuilt === true && publication.appliedDelta !== 0)
         || publication.refreshed === true
-        || publication.applied > 0);
+        || publication.applied > 0
+        || poseFeed.advancedForPack === true);
     {
       // Live poses belong to one completed tick and must publish in this present.
       // Background admission cannot spend their budget, and parking a live pack
@@ -33252,7 +33296,7 @@ export const render = {
               ? packPresentationWorldToFenceSteps(
                 this._presentationWorld,
                 this._snapshotFence,
-                this.state && this.state.simTime,
+                this._packSimTime(),
                 packEpoch)
               : null,
             poseEpoch: packEpoch,
@@ -33288,6 +33332,7 @@ export const render = {
               break;
             }
             if (step.done) {
+              this._poseFeedPackedWrites = poseFeed.writes;
               this._snapshotSourceTick = pendingPack.sourceTick;
               this._publishSnapshotFenceStats(step.value);
               this._fencePackPending = null;
@@ -33307,9 +33352,10 @@ export const render = {
           const packed = packPresentationWorldToFence(
             this._presentationWorld,
             this._snapshotFence,
-            this.state && this.state.simTime,
+            this._packSimTime(),
             packEpoch,
           );
+          this._poseFeedPackedWrites = poseFeed.writes;
           this._snapshotSourceTick = completedTick;
           this._publishSnapshotFenceStats(packed);
           this._fencePackPending = null;
@@ -33330,7 +33376,7 @@ export const render = {
             const packed = packPresentationWorldToFence(
               this._presentationWorld,
               this._snapshotFence,
-              this.state && this.state.simTime,
+              this._packSimTime(),
               packEpoch);
             this._snapshotSourceTick = completedTick;
             this._publishSnapshotFenceStats(packed);

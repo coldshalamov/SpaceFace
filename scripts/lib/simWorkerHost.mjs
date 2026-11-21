@@ -1025,7 +1025,7 @@ const BRIDGE_EVENTS = [
   'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
 
-export function createSimHost({ onAsyncSaveReady } = {}) {
+export function createSimHost({ onAsyncSaveReady, onStep } = {}) {
   // The save system's synchronous localStorage contract runs against a staged
   // snapshot in worker realms (browser worker, node worker_threads): main
   // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
@@ -2788,6 +2788,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         sim.step(SIM_DT);
       }
       stepsExecuted++;
+      // Shared pose table (browser worker): publish this step's poses latest-wins, outside the
+      // reply journal. Read-only of sim state; production lane only.
+      if (production && typeof onStep === 'function') {
+        try { onStep(state, journal); } catch (_) { /* the picture feed never breaks a step */ }
+      }
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.

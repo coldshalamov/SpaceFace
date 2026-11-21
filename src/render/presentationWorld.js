@@ -785,6 +785,27 @@ export function createPresentationWorld(options = {}) {
     return slot;
   }
 
+  // Shared pose table (src/core/simPoseTable.js): the worker's latest pose for a body this world
+  // already holds. Identity must match (journal generation, or the same occupant across a
+  // transport rebuild); a body whose spawn has not been applied yet is simply skipped, and one
+  // the journal retires is dropped by its DESTROY. Returns true when the packed pose moved.
+  function applySharedPose(entityId, generation, occupant, x, y, z, rot, bank, pitch) {
+    const slot = byId.get(entityId);
+    if (slot === undefined || world.alive[slot] !== 1) return false;
+    const sourceGen = world.sourceGenerations[slot];
+    const occupantGen = world.occupantGenerations[slot];
+    if (sourceGen !== (generation >>> 0)
+      && !(occupant > 0 && occupantGen === occupant)
+      && !(sourceGen === 0 && occupantGen === (occupant | 0))) return false;
+    const changed = writePoseScalars(slot, x, y, z, world.x[slot], world.y[slot], world.z[slot],
+      rot, bank, pitch, world.rot[slot], world.bank[slot], world.pitch[slot]);
+    if (changed) {
+      markDirtyBits(slot, PRESENTATION_DIRTY.TRANSFORM);
+      if (typeNames[world.typeCodes[slot]] === 'asteroid') asteroidDirty = true;
+    }
+    return changed;
+  }
+
   function applyVisual(record, entity = null) {
     const slot = applyTransform(record, entity);
     world.visualRevisions[slot] = Number.isSafeInteger(record && record.visualRevision)
@@ -1534,6 +1555,7 @@ export function createPresentationWorld(options = {}) {
     retire,
     applyTransform,
     applyVisual,
+    applySharedPose,
     canRetainOccupant,
     rebuildRecord,
     retireUnpublishedRecords,

@@ -45,6 +45,13 @@ import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 import { readLocalTimeEffectsSnapshot, applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration } from './timeEffects.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
 import {
+  createSharedPoseTable,
+  createPoseTableReader,
+  setActivePoseFeed,
+  POSE_ROW_STRIDE,
+  POSE_PLAYER_FIELDS,
+} from './simPoseTable.js';
+import {
   bindSabEnvelopeChannel,
   decodeReplyFromSab,
   sabEnvelopeAwaitReply,
@@ -376,9 +383,17 @@ export function resolveSimLaneFlags(search) {
     if (cycle.length) simStall = cycle;
     else warnings.push(`simStall='${stallParam}' produced no usable entries — no stalls injected`);
   }
+  // Dev A/B only: `?laneLegacy=1` or localStorage sf.laneLegacy=1 restores the pre-2026-11-21
+  // stop-and-wait worker clock and turns the shared pose table off, so the no-freeze gate can
+  // show the old freeze on the same build. Never a player path.
+  let legacyRequested = params && params.get('laneLegacy');
+  if (legacyRequested == null && typeof localStorage !== 'undefined') {
+    try { legacyRequested = localStorage.getItem('sf.laneLegacy'); } catch (_) { /* storage gated */ }
+  }
+  const legacy = IS_DEV && (legacyRequested === '1' || legacyRequested === 'true');
   return {
     lane, sab, sabEnvelope, domainProfile, domainProfileRequested: requestedDomainProfile || null,
-    simStall, warnings,
+    simStall, legacy, warnings,
   };
 }
 
@@ -722,6 +737,117 @@ export function createSimLaneRuntime({
 
   function nextToken() { return `l${++tokenCounter.value}`; }
 
+  // ---- shared pose table (src/core/simPoseTable.js) ------------------------------------------
+  // Poses and the player's HUD vitals never travel through the reliable reply/ACK pipe: the
+  // worker writes them latest-wins after every step, and every presented frame reads them here
+  // once, refreshes the facade rows, and hands the same coherent copy to the renderer.
+  const laneLegacy = resolved.legacy === true;
+  const poseShared = !laneLegacy && workerClockMode === 'worker-local' ? createSharedPoseTable() : null;
+  const poseReader = createPoseTableReader();
+  if (poseShared) poseReader.bindShared(poseShared);
+  const poseFeed = { active: false, snapshot: null, advanced: false, frame: 0 };
+  let poseTransferArrivals = 0;
+  let poseFeedFrames = 0;
+  let poseFeedLastAdvanceAtMs = -1;
+  let poseFacadeRows = 0;
+  let posePeekWrites = -1;
+  let posePeekChangedAtMs = -1;
+  function peekPoseWrites() {
+    if (poseShared) return poseReader.peekWrites();
+    return poseTransferArrivals;
+  }
+  function applyPoseFeedToFacade(snap) {
+    const rows = snap.rows;
+    const entities = readModel.entities;
+    let touched = 0;
+    for (let i = 0, o = 0; i < snap.count; i++, o += POSE_ROW_STRIDE) {
+      const row = entities.get(rows[o]);
+      if (!row || row.alive === false || !row.pos) continue;
+      const occupant = rows[o + 2];
+      if (occupant > 0 && Number.isSafeInteger(row.occupantGeneration) && row.occupantGeneration !== occupant) continue;
+      const x = rows[o + 3]; const y = rows[o + 4]; const z = rows[o + 5];
+      if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
+      if (row.pos.x !== x || row.pos.y !== y || row.pos.z !== z) {
+        row.prevPos.x = row.pos.x; row.prevPos.y = row.pos.y; row.prevPos.z = row.pos.z;
+        row.pos.x = x; row.pos.y = y; row.pos.z = z;
+      }
+      if (row.rot !== rows[o + 6]) { row.prevRot = row.rot; row.rot = rows[o + 6]; }
+      row.bank = rows[o + 7];
+      row.pitch = rows[o + 8];
+      if (row.vel && typeof row.vel === 'object') { row.vel.x = rows[o + 9]; row.vel.z = rows[o + 10]; }
+      row.angVel = rows[o + 11];
+      touched++;
+    }
+    const player = snap.playerId > 0 ? entities.get(snap.playerId) : null;
+    if (player) {
+      for (const key of POSE_PLAYER_FIELDS) {
+        const value = snap.player[key];
+        if (!Number.isFinite(value)) continue;
+        if (key === 'boostEnergy') { if (player.boost) player.boost.energy = value; }
+        else if (key === 'boostMax') { if (player.boost) player.boost.max = value; }
+        else player[key] = value;
+      }
+    }
+    poseFacadeRows = touched;
+  }
+  function readPoseFeed() {
+    poseFeed.advanced = false;
+    if (laneClosed || !ready || laneLegacy) {
+      poseFeed.active = false;
+      setActivePoseFeed(poseFeed);
+      return;
+    }
+    const now = nowMs();
+    const { snapshot, advanced } = poseReader.read(now);
+    poseFeed.snapshot = snapshot;
+    poseFeed.frame++;
+    poseFeed.advanced = advanced;
+    poseFeed.active = snapshot.valid === true && snapshot.lifecycleGeneration === lifecycleGeneration;
+    if (poseFeed.active) {
+      poseFeedFrames++;
+      if (advanced) poseFeedLastAdvanceAtMs = now;
+      applyPoseFeedToFacade(snapshot);
+      // The table carries the worker's applied-command watermark, so a lagging reply stream
+      // cannot make the command watchdog declare a live worker dead.
+      if (snapshot.appliedCommandSequence > workerClockLastAppliedCommandSequence) {
+        releaseWorkerClockCommand(snapshot.appliedCommandSequence);
+      }
+    }
+    setActivePoseFeed(poseFeed);
+  }
+
+  // ---- dev forced-stall harness (IS_DEV): withhold ACKs, hold replies, densify replies --------
+  const laneForce = { withholdAcksUntilMs: 0, holdRepliesUntilMs: 0, padRows: 0 };
+  const heldReplies = [];
+  let heldReplyTimer = null;
+  function acksWithheld() { return laneForce.withholdAcksUntilMs > nowMs(); }
+  function scheduleHeldReplyRelease() {
+    if (heldReplyTimer !== null) return;
+    const wait = Math.max(0, laneForce.holdRepliesUntilMs - nowMs());
+    heldReplyTimer = setTimeout(() => {
+      heldReplyTimer = null;
+      if (laneForce.holdRepliesUntilMs > nowMs()) { scheduleHeldReplyRelease(); return; }
+      const queued = heldReplies.splice(0);
+      for (const msg of queued) { if (!laneClosed) onChannelMessage(msg); }
+    }, wait + 1);
+  }
+  if (typeof window !== 'undefined' && IS_DEV) {
+    window.__SF_LANE_FORCE__ = (opts = {}) => {
+      if (laneClosed) return false;
+      const now = nowMs();
+      if (Number.isFinite(opts.withholdAcksMs)) laneForce.withholdAcksUntilMs = now + Math.max(0, opts.withholdAcksMs);
+      if (Number.isFinite(opts.holdRepliesMs)) {
+        laneForce.holdRepliesUntilMs = now + Math.max(0, opts.holdRepliesMs);
+        if (heldReplies.length) scheduleHeldReplyRelease();
+      }
+      if (Number.isFinite(opts.padRows)) {
+        laneForce.padRows = Math.max(0, opts.padRows | 0);
+        try { channel.post({ kind: 'laneForce', padRows: laneForce.padRows }); } catch (_) { return false; }
+      }
+      return { ...laneForce, now, legacy: laneLegacy, poseTable: poseShared ? 'shared' : 'transfer' };
+    };
+  }
+
   function failLane(message, site) {
     if (laneError) return;
     laneError = String(message).slice(0, 240);
@@ -745,6 +871,18 @@ export function createSimLaneRuntime({
   function onChannelMessage(msg) {
     if (!msg || typeof msg !== 'object') return;
     if (msg.kind === 'boot') return;
+    if (msg.kind === 'poseTable') {
+      // Non-shared fallback: the latest compact table, posted outside the ACK protocol.
+      poseReader.acceptTransfer(msg.buffer);
+      poseTransferArrivals++;
+      return;
+    }
+    if (msg.kind === 'clockTick' && laneForce.holdRepliesUntilMs > nowMs()) {
+      // Dev forced stall: the main side stops consuming the reliable stream for a while.
+      heldReplies.push(msg);
+      scheduleHeldReplyRelease();
+      return;
+    }
     if (msg.kind === 'laneHeartbeatSample') {
       if (openFreeze?.motionSampleId === msg.motionSampleId) {
         const { kind, ...sample } = msg;
@@ -763,37 +901,10 @@ export function createSimLaneRuntime({
     // while rAF (and therefore this callback) is blocked. They are coalesced
     // at the worker and carry the command sequence that has been applied.
     if (msg.kind === 'clockTick') {
-      try {
-        applyTickReplyTimed(msg);
-        if (Number.isSafeInteger(msg.clockSequence)) {
-          workerClockLastReceivedSequence = Math.max(workerClockLastReceivedSequence, msg.clockSequence);
-          workerClockAckPending = {
-            clockSequence: msg.clockSequence,
-            journalEnd: Number.isSafeInteger(msg.journalEnd) ? msg.journalEnd : 0,
-          };
-          const replyGeneration = msg.lifecycleGeneration ?? lifecycleGeneration;
-          if (replyGeneration === lifecycleGeneration) {
-            workerClockAppliedAck = workerClockAckPending;
-          }
-        }
-        // A local-clock reply carries the worker's cumulative completion
-        // watermark. Prefer the diagnostic copy because it is explicitly
-        // named as the applied watermark; retain the top-level field as the
-        // wire-compatible fallback for older replies and focused fixtures.
-        const appliedCommandSequence = Number.isSafeInteger(
-          msg.clockDiagnostics?.appliedCommandSequence,
-        )
-          ? msg.clockDiagnostics.appliedCommandSequence
-          : (Number.isSafeInteger(msg.commandSequence) ? msg.commandSequence : 0);
-        if (appliedCommandSequence > workerClockLastAppliedCommandSequence) {
-          workerClockLastAppliedCommandSequence = appliedCommandSequence;
-        }
-        releaseWorkerClockCommand(appliedCommandSequence);
-        flushDirectives();
-      } catch (error) {
-        failLane(`sim worker clock reply apply failed: ${(error && error.message) || error}`,
-          error && error.stack ? String(error.stack) : null);
-      }
+      // NO-FREEZE step 3: the reliable stream applies in order under a per-frame time budget.
+      replyQueue.push(msg);
+      msg.__laneArrivedAtMs = nowMs();
+      drainClockReplies();
       return;
     }
     const tracked = pending.get(msg.seq);
@@ -846,6 +957,88 @@ export function createSimLaneRuntime({
     // A reply can release a long-running directive while timer dispatch is otherwise quiet. The
     // wake is disposable and generation-guarded; normal timer cadence remains the steady clock.
     if (workerPumpRequested && pendingSteps > 0) armWorkerPumpAckWake();
+  }
+
+  function applyClockReply(msg) {
+      try {
+        applyTickReplyTimed(msg);
+        if (Number.isSafeInteger(msg.clockSequence)) {
+          workerClockLastReceivedSequence = Math.max(workerClockLastReceivedSequence, msg.clockSequence);
+          workerClockAckPending = {
+            clockSequence: msg.clockSequence,
+            journalEnd: Number.isSafeInteger(msg.journalEnd) ? msg.journalEnd : 0,
+          };
+          const replyGeneration = msg.lifecycleGeneration ?? lifecycleGeneration;
+          if (replyGeneration === lifecycleGeneration) {
+            workerClockAppliedAck = workerClockAckPending;
+          }
+        }
+        // A local-clock reply carries the worker's cumulative completion
+        // watermark. Prefer the diagnostic copy because it is explicitly
+        // named as the applied watermark; retain the top-level field as the
+        // wire-compatible fallback for older replies and focused fixtures.
+        const appliedCommandSequence = Number.isSafeInteger(
+          msg.clockDiagnostics?.appliedCommandSequence,
+        )
+          ? msg.clockDiagnostics.appliedCommandSequence
+          : (Number.isSafeInteger(msg.commandSequence) ? msg.commandSequence : 0);
+        if (appliedCommandSequence > workerClockLastAppliedCommandSequence) {
+          workerClockLastAppliedCommandSequence = appliedCommandSequence;
+        }
+        releaseWorkerClockCommand(appliedCommandSequence);
+        flushDirectives();
+      } catch (error) {
+        failLane(`sim worker clock reply apply failed: ${(error && error.message) || error}`,
+          error && error.stack ? String(error.stack) : null);
+      }
+  }
+
+  // NO-FREEZE step 3: reliable replies apply in arrival order under a per-frame budget. One reply
+  // always applies per frame (progress is guaranteed); beyond REPLY_APPLY_BUDGET_MS the rest wait
+  // for the next frame instead of blocking it. ACKs follow what was actually applied. When behind,
+  // ambient impact sparks older than REPLY_COSMETIC_STALE_MS are dropped (never gameplay events).
+  const REPLY_APPLY_BUDGET_MS = 6;
+  const REPLY_COSMETIC_STALE_MS = 250;
+  const replyQueue = [];
+  let replyBudgetSpentMs = 0;
+  let replyBudgetFrame = -1;
+  let replyDrainTimer = null;
+  let replyQueueMax = 0;
+  let replyCosmeticShed = 0;
+  let replyFrameCounter = 0;
+  let replyBudgetWindowAtMs = -Infinity;
+  function shedStaleCosmetics(msg, now) {
+    if (!Array.isArray(msg.events) || !msg.events.length) return;
+    if (now - (msg.__laneArrivedAtMs || now) < REPLY_COSMETIC_STALE_MS) return;
+    const kept = msg.events.filter((ev) => !(ev && ev.t === 'physics:impact' && ev.p?.playerInvolved !== true));
+    replyCosmeticShed += msg.events.length - kept.length;
+    msg.events = kept;
+  }
+  function drainClockReplies(frameBoundary = false) {
+    if (frameBoundary) { replyFrameCounter++; }
+    if (replyBudgetFrame !== replyFrameCounter) { replyBudgetFrame = replyFrameCounter; replyBudgetSpentMs = 0; }
+    if (replyQueue.length > replyQueueMax) replyQueueMax = replyQueue.length;
+    // A wall window stands in for a frame boundary between presented frames.
+    const windowNow = nowMs();
+    if (windowNow - replyBudgetWindowAtMs >= 16) { replyBudgetWindowAtMs = windowNow; replyBudgetSpentMs = 0; }
+    let appliedThisCall = 0;
+    while (replyQueue.length && !laneClosed) {
+      // With no backlog the arriving reply applies now (one reply per message task, as before);
+      // a backlog drains only inside the budget, at least one reply per frame.
+      const noBacklog = replyQueue.length === 1 && appliedThisCall === 0;
+      if (replyBudgetSpentMs >= REPLY_APPLY_BUDGET_MS && !noBacklog
+        && !(frameBoundary && appliedThisCall === 0)) break;
+      appliedThisCall++;
+      const msg = replyQueue.shift();
+      const started = nowMs();
+      shedStaleCosmetics(msg, started);
+      applyClockReply(msg);
+      replyBudgetSpentMs += Math.max(0.01, nowMs() - started);
+    }
+    if (replyQueue.length && replyDrainTimer === null && !laneClosed) {
+      // Not presenting (no rAF)? A timer turn is a frame boundary too.
+      replyDrainTimer = setTimeout(() => { replyDrainTimer = null; drainClockReplies(true); }, 16);
+    }
   }
 
   function releaseFlight(msg, flight) {
@@ -956,6 +1149,7 @@ export function createSimLaneRuntime({
   function postWorkerClockAck() {
     if (laneClosed || !ready || workerClockMode !== 'worker-local'
       || (!workerClockAckPending && pendingAckEnd <= 0)) return false;
+    if (acksWithheld()) return false;
     const ack = workerClockAckPending;
     const ackJournalEnd = Math.max(pendingAckEnd, ack?.journalEnd || 0);
     workerClockAckPending = null;
@@ -1017,6 +1211,24 @@ export function createSimLaneRuntime({
       pushLaneCommand(envelopeRing, d);
       flushDirectives();
       return rpcPromise;
+    }
+    if (workerClockMode === 'worker-local' && d.kind === 'domEvent') {
+      // NO-FREEZE step 4: input is state, not a queue. Pointer motion is latest-wins (movement
+      // deltas summed) and rides the next presented frame's one batch; a key auto-repeat joins
+      // that batch too. Neither mints a transport post, a raycast or a camera envelope by itself.
+      const type = d.d?.type;
+      if (type === 'mousemove' || type === 'pointermove') {
+        coalescePointerMove(d);
+        scheduleDomEventFlush(true);
+        return true;
+      }
+      // Any other DOM event is an ordered edge: the pending pointer state lands first.
+      flushPendingPointerMoves();
+      if (d.d?.repeat === true) {
+        const repeatQueued = pushLaneCommand(envelopeRing, d);
+        scheduleDomEventFlush(true);
+        return repeatQueued;
+      }
     }
     const queued = pushLaneCommand(envelopeRing, d);
     if (workerClockMode === 'worker-local') {
@@ -1523,6 +1735,8 @@ export function createSimLaneRuntime({
   // now coalesce onto a short window: the first event still posts immediately
   // (edge latency preserved) and the trailing burst ships once per window.
   const DOM_EVENT_FLUSH_MIN_MS = 8;
+  // Worker-local: held/pointer state ships with the presented frame; without frames, at this cadence.
+  const DOM_STATE_FALLBACK_MS = 50;
   const DOM_COALESCED_TYPES = new Set(['mousemove', 'pointermove', 'resize', 'touchFrame']);
   // Held-key repeats only matter to the worker as a kbm-liveness stamp (a quiet
   // pad must not steal the helm mid-hold). One repeat per heartbeat window keeps
@@ -1531,6 +1745,8 @@ export function createSimLaneRuntime({
   let domEventFlushTimer = null;
   let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
+  const replyLagEpisodes = [];
+  let openReplyLag = null;
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
   // Dev probe harness: block the worker for one turn of `ms` (an authoritative-step spike).
   if (typeof window !== 'undefined' && IS_DEV) {
@@ -1764,7 +1980,26 @@ export function createSimLaneRuntime({
     const advancing = workerClockRequested === true
       && state && state.mode === 'flight'
       && Number.isFinite(state.timeScale) && state.timeScale > 0;
-    const gapMs = lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : 0;
+    const now = nowMs();
+    const replyGapMs = lastAppliedAtMs >= 0 ? Math.max(0, now - lastAppliedAtMs) : 0;
+    // NO-FREEZE: with the shared pose table the picture's freshness is the table's, not the
+    // reply stream's. A lagging reply stream is recorded separately (replyLagEpisodes).
+    let gapMs = replyGapMs;
+    if (!laneLegacy && poseFeedFrames > 0) {
+      const writes = peekPoseWrites();
+      if (writes !== posePeekWrites || posePeekChangedAtMs < 0) { posePeekWrites = writes; posePeekChangedAtMs = now; }
+      gapMs = Math.max(0, now - posePeekChangedAtMs);
+      if (advancing && replyGapMs > FREEZE_GAP_MS) {
+        if (!openReplyLag) {
+          openReplyLag = { openedAtMs: now, gapAtOpenMs: replyGapMs, snapshot: freezeSnapshot() };
+          replyLagEpisodes.push(openReplyLag);
+          if (replyLagEpisodes.length > FREEZE_EPISODE_LIMIT) replyLagEpisodes.shift();
+        }
+      } else if (openReplyLag) {
+        openReplyLag.durationMs = Math.max(0, now - openReplyLag.openedAtMs);
+        openReplyLag = null;
+      }
+    }
     if (advancing && gapMs > FREEZE_GAP_MS) {
       if (!openFreeze) {
         openFreeze = { openedAtMs: nowMs(), gapAtOpenMs: gapMs, snapshot: freezeSnapshot() };
@@ -1850,8 +2085,14 @@ export function createSimLaneRuntime({
     }
   }
 
-  function flushWorkerClockDirectives({ projectCursor = false } = {}) {
+  function flushWorkerClockDirectives({ projectCursor = false, frame = false } = {}) {
     if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
+    if (frame) {
+      lastFrameFlushAtMs = nowMs();
+      flushPendingPointerMoves();
+      // A frame's samples survive an in-flight command: the next flush that can post takes them.
+      frameSamplePending = true;
+    }
     if (projectCursor) cursorProjectionPending = true;
     if (drainingSabReplies) return;
     // A timer tick can publish just before a main command reaches the worker's
@@ -1877,11 +2118,15 @@ export function createSimLaneRuntime({
       // A real DOM input boundary must refresh the worker's projection even
       // when an earlier lifecycle/input reset retained identical coordinates.
       const hasDomInput = commands.some(command => command.t === 'dom');
-      appendGamepadFrame(commands);
+      // A gamepad is polled once per presented frame; an input edge between frames does not
+      // re-sample it (unchanged samples never ship anyway).
+      if (frameSamplePending) appendGamepadFrame(commands);
       appendCursorProjection(commands, hasDomInput);
       cursorProjectionPending = false;
     }
-    const cameraFrame = samplePresentation ? sampleCameraFrame() : null;
+    // The displayed camera is sampled once per presented frame, never per input edge.
+    const cameraFrame = frameSamplePending ? sampleCameraFrame() : null;
+    if (samplePresentation) frameSamplePending = false;
     const hasCameraChange = cameraFrameChanged(cameraFrame);
     const hasJournalAck = pendingAckEnd > 0;
     const hasClockAck = !!workerClockAckPending;
@@ -1900,12 +2145,13 @@ export function createSimLaneRuntime({
     // commandAck row per post): the per-frame presentation flush picks the
     // changed camera up within a frame anyway.
     if (hasCameraChange) appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
-    const ack = workerClockAckPending;
+    const withholding = acksWithheld();
+    const ack = withholding ? null : workerClockAckPending;
     // A worker reply can have advanced its retained journal beyond the last
     // presentation ACK by the time a queued command is ready. Keep the larger
     // cumulative watermark so the worker does not mistake the combined
     // command for a gap and request a full rebuild on every coalesced reply.
-    const ackJournalEnd = Math.max(
+    const ackJournalEnd = withholding ? 0 : Math.max(
       pendingAckEnd,
       Number.isSafeInteger(ack?.journalEnd) ? ack.journalEnd : 0,
     );
@@ -1923,10 +2169,12 @@ export function createSimLaneRuntime({
       timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
       timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     };
-    pendingAckEnd = 0;
+    if (!withholding) {
+      pendingAckEnd = 0;
+      workerClockAckPending = null;
+    }
     postedSteps += Math.max(0, pendingSteps);
     pendingSteps = 0;
-    workerClockAckPending = null;
     workerClockCommandInFlight = true;
     workerClockCommandInFlightSequence = commandSequence;
     workerClockLastCommandScale = msg.timeScale;
@@ -1954,8 +2202,49 @@ export function createSimLaneRuntime({
     workerClockLastAckedSequence = Math.max(workerClockLastAckedSequence, msg.ackClockSequence);
   }
 
-  function scheduleDomEventFlush() {
+  // Latest-wins pointer state (step 4). One row per pointer event type survives to the batch.
+  const pendingPointerMoves = new Map();
+  let pendingPointerSinceMs = -1;
+  function coalescePointerMove(desc) {
+    const type = desc.d.type;
+    const prior = pendingPointerMoves.get(type);
+    if (prior) {
+      const next = { ...desc, d: { ...desc.d } };
+      next.d.movementX = (Number(prior.d.movementX) || 0) + (Number(desc.d.movementX) || 0);
+      next.d.movementY = (Number(prior.d.movementY) || 0) + (Number(desc.d.movementY) || 0);
+      pendingPointerMoves.set(type, next);
+    } else {
+      pendingPointerMoves.set(type, desc);
+      if (pendingPointerSinceMs < 0) pendingPointerSinceMs = nowMs();
+    }
+    coalescedPointerEvents++;
+  }
+  function flushPendingPointerMoves() {
+    if (!pendingPointerMoves.size) return;
+    for (const desc of pendingPointerMoves.values()) pushLaneCommand(envelopeRing, desc);
+    pendingPointerMoves.clear();
+    pendingPointerSinceMs = -1;
+  }
+  let coalescedPointerEvents = 0;
+  let frameSamplePending = false;
+  let lastFrameFlushAtMs = -Infinity;
+
+  function scheduleDomEventFlush(heldState = false) {
     if (laneClosed || !ready) return;
+    if (heldState && workerClockMode === 'worker-local') {
+      // The presented frame flushes held state. This timer is only the fallback for a page that
+      // is not presenting (menus with no rAF): it never fires a second batch inside a frame.
+      if (domEventFlushTimer !== null) return;
+      domEventFlushTimer = setTimeout(() => {
+        domEventFlushTimer = null;
+        if (laneClosed) return;
+        if (nowMs() - lastFrameFlushAtMs < DOM_STATE_FALLBACK_MS) return;
+        flushPendingPointerMoves();
+        lastDomEventFlushAtMs = nowMs();
+        flushDirectives({ projectCursor: true });
+      }, DOM_STATE_FALLBACK_MS);
+      return;
+    }
     const now = nowMs();
     const delay = DOM_EVENT_FLUSH_MIN_MS - (now - lastDomEventFlushAtMs);
     if (delay <= 0) {
@@ -2122,7 +2411,9 @@ export function createSimLaneRuntime({
         if (now - lastKeyRepeatShipAtMs < DOM_REPEAT_HEARTBEAT_MS) return;
         lastKeyRepeatShipAtMs = now;
       }
-      laneDomEvent(flightKeyDownDescriptor(st, e));
+      const desc = flightKeyDownDescriptor(st, e);
+      if (repeat && desc && typeof desc === 'object') desc.repeat = true;
+      laneDomEvent(desc);
     });
     listen(window, 'keyup', (e) => {
       laneDomEvent({ type: 'keyup', code: eventCode(e), pressed: false });
@@ -2299,15 +2590,17 @@ export function createSimLaneRuntime({
       advanceResult.stepCap = effectiveStepCap;
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
+      drainClockReplies(true);
       sampleLaneUiFold();
-      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
+      flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
+      readPoseFeed();
       return advanceResult;
     },
     heartbeat() {
       if (workerClockMode !== 'worker-local' || laneClosed || !ready) return;
       const episode = openFreeze;
       const sampleId = episode && !episode.sampleRequested ? episode.motionSampleId : null;
-      const appliedAck = episode ? workerClockAppliedAck : null;
+      const appliedAck = episode && !acksWithheld() ? workerClockAppliedAck : null;
       const beat = { kind: 'laneHeartbeat' };
       if (sampleId != null) beat.motionSampleId = sampleId;
       if (appliedAck) {
@@ -2339,8 +2632,10 @@ export function createSimLaneRuntime({
       // Worker-local presentation frames do not call advance(), but they still
       // own the main→worker UI boundary. Keep modal depth and screen-stack
       // admission in sync before flushing the frame's cursor/clock command.
+      drainClockReplies(true);
       sampleLaneUiFold();
-      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
+      flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
+      readPoseFeed();
       return advanceResult;
     },
     interpolationAlpha() {
@@ -2525,6 +2820,22 @@ export function createSimLaneRuntime({
         workerSlowEvents: workerSlowEvents.slice(),
         freezeActive: openFreeze != null,
         freezeEpisodes,
+        replyLagEpisodes,
+        poseTable: {
+          mode: laneLegacy ? 'legacy-off' : (poseShared ? 'shared' : 'transfer'),
+          active: poseFeed.active,
+          frames: poseFeedFrames,
+          rows: poseFeed.snapshot ? poseFeed.snapshot.count : 0,
+          facadeRows: poseFacadeRows,
+          tick: poseFeed.snapshot ? poseFeed.snapshot.tick : null,
+          simTime: poseFeed.snapshot ? poseFeed.snapshot.simTime : null,
+          ageMs: poseFeedLastAdvanceAtMs >= 0 ? Math.max(0, nowMs() - poseFeedLastAdvanceAtMs) : null,
+          transferArrivals: poseTransferArrivals,
+          reader: poseReader.getStats(),
+        },
+        heldReplies: heldReplies.length,
+        coalescedPointerEvents,
+        replyQueue: { pending: replyQueue.length, max: replyQueueMax, cosmeticShed: replyCosmeticShed },
         msSinceLastAppliedReply: lastAppliedAtMs >= 0
           ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
         postedDirectives,
@@ -2604,12 +2915,17 @@ export function createSimLaneRuntime({
     // E1 stall harness: the worker blocks its event loop for these ms values in cycle
     // (one per local-clock tick) — the faithful emulation of a heavy authoritative step.
     simStall: Array.isArray(resolved.simStall) ? resolved.simStall : null,
+    // Shared pose table (null without SharedArrayBuffer: the worker then posts a compact
+    // transferable table per tick, still outside the ACK protocol).
+    poseTable: poseShared,
+    legacyStopAndWait: laneLegacy,
     // E2 profiler: `?simProfile=1` asks the worker realm to measure per-system step time and
     // allocation and ride a bounded summary back on the reply (one per simulated second).
     systemProfile: (() => {
       try {
         return typeof globalThis !== 'undefined' && globalThis.location
-          ? new URLSearchParams(globalThis.location.search).get('simProfile') === '1'
+          ? (new URLSearchParams(globalThis.location.search).get('simProfile') === '1'
+            || (IS_DEV && typeof localStorage !== 'undefined' && localStorage.getItem('sf.simProfile') === '1'))
           : false;
       } catch (_) { return false; }
     })(),
@@ -2662,6 +2978,16 @@ export function createSimLaneRuntime({
       clearTimeout(freezeSampler);
       freezeSampler = null;
     }
+    if (heldReplyTimer !== null) {
+      clearTimeout(heldReplyTimer);
+      heldReplyTimer = null;
+    }
+    if (replyDrainTimer !== null) {
+      clearTimeout(replyDrainTimer);
+      replyDrainTimer = null;
+    }
+    poseFeed.active = false;
+    setActivePoseFeed(null);
     if (domEventFlushTimer !== null) {
       clearTimeout(domEventFlushTimer);
       domEventFlushTimer = null;

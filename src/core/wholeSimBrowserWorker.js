@@ -29,6 +29,7 @@ import {
 } from '../../scripts/lib/simWorkerHost.mjs';
 import { nowNs } from '../../scripts/lib/simRealm.mjs';
 import { loadModelTruthCensus } from '../data/modelTruth.js';
+import { createPoseTableWriter } from './simPoseTable.js';
 import {
   bindSabEnvelopeChannel,
   encodeReplyForSab,
@@ -42,8 +43,28 @@ import {
   SAB_REPLY_SEQ_INDEX,
 } from '../../scripts/lib/simSabEnvelope.mjs';
 
+// Shared pose table writer (simPoseTable.js). Bound on a worker-local init; every fixed step
+// publishes the poses latest-wins so the picture never waits on the reply journal or its ACKs.
+let poseWriter = null;
+function writePoseTable(state, journal) {
+  if (!poseWriter || localClock.stopped) return;
+  poseWriter.write(state, journal, {
+    lifecycleGeneration: localClock.lifecycleGeneration,
+    appliedCommandSequence: localClock.appliedCommandSequence,
+    steps: localClock.stepCount,
+  });
+}
+function postPoseTableTransfer() {
+  if (!poseWriter || poseWriter.shared) return;
+  const buffer = poseWriter.takeTransfer();
+  if (buffer) self.postMessage({ kind: 'poseTable', buffer }, [buffer]);
+}
+
 const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
-  applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({ onAsyncSaveReady: requestAsyncSaveReply });
+  applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({
+  onAsyncSaveReady: requestAsyncSaveReply,
+  onStep: writePoseTable,
+});
 
 let chain = Promise.resolve();
 let sabEnv = null;
@@ -111,7 +132,14 @@ function localCommandEnvelopeStale(env) {
 // flight. Past this age the ACK is treated as lost (the apply died mid-flight
 // or the consumer is hopelessly behind) and the lane re-baselines through the
 // existing full-rebuild path instead of waiting indefinitely.
-const LOCAL_STALE_ACK_MS = 3000;
+// NO-FREEZE (2026-11-21): the reply channel is ordered (postMessage FIFO), so an ACK that is
+// merely late is never a lost range. Past this age the worker frees the outstanding reply
+// credits and keeps publishing incrementally — bookkeeping only, never a rebuild, never a stop.
+// Poses ride the shared pose table, so a slow consumer cannot freeze the picture either way.
+const LOCAL_STALE_ACK_MS = 250;
+// Dev A/B only (init `legacyStopAndWait`, from localStorage sf.laneLegacy=1): the pre-2026-11-21
+// stop-and-wait rules, kept so the no-freeze gate can show the old freeze on the same build.
+const LEGACY_STALE_ACK_MS = 3000;
 // Outstanding (un-ACKed) publish budget. Stop-and-wait on a single reply means
 // every ACK round-trip beyond one tick merges into an ever-growing retained
 // blob — bigger applies feed back into slower ACKs until the lane collapses
@@ -333,6 +361,8 @@ const LOCAL_DURABLE_KEYS = Object.freeze([
   'events', 'storageOps', 'rpcAcks', 'settingsAcks', 'spawnAcks',
   'commandAcks', 'inputPublishes',
   'spawnInfos', 'warmStubs',
+  // Dev forced-stall harness only (laneForce padRows): inert durable rows main ignores.
+  'probePad',
 ]);
 // These are complete read snapshots, unlike one-shot events and lifecycle receipts. Retaining
 // every intermediate value makes a slow presentation consumer stop an otherwise healthy sim.
@@ -753,9 +783,12 @@ function localAckReplyAction(reply, {
   scale = 0,
   durableCount = 0,
   needsRebuild = false,
+  legacy = false,
 } = {}) {
   if (!reply || !active || !(scale > 0)) return 'schedule';
-  if (needsRebuild || durableCount >= LOCAL_DURABLE_LIMIT) return 'schedule-rebuild';
+  // A dense retained reply is still contiguous and ordered: publish it. Only a real gap or a
+  // bounded-merge overflow needs the rebuild path.
+  if (needsRebuild || (legacy && durableCount >= LOCAL_DURABLE_LIMIT)) return 'schedule-rebuild';
   if (Number.isSafeInteger(reply.journalStart) && reply.journalStart > ackJournalEnd
     && reply.journalStart !== orderedPostedEnd) {
     // The retained window starts past the last applied-watermark ack: the
@@ -793,6 +826,7 @@ async function publishRetainedReplyAfterAck(ackJournalEnd) {
     scale: localClock.scale,
     durableCount: localDurableCount(reply),
     needsRebuild: localClock.needsRebuildOnSend || localReplyNeedsRebuild.has(reply),
+    legacy: localClock.legacy === true,
   });
   if (action !== 'publish') {
     if (reply && action === 'schedule-rebuild') localClock.needsRebuildOnSend = true;
@@ -834,12 +868,13 @@ function localRecoverStaleAck(watchdog) {
   localDisarmStaleAckWatchdog();
   if (localClock.stopped || !localClock.sentAwaitingAck
     || localClock.unackedSequences[0] !== watchdog.clockSequence) return;
-  // The next tick rebuilds the journal, carrying all retained receipts and
-  // replacing the stale range idempotently even if its apply is still queued.
+  // Free the credits. The channel is FIFO: every posted range still arrives in order, so the
+  // next publish stays incremental. (A full rebuild here was the old 'blip'.) The SAB envelope
+  // ring, which can genuinely refuse a post, folds instead of parking (publishLocalReply).
   localClock.unackedSequences.length = 0;
   localClock.postedJournalRanges.clear();
   localClock.sentAwaitingAck = false;
-  localClock.needsRebuildOnSend = true;
+  if (localClock.legacy) localClock.needsRebuildOnSend = true;
   localClock.staleAckRecoveries++;
   localSetBackpressure(false);
   scheduleLocalClock();
@@ -847,9 +882,10 @@ function localRecoverStaleAck(watchdog) {
 
 function localArmStaleAckWatchdog(clockSequence) {
   localDisarmStaleAckWatchdog();
-  const watchdog = { clockSequence, deadlineMs: localNowMs() + LOCAL_STALE_ACK_MS, timer: null };
+  const staleMs = localClock.legacy ? LEGACY_STALE_ACK_MS : LOCAL_STALE_ACK_MS;
+  const watchdog = { clockSequence, deadlineMs: localNowMs() + staleMs, timer: null };
   localClock.ackWatchdog = watchdog;
-  watchdog.timer = setTimeout(() => localRecoverStaleAck(watchdog), LOCAL_STALE_ACK_MS);
+  watchdog.timer = setTimeout(() => localRecoverStaleAck(watchdog), staleMs);
 }
 
 function localJournalRebuildEnvelope() {
@@ -860,7 +896,21 @@ function localJournalRebuildEnvelope() {
   };
 }
 
+function localReplyRingFull() {
+  if (!sabEnv) return false;
+  const nextCell = sabEnv.reply.cells[sabEnv.reply.nextWrite];
+  return Atomics.load(nextCell.head, SAB_ENV_STATUS) !== 0;
+}
+
 async function publishLocalReply(reply) {
+  // NO-FREEZE: never park the worker on a full SAB reply ring (sabEnvelopePostReply waits up to
+  // 5 s and then throws). Keep the reply retained; the next tick or ACK publishes it.
+  if (localReplyRingFull()) {
+    // Callers hand over either the retained reply itself or a fresh reply with none retained.
+    localClock.latestReply = reply;
+    localClock.replyRingFolds = (localClock.replyRingFolds || 0) + 1;
+    return;
+  }
   localMaterializePack(reply);
   localReplyNeedsRebuild.delete(reply);
   localClock.replySequence++;
@@ -1012,11 +1062,10 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     return;
   }
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
-  if (localClock.backpressured && localClock.sentAwaitingAck && !force) return;
-  // A timer that fires while the presentation side is backpressured must not
-  // discard the wall interval it was unable to consume. Leave anchorMs at the
-  // last completed authoritative call until an ACK releases the guard; that
-  // call then gets one bounded catch-up window and the existing shed policy.
+  // NO-FREEZE: the world's clock never waits for the screen. A dense retained reply or a late
+  // ACK no longer stops stepping; the retained reply keeps merging (bounded below) and poses
+  // reach the picture through the shared pose table.
+  if (localClock.legacy && localClock.backpressured && localClock.sentAwaitingAck && !force) return;
   localClock.anchorMs = now;
 
   let steps = 0;
@@ -1069,6 +1118,16 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
+  postPoseTableTransfer();
+  // NO-FREEZE step 4: the per-frame camera/time-effects envelopes are latest-wins state. Their
+  // receipts are read by nobody on the main lane; never let them become durable reply rows.
+  if (Array.isArray(reply.commandAcks) && reply.commandAcks.length) {
+    const kept = reply.commandAcks.filter((ack) => ack && ack.t !== 'camera' && ack.t !== 'timeEffects');
+    reply.commandAcks = kept.length ? kept : undefined;
+  }
+  if (localClock.forcePadRows > 0) {
+    reply.probePad = new Array(localClock.forcePadRows).fill(0);
+  }
   localClock.trimmedJournalEnd = Math.max(localClock.trimmedJournalEnd, ackJournalEnd);
   if (localClock.pendingAckJournalEnd <= localClock.trimmedJournalEnd) localClock.pendingAckJournalEnd = 0;
   // A budget limit is a yield between steps. Restore the part of the reserved
@@ -1246,7 +1305,8 @@ function postLocalClockWake(wake) {
 
 function scheduleLocalClock() {
   if (!localClock.enabled || localClock.stopped || !localClock.active
-    || localClock.scale <= 0 || localClock.wake !== null || localClock.backpressured) return;
+    || localClock.scale <= 0 || localClock.wake !== null
+    || (localClock.legacy && localClock.backpressured)) return;
   const now = localNowMs();
   // Include authoritative work since the last batch began. If that work itself left a whole
   // tick owed, yield to one new task promptly instead of waiting another fixed interval.
@@ -1475,6 +1535,9 @@ async function dispatchDirective(msg) {
       await loadModelTruthCensus(msg.modelTruthCensusUrl);
       const result = await init(msg);
       localClock.enabled = msg.clockMode === 'worker-local';
+      localClock.legacy = msg.legacyStopAndWait === true;
+      poseWriter = localClock.enabled && !localClock.legacy
+        ? createPoseTableWriter(msg.poseTable || null) : null;
       localClock.stopped = false;
       // E1 stall harness (?simStall=): the main lane ships the requested cycle on init.
       localClock.stallCycle = Array.isArray(msg.simStall) && msg.simStall.length
@@ -1617,6 +1680,12 @@ self.onmessage = (event) => {
   if (msg.kind === 'laneInjectStall') {
     const ms = Number(msg.ms);
     if (Number.isFinite(ms) && ms > 0 && ms <= 5000) localClock.oneShotStallMs = ms;
+    return;
+  }
+  // Dev forced-stall harness: make every reply carry N inert durable rows (a dense retained reply).
+  if (msg.kind === 'laneForce') {
+    const rows = Number(msg.padRows);
+    localClock.forcePadRows = Number.isFinite(rows) && rows > 0 ? Math.min(20000, Math.floor(rows)) : 0;
     return;
   }
   if (msg.kind === 'laneHeartbeat') {
