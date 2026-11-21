@@ -243,6 +243,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
       lastTick=now;
       const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
+      // The sheet lays the tape out by view: a full card under the overhead eye, one line on
+      // the top edge under the stern eye, where the card would sit on the horizon.
+      setProperty(panel.dataset, 'view', viewMode === 'racing' ? 'racing' : 'overhead');
       const mobileCompact = !authored && document.documentElement?.dataset?.sfMobile === '1' && document.documentElement?.dataset?.sfMobileFlight === '1';
       const inUtilityRow = panel.parentNode?.id === 'sf-visor-utility-row';
       if (inUtilityRow && !lock && !mobileCompact) {

@@ -308,6 +308,7 @@ import {
 import { ROCK_REGROWTH } from '../data/rockRegrowth.js';
 import { advanceResourceBody, advanceWorldRecord } from '../world/worldCatchup.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
+import { raceLeaseActive } from './racingSteer.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { isFirstFreightActive } from '../onboarding/opportunityAdmission.js';
 import {
@@ -7771,7 +7772,7 @@ export const world = {
             .replace(/\b\w/g, (c) => c.toUpperCase())
             .trim();
           // OPENING-1b: the first minutes speak with one voice; the landmark is still identified.
-          if (!openingQuiet(state)) this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || p.name || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
+          if (!openingQuiet(state) && !raceLeaseActive(state)) this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || p.name || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
         }
       }
     }

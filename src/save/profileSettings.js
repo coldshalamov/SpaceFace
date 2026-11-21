@@ -77,6 +77,7 @@ export const PROFILE_GAMEPLAY_PICKERS = Object.freeze({
   racingGhost: (g) => g.racingGhost !== false,
   // RACE-01 camera preference and its three rig sliders.
   steeringView: (g) => normalizeSteeringViewSetting(g.steeringView),
+  steeringViewChosen: (g) => (g.steeringViewChosen === true ? true : undefined),
   racingDistance: (g) => normalizeRacingRigSetting('racingDistance', g.racingDistance),
   racingHeight: (g) => normalizeRacingRigSetting('racingHeight', g.racingHeight),
   racingLookAhead: (g) => normalizeRacingRigSetting('racingLookAhead', g.racingLookAhead),

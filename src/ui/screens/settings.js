@@ -1,4 +1,5 @@
 import { paneBuilder } from '../views/settingsControls.js';
+import { preferredSteeringView } from '../../systems/racingSteer.js';
 export { bindCommittedRange } from '../views/settingsControls.js';
 // Settings — Field Hardware BENCH (P04/P37). World held behind smoked glass; section keys on the
 // left; the live section as engraved rows on one plate. Toggles are machined switches, numbers are
@@ -564,7 +565,7 @@ const RESET_SKIP = Object.freeze({
 // fallback explicitly is what returns a stored profile to it (a profile merge cannot delete a key).
 const RESET_FALLBACKS = Object.freeze({
   gameplay: Object.freeze({
-    steeringView: 'overhead', racingDistance: 62, racingHeight: 36, racingLookAhead: 70,
+    steeringView: 'auto', racingDistance: 80, racingHeight: 42, racingLookAhead: 24,
     velocityVectoring: true, damageNumbers: false, powerFire: 'press', pilotPickAtOnce: false,
   }),
   accessibility: Object.freeze({ textScale: 1 }),
@@ -1109,15 +1110,15 @@ export const settingsScreen = {
       // holds a bearing/range slot off a locked moving target; it composes with, and sits
       // beside, the orbit-assist row above.
       rowToggle('Pursuit slot assist', () => g.pursuitSlotAssist === true, (v) => this._set(ctx, 'gameplay', 'pursuitSlotAssist', v));
-      rowSelect('Steering view', () => g.steeringView || 'overhead', [
-        ['overhead', 'Overhead'],
-        ['racing', 'Racing — stern camera'],
-        ['auto', 'Auto — stern on any race'],
-      ], (v) => this._set(ctx, 'gameplay', 'steeringView', v));
+      rowSelect('Camera view', () => preferredSteeringView({ gameplay: g }), [
+        ['auto', 'Auto: third person in races and timed runs'],
+        ['overhead', 'Overhead always'],
+        ['racing', 'Third person always'],
+      ], (v) => { this._set(ctx, 'gameplay', 'steeringViewChosen', true); this._set(ctx, 'gameplay', 'steeringView', v); });
       build.note('Backslash toggles chase / overhead during flight; LB + View does the same on a controller and can be rebound under Controls. The View button works on touch. Mission camera locks release automatically. Reduced motion keeps the horizon steady.');
-      rowSlider('Racing camera distance', () => g.racingDistance == null ? 62 : g.racingDistance, 24, 140, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingDistance', v, persist));
-      rowSlider('Racing camera height', () => g.racingHeight == null ? 36 : g.racingHeight, 6, 64, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingHeight', v, persist));
-      rowSlider('Racing look-ahead', () => g.racingLookAhead == null ? 70 : g.racingLookAhead, 0, 120, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingLookAhead', v, persist));
+      rowSlider('Racing camera distance', () => g.racingDistance == null ? 80 : g.racingDistance, 24, 140, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingDistance', v, persist));
+      rowSlider('Racing camera height', () => g.racingHeight == null ? 42 : g.racingHeight, 6, 64, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingHeight', v, persist));
+      rowSlider('Racing look-ahead', () => g.racingLookAhead == null ? 24 : g.racingLookAhead, 0, 120, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingLookAhead', v, persist));
       rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
         ['full', 'Full'],
         ['standard', 'Standard'],

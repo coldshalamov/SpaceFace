@@ -15,6 +15,7 @@
 // only when they change. No backdrop-filter, no infinite animation.
 
 import { resolveAutopilotTarget } from '../core/flight/flightPresentationReads.js';
+import { activeRaceMission } from '../systems/racingSteer.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { berthAutopilotStation, berthOfferStation, stationDisplayName } from './berthOffer.js';
 import { formatDistance } from './units.js';
@@ -83,9 +84,10 @@ export function resolveBerthOffer(state, { fight = false, dockInRange = false } 
   if (state.nav && state.nav.autopilot && state.nav.autopilot.active === true) return null;
   const offer = berthOfferStation(state);
   if (!offer) return null;
-  // The nearest station is a suggestion; a fight is not the moment to suggest leaving it. A station
-  // the pilot picked is an answer to their own question and stays offered.
-  if (!offer.chosen && fight) return null;
+  // The nearest station is a suggestion; a fight is not the moment to suggest leaving it, and
+  // neither is a timed run. A station the pilot picked is an answer to their own question and
+  // stays offered.
+  if (!offer.chosen && (fight || activeRaceMission(state))) return null;
   return offer;
 }
 

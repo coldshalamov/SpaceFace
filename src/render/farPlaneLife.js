@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { wrapParallaxCoordinate } from './parallaxLayers.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { resolveSteeringView } from '../systems/racingSteer.js';
 
 // ── Nav strobes: the streams are traffic, so the hulls answer like traffic ─────────────────
 // A far silhouette used to glide past as a dead cutout. Each one now carries an anti-collision
@@ -238,8 +239,21 @@ class FarPlaneLife {
     const strobePeriod = a11y.id === 'full' ? STROBE_PERIOD_S : STROBE_PERIOD_REDUCED_S;
     const strobeSize = a11y.flashSizeScale;
 
+    // These sheets are flat cut-outs lying above and below the flight plane. They are drawn for an
+    // eye looking DOWN, where they read as traffic at other altitudes. From the stern camera the
+    // eye is level with them and a cut-out thirty metres overhead is a pale slab across the sky,
+    // so the layer fades out while that view is up and returns with the overhead view.
+    const level = resolveSteeringView(this.state) === 'racing' ? 0 : 1;
+    this._viewFade = this._viewFade == null ? level
+      : this._viewFade + (level - this._viewFade) * (frameDt > 0 ? -Math.expm1(-frameDt / 0.35) : 1);
+    const viewFade = this._viewFade < 0.004 ? 0 : this._viewFade;
+
     for (const sheet of this.sheets) {
       const { spec, mesh, ships, group } = sheet;
+      group.visible = viewFade > 0;
+      mesh.material.opacity = spec.alpha * viewFade;
+      if (sheet.strobeMesh) sheet.strobeMesh.material.opacity = 0.9 * viewFade;
+      if (!group.visible) continue;
       group.position.x = localX;
       group.position.z = localZ;
       for (let i = 0; i < ships.length; i++) {

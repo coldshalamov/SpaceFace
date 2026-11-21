@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { RACE_LEVELS, courseForLevel, racingOfferFor, raceGateGlobals } from '../src/data/raceLevels.js';
 import { advanceCircuit, gateApproach, planeCrossFraction, circuitProgress, circuitPacePoint } from '../src/systems/racingGeometry.js';
 import { planeGateCross, raceObjectiveUnits, resetPoseLocal, readRaceTape, racingAssistIntents, raceRecordKey,
-  readRaceRecords, rememberRaceRecord, resolveSteeringView, racingRigOf } from '../src/systems/racingSteer.js';
+  readRaceRecords, rememberRaceRecord, resolveSteeringView, racingRigOf, preferredSteeringView } from '../src/systems/racingSteer.js';
 import { createRacingCameraBlend, stepRacingCameraBlend } from '../src/render/racingCameraBlend.js';
 import { setSteeringView, toggleSteeringView } from '../src/ui/racingControls.js';
 import { armRacingContract, stageRacingLaunch, noteRacingNewGame, takeRacingLaunch } from '../src/ui/racingLaunch.js';
@@ -126,8 +126,8 @@ test('mission phase camera loans release without rewriting the preferred view',(
 test('the shared setting writer creates missing settings bags and emits the changed value',()=>{
   const state={},events=[];setSteeringView(state,{emit:(...args)=>events.push(args)},'racing');
   assert.equal(state.settings.gameplay.steeringView,'racing');assert.equal(events[0][1].value,'racing');
-  assert.equal(racingRigOf({gameplay:{racingDistance:null}}).distance,62,'an unset rig is the current, higher rig');
-  assert.deepEqual(racingRigOf({gameplay:{racingDistance:58,racingHeight:22,racingLookAhead:36}}),{distance:62,height:36,lookAhead:70},'the first rig\'s exact defaults were never a choice');
+  assert.equal(racingRigOf({gameplay:{racingDistance:null}}).distance,80,'an unset rig is the current, higher rig');
+  assert.deepEqual(racingRigOf({gameplay:{racingDistance:58,racingHeight:22,racingLookAhead:36}}),{distance:80,height:42,lookAhead:24},'the first rig\'s exact defaults were never a choice');
   assert.equal(racingRigOf({gameplay:{racingDistance:58,racingHeight:30,racingLookAhead:36}}).distance,58,'a rig the player tuned is kept');
 });
 
@@ -361,4 +361,20 @@ test('real flight owner holds the grid against raw thrust, yaw, boost and draw-f
   const cmd=consumePhysicsCommand(p);
   assert.ok(cmd);assert.deepEqual(cmd.control.force,{x:0,y:0,z:0});
   assert.equal(Math.abs(cmd.control.torque.y),0);assert.equal(cmd.impulses.length,0);
+});
+test('a pilot who never chose a view gets third person in a race and overhead everywhere else',()=>{
+  assert.equal(preferredSteeringView({}),'auto');
+  assert.equal(preferredSteeringView({gameplay:{steeringView:'overhead'}}),'auto','the old default from the settings screen was never a choice');
+  assert.equal(preferredSteeringView({gameplay:{steeringView:'overhead',steeringViewChosen:true}}),'overhead','a chosen overhead is kept');
+  assert.equal(preferredSteeringView({gameplay:{steeringView:'racing'}}),'racing');
+  const race={status:'active',type:'race',params:{racingContractId:'x'}};
+  const fresh={mode:'flight',settings:{gameplay:{steeringView:'overhead'}},missions:{active:[]}};
+  assert.equal(resolveSteeringView(fresh),'overhead','ordinary flight stays overhead');
+  fresh.missions.active.push(race);
+  assert.equal(resolveSteeringView(fresh),'racing','a race brings the stern camera');
+  assert.equal(toggleSteeringView(fresh,null),true);
+  assert.equal(resolveSteeringView(fresh),'overhead','the view key still wins, and stays won');
+  assert.equal(fresh.settings.gameplay.steeringViewChosen,true);
+  assert.equal(toggleSteeringView(fresh,null),true);
+  assert.equal(resolveSteeringView(fresh),'racing');
 });

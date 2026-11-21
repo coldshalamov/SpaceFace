@@ -29,8 +29,8 @@ export const RACING_CAMERA = Object.freeze({
   pullBack: 0.3,          // extra distance at top speed, as a fraction of the rig distance
   lift: 0.22,             // extra height at top speed, as a fraction of the rig height
   speedTop: 460,
-  speedLead: 0.1,         // metres of look-ahead per m/s
-  speedLeadMax: 60,
+  speedLead: 0.06,        // metres of look-ahead per m/s
+  speedLeadMax: 28,       // a long lead flattens the pitch and drops the ship under the instruments
   turnLeadS: 0.2,         // seconds of hull yaw rate the look point runs ahead by
   turnLeadMax: 0.26,      // rad
   turnRateSmoothS: 0.18,

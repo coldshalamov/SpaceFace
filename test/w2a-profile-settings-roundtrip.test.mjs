@@ -136,6 +136,7 @@ const CHANGES = {
     pursuitSlotAssist: true,
     hitPips: false,
     steeringView: 'racing',
+    steeringViewChosen: true,
     racingDistance: 90,
     racingHeight: 40,
     racingLookAhead: 80,

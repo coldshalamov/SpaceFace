@@ -16,13 +16,17 @@ import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 export const STEERING_VIEWS = Object.freeze(['overhead', 'racing', 'auto']);
 
-// A higher, longer rig than the first one (58 / 22 / 36). From 22 high the whole course sat on
-// the horizon line: every gate and rock at the same height in the frame. From 36 the ground plane
-// opens up and the next two gates read as near and far.
+// A higher rig than the first one (58 / 22 / 36). From 22 high the whole course sat on the
+// horizon line: every gate and rock at the same height in the frame. From 42 up and 80 back,
+// looking at a point just ahead of the nose, the eye is pitched about 22 degrees down: the horizon
+// sits near the top edge, the ground plane fills the frame so the next gates read as near and
+// far, and the ship rides about 60% of the way down the screen, above the instrument cluster.
+// (The numbers are tied: the ship sits below the horizon by atan(height / distance), and that
+// angle has to fit between the top edge and the instruments.)
 export const RACING_RIG_DEFAULT = Object.freeze({
-  distance: 62,
-  height: 36,
-  lookAhead: 70,
+  distance: 80,
+  height: 42,
+  lookAhead: 24,
 });
 const RACING_RIG_FIRST = Object.freeze({ distance: 58, height: 22, lookAhead: 36 });
 
@@ -42,6 +46,19 @@ export function racingPaceSpeed(params) {
 
 export function normalizeSteeringView(value) {
   return STEERING_VIEWS.includes(value) ? value : 'overhead';
+}
+
+/**
+ * The view the pilot wants. A profile that never chose is 'auto': overhead in ordinary flight,
+ * the stern (third-person) camera for a race or a timed run, which is the mode that camera is for.
+ * 'overhead' counts as a choice only once the pilot has actually made one (the view key or the
+ * settings row sets steeringViewChosen); before that it is the settings screen's old default.
+ */
+export function preferredSteeringView(settings) {
+  const g = (settings && settings.gameplay) || {};
+  if (!STEERING_VIEWS.includes(g.steeringView)) return 'auto';
+  if (g.steeringView === 'overhead' && g.steeringViewChosen !== true) return 'auto';
+  return g.steeringView;
 }
 
 function activeMissions(state) {
@@ -84,8 +101,7 @@ export function activeAuthoredRace(state) {
 export function resolveSteeringView(state, opts = {}) {
   if ((opts && (opts.photo || opts.death)) || state?.render?.photoMode?.active) return 'overhead';
   if (activeSteerLock(state)) return 'racing';
-  const pref = normalizeSteeringView(state && state.settings && state.settings.gameplay
-    && state.settings.gameplay.steeringView);
+  const pref = preferredSteeringView(state && state.settings);
   if (pref === 'racing') return 'racing';
   const race = pref === 'auto' ? activeRaceMission(state) : null;
   if (race && (!race.params?.sectionMission

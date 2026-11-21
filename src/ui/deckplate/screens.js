@@ -1360,6 +1360,21 @@ const RACING = `
    Outside the dock (the #hud-root fallback mount) the fixed top-right rail above still owns
    placement. Mobile flight overrides this wholesale with absolute anchors (mobileFlightLayouts). */
 .sf-rightdock > .race-tape[data-compact="true"] { position:static; right:auto; align-self:center; margin-bottom:2px; }
+/* Stern (third-person) view: the middle of the top third of the screen is the horizon the pilot is
+   steering at, and the full tape sat exactly on it. Under that view the tape is one line on the
+   top edge: course, place, clock, speed, gate. The coach's warning drops beneath it only while
+   there is one. The lap map and the standings list are overhead-view furniture (the place is
+   already in the line); the action row comes back on focus, on touch, or when Options is open. */
+.race-tape[data-view="racing"]:not([data-compact="true"]) { top:calc(env(safe-area-inset-top,0px) + 8px); grid-template-columns:1fr; width:auto; max-width:min(780px,calc(100vw - 24px)); gap:2px; padding:5px 14px; }
+.race-tape[data-view="racing"]:not([data-compact="true"]) .race-tape-map,
+.race-tape[data-view="racing"]:not([data-compact="true"]) .race-tape-pack { display:none; }
+.race-tape[data-view="racing"]:not([data-compact="true"]) .race-tape-readings { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:center; column-gap:14px; row-gap:0; text-align:center; }
+.race-tape[data-view="racing"]:not([data-compact="true"]) .race-tape-hint { min-height:0; flex-basis:100%; }
+.race-tape[data-view="racing"]:not([data-compact="true"]) .race-tape-hint:empty,
+.race-tape[data-view="racing"]:not([data-compact="true"]) .race-tape-goal:empty { display:none; }
+@media (pointer:fine) {
+  .race-tape[data-view="racing"]:not([data-compact="true"]):not([data-options-open="true"]):not(:focus-within) .race-tape-actions { display:none; }
+}
 .race-tape-map { align-self:center; }
 .race-tape-readings { min-width:0; font-family:var(--dp-face-num,var(--dp-font-mono,monospace)); font-variant-numeric:tabular-nums; }
 .race-tape[data-phase="handoff"] { grid-template-columns:1fr; }

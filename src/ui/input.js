@@ -393,7 +393,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // Any distance in the sector: the selected or tracked station first, else the nearest one.
     // The pick lives in berthOffer.js so the HUD's "[E] Fly to berth" names this same station.
     const offer = berthOfferStation(state);
-    if (offer) return flyToBerth(offer.station);
+    // Mid-run, the interact key does not hand the ship to the autopilot for a station nobody
+    // picked: the HUD does not offer it then either (flightHelm.resolveBerthOffer).
+    if (offer && (offer.chosen || !activeAuthoredRace(state))) return flyToBerth(offer.station);
     const quote = swarmFloorPadQuote(nearestSwarmFloorPad(state));
     if (!quote) return false;
     const terms = document.querySelector(`#sf-floorpads [data-floor-quote="${quote.entityId}"]`);
