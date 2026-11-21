@@ -151,6 +151,7 @@ const CSS = `
 .sf-bag__card[hidden] { display:none; }
 .sf-bag__card b { display:block; color:#fff1cf; font-size:13px; margin-bottom:2px; }
 .sf-bag__actions { display:flex; gap:6px; }
+.sf-bag__actions[hidden] { display:none; }
 .sf-bag__act { flex:1 1 0; min-height:32px; border:1px solid rgb(188 222 234 / .4); background:rgb(16 34 46 / .75);
   color:#e9f1f3; font:600 13px/1 inherit; cursor:pointer; }
 .sf-bag__act:disabled { opacity:.4; cursor:default; }
@@ -391,6 +392,8 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
     dropBtn.disabled = !droppable;
     splitBtn.disabled = !(droppable && s.qty > 1 && model.slots.filter(Boolean).length < model.slotCount);
     sortBtn.disabled = !(model && model.droppable && model.slots.some(Boolean));
+    // Gear and salvage stay aboard until a station: their tabs carry no drop/split/sort row.
+    actions.hidden = !(model && model.droppable);
     const isCell = !!(s && s.commodityId === FUEL_CELL_ID);
     crackBtn.hidden = !isCell;
     if (isCell) {
