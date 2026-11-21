@@ -750,8 +750,14 @@ export function applyFlightKeyEvent(host, event = {}) {
   const blocked = event.blocked === true;
   const swallowed = host._swallowedFlightKeys || (host._swallowedFlightKeys = Object.create(null));
   // Repeats are not edges. A held movement key still has to mark the keyboard live, or a
-  // quiet pad steals the helm for the rest of the hold.
-  if (pressed && event.repeat === true) {
+  // quiet pad steals the helm for the rest of the hold. One repeat is an edge: a key the
+  // game holds UP that the OS keeps repeating is a key released under blur (focus loss
+  // clears held controls) and still physically down — the refocused window only ever sees
+  // repeats for it, so the repeat re-arms it as the press it is. Ruling 2026-11-21: a key
+  // still held works again without re-pressing.
+  const repeatRearmsHeldKey = pressed && event.repeat === true && !blocked
+    && !swallowed[code] && !keys[code];
+  if (pressed && event.repeat === true && !repeatRearmsHeldKey) {
     if (!blocked && !swallowed[code]) host._kbmActivityPending = true;
     return false;
   }
