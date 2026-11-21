@@ -286,6 +286,9 @@ export function createFlightHelm(root, state, hooks = {}) {
     }
     x = Math.round(Math.max(left, Math.min(right - offerW, x)));
     y = Math.round(Math.max(top, Math.min(bottom - offerH, y)));
+    // The objective card (and the hold line under it) own the top-left corner: a chip that would
+    // land there drops below it instead of printing over the objective.
+    if (x < Math.min(380, w * 0.3) && y < 200) y = Math.min(bottom - offerH, 200);
     const t = `translate3d(${x}px,${y}px,0)`;
     if (t !== offerTransform) { offerTransform = t; offer.style.transform = t; }
     const showArrow = rot != null;
