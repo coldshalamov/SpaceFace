@@ -726,6 +726,16 @@ export const asteroidScreen = {
     const landingStage = document.createElement('div'); landingStage.className = 'aw-landing__stage';
     landingEl.append(landingName, landingKind, landingAssay, landingJob, landingStage);
     let landingFor = null;
+    // The works contract being worked from inside a rock, if there is one: a rover or building
+    // job posted for this sector. The flight HUD is not on screen in here, so the board carries it.
+    const worksJobTitles = new Map(); // mission id -> title, kept for the line said when it pays
+    function activeWorksJob() {
+      const job = (state.missions?.active || []).find((m) => m && m.status === 'active' && m.params?.works
+        && m.destSectorId === state.world?.currentSectorId
+        && ['cut', 'blast', 'install', 'installSet'].includes(m.params.works.goal?.kind)) || null;
+      if (job) worksJobTitles.set(job.id, job.title);
+      return job;
+    }
     function showLanding(stageText) {
       const d = state.drill;
       const id = d ? d.asteroidId : state.ui?.pendingDrillAsteroidId;
@@ -737,9 +747,7 @@ export const asteroidScreen = {
         landingName.textContent = rockName(id);
         landingKind.textContent = family ? family.label : 'Asteroid';
         landingAssay.textContent = (rock && rockAssayLine(rock, state, (oreId) => commodityDisplayName(oreId))) || '';
-        const job = (state.missions?.active || []).find((m) => m && m.status === 'active' && m.params?.works
-          && m.destSectorId === state.world?.currentSectorId
-          && ['cut', 'blast', 'install', 'installSet'].includes(m.params.works.goal?.kind));
+        const job = activeWorksJob();
         landingJob.textContent = job ? `${job.title}: ${worksObjectiveLine(job)}` : '';
         landingJob.hidden = !job;
       }
@@ -1304,6 +1312,25 @@ export const asteroidScreen = {
           build: controller.state.mode === MODES.BUILD,
           movementLabel: controlMap.movementLabel, scanLabel: controlMap.scanLabel,
           firstTunnel: firstTunnelControl(state.drill, controlMap, drillSys.getDrillTier?.() ?? 1) });
+        // A job being worked here leads the card: its one objective line with the live count and
+        // the state of each bonus (cells opened, gas breached). A rover job keeps Survey as its
+        // one action, because finding the seam before cutting toward it IS the light dig. A
+        // building job keeps the ordinary next building step underneath its own line.
+        const job = activeWorksJob();
+        const resting = state.drill && (state.drill.overheated || state.drill.energyDepleted);
+        if (job && !resting) {
+          const line = worksObjectiveLine(job);
+          const kind = job.params.works.goal.kind;
+          if (kind === 'cut' || kind === 'blast') {
+            guideStep = { id: 'job', title: job.title,
+              detail: kind === 'cut'
+                ? `${line}. ${controlMap.scanLabel === 'UNBOUND' ? 'Survey' : `Press ${controlMap.scanLabel}`} to see where the seam runs before you cut toward it.`
+                : `${line}. Press R to arm a charge, then step out of the pattern.`,
+              action: kind === 'cut' ? 'scan' : null, label: kind === 'cut' ? 'Survey' : null };
+          } else if (guideStep) {
+            guideStep = { ...guideStep, id: `job-${guideStep.id}`, title: job.title, detail: `${line}. ${guideStep.detail}` };
+          }
+        }
       }
       if (!guideStep) { guide.hidden = true; return; }
       const signature = JSON.stringify(guideStep);
@@ -2666,6 +2693,19 @@ export const asteroidScreen = {
     }));
     unsubs.push(ctx.bus.on('drill:start', (p) => {
       if (screen._active && p?.requestId != null) boardPublication.accept(p.requestId);
+    }));
+    unsubs.push(ctx.bus.on('mission:completed', (p) => {
+      // Paid on the spot, and said here: the flight toast is under this screen.
+      if (!p || p.type !== 'works_contract') return;
+      const title = worksJobTitles.get(p.missionId) || 'Job';
+      const paid = Number(p.rewardCr);
+      const text = Number.isFinite(paid) && paid > 0
+        ? `${title} done. ${paid.toLocaleString('en-US')} cr paid.` : `${title} done.`;
+      pushLedgerLine('good', text);
+      announce(text);
+      showBanner('job', text, 'good');
+      setTimeout(() => clearBanner('job'), 5000);
+      guideSignature = '';
     }));
     unsubs.push(ctx.bus.on('drill:yield', (p) => {
       const name = commodityName(p.commodityId);

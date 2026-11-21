@@ -308,32 +308,42 @@ async function runJob(page) {
     if (!station) throw new Error('Helios Station is not in the opening sector');
     await relocate(page, { x: station.x - station.radius - 160, z: station.z, heading: 0 });
     await page.waitForTimeout(2000);
-    await page.evaluate(async (id) => {
-      const { laneInputWrite } = await import('/src/core/simLaneCommands.js');
-      laneInputWrite(window.SF.state, 'player.targetId', id);
-    }, station.id);
-    // E hands the approach to the autopilot; E again, in range, docks. Pressing while the
-    // autopilot is still flying would take the helm back, so wait for it to finish its run.
+    // First the ordinary way: E hands the approach to the autopilot, E again in range docks.
     const dockLog = [];
-    for (let i = 0; i < 60; i++) {
-      const st = await page.evaluate((id) => {
-        const s = window.SF.state, me = s.entities.get(s.playerId), e = s.entities.get(id);
-        return { docked: !!s.ui?.docked, auto: !!(s.nav && s.nav.autopilot && s.nav.autopilot.active),
-          dist: me && e ? Math.round(Math.hypot(me.pos.x - e.pos.x, me.pos.z - e.pos.z)) : null,
-          speed: me ? Math.round(Math.hypot(me.vel.x, me.vel.z)) : null };
-      }, station.id);
-      if (i % 4 === 0) dockLog.push(st);
+    const look = () => page.evaluate((id) => {
+      const s = window.SF.state, me = s.entities.get(s.playerId), e = s.entities.get(id);
+      return { docked: !!s.ui?.docked, inRange: !!s.ui?.dockInRange,
+        auto: !!(s.nav && s.nav.autopilot && s.nav.autopilot.active),
+        dist: me && e ? Math.round(Math.hypot(me.pos.x - e.pos.x, me.pos.z - e.pos.z)) : null,
+        speed: me ? Math.round(Math.hypot(me.vel.x, me.vel.z)) : null };
+    }, station.id);
+    for (let i = 0; i < 14; i++) {
+      const st = await look();
+      if (i % 3 === 0) dockLog.push(st);
       if (st.docked) break;
       if (!st.auto) await page.keyboard.press('KeyE');
       await page.waitForTimeout(1500);
+    }
+    facts.jobAutopilotDocked = (await look()).docked;
+    // If the autopilot never took the ship in, park at the berth and press E there, so the rest
+    // of the job can still be checked. (The autopilot not engaging is recorded above.)
+    if (!facts.jobAutopilotDocked) {
+      for (let k = 0; k < 16 && !(await look()).docked; k++) {
+        const angle = (k % 8) * Math.PI / 4, reach = station.radius + (k < 8 ? 22 : 55);
+        await relocate(page, { x: station.x + Math.cos(angle) * reach, z: station.z + Math.sin(angle) * reach, heading: angle + Math.PI });
+        await page.waitForTimeout(1300);
+        const st = await look();
+        dockLog.push({ k, ...st });
+        if (st.inRange) { await page.keyboard.press('KeyE'); await page.waitForTimeout(2200); }
+      }
     }
     facts.jobDockLog = dockLog;
     facts.jobDocked = await page.evaluate(() => ({ docked: !!window.SF.state.ui?.docked, station: window.SF.state.ui?.dockedStationId }));
     if (!facts.jobDocked.docked) throw new Error('could not dock at Helios by pressing E');
     await page.waitForTimeout(3500);
     await shot('00-docked');
-    facts.jobDoor = await clickText(/^(contracts|jobs|work|job board|contract board)\b/i)
-      || await clickText(/contracts|job board/i);
+    // The arrival page numbers its doors; Jobs is 2.
+    facts.jobDoor = await clickText(/^jobs$/i, { tags: '[data-screen="station"] *' });
     await page.waitForTimeout(1800);
     await shot('01-board');
     facts.jobBoardText = await page.evaluate(() => {
@@ -342,10 +352,30 @@ async function runJob(page) {
       const at = text.indexOf('First Cut');
       return { hasFirstCut: at >= 0, around: at >= 0 ? text.slice(Math.max(0, at - 80), at + 260) : text.slice(0, 500) };
     });
-    facts.jobRow = await clickText(/First Cut/, { tags: 'button, [role="button"], li, article, tr, .sx-row, [data-offer-id], [data-mission-id], div' });
+    // The board lists more work than fits: pick the row itself, wherever it has scrolled to.
+    facts.jobRow = await page.evaluate(() => {
+      const row = document.querySelector('button.sx-ct-row[data-mid*="works_helios_first_cut"]');
+      if (!row) return null;
+      row.scrollIntoView({ block: 'center' });
+      row.click();
+      return { mid: row.dataset.mid, label: row.getAttribute('aria-label') };
+    });
     await page.waitForTimeout(1200);
     await shot('02-offer');
-    facts.jobAccept = await clickText(/^(accept|take the job|accept contract|take contract)/i);
+    // Accept is press-and-hold.
+    const acceptAt = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('[data-screen="station"] button')].find((n) => /^accept/i.test((n.textContent || '').trim()));
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, text: b.textContent.trim().slice(0, 40) };
+    });
+    facts.jobAccept = acceptAt;
+    if (acceptAt) {
+      await page.mouse.move(acceptAt.x, acceptAt.y);
+      await page.mouse.down();
+      await page.waitForTimeout(1800);
+      await page.mouse.up();
+    }
     await page.waitForTimeout(1500);
     await shot('03-accepted');
     const active = () => page.evaluate(() => {
@@ -424,8 +454,14 @@ async function runJob(page) {
     await shot('07-paid');
   } catch (error) {
     facts.jobError = String(error && error.message || error);
+    facts.jobLog = await page.evaluate(() => (window.__roverLog || []).filter((r) => r[0] !== 'toast' || /rover|rock|Line|line/i.test(r[2] || r[1])).slice(-24)).catch(() => null);
     log(`job failed: ${facts.jobError}`);
     await shot('zz-error');
+    if (await page.evaluate(() => !!window.SF.state.ui?.docked).catch(() => false)) {
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((n) => /^undock/i.test((n.textContent || '').trim())); if (b) b.click(); });
+      await page.waitForFunction(() => !window.SF.state.ui?.docked, null, { timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(2500);
+    }
     if (await page.evaluate(() => !!window.SF.state.drill).catch(() => false)) {
       await page.keyboard.press('Escape').catch(() => {});
       await page.waitForTimeout(1500);
@@ -515,6 +551,16 @@ async function runRover(page) {
   } catch (error) {
     facts.roverError = String(error && error.message || error);
     log(`rover failed: ${facts.roverError}`);
+    facts.roverBlock = await page.evaluate(() => {
+      const st = window.SF.state, me = st.entities.get(st.playerId);
+      const denied = (window.__roverLog || []).filter((r) => r[0] === 'tether:latchDenied').map((r) => JSON.parse(r[1])).pop();
+      const blocker = denied && denied.blocker && denied.blocker.id != null ? st.entities.get(denied.blocker.id) : null;
+      const target = denied ? st.entities.get(denied.targetId) : null;
+      const d = (a, b) => (a && b ? Math.round(Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z)) : null);
+      return { denied, blocker: blocker ? { id: blocker.id, type: blocker.type, radius: blocker.radius,
+        body: blocker.physicsBody && blocker.physicsBody.radius, toShip: d(blocker, me), toTarget: d(blocker, target) } : null,
+        target: target ? { radius: target.radius, body: target.physicsBody && target.physicsBody.radius, toShip: d(target, me) } : null };
+    }).catch((e) => String(e));
     facts.roverLog = await page.evaluate(() => ({ log: window.__roverLog || null,
       ctx: (window.SF.state.input && window.SF.state.input.blocked) || false,
       lane: window.SF.simLaneDiag ? window.SF.simLaneDiag() : null })).catch(() => null);
@@ -677,7 +723,11 @@ try {
     await startAdventure(page);
     await page.evaluate(() => {
       window.__roverLog = window.__roverLog || [];
-      window.SF.bus.on('toast', (p) => window.__roverLog.push(['toast', JSON.stringify(p || {}).slice(0, 200)]));
+      for (const name of ['toast', 'tether:latchDenied', 'tether:latched', 'tether:detached', 'tether:broken',
+        'drill:approachRequested', 'drill:approachStarted', 'drill:approachCompleted', 'drill:approachCancelled',
+        'drill:start', 'mission:completed', 'encounter:decision', 'popup:decision']) {
+        window.SF.bus.on(name, (p) => window.__roverLog.push([name, Math.round(window.SF.state.simTime || 0), JSON.stringify(p || {}).slice(0, 180)]));
+      }
     });
     if (ONLY.has('job')) await runJob(page);
     if (ONLY.has('rover')) await runRover(page);
