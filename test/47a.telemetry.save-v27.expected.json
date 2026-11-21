@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "aa9a843c517be0cf0f9dfa440c6a5d58efbfbe98a76f307a56dd8618304b389d",
+    "authoritativeHash": "29e58fa338750ad2e0fd4d61fc869e95b01184e441e05a179097ef69d5660722",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -261,6 +261,8 @@
     "(cont.) 300/600 instead of one tick late; owner no-holds ruling 2026-11-19; previous hash: c0557999b5591d77be8b62ada467c72b3c58888cdc86d3d49a22dde4e6447ab3.",
     "2026-11-20 re-record: state hash moved for foreign R17/HARMONY flight edits (helm-assist default, cruise brake drop, corridor autopilot gate); all trace counts identical; economy closed-form verified hash-neutral (econEvents empty in tape).",
     "2026-11-20 re-record: CARGO-BUILD-1 (R22) joins the serialized hold — player.cargo gains slots/slotCount, derived gains cargoSlots, save meta.version 23->24, seeded capVolume 40->250.",
-    "(cont.) sim-golden-diff VERDICT: CONTENT_ONLY, zero motion fields changed; all trace counts identical."
+    "(cont.) sim-golden-diff VERDICT: CONTENT_ONLY, zero motion fields changed; all trace counts identical.",
+    "2026-11-20 version-only re-record: the Adventure Pilot Tree migration raises meta.version 25->26.",
+    "(cont.) Pinning CURRENT_VERSION back to 25 reproduces the prior hash aa9a843c517be0cf0f9dfa440c6a5d58efbfbe98a76f307a56dd8618304b389d exactly; no simulated behaviour moved."
   ]
 }

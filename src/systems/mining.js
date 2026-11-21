@@ -1,3 +1,4 @@
+import { pilotHas } from '../data/pilotTree.js';
 import {applyFundedBeamRepair, beamRepairReserve, beamRepairScrap} from './beamRepairResources.js';
 import { isHeliosClaimCutter } from './heliosClaimOpening.js';
 import { crackerRunLoadRecovery } from '../data/worldOneOffs.js';
@@ -93,6 +94,9 @@ import {
 } from './miningBeamTargetingRead.js';
 export { BULK_HAUL_MIN_U, beamRangeFor, isBeamTargetEligible } from './miningBeamTargetingRead.js';
 
+export const PILOT_DEEP_BITE_MULT = 1.5;
+export const PILOT_STEADY_BEAM_WEIGHT = 2;
+export const PILOT_ORE_MAGNET_FLOOR = 240;
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
 export const MAGNET_ACCEL = 2400; // wu/s² snappy authority toward the seek velocity
 // Relative approach speed while magnetized (added on top of the player's velocity so flybys collect).
@@ -503,7 +507,9 @@ export const mining = {
     this._activeBeamLine = beamLineFor(player, target);
     if (this._activeBeamLine) this._activeBeamLine.verb = resolved.verb;
 
-    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
+    // Pilot Tree, Mining (Adventure): prospector_deep_bite — the player's laser cuts ×1.5.
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1)
+      * (pilotHas(this.state, 'prospector_deep_bite') ? PILOT_DEEP_BITE_MULT : 1);
     switch (resolved.verb) {
       case 'extract':
         if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
@@ -1338,7 +1344,7 @@ export const mining = {
       // one ordinary unit's weighted result; it never manufactures a bonus unit or reroutes cargo.
       const id = rareOreChance !== null && this.state.rng() < rareOreChance
         ? richOreForTier(rareOreTier)
-        : this._rollOre(def, ast);
+        : this._rollOre(def, ast, miner && miner.id === this.state.playerId && pilotHas(this.state, 'prospector_steady_beam'));
       if (!id) continue;
       buckets.set(id, (buckets.get(id) || 0) + 1);
     }
@@ -1510,7 +1516,9 @@ export const mining = {
   },
 
   // weighted, tier-filtered ore pick using the deterministic sim RNG
-  _rollOre(def, ast) {
+  // prospector_steady_beam (Pilot Tree, Mining): the player's laser weights every ore but silicate
+  // slag ×2 — more of the good ore, less slag. Same single rng draw per unit.
+  _rollOre(def, ast, richer = false) {
     const table = (def && def.oreTable) || { cmdty_silicate: 0.7, cmdty_ore_iron: 0.3 };
     const tierCap = (ast.data && ast.data.tierCap != null) ? ast.data.tierCap : (def ? def.tierCap : 0);
     let total = 0;
@@ -1518,8 +1526,9 @@ export const mining = {
     for (const id in table) {
       const ore = ORE_BY_ID.get(id);
       if (ore && ore.tier > tierCap) continue; // gated out → renormalize by skipping
-      total += table[id];
-      entries.push([id, table[id]]);
+      const weight = richer && id !== 'cmdty_silicate' ? table[id] * PILOT_STEADY_BEAM_WEIGHT : table[id];
+      total += weight;
+      entries.push([id, weight]);
     }
     if (!entries.length || total <= 0) return 'cmdty_silicate'; // never drop nothing
     let r = this.state.rng() * total;
@@ -1627,7 +1636,11 @@ export const mining = {
     if (!player) return;
     // Fitted tractor modules publish magnetRange through derived (ships.getDerivedStats);
     // fall back to the legacy player.magnetRange knobs so labs/tests without fittings still work.
-    const magnet = playerPickupMagnetRange(state, player);
+    // prospector_ore_magnet (Pilot Tree, Mining): loose ore drifts in from twice as far, with a
+    // floor so a ship with no tractor fitted still feels it.
+    const magnetBase = playerPickupMagnetRange(state, player);
+    const magnet = pilotHas(state, 'prospector_ore_magnet')
+      ? Math.max(magnetBase * 2, PILOT_ORE_MAGNET_FLOOR) : magnetBase;
     // Swarm Magnet drop (src/systems/swarmDrops.js): while its window is open every ordinary
     // pickup is inside the vacuum. Drops and repair cells keep the normal range.
     const dropMagnet = swarmDropMagnetRange(state);

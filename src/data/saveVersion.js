@@ -27,4 +27,6 @@
 //      persist; legacy items maps pack greedily into stacks (over-cap stays aboard).
 // v25: PORT-PRO-FIVE — physical expeditions, the Towjaw encounter and fitted kinetic
 //      catalyst state (towjaw/derelictExpedition/convoyRaid/stormChase/kineticCatalysts).
-export const CURRENT_VERSION = 25;
+// v26: the Adventure Pilot Tree — player.pilot { schema, xp, level, points, nodes, banked, respecs }
+//      (absent before v26; the migration normalizes any stray record and leaves it absent otherwise).
+export const CURRENT_VERSION = 26;

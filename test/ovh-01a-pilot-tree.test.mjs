@@ -524,7 +524,7 @@ test('the swarm door never offers the work branches; Adventure offers all nine',
   }
   const maxed = { points: { gunner: 9, bruiser: 9, rigger: 9, conjurer: 9, juggernaut: 9, ghost: 9 }, nodes: ['ghost_cloak'], banked: 0, offer: null };
   const adventureEligible = eligiblePilotCards(maxed, 'adventure').map((card) => card.id);
-  for (const id of ['trader_long_memory', 'ghost_vanish', 'gunner_gold_thread', 'builder_foundations']) {
+  for (const id of ['trader_long_memory', 'ghost_vanish', 'gunner_gold_thread', 'builder_foundations', 'prospector_deep_bite']) {
     assert.ok(adventureEligible.includes(id), `adventure offers ${id}`);
   }
 }));

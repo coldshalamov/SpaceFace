@@ -156,3 +156,21 @@ test('Black Hole: going dark queues a free, doubled Pull well where the ship was
   sys._queueBlackHole();
   assert.equal(sys._pilotEcho.length, 0, 'nothing without the evolution');
 });
+
+test('Mining: Steady Beam doubles the share of everything but silicate slag, on the same rng draws', async () => {
+  const { mining } = await import('../src/systems/mining.js');
+  const roll = (richer) => {
+    let seed = 1;
+    const state = { rng: () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; } };
+    const sys = Object.create(mining);
+    sys.state = state;
+    const def = { oreTable: { cmdty_silicate: 0.7, cmdty_ore_iron: 0.3 }, tierCap: 4 };
+    let iron = 0;
+    for (let i = 0; i < 4000; i++) if (sys._rollOre(def, { data: {} }, richer) === 'cmdty_ore_iron') iron += 1;
+    return iron / 4000;
+  };
+  const plain = roll(false);
+  const steady = roll(true);
+  assert.ok(Math.abs(plain - 0.3) < 0.03, `plain iron share ${plain}`);
+  assert.ok(Math.abs(steady - 0.6 / 1.3) < 0.03, `Steady Beam iron share ${steady}`);
+});

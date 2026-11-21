@@ -133,9 +133,9 @@ const TRADER = branchNodes('trader', [
 ]);
 
 const PROSPECTOR = branchNodes('prospector', [
-  [1, 'Assay Eye', 'Your scanner names a rock\'s ore and how rich its veins are before you cut.'],
-  [1, 'Steady Beam', 'Your mining laser pulls more of the good ore and less of the slag.'],
+  [1, 'Steady Beam', 'Your mining laser pulls twice the share of good ore and less of the slag.'],
   [1, 'Deep Bite', 'Your mining laser cuts through rock half again as fast.'],
+  [1, 'Ore Magnet', 'Loose ore drifts to your ship from twice as far, even with no tractor fitted.'],
 ]);
 
 const BUILDER = branchNodes('builder', [

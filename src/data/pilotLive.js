@@ -52,6 +52,10 @@ export const PILOT_LIVE_NODE_IDS = Object.freeze(new Set([
   'ghost_deep_shroud',
   'ghost_vanish',
   'ghost_phantom',
+  // Mining (Adventure only)
+  'prospector_steady_beam',
+  'prospector_deep_bite',
+  'prospector_ore_magnet',
   // Evolutions
   'evolution_orbital_saw',
   'evolution_wrecking_ball',

@@ -23,6 +23,7 @@ import {
   normalizeResourceBodyBag,
 } from '../world/resourceBodyRecords.js';
 
+import { normalizeAdventurePilot } from '../data/pilotAdventure.js';
 export { CURRENT_VERSION } from '../data/saveVersion.js';
 
 function finiteXZ(value) {
@@ -496,6 +497,20 @@ export const MIGRATIONS = [
       for (const key of ['towjaw', 'derelictExpedition', 'convoyRaid', 'stormChase', 'kineticCatalysts']) {
         if (!Object.hasOwn(data, key)) data[key] = null;
       }
+    },
+  },
+  {
+    from: 25,
+    to: 26,
+    // The Adventure Pilot Tree (progression lead 2026-11-20): XP, level, points and skills ride
+    // player.pilot. Saves before v26 never earned any, so the key stays absent (the owner creates it
+    // on the first XP); a record that is present is normalized to the v26 shape.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const player = data.player;
+      if (!player || typeof player !== 'object' || !Object.hasOwn(player, 'pilot')) return;
+      if (player.pilot == null) { delete player.pilot; return; }
+      player.pilot = normalizeAdventurePilot(player.pilot);
     },
   },
 ];
