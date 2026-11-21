@@ -203,7 +203,12 @@ export function recordPresentedPoseAge(state, meshes, feed, world = null) {
       if (!(Math.abs(tx - t.tx) <= MOVED_EPS && Math.abs(tz - t.tz) <= MOVED_EPS)) {
         t.tx = tx; t.tz = tz; t.tableMovedAtMs = now;
       }
-      moving = now - (t.tableMovedAtMs || -1e9) < 250;
+      // Moving = the simulation moved it recently AND it is still a ship travelling faster than
+      // MOVING_SPEED (a slowly drifting rock moves less per frame than the renderer re-seats; an id
+      // recycled into a rock since the tracked set was chosen no longer counts).
+      const live = state.entities && state.entities.get ? state.entities.get(id) : null;
+      moving = now - (t.tableMovedAtMs || -1e9) < 250 && !!live && live.type === 'ship'
+        && Math.hypot(rows[fo + POSE_ROW.VX], rows[fo + POSE_ROW.VZ]) > MOVING_SPEED;
       t.ghostSinceMs = -1;
     } else if (snap) {
       // Not in the table: the simulation no longer presents this body (its retirement is in flight).

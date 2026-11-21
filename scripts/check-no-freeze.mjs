@@ -40,10 +40,12 @@ const POSE_AGE_LIMIT_MS = 100;
 const WORLD_SPEED_FLOOR = 0.97;
 
 const rows = [];
+// Each gate run keeps its own evidence (two runs in a row must not overwrite each other).
+const RUN_STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 let failed = false;
 for (const routeName of ROUTES) {
   const route = routeName === 'swarm-pad' ? 'swarm' : routeName;
-  const out = join(ROOT, '.devshots', 'no-freeze', `gate-${routeName}${LEGACY ? '-legacy' : ''}`);
+  const out = join(ROOT, '.devshots', 'no-freeze', `gate-${RUN_STAMP}-${routeName}${LEGACY ? '-legacy' : ''}`);
   const args = ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath, 'scripts/probe-no-freeze-electron.mjs',
     `--route=${route}`, `--seconds=${routeName === 'swarm-pad' ? Math.min(SECONDS, 120) : SECONDS}`,
     ...(routeName === 'swarm-pad' ? ['--pad=noisy'] : ['--forced']), `--out=${out}`,
@@ -79,7 +81,7 @@ for (const routeName of ROUTES) {
 }
 
 if (FOCUS_STEAL) {
-  const out = join(ROOT, '.devshots', 'no-freeze', 'gate-focus-steal');
+  const out = join(ROOT, '.devshots', 'no-freeze', `gate-${RUN_STAMP}-focus-steal`);
   console.log('[no-freeze] focus steal + held key across the blur (THIS RUN TAKES FOCUS ON PURPOSE, then hands it back)');
   const run = spawnSync(process.execPath, ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath,
     'scripts/probe-focus-steal-electron.mjs', `--out=${out}`], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', timeout: 900000 });

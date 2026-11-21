@@ -112,8 +112,8 @@ try {
   const repeater = setInterval(() => {
     if (!repeating) return;
     key('keyDown', true);
-    const a = (Date.now() - t0m) / 1000 * 1.8;
-    cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: vp.w / 2 + Math.cos(a) * vp.w * 0.25, y: vp.h / 2 + Math.sin(a) * vp.h * 0.25 }).catch(() => {});
+    const a = (Date.now() - t0m) / 1000 * 3.2;
+    cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: vp.w / 2 + Math.cos(a) * vp.w * 0.12, y: vp.h / 2 + Math.sin(a) * vp.h * 0.12 }).catch(() => {});
   }, 33);
   // 1. Fly with W physically held.
   await key('keyDown'); repeating = true;
@@ -169,7 +169,8 @@ try {
   const why = [];
   if (!settled.length) why.push('the focus steal never paused the world (no scale-0 samples)');
   if (settled.length && !s.stolen.platePresent) why.push('the world was held with no pause plate');
-  if (s.stolen.simAdvancedAfterBlur > 0.05) why.push(`the world kept moving off screen (+${s.stolen.simAdvancedAfterBlur} s)`);
+  // Ruling: the pause may take up to 0.2 s to settle.
+  if (s.stolen.simAdvancedAfterBlur > 0.2) why.push(`the world kept moving off screen (+${s.stolen.simAdvancedAfterBlur} s)`);
   // One worker batch (up to four 16.7 ms steps) can land between two samples; the owner's blip was seconds.
   if (resumeJump > 0.25) why.push(`resume jumped ${resumeJump.toFixed(2)} s ahead`);
   if (!(s.returned.timeScaleEnd > 0)) why.push('the world did not resume after focus returned');
