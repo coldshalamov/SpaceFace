@@ -149,13 +149,14 @@ test('a borderline sustained miss parks at a shallow band instead of grinding to
   assert.equal(borderline.getScale(), 1, 'a ~1.25x miss never reaches even the first band');
 });
 
-test('raster relief raises the adaptive floor — the demo posture stays native content', () => {
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 1,
-    'no relief still holds the demo combined floor at native content');
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 0.8), 1,
-    'hitch relief 0.8 lifts the discrete floor to the native scale');
-  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.72), 1,
-    'integrated + hitch relief lifts the integrated floor to native');
+test('raster relief raises the adaptive floor — Auto never presents below 0.67 combined', () => {
+  // Coordinator decision 2026-11-20: Auto may scale the 3D scene to 0.67 with the CAS upscale.
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.67,
+    'no relief: Auto may go down to the 0.67 combined floor');
+  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.6, 0.8) - 0.67 / 0.8) < 1e-9,
+    'hitch relief 0.8 raises the content floor so the product stays at 0.67');
+  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.6), 1,
+    'deep relief already at the floor holds content at native');
 
   const controller = createAdaptiveResolution({ floor: 0.5 });
   controller.syncScale(0.5);
@@ -194,9 +195,13 @@ test('Manual adaptive resolution keeps its tier floor without changing the saved
 
   video.qualityMode = 'auto';
   syncPolicy();
+  // Auto's combined floor is 0.67 of native (coordinator decision 2026-11-20): with this preset's
+  // automatic render scale the content floor is 0.67 / renderScale, and the controller may step
+  // toward it on a GPU-bound frame (no CPU sample here = GPU-bound by default).
+  const floor = renderer._adaptiveFloorForRelief();
+  assert.ok(Math.abs(floor - Math.min(1, 0.67 / video.renderScale)) < 1e-9, `floor ${floor}`);
   feed(controller, 0.026, 130, slowFlight);
-  assert.equal(renderer._adaptiveFloorForRelief(), 1);
-  assert.equal(controller.getScale(), 1, 'Auto preserves the native-content floor');
+  assert.ok(controller.getScale() >= floor, 'Auto never presents below its combined floor');
 });
 
 test('sustained Auto relief applies the same post style as the player switch', () => {

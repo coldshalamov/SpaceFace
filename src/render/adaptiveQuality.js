@@ -451,7 +451,13 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
  * the hitch governor handles blocking with post-FX only. The software emergency tier is exempt:
  * a CPU rasterizer needs the depth more than the readability.
  */
-export const COMBINED_READABILITY_FLOOR = 1;
+// Coordinator decision 2026-11-20 (render lead): Auto may render the 3D scene down to 0.67 of
+// native when the measured GPU time says the GPU is the long pole (Foundry round 20: ~70 ms of
+// scene GPU at native, ~40 ms at 0.6). The frame is brought back to the display by the FidelityFX
+// CAS scaling pass already in the composite (cas.js: contrast-adaptive upsample + sharpen in one
+// full-screen pass), and the HUD, text and markers are DOM at native resolution. Manual presets
+// (dynamicResolution off) keep native: the "Sharp" posture.
+export const COMBINED_READABILITY_FLOOR = 0.67;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the

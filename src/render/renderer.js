@@ -11872,6 +11872,9 @@ export const render = {
     this._dynFloor = dynFloor;
     this._adaptive = createAdaptiveResolution({
       floor: dynFloor,
+      // Small bands (0.05) so a change of scale is not a visible pop; the controller's sustained
+      // miss, trial and back-off windows are the hysteresis.
+      step: 0.05,
       initialScale: gpu.software === true ? dynFloor : 1,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
     });

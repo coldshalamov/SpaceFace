@@ -130,6 +130,8 @@ try {
     const apply = {
       sort: (on) => r.setOpaqueSort(on ? sorter : () => 0),
       // res60: internal resolution 0.6 vs 1.0 — is the scene pass fill-bound?
+      res75: (on) => { const rs = window.SF.registry.get('render'); S.render.dynResScale = on ? 0.75 : 1; rs._applySize(); },
+      res67: (on) => { const rs = window.SF.registry.get('render'); S.render.dynResScale = on ? 0.67 : 1; rs._applySize(); },
       res60: (on) => { const rs = window.SF.registry.get('render'); S.render.dynResScale = on ? 0.6 : 1; rs._applySize(); },
       shadowsOff: (on) => { S.settings.video.shadows = !on; window.SF.bus.emit('settings:changed', { section: 'video', key: 'shadows' }); },
     };
@@ -152,6 +154,22 @@ try {
     R.set = (on) => {
       for (const t of toggles) {
         if (t.startsWith('rfx:')) { (globalThis.__sfRfx ||= {})[t.slice(4)] = on; continue; }
+        // basicmat:<exact name> swaps that node's material for an unlit MeshBasicMaterial (same
+        // colour, instance colours kept): the ceiling of what a cheaper material could save.
+        if (t.startsWith('basicmat:')) {
+          const name = t.slice(9);
+          S.render.scene.traverse((c) => {
+            if (c.name !== name || !c.material || Array.isArray(c.material)) return;
+            if (on) {
+              if (!c.__ftMat) {
+                c.__ftMat = c.material;
+                c.__ftBasic ||= new window.SF.THREE.MeshBasicMaterial({ color: c.material.color ? c.material.color.clone() : 0xffffff });
+                c.material = c.__ftBasic;
+              }
+            } else if (c.__ftMat) { c.material = c.__ftMat; c.__ftMat = null; }
+          });
+          continue;
+        }
         // lightoff:<name> drops a light from the lighting census (visible=false); noshadow:<name>
         // stops it casting. Both change program variants: the first flip of each links programs.
         if (t.startsWith('lightoff:') || t.startsWith('noshadow:')) {
