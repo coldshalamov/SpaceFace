@@ -41,6 +41,7 @@ const ROUND = Number(argv.round || 3);
 const PAD = argv.pad ? String(argv.pad) : null;
 const REAL_PROFILE = argv['real-profile'] === true;
 const VISIBLE = argv.visible === true;
+const PROFILE = argv.profile === true;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/no-freeze/${ROUTE}${LEGACY ? '-legacy' : ''}`));
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -141,13 +142,15 @@ try {
     await page.evaluate((pairs) => { for (const [k, v] of Object.entries(pairs)) localStorage.setItem(k, v); }, prof.pairs);
     console.log('real profile copied (read-only) from', prof.dir, Object.keys(prof.pairs).join(','));
   }
-  await page.evaluate((legacy) => {
+  await page.evaluate(([legacy, profile]) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
       if (legacy) sessionStorage.setItem('sf.laneLegacy', '1'); else sessionStorage.removeItem('sf.laneLegacy');
-      localStorage.setItem('sf.simProfile', '1');
+      // The per-system profiler times every system call; it costs step time, so it is opt-in
+      // (--profile) and never on in the gate's world-speed measurement.
+      if (profile) localStorage.setItem('sf.simProfile', '1'); else localStorage.removeItem('sf.simProfile');
     } catch { /* storage gated */ }
-  }, LEGACY);
+  }, [LEGACY, PROFILE]);
   {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 240000 });
