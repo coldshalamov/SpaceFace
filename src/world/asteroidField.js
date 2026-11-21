@@ -185,6 +185,22 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   return rec;
 }
 
+/**
+ * A dormant row changed shape or state in place (rock regrowth: a spent core forms, or its slot
+ * restocks). Re-file it in the grid and publish it to the presentation journal like an insert.
+ */
+export function refreshAsteroidFieldRow(state, rec) {
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !rec || field.byId.get(rec.id) !== rec) return false;
+  gridRemove(field, rec);
+  gridAdd(field, rec);
+  field.dirtyPoseIds.add(rec.id);
+  noteFieldRockMotion(field, rec);
+  field.version++;
+  markAuxRowDirty(field, rec.id);
+  return true;
+}
+
 export function getAsteroidFieldRock(state, id) {
   const field = state && state.world && state.world.asteroidField;
   if (!field || !field.byId) return null;

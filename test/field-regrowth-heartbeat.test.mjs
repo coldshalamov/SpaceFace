@@ -10,6 +10,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { world as worldSystem } from '../src/systems/world.js';
+import { ROCK_REGROWTH } from '../src/data/rockRegrowth.js';
 import {
   FIELD_REGROWTH_INTERVAL_S,
   FIELD_REGROWTH_MIN_DEPLETION,
@@ -187,6 +188,18 @@ test('a worked field reopens real rocks on the slow clock and announces the seam
     h.world.update(1 / 60, h.state);
     assert.equal(h.state.fieldDepletion.fields[field.id].regrownBatches, 2);
     assert.equal(events.length, 2);
+
+    // Rock regrowth rule (2026-11-21): a fresh rock never forms in view. With the pilot sitting in
+    // the belt every candidate is on screen, so the due seam waits instead of popping in.
+    const player = h.state.entities.get(h.state.playerId);
+    player.pos.x = field.center.x; player.pos.z = field.center.z;
+    h.state.simTime += FIELD_REGROWTH_INTERVAL_S;
+    h.state.tick += 300;
+    const inBelt = fieldRocks(h.state, field.id).filter((e) => e.data.regrown === true).length;
+    h.world.update(1 / 60, h.state);
+    assert.equal(h.state.fieldDepletion.fields[field.id].regrownBatches, 2, 'no seam opens in view of the pilot');
+    assert.ok(fieldRocks(h.state, field.id).filter((e) => e.data.regrown === true).every((e) => Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z) >= ROCK_REGROWTH.offscreenWu || e.data.regrownAtT < h.state.simTime), 'nothing new within sight');
+    void inBelt;
   } finally {
     h.world.destroy && h.world.destroy();
   }

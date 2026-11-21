@@ -290,13 +290,22 @@ export function advanceResourceBody(record, fromT, toT, context = {}) {
     return { ...record, lastObservedT: b };
   }
   const oreMax = Number.isFinite(record.oreHpMax) ? record.oreHpMax : record.oreHp;
-  const oreHp = regenerateVital(record.oreHp, oreMax, policy.oreRate, dt);
-  const yieldRemainingU = regenerateVital(
-    record.yieldRemainingU,
-    Number.isFinite(record.yieldMaxU) ? record.yieldMaxU : record.yieldRemainingU,
-    policy.yieldRate,
-    dt,
-  );
+  const yieldMax = Number.isFinite(record.yieldMaxU) ? record.yieldMaxU : record.yieldRemainingU;
+  // Rock regrowth (WORLD slice 3): a worked rock rests `quietS` after its last cut, then refills
+  // linearly to its stock body over `recoverS`. Linear ⇒ incremental advances equal the closed form,
+  // so any read cadence (materialize, Continue, a later read) lands on the same value.
+  let oreRate = policy.oreRate;
+  let yieldRate = policy.yieldRate;
+  let healDt = dt;
+  const regrowth = context.regrowth;
+  if (regrowth && record.outcome === 'active' && Number(regrowth.recoverS) > 0) {
+    const healFrom = Math.max(a, finite(record.lastMinedT) + finite(regrowth.quietS));
+    healDt = Math.max(0, b - healFrom);
+    oreRate = Number.isFinite(oreMax) ? oreMax / regrowth.recoverS : 0;
+    yieldRate = Number.isFinite(yieldMax) ? yieldMax / regrowth.recoverS : 0;
+  }
+  const oreHp = regenerateVital(record.oreHp, oreMax, oreRate, healDt);
+  const yieldRemainingU = regenerateVital(record.yieldRemainingU, yieldMax, yieldRate, healDt);
   const recovered = record.outcome === 'depleted'
     && Number.isFinite(oreHp) && oreHp > 0
     && (!Number.isFinite(record.yieldRemainingU) || yieldRemainingU > 0);
@@ -311,7 +320,9 @@ export function advanceResourceBody(record, fromT, toT, context = {}) {
     pctEjected: Number.isFinite(oreMax) && oreMax > 0
       ? clamp(1 - oreHp / oreMax, 0, 1)
       : record.pctEjected,
-    _oreCarry: Number.isFinite(record._oreCarry) ? record._oreCarry : 0,
+    // A healed rock has no fractional ore owed from the cut that worked it.
+    _oreCarry: regrowth && Number.isFinite(oreMax) && oreHp >= oreMax ? 0
+      : (Number.isFinite(record._oreCarry) ? record._oreCarry : 0),
     outcome: recovered ? 'active' : record.outcome,
     depletedAtT: recovered ? null : record.depletedAtT,
     lastObservedT: b,

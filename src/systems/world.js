@@ -6204,6 +6204,7 @@ export const world = {
       const units = lease ? Math.min(batch, lease.qty) : batch;
       // Same-batch rocks are obstacles for each other before the index publishes them.
       const reserved = [];
+      const pilot = state.entities && state.entities.get(state.playerId);
       for (let i = 0; i < units; i++) {
         const ang = rng() * Math.PI * 2;
         const r = clusterR * Math.sqrt(rng());
@@ -6232,8 +6233,13 @@ export const world = {
           },
         });
         if (!clear) continue;
-        const rx = clear.x;
-        const rz = clear.z;
+        // Regrowth never pops in on screen: a fresh rock only forms out of the pilot's sight (a
+        // pilot inside the belt holds the clock; nothing is skipped, the seam waits).
+        let seat = clear;
+        const inView = (p) => !!(pilot && pilot.pos && Math.hypot(p.x - pilot.pos.x, p.z - pilot.pos.z) < ROCK_REGROWTH.offscreenWu);
+        if (!seat || inView(seat)) continue;
+        const rx = seat.x;
+        const rz = seat.z;
         // The remaining clearance applies to published rocks only; the free seam keeps its
         // authored scatter against anchors and the sector envelope.
         if (lease && !this._resourceWorkCandidateClear(state, sector, rx, rz, size)) continue;
