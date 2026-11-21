@@ -47,6 +47,9 @@ const ALLOC = argv.alloc === true;
 // --gctrace: a DevTools performance trace (v8 GC categories) over the dense phase; every minor and
 // major collection on the sim worker's thread is counted with its length and time.
 const GCTRACE = argv.gctrace === true;
+// --cpuprof: a sampling CPU profile of the SIM WORKER; the ten longest busy stretches (worst steps)
+// are listed with the functions that own their time (self and inclusive).
+const CPUPROF = argv.cpuprof === true;
 // --semi=<MB> / --old=<MB>: heap-shape experiment for every isolate (launcher js-flags override).
 const SEMI_MB = argv.semi ? String(argv.semi) : null;
 const OLD_MB = argv.old ? String(argv.old) : null;
@@ -293,7 +296,7 @@ try {
     workerCdp.pending.set(id, { resolve, reject });
     cdp.send('Target.sendMessageToTarget', { sessionId: workerCdp.sessionId, message: JSON.stringify({ id, method, params }) }).catch(reject);
   });
-  if (ALLOC) {
+  if (ALLOC || CPUPROF) {
     cdp.on('Target.receivedMessageFromTarget', (ev) => {
       if (ev.sessionId !== workerCdp.sessionId) return;
       let msg = null;
@@ -316,7 +319,12 @@ try {
       .catch((e) => console.log('autoattach', String(e)));
     const url = await Promise.race([attached, new Promise((r) => setTimeout(() => r(null), 5000))]);
     console.log('sim worker attached', url);
-    if (workerCdp.sessionId) {
+    if (workerCdp.sessionId && CPUPROF) {
+      await workerSend('Profiler.enable').catch((e) => console.log('profiler enable', String(e)));
+      await workerSend('Profiler.setSamplingInterval', { interval: 250 }).catch(() => {});
+      await workerSend('Profiler.start').catch((e) => console.log('profiler start', String(e)));
+    }
+    if (workerCdp.sessionId && ALLOC) {
       await workerSend('HeapProfiler.enable').catch((e) => console.log('heap enable', String(e)));
       await workerSend('HeapProfiler.startSampling', { samplingInterval: 16384,
         includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true })
@@ -408,6 +416,53 @@ try {
     report.phases.push({ name, age, freezeEpisodes: freezeAfter.slice(freezeBefore) });
   }
   hand.stop();
+  if (CPUPROF && workerCdp.sessionId) {
+    const res = await workerSend('Profiler.stop').catch((e) => ({ error: String(e) }));
+    const prof = res && res.profile;
+    if (prof) {
+      const byId = new Map();
+      for (const n of prof.nodes) byId.set(n.id, n);
+      for (const n of prof.nodes) for (const c of n.children || []) { const ch = byId.get(c); if (ch) ch.parent = n.id; }
+      const label = (n) => {
+        const cf = n.callFrame || {};
+        const u = String(cf.url || '').replace(/^.*\/(src|scripts|vendor)\//, '$1/');
+        return (cf.functionName || '(anon)') + (u ? ' ' + u + ':' + ((cf.lineNumber | 0) + 1) : '');
+      };
+      const idle = (n) => /^\((idle|program|root)\)$/.test((n.callFrame || {}).functionName || '');
+      // Busy stretches: consecutive non-idle samples (gaps under 2 ms) on the worker.
+      const runs = [];
+      let cur = null; let t = prof.startTime;
+      for (let i = 0; i < prof.samples.length; i++) {
+        t += prof.timeDeltas[i] || 0;
+        const n = byId.get(prof.samples[i]);
+        if (!n || idle(n)) { if (cur && t - cur.end > 2000) { runs.push(cur); cur = null; } continue; }
+        if (!cur) cur = { start: t, end: t, samples: [] };
+        cur.end = t; cur.samples.push({ id: n.id, dt: prof.timeDeltas[i + 1] || 250 });
+      }
+      if (cur) runs.push(cur);
+      runs.sort((a, b) => (b.end - b.start) - (a.end - a.start));
+      report.worstSteps = runs.slice(0, 10).map((r) => {
+        const self = new Map(); const incl = new Map();
+        for (const smp of r.samples) {
+          const n = byId.get(smp.id);
+          self.set(label(n), (self.get(label(n)) || 0) + smp.dt);
+          const seen = new Set();
+          for (let k = n; k; k = k.parent != null ? byId.get(k.parent) : null) {
+            const L = label(k);
+            if (seen.has(L) || !(k.callFrame && k.callFrame.url)) continue;
+            seen.add(L); incl.set(L, (incl.get(L) || 0) + smp.dt);
+          }
+        }
+        const top = (m, n) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => [k, +(v / 1000).toFixed(1)]);
+        return { ms: +((r.end - r.start) / 1000).toFixed(1), self: top(self, 6), inclusive: top(incl, 14) };
+      });
+      console.log('worker worst busy stretches:');
+      for (const w of report.worstSteps) {
+        console.log('  ' + w.ms + ' ms  self: ' + w.self.map(([k, v]) => k + ' ' + v).join(' | '));
+        console.log('     incl: ' + w.inclusive.map(([k, v]) => k + ' ' + v).join(' | '));
+      }
+    } else console.log('cpu profile failed', JSON.stringify(res).slice(0, 200));
+  }
   if (GCTRACE) {
     const done = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
     await cdp.send('Tracing.end').catch((e) => console.log('tracing end', String(e)));
