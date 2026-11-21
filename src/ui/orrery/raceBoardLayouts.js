@@ -130,6 +130,16 @@ ${R} .race-board-course .dp-lit__item[aria-pressed="true"] { color:var(--dp-lamp
   font-variation-settings:"wght" 780, "wdth" 100 !important;
   text-shadow:0 0 22px rgb(255 226 178 / .34), 0 0 6px rgb(255 226 178 / .22), 0 1px 0 rgb(0 0 0 / .6) !important; }
 ${R} .race-board-course:has(.dp-lit__item[aria-pressed="true"]) { border-color:rgb(242 185 80 / .55) !important; }
+/* One card per circuit: the events flown there are rows under the course facts. The pick word is
+   a row label here, not a headline, so it reads at list size. */
+${R} .race-board-events { display:grid !important; gap:0 !important; margin:8px 0 0 !important; }
+${R} .race-board-event { display:grid !important; justify-items:start; gap:3px !important; padding:10px 0 !important;
+  border-top:1px solid rgb(${BONE} / .1) !important; }
+${R} .race-board-event .dp-lit__item { font-size:clamp(17px, 1.2vw, 21px) !important; line-height:1.15 !important; }
+${R} .race-board-event > p.k-sentence { ${READ} font-size:13px !important; line-height:1.4 !important;
+  color:rgb(${BONE} / .74) !important; margin:0 !important; max-width:none !important; }
+${R} .race-board-event > p.k-sentence:last-of-type { font-size:12.5px !important; font-variant-numeric:tabular-nums;
+  color:var(--dp-ink-mute, #b0aea6) !important; }
 
 /* ---------- physics-venue board: lone Back rail, launch rows straight in the card ---------- */
 ${R} > .race-board-tools:has(> button:only-child) { background:none !important; border-color:transparent !important; padding:0 !important; margin:0 0 12px !important; }

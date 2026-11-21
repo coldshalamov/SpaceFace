@@ -1584,8 +1584,13 @@ export const tetherGameplay = {
   /** A rover press that could not put the Line on its rock says why, in the pilot's terms. */
   _sayRoverRefused(drillIntent, reason) {
     if (!drillIntent || !this.bus || typeof this.bus.emit !== 'function') return;
+    const blocker = reason === 'blocked' ? this._lastLineBlocker : null;
+    const what = !blocker ? 'something'
+      : blocker.type === 'asteroid' ? 'another rock'
+        : blocker.type === 'station' ? (blocker.name || 'a station')
+          : (blocker.name || 'a wreck');
     const text = reason === 'blocked'
-      ? 'No clear line to that rock: something is in the way. Move until you can see it, then set the rover down again.'
+      ? `No clear line to that rock: ${what} is in the way. Move until you can see it, then set the rover down again.`
       : reason === 'out-of-range' ? 'Too far to set the rover down. Fly closer to the rock.'
         : reason === 'cooldown' ? 'The Line is still rewinding. Set the rover down again in a moment.'
           : 'The Line could not take hold of that rock. Try from another side.';
@@ -3572,6 +3577,7 @@ function bridleAcquisitionEndpoints(source, target) {
  * way a thrown check fails closed.
  */
 function masslineObstructed(host, state, player, target, endpoints = null, obstacles = null) {
+  const report = { blocker: null };
   const request = {
     state,
     player,
@@ -3579,7 +3585,10 @@ function masslineObstructed(host, state, player, target, endpoints = null, obsta
     sourceWorld: endpoints && endpoints.sourceWorld ? endpoints.sourceWorld : null,
     targetWorld: endpoints && endpoints.targetWorld ? endpoints.targetWorld : null,
     obstacles: Array.isArray(obstacles) ? obstacles : null,
+    report,
   };
+  // What blocked the last line, for the callers that say it out loud. Cleared on every check.
+  if (host) host._lastLineBlocker = null;
   const check = host && host.helpers && host.helpers.isMasslineObstructed;
   if (typeof check === 'function') {
     try {
@@ -3589,7 +3598,13 @@ function masslineObstructed(host, state, player, target, endpoints = null, obsta
     }
   }
   try {
-    return isAsteroidMasslineObstructed(request) === true;
+    const blocked = isAsteroidMasslineObstructed(request) === true;
+    if (blocked && host && report.blocker) {
+      const b = report.blocker;
+      host._lastLineBlocker = { id: b.id != null ? b.id : null, type: b.type || null,
+        name: (typeof b.name === 'string' && b.name) || (b.data && typeof b.data.name === 'string' && b.data.name) || null };
+    }
+    return blocked;
   } catch (_) {
     return true;
   }

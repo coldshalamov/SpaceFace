@@ -22,6 +22,10 @@ import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
 import { rockName } from './rockNames.js';
+import { rockAssayLine } from './rockAssay.js';
+import { ROCK_GEOLOGY, resolveBoreFamily } from '../../systems/drillFieldModel.js';
+import { worksObjectiveLine } from '../../data/worksContractWords.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { createAsteroidRenderer3d, readWorksDrillSession } from './asteroidRenderer3d.js';
 import {
   createAsteroidController,
@@ -707,6 +711,46 @@ export const asteroidScreen = {
     // ---------- the board (law §4): sovereign stage + rig cluster ----------
     const stage = document.createElement('div');
     stage.className = 'aw-stage';
+    // The landing card. Setting the rover down takes a few seconds (the rig and the rock face are
+    // real models being loaded), and that used to be a black screen with one line in the bar. The
+    // wait now shows what the pilot is about to need: which rock this is, what is in it and how
+    // deep, and the job they came here to do.
+    const landingEl = document.createElement('div');
+    landingEl.className = 'aw-landing';
+    landingEl.hidden = true;
+    landingEl.setAttribute('aria-hidden', 'true');
+    const landingName = document.createElement('div'); landingName.className = 'aw-landing__name';
+    const landingKind = document.createElement('div'); landingKind.className = 'aw-landing__kind';
+    const landingAssay = document.createElement('div'); landingAssay.className = 'aw-landing__assay';
+    const landingJob = document.createElement('div'); landingJob.className = 'aw-landing__job';
+    const landingStage = document.createElement('div'); landingStage.className = 'aw-landing__stage';
+    landingEl.append(landingName, landingKind, landingAssay, landingJob, landingStage);
+    let landingFor = null;
+    function showLanding(stageText) {
+      const d = state.drill;
+      const id = d ? d.asteroidId : state.ui?.pendingDrillAsteroidId;
+      if (id == null) { hideLanding(); return; }
+      if (landingFor !== id) {
+        landingFor = id;
+        const rock = state.entities && state.entities.get ? state.entities.get(id) : null;
+        const family = ROCK_GEOLOGY[resolveBoreFamily(rock && rock.data)];
+        landingName.textContent = rockName(id);
+        landingKind.textContent = family ? family.label : 'Asteroid';
+        landingAssay.textContent = (rock && rockAssayLine(rock, state, (oreId) => commodityDisplayName(oreId))) || '';
+        const job = (state.missions?.active || []).find((m) => m && m.status === 'active' && m.params?.works
+          && m.destSectorId === state.world?.currentSectorId
+          && ['cut', 'blast', 'install', 'installSet'].includes(m.params.works.goal?.kind));
+        landingJob.textContent = job ? `${job.title}: ${worksObjectiveLine(job)}` : '';
+        landingJob.hidden = !job;
+      }
+      landingStage.textContent = stageText;
+      landingEl.hidden = false;
+    }
+    function hideLanding() {
+      if (landingEl.hidden) return;
+      landingEl.hidden = true;
+      landingFor = null;
+    }
     const canvas = document.createElement('canvas');
     canvas.className = 'ast-canvas';
     canvas.tabIndex = 0;
@@ -791,6 +835,7 @@ export const asteroidScreen = {
     srStatus.setAttribute('aria-live', 'polite');
     srStatus.setAttribute('aria-atomic', 'true');
     stage.appendChild(srStatus);
+    stage.appendChild(landingEl);
     wrap.appendChild(stage);
     rootEl.appendChild(wrap);
 
@@ -3038,6 +3083,7 @@ export const asteroidScreen = {
           : status === 'session-lost' ? 'Mining session ended — leave and try again'
             : status === 'rejected' ? 'Mining request declined — leave and try again' : null;
         showBanner('equipment', failure || 'Loading mining equipment…', failure ? 'bad' : 'warn');
+        if (failure) hideLanding(); else showLanding('Opening the rock…');
         if (failure && entryFailure !== failure) announce(failure);
         entryFailure = failure;
         updateGuide();
@@ -3051,11 +3097,13 @@ export const asteroidScreen = {
       if (readiness && !readiness.ready) {
         controller.cancel();
         // Name the actual stage: once terrain is up the wait is the rig docking, not the rock.
-        showBanner('equipment', readiness.failed
+        const stageText = readiness.failed
           ? 'Mining equipment unavailable — leave and reopen'
-          : (readiness.terrain && !readiness.rover ? 'Docking the mining rig…' : 'Loading mining equipment…'),
-        readiness.failed ? 'bad' : 'warn');
-      } else clearBanner('equipment');
+          : (readiness.terrain && !readiness.rover ? 'Docking the mining rig…' : 'Loading mining equipment…');
+        showBanner('equipment', stageText, readiness.failed ? 'bad' : 'warn');
+        if (readiness.failed) hideLanding();
+        else showLanding(readiness.terrain && !readiness.rover ? 'Setting the rover down…' : 'Opening the rock…');
+      } else { clearBanner('equipment'); hideLanding(); }
       controller.tick(dt);
       pumpWorkbench(dt);
       refreshProjectionIfIdentityShifted();

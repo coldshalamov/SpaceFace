@@ -234,6 +234,28 @@
   text-overflow: ellipsis;
 }
 .aw-alert.live { visibility: visible; }
+/* The landing card: what the pilot reads while the rover is being set down (asteroidScreen.js). */
+.aw-landing {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, rgb(45 37 27 / .55), rgb(23 19 16 / 0) 62%);
+}
+.aw-landing[hidden] { display: none; }
+.aw-landing__name { font: 700 clamp(30px, 4.2vw, 52px)/1.05 var(--aw-name-font); color: var(--aw-ink); }
+.aw-landing__kind { font: 600 14px/1.2 var(--aw-mono); letter-spacing: .04em; color: var(--aw-gold); }
+.aw-landing__assay { max-width: 62ch; font: 500 17px/1.45 var(--aw-font); color: var(--aw-ink-2); }
+.aw-landing__job { max-width: 62ch; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--aw-line); font: 600 16px/1.45 var(--aw-font); color: var(--aw-ink); }
+.aw-landing__job[hidden] { display: none; }
+.aw-landing__stage { margin-top: 14px; font: 500 13px/1.2 var(--aw-mono); color: var(--aw-ink-3); }
 .aw-alert.warn { color: var(--orr-bone-hot); }
 .aw-alert.bad { color: var(--orr-danger); }
 .aw-alert.good { color: var(--orr-bone); }

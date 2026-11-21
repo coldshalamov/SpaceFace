@@ -298,14 +298,14 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const cueName=cue?String(cue.name||cue.id||''):'';
       if(cue)courseCue.textContent=cue.kind==='sectorHazard'
         ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
-        :cue.kind==='anchor'?`${cueName} · optional Massline swing`
+        :cue.kind==='anchor'?`${cueName} · optional swing on the Line`
         :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} m`
         :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
       const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
       selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
       if(selection&&player?.pos&&Math.hypot(selection.pos.x-player.pos.x,selection.pos.z-player.pos.z)<900){
         select.hidden=false;select.textContent=pod===selection?'Select pod':'Select anchor';
-        select.title='Select this body, then use your normal Massline control.';
+        select.title='Select this body, then use the Line as usual.';
       }
       const tape=readRaceTape(race.params,player,raceGateGlobals(race.params),now);
       const phase=race.params.sectionMission?race.params.phase:'chase';

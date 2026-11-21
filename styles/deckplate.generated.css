@@ -3258,6 +3258,9 @@ html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="dril
 .race-board-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:calc(var(--dp-pad) * 2); }
 .race-board-course,.race-board-result { padding:calc(var(--dp-pad) * 2); }
 .race-board-course .race-map { max-height:190px; margin-block:var(--dp-pad); }
+.race-board-events { display:grid; gap:var(--dp-pad); margin-top:calc(var(--dp-pad) * 1.5); }
+.race-board-event { display:grid; gap:4px; padding-top:var(--dp-pad); border-top:1px solid rgb(236 230 216 / .12); }
+.race-board-event > p { margin:0; }
 .race-board-contract { padding-block:var(--dp-pad); }
 .race-board-result { margin-bottom:calc(var(--dp-pad) * 2); }
 @media(max-width:600px) {

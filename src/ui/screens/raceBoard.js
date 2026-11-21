@@ -8,7 +8,7 @@ import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { confirm } from '../confirm.js';
 import { RACING_CIRCUITS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, circuitContracts } from '../../data/raceLevels.js';
-import { readRaceRecords, raceRecordKey, normalizeSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
+import { readRaceRecords, raceRecordKey, normalizeSteeringView, preferredSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
 import { armRacingContract, stageRacingLaunch } from '../racingLaunch.js';
 import { setSteeringView, lastRacingResult } from '../racingControls.js';
 import { BINDINGS } from '../bindings.js';
@@ -108,15 +108,15 @@ export const raceBoardScreen={
     // block over the cards. The sentence it replaced stays as the chip's account of itself.
     const viewKey=el('kbd','dp-kbd',BINDINGS.steeringView.label);
     view.title=`${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`;
-    const cameraNames = { overhead: 'Overhead', racing: 'Chase', auto: 'Automatic' };
+    const cameraNames = { overhead: 'Overhead', racing: 'Third person', auto: 'Auto' };
     const viewLabel = () => {
-      const mode = normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView);
+      const mode = preferredSteeringView(ctx?.state?.settings);
       view.textContent = `Camera · ${cameraNames[mode]}`;
       view.appendChild(viewKey);
     };
     viewLabel();
     view.addEventListener('click',()=>{
-      const cur=normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView);
+      const cur=preferredSteeringView(ctx?.state?.settings);
       setSteeringView(ctx?.state,ctx?.bus,STEERING_VIEWS[(STEERING_VIEWS.indexOf(cur)+1)%STEERING_VIEWS.length]);viewLabel();
     });
     const back=el('button','k-word','Back');back.type='button';back.addEventListener('click',()=>{cue('close');pop(ctx);});
@@ -276,43 +276,54 @@ export const raceBoardScreen={
     for(const [index,level] of RACING_CIRCUITS.entries()){
       const course=courseForLevel(level.id);
       if(!course)continue;
-      for(const entry of entries.filter(e=>e.level===level)){
-        const {contractId,contract:row,offer,eligible,timeTrialOnly,title}=entry;
+      // ONE card per circuit. The map, the description and the course facts belong to the place and
+      // are said once; the events flown there are rows inside it. (The board used to print a full
+      // card per event, so a circuit with four events was four cards with the same map and text.)
+      const levelEntries=entries.filter(e=>e.level===level);
+      if(levelEntries.length){
         const card=el('section','race-board-course dp-plate');
-        card.dataset.contractId=contractId;
-        if (!row.practice) card.appendChild(el('p','k-sentence',course.courseName));
-        card.appendChild(el('h2','k-t-sub',title));
-        const map=createRacingMap(course.gates,`${title} start and finish`);
+        card.dataset.levelId=level.id;
+        card.appendChild(el('p','k-sentence',`Circuit ${index+1}`));
+        card.appendChild(el('h2','k-t-sub',level.name));
+        const map=createRacingMap(course.gates,`${level.name} start and finish`);
         if(map)card.appendChild(map.element);
         card.append(el('p','k-sentence',level.blurb),
-          el('p','k-sentence',`${formatDistance(course.courseLengthWU)} / lap · ${course.gates.length-1} legs · start / finish aligned`));
+          el('p','k-sentence',`${formatDistance(course.courseLengthWU)} per lap · ${course.gates.length-1} legs`));
         const pieces=racingSetPieceDefinitions(course.courseId);
-        if(pieces)card.appendChild(el('p','k-sentence',`Optional Massline anchors. ${pieces.crossing?'Watch for the scheduled cargo crossing; the amber ring marks a refuge.':pieces.wave?'Read the debris warning, then take a gap or wait in the amber refuge.':pieces.shutter?'A customs shutter closes the main cut; the green service lane stays open.':'Follow the marked line through the technical turns.'}`));
+        if(pieces)card.appendChild(el('p','k-sentence',`Rocks beside the course can be swung on with the Line. ${pieces.crossing?'Watch for the scheduled cargo crossing; the amber ring marks a refuge.':pieces.wave?'Read the debris warning, then take a gap or wait in the amber refuge.':pieces.shutter?'A customs shutter closes the main cut; the green service lane stays open.':'Follow the marked line through the technical turns.'}`));
         if(fit.raceMode==='time-trial'&&course.medalTimes){
           const times=course.medalTimes;
-          card.appendChild(el('p','k-sentence',`${level.name} medal times · Gold ${formatRaceTime(times.gold)} · Silver ${formatRaceTime(times.silver)} · Bronze ${formatRaceTime(times.bronze)}`));
+          card.appendChild(el('p','k-sentence',`Medal times · Gold ${formatRaceTime(times.gold)} · Silver ${formatRaceTime(times.silver)} · Bronze ${formatRaceTime(times.bronze)}`));
           const earned=readRacingCareer(storageOf()).medals?.[level.id];
           if(earned)card.appendChild(el('p','k-sentence',`Your medal: ${earned.medal}`));
         }
-        if (!row.practice) card.appendChild(el('p','k-sentence',row.summary));
-        const recordPrefix=offer&&raceRecordKey(offer.params);
-        const fitTimes=recordPrefix?Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
-          &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time):[];
-        const best=fitTimes.length?Math.min(...fitTimes):null;
-        card.appendChild(el('p','k-sentence',`${row.laps} ${pluralWord(row.laps, 'lap', 'laps')} · ${row.practice?'uses your camera setting':'chase camera required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
-        if(timeTrialOnly&&fit.raceMode!=='time-trial'){
-          card.appendChild(el('p','k-sentence','Select Time trial to fly this circuit.'));
-        }else if(fit.raceMode==='cup'&&!eligible){
-          const heatIndex=CUP_HEATS.findIndex(heat=>heat.levelId===level.id);
-          card.appendChild(el('p','k-sentence',heatIndex>=0&&heatIndex<(cup?.nextHeat||0)
-            ?`Cup heat ${heatIndex+1} of ${CUP_HEATS.length} — already finished.`
-            :`Cup heat ${heatIndex+1>=0?heatIndex+1:CUP_HEATS.length} of ${CUP_HEATS.length} — finish the current heat to unlock.`));
+        const events=el('div','race-board-events');
+        for(const entry of levelEntries){
+          const {contractId,contract:row,offer,eligible,timeTrialOnly,title}=entry;
+          const eventRow=el('div','race-board-event');
+          eventRow.dataset.contractId=contractId;
+          const pickList=words([{action:contractId,label:row.practice?'Practice':title}],{system:'light',
+            ariaLabel:`Select event on ${level.name}`,onPick:()=>select(contractId)});
+          const pickButton=pickList.querySelector&&pickList.querySelector('button');
+          if(pickButton){pickButton.setAttribute('aria-label',row.practice?`Select ${title}`:`Select ${title} on ${level.name}`);selectControls.set(contractId,pickButton);}
+          eventRow.appendChild(pickList);
+          if (!row.practice) eventRow.appendChild(el('p','k-sentence',row.summary));
+          const recordPrefix=offer&&raceRecordKey(offer.params);
+          const fitTimes=recordPrefix?Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
+            &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time):[];
+          const best=fitTimes.length?Math.min(...fitTimes):null;
+          eventRow.appendChild(el('p','k-sentence',`${row.laps} ${pluralWord(row.laps, 'lap', 'laps')} · ${row.practice?'your camera setting':'third-person camera'} · ${Number.isFinite(best)?`best ${formatRaceTime(best)}`:'no clean time yet'}`));
+          if(timeTrialOnly&&fit.raceMode!=='time-trial'){
+            eventRow.appendChild(el('p','k-sentence','Select Time trial to fly this circuit.'));
+          }else if(fit.raceMode==='cup'&&!eligible){
+            const heatIndex=CUP_HEATS.findIndex(heat=>heat.levelId===level.id);
+            eventRow.appendChild(el('p','k-sentence',heatIndex>=0&&heatIndex<(cup?.nextHeat||0)
+              ?`Cup heat ${heatIndex+1} of ${CUP_HEATS.length} — already finished.`
+              :`Cup heat ${heatIndex+1>=0?heatIndex+1:CUP_HEATS.length} of ${CUP_HEATS.length} — finish the current heat to unlock.`));
+          }
+          events.appendChild(eventRow);
         }
-        const pickList=words([{action:contractId,label:title}],{system:'light',
-          ariaLabel:`Select event on ${level.name}`,onPick:()=>select(contractId)});
-        const pickButton=pickList.querySelector&&pickList.querySelector('button');
-        if(pickButton){pickButton.setAttribute('aria-label',row.practice?`Select ${title}`:`Select ${title} on ${level.name}`);selectControls.set(contractId,pickButton);}
-        card.appendChild(pickList);
+        card.appendChild(events);
         grid.appendChild(card);
       }
       // Personal ghosts belong to the course, so their controls render once per course

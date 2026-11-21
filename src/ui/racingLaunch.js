@@ -153,7 +153,7 @@ export function armRacingContract(ctx, contractId, options = {}) {
     return { ok: false, reason: 'race_active' };
   }
   if (state.player?.tether?.active) {
-    toast('Release the Massline before joining the starting grid.');
+    toast('Release the Line before joining the starting grid.');
     return { ok: false, reason: 'tether_active' };
   }
   // AL-RACE-2: RF-02 — the sector circuit's structure and the fitted hull's

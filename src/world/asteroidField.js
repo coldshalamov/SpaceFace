@@ -549,7 +549,7 @@ function masslineEndpointIds(player, target) {
  * clear; malformed endpoints fail closed.
  */
 export function isMasslineObstructed({
-  state, player, target, sourceWorld, targetWorld, obstacles,
+  state, player, target, sourceWorld, targetWorld, obstacles, report = null,
 } = {}) {
   const sx = finite(sourceWorld && sourceWorld.x, NaN);
   const sz = finite(sourceWorld && sourceWorld.z, NaN);
@@ -595,6 +595,11 @@ export function isMasslineObstructed({
       const hz = tz - xz.z;
       const hr = masslineObstacleRadius(rock);
       if (hx * hx + hz * hz <= hr * hr) continue;
+      // The same holds for the ship. A pilot parked inside a derelict's or a station's bounding
+      // disc is inside its sparse bounds, not inside metal: a line that STARTS there is not a
+      // line through the hull. Without this, every latch (and the rover's own line) was refused
+      // as "blocked" for as long as the ship sat anywhere near a big wreck.
+      if (px * px + pz * pz <= hr * hr) continue;
     }
     // Quadratic segment-vs-disc on the OPEN span: the disc's intersection interval is
     // [along - half, along + half] in unit-direction world units, and only an overlap with
@@ -607,6 +612,8 @@ export function isMasslineObstructed({
     const half = Math.sqrt(Math.max(0, radius2 - perp2));
     if (along + half <= MASSLINE_T_EPS) continue;
     if (along - half >= span - MASSLINE_T_EPS) continue;
+    // A caller that wants to say WHAT is in the way hands in a report object.
+    if (report && typeof report === 'object') report.blocker = rock;
     return true;
   }
   return false;
