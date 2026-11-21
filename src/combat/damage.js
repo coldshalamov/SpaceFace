@@ -1236,10 +1236,22 @@ function pilotCollisionTakenScale(state, player, packet, origin, srcKind) {
 // (penetrating channels notwithstanding) and every non-weapon origin keep the
 // authored damage. Player fire only — the caller gates on attackerId.
 function pilotGunHullScale(state, target, origin) {
-  if (!pilotHas(state, 'gunner_hollow_point')) return 1;
   if (!origin || origin.kind !== 'weapon') return 1;
-  if ((Number(target && target.shield) || 0) > 0) return 1;
-  return 1.5;
+  const ambush = pilotAmbushScale(state);
+  if (!pilotHas(state, 'gunner_hollow_point')) return ambush;
+  if ((Number(target && target.shield) || 0) > 0) return ambush;
+  return 1.5 * ambush;
+}
+
+// ghost_ambush — the first volley out of the dark hits three times as hard. The window is the
+// cloak owner's stamp (cloak.js _onPlayerFire), read here so the damage writer stays the one
+// place hull damage is scaled.
+function pilotAmbushScale(state) {
+  const rt = state && state.massline2 && state.massline2.cloak;
+  const until = rt && rt.ambushUntil;
+  if (!Number.isFinite(until)) return 1;
+  const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+  return now <= until && pilotHas(state, 'ghost_ambush') ? 3 : 1;
 }
 
 function clamp01(value) {

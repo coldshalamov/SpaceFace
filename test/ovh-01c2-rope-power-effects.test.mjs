@@ -407,36 +407,39 @@ test('rigger_sweet_spot: the release window doubles and an in-window release add
   assert.equal(outside.dv, 0, 'a release outside the window is the plain throw it always was');
 });
 
-test('rigger_whip_snap: a mid-swing tap of the reel flings the latched body to 1.5× speed', () => {
-  const run = (pilotNodes) => withThrowFlags(() => {
+// Rewritten 2026-11-20 to the one-button Line: a tap on a held body now THROWS it (the old
+// tap-cut that Whip Snap rode is gone), so Whip Snap rides the throw: a body already whipping
+// round fast (twice the throw floor) leaves half again as fast. Hurricane (the Line capstone)
+// doubles every Line throw.
+test('rigger_whip_snap / rigger_hurricane: a fast throw leaves ×1.5; the capstone doubles every throw', () => {
+  const throwAt = (pilotNodes, speed) => withThrowFlags(() => {
     const h = ropeHarness({ pilotNodes });
     const payload = h.spawn(2, 'asteroid', 100, 0, {
-      mass: 40, vel: { x: 60, z: 0 }, physicsBody: { dynamic: true, mass: 40 },
+      mass: 40, vel: { x: speed, z: 0 }, physicsBody: { dynamic: true, mass: 40 },
     });
+    const created = h.attachments.create({
+      defId: 'tether_standard', ownerId: h.player.id, targetId: payload.id,
+      sourceWorld: { x: 0, y: 0, z: 0 }, targetWorld: { x: 84, y: 0, z: 0 },
+    });
+    assert.ok(created.ok, 'the line is up');
     h.state.player.tether = {
-      active: true, attachmentId: 7, targetId: payload.id, phase: 'loaded', restLength: 100,
+      active: true, attachmentId: created.attachment.id, targetId: payload.id,
+      phase: 'loaded', strain: 0.3, load: 0.5, restLength: 100,
     };
     const system = Object.create(masslineThrow);
     system.init({ state: h.state, bus: h.bus, helpers: {}, registry: h.registry });
-    system.update(DT, h.state); // one settled swing tick: _swing is live and taut
-    h.state.input.actions.massline = { cut: true, latch: false, lineControl: false, lineLength: 0 };
-    h.bus.emit('tether:cut', { targetId: payload.id }); // tetherGameplay's tap-cut receipt
+    const ok = system._executeThrow(h.state, h.player, payload, { entity: null }, {
+      valid: true, errorRad: 0, tolRad: 1, onSolution: true,
+      interceptAngle: 0, payloadSpeed: speed, timeOfFlight: 1,
+    }, 'snap-manual');
+    assert.equal(ok, true);
     const command = consumePhysicsCommand(payload);
-    const dv = command && command.impulses.length === 1
-      ? Math.hypot(command.impulses[0].x, command.impulses[0].z) / 40 : 0;
-    return { dv, events: h.events };
+    return command ? command.impulses.reduce((sum, imp) => sum + Math.hypot(imp.x, imp.z) / 40, 0) : 0;
   });
-
-  const plain = run(null);
-  assert.equal(plain.dv, 0, 'without the node a tap-cut is just the cut');
-  assert.ok(!plain.events.some((e) => e.type === 'massline:whipSnap'));
-
-  const snapped = run(['rigger_whip_snap']);
-  assert.ok(Math.abs(snapped.dv - 30) < 1e-6, `×1.5 of 60 WU/s is +30, got ${snapped.dv}`);
-  const receipt = snapped.events.find((e) => e.type === 'massline:whipSnap');
-  assert.ok(receipt, 'the fling publishes its receipt');
-  assert.equal(receipt.payload.payloadId, 2);
-  assert.ok(Math.abs(receipt.payload.dvWu - 30) < 1e-6);
+  assert.equal(throwAt(null, 60), 0, 'without a node the throw is the swing it earned');
+  assert.ok(Math.abs(throwAt(['rigger_whip_snap'], 60) - 30) < 1e-6, 'a fast body leaves ×1.5');
+  assert.equal(throwAt(['rigger_whip_snap'], 40), 0, 'a slow body is not whipping: no snap');
+  assert.ok(Math.abs(throwAt(['rigger_hurricane'], 40) - 40) < 1e-6, 'Hurricane doubles any throw');
 });
 
 test('rigger_crane: a body on your line hits as if it were twice as heavy', () => {
@@ -543,10 +546,13 @@ test('conjurer_wide_bore: every power\'s radius or reach is ×1.4', () => {
   const plainSeed = massSeedLaunchPlan(pilot, plainState);
   const boreSeed = massSeedLaunchPlan(pilot, boreState);
   const flew = (plan) => Math.hypot(plan.lockPos.x - plan.spawnPos.x, plan.lockPos.z - plan.spawnPos.z);
-  assert.ok(Math.abs(flew(plainSeed) - MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS) < 1e-6,
-    'the authored bolt distance without the node');
-  assert.ok(Math.abs(flew(boreSeed) - MASS_SEED_DEF.travelSpeed * 1.4 * MASS_SEED_DEF.travelTimeS) < 1e-6,
-    'the bolt flies ×1.4 with the node');
+  // Since the Pin posts at the cursor (combat 2026-11-20) the bolt flies to the aim inside its
+  // reach; Wide Bore stretches that reach ×1.4.
+  void flew;
+  assert.ok(Math.abs(plainSeed.reach - MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS) < 1e-6,
+    'the authored Pin reach without the node');
+  assert.ok(Math.abs(boreSeed.reach - MASS_SEED_DEF.travelSpeed * 1.4 * MASS_SEED_DEF.travelTimeS) < 1e-6,
+    'the Pin reaches ×1.4 with the node');
 
   // BOMB: the blast radius is stamped on the drop.
   const bootBombs = (pilotNodes, owner) => {

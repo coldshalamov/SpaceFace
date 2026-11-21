@@ -7,6 +7,7 @@ import { indexedTypeScan } from '../../world/livingWorldViews.js';
 import { isHostileToPlayer } from '../../systems/scannerReadModel.js';
 import { maxFittedModuleMod } from '../fittedModules.js';
 import { pilotPowerReachScale } from '../../systems/powerVerbs.js';
+import { pilotHas } from '../../data/pilotTree.js';
 
 export const FIELD_EMITTER_TYPE = 'fieldEmitter';
 // The well's velocity-dependent convergence applies to craft; loose bodies and
@@ -77,6 +78,25 @@ function pilotReachScaled(value, player, state) {
   return value * pilotPowerReachScale(state);
 }
 
+// Pilot Tree (progression lead 2026-11-20). conjurer_implode — the player's Pull well is half
+// the size and three times as strong: what it catches is crushed into each other.
+// conjurer_heavy_shove — the player's Shove pushes twice as hard (everything flies twice as far).
+// Player deploys only; the preview reads the same spec, so it shows the bent field.
+export const PILOT_IMPLODE_RADIUS = 0.5;
+export const PILOT_IMPLODE_STRENGTH = 3;
+export const PILOT_HEAVY_SHOVE_STRENGTH = 2;
+const UNBENT = Object.freeze({ radius: 1, strength: 1 });
+function pilotRadialShape(kind, player, state) {
+  if (!state || !player || player.id !== state.playerId) return UNBENT;
+  if (kind === 'well' && pilotHas(state, 'conjurer_implode')) {
+    return { radius: PILOT_IMPLODE_RADIUS, strength: PILOT_IMPLODE_STRENGTH };
+  }
+  if (kind === 'repulsor' && pilotHas(state, 'conjurer_heavy_shove')) {
+    return { radius: 1, strength: PILOT_HEAVY_SHOVE_STRENGTH };
+  }
+  return UNBENT;
+}
+
 /**
  * The kernel record a player Pull well, Shove repulsor, Rig cone or Rig skim scoop registers when it
  * deploys right now (ids, source and clock left to the caller). The deploys spread this, and the
@@ -118,11 +138,12 @@ export function playerFieldSpec(kind, player, state) {
       filters: { excludeId: player.id },
     };
   }
+  const shape = pilotRadialShape(kind, player, state);
   return {
     kind: def.kind,
     center: radialFieldDeployCenter(kind, player, state),
-    radius: pilotReachScaled(def.radius, player, state),
-    strength: def.strength,
+    radius: pilotReachScaled(def.radius, player, state) * shape.radius,
+    strength: def.strength * shape.strength,
     // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
     // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter
     // what the data said. Every other register site (the anchor snare, external profiles) does

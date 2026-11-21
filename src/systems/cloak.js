@@ -24,6 +24,7 @@
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { pilotHas } from '../data/pilotTree.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const CLOAK_MIN_ENGAGE = 0.12;      // energy floor to engage
@@ -39,6 +40,23 @@ const SCAN_PULSE_RADIUS_WU = 1200;   // mirrors scanner.js NEAR_SCAN_RADIUS; pay
                                      // when the event grows the field
 
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+
+// --- The Stealth branch (Pilot Tree, progression lead 2026-11-20) -----------------------------
+// ghost_cloak is the branch's root: it gives the ship a cloak on V with no module fitted (about
+// eight seconds dark from full). ghost_cold_drift halves the ring while coasting dark;
+// ghost_deep_shroud halves the drain and doubles the recharge; ghost_ambush makes the first
+// volley out of the dark hit three times as hard (damage.js reads cloakAmbushActive);
+// ghost_vanish re-engages the cloak on a kill made inside that window; ghost_phantom (capstone)
+// stops firing from dropping the cloak.
+export const PILOT_CLOAK_MODULE = Object.freeze({
+  id: 'pilot_cloak',
+  name: 'Cloak',
+  mods: Object.freeze({ cloakBaseRadius: 320, cloakDrainPerS: 0.125, cloakRechargePerS: 0.08 }),
+});
+export const COLD_DRIFT_RING = 0.5;
+export const AMBUSH_WINDOW_S = 1;
+export const AMBUSH_DAMAGE_MULT = 3;
+const AMBUSH_REARM_S = 2;
 
 export const cloak = {
   id: 'cloak',
@@ -58,7 +76,7 @@ export const cloak = {
       if (CLOAK_BREAK_ON_FIRE) {
         this._unsubs.push(this.bus.on('combat:fire', (p) => {
           if (!p || p.ownerId == null) return;
-          if (p.ownerId === this.state.playerId) { this._drop('fired'); return; }
+          if (p.ownerId === this.state.playerId) { this._onPlayerFire(); return; }
           // Same rule for a cloaked NPC: firing breaks its cloak. Runtime is data-only for NPCs
           // (their producer owns charge bookkeeping), and cloak:dropped is a player-facing
           // receipt (VFX consumers hard-wire targetId=playerId) — so the NPC drop is silent.
@@ -80,7 +98,7 @@ export const cloak = {
       this._unsubs.push(this.bus.on('save:restoring', () => {
         this._drop(null);
         const rt = this.state && this.state.massline2 && this.state.massline2.cloak;
-        if (rt) { delete rt.revealUntil; delete rt.engagedAt; }
+        if (rt) { delete rt.revealUntil; delete rt.engagedAt; delete rt.ambushUntil; }
         this._clearCloakTracks();
       }));
       for (const event of ['game:started', 'dock:docked', 'player:death']) {
@@ -95,6 +113,8 @@ export const cloak = {
       // Scanner counterplay (another lane owns scanner.js — cloak only listens): an active
       // pulse burns every cloak inside its sweep open for a bounded window.
       this._unsubs.push(this.bus.on('scan:pulse', (p) => this._onScanPulse(p)));
+      // ghost_vanish: a kill inside the ambush window puts the player straight back in the dark.
+      this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKill(p)));
     }
   },
 
@@ -107,6 +127,7 @@ export const cloak = {
     runtime.available = false;
     delete runtime.revealUntil;
     delete runtime.engagedAt;
+    delete runtime.ambushUntil;
     // The per-observer contact-fade ledger is perception runtime, not memory — a fresh run
     // starts with nobody holding a ghost of a ship that no longer exists.
     this._clearCloakTracks();
@@ -152,8 +173,9 @@ export const cloak = {
       return;
     }
 
-    const drain = positive(mod.mods.cloakDrainPerS, 0.09);
-    const recharge = positive(mod.mods.cloakRechargePerS, 0.06);
+    const shroud = pilotHas(state, 'ghost_deep_shroud');
+    const drain = positive(mod.mods.cloakDrainPerS, 0.09) * (shroud ? 0.5 : 1);
+    const recharge = positive(mod.mods.cloakRechargePerS, 0.06) * (shroud ? 2 : 1);
     const base = positive(mod.mods.cloakBaseRadius, 320);
     runtime.baseRadius = base;
 
@@ -181,9 +203,38 @@ export const cloak = {
     grow += Math.min(1, Math.abs(finite(inp.moveZ)) + Math.abs(finite(inp.moveX)) + Math.abs(finite(inp.turnIntent)) * 0.35) * CLOAK_THRUST_GROW;
     if (inp.boost) grow += CLOAK_BOOST_GROW;
     if (tether && tether.reeling) grow += CLOAK_REEL_GROW;
-    const target = base * (1 + grow);
+    const coldDrift = grow === 0 && pilotHas(state, 'ghost_cold_drift');
+    const target = base * (coldDrift ? COLD_DRIFT_RING : 1 + grow);
     const ease = 1 - Math.exp(-CLOAK_ACTIVITY_EASE * step);
     runtime.radius += (target - runtime.radius) * ease;
+  },
+
+  /** The player fired. Ambush opens its window on the first volley out of the dark; Phantom keeps
+   *  the cloak up; otherwise firing drops it, as it always has. */
+  _onPlayerFire() {
+    const state = this.state;
+    const runtime = state ? ensureCloak(state) : null;
+    if (!runtime || !runtime.active) return;
+    const now = cloakTimeS(state);
+    if (pilotHas(state, 'ghost_ambush')
+      && !(Number.isFinite(runtime.ambushUntil) && now < runtime.ambushUntil + AMBUSH_REARM_S)) {
+      runtime.ambushUntil = now + AMBUSH_WINDOW_S;
+      if (this.bus) this.bus.emit('cloak:ambush', { until: runtime.ambushUntil });
+    }
+    if (pilotHas(state, 'ghost_phantom')) return;
+    this._drop('fired');
+  },
+
+  _onKill(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.killerId !== state.playerId) return;
+    if (!pilotHas(state, 'ghost_vanish')) return;
+    const runtime = ensureCloak(state);
+    if (runtime.active || !(Number.isFinite(runtime.ambushUntil) && cloakTimeS(state) <= runtime.ambushUntil)) return;
+    const mod = fittedCloakModule(state);
+    if (!mod || runtime.energy < CLOAK_MIN_ENGAGE || !cloakEnabledForState(state)) return;
+    this._engage(state, positive(mod.mods.cloakBaseRadius, 320));
+    if (this.bus) this.bus.emit('cloak:vanished', { killedId: payload.id });
   },
 
   _engage(state, baseRadius) {
@@ -321,8 +372,8 @@ export function fittedCloakModule(state) {
   const p = state && state.player;
   const ship = p && Array.isArray(p.ownedShips) ? p.ownedShips[p.activeShipIndex] : null;
   const fittings = ship && Array.isArray(ship.fittings) ? ship.fittings : null;
-  if (!fittings) return null;
   let best = null;
+  if (!fittings) return pilotHas(state, 'ghost_cloak') ? PILOT_CLOAK_MODULE : null;
   for (const defId of fittings) {
     if (!defId) continue;
     const def = MODULE_BY_ID.get(defId);
@@ -331,6 +382,8 @@ export function fittedCloakModule(state) {
     // Smaller detection radius = better cloak; the best module wins (no stacking).
     if (!best || radius < best.mods.cloakBaseRadius) best = def;
   }
+  // The Stealth branch's Cloak stands in when no module is fitted (a fitted module still wins).
+  if (!best && pilotHas(state, 'ghost_cloak')) return PILOT_CLOAK_MODULE;
   return best;
 }
 
@@ -376,6 +429,12 @@ export function engageEntityCloak(entity, radius = 320, nowS) {
   if (prev && Number.isFinite(prev.revealUntil)) rt.revealUntil = prev.revealUntil;
   data.cloak = rt;
   return rt;
+}
+
+/** ghost_ambush — true while the player's first volley out of the dark is still landing. */
+export function cloakAmbushActive(state) {
+  const rt = state && state.massline2 && state.massline2.cloak;
+  return !!(rt && Number.isFinite(rt.ambushUntil) && cloakTimeS(state) <= rt.ambushUntil);
 }
 
 /** The cloak system's clock: simTime everywhere it exists; tick/60 keeps headless fixtures that

@@ -224,7 +224,20 @@ export function swarmWeaponImpulseScale(state, entity, defId) {
 export function swarmWeaponPierceRank(state, entity, defId) {
   if (!entity || entity.id !== state.playerId) return 0;
   const rec = swarmForgeRecord(state, defId);
-  return rec ? rec.pierce : 0;
+  return Math.max(rec ? rec.pierce : 0, pilotPierceRank(state));
+}
+
+// Pilot Tree pierce (progression lead 2026-11-20). gunner_gold_thread — every shot goes through
+// the first two ships it hits; evolution_orbital_saw — while the Line holds the player to
+// something, every shot goes through every ship in its path (the spec's pierce ceiling).
+export const PILOT_GOLD_THREAD_PIERCE = 2;
+export const PILOT_ORBITAL_SAW_PIERCE = 8;
+function pilotPierceRank(state) {
+  let rank = 0;
+  if (pilotHas(state, 'gunner_gold_thread')) rank = PILOT_GOLD_THREAD_PIERCE;
+  const tether = state.player && state.player.tether;
+  if (tether && tether.active && pilotHas(state, 'evolution_orbital_saw')) rank = PILOT_ORBITAL_SAW_PIERCE;
+  return rank;
 }
 
 /** The name a gun reads as — the forged form when the ledger says so. */

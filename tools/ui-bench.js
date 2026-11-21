@@ -384,9 +384,9 @@ function seedPilotCardsShot(shot) {
   const hands = {
     full: [['conjurer_quick_cast', 'bruiser_newtons_cradle', 'evolution_orbital_saw'],
       ['gunner_hollow_point', 'rigger_sweet_spot', 'juggernaut_ballast']],
-    short: [['gunner_hollow_point', 'rigger_hummingbird', 'bruiser_billiards'], ['gunner_drum', 'ghost_decoy']],
-    two: [['gunner_gold_thread', 'rigger_second_line'], ['ghost_cold_drift']],
-    capstone: [['rigger_untouchable_wrecking_train', 'conjurer_pull_vortex', 'ghost_undertaker'], ['gunner_drum']],
+    short: [['gunner_hollow_point', 'rigger_crane', 'bruiser_billiards'], ['gunner_drum', 'ghost_cloak']],
+    two: [['gunner_gold_thread', 'rigger_whip_snap'], ['ghost_cloak']],
+    capstone: [['rigger_hurricane', 'conjurer_implode', 'ghost_phantom'], ['gunner_drum']],
   };
   const sequence = (hands[variant] || hands.full).map((cards) => cards.slice());
   run.level = 4;
@@ -2016,6 +2016,7 @@ async function mountFlightHud(opts = {}) {
   const calmBenchMode = hudState === 'calm' || hudState === 'idle' || hudState === 'teach'
     || hudState === 'cooldown' || hudState === 'armed' || hudState === 'plow' || hudState === 'caption'
     || hudState === 'world-prompt' || hudState === 'news-long'
+    || hudState === 'berth-offer' || hudState === 'berth-offer-near' || hudState === 'berth-run'
     || minimapPreset === 'calm' || minimapPreset === 'objective';
   if (calmBenchMode) {
     state.simTime = hudState === 'teach' ? 30 : 240;
@@ -2034,6 +2035,28 @@ async function mountFlightHud(opts = {}) {
         state.entityList.push(rock);
       }
       state.player.cargo.items.cmdty_iron_ore = 8;
+    }
+    if (hudState === 'berth-offer' || hudState === 'berth-offer-near' || hudState === 'berth-run') {
+      // HUD-2 item 12: a dockable station out of dock range. Near = on screen (the offer sits beside
+      // it); far = off screen (the offer rides the safe edge toward it); run = the berth autopilot
+      // is flying there (mode chip + approach lane).
+      const near = hudState === 'berth-offer-near';
+      const st = {
+        id: 78, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 64,
+        pos: near ? { x: 520, y: 0, z: -560 } : { x: 2600, y: 0, z: -1900 }, vel: { x: 0, y: 0, z: 0 },
+        name: 'Helios Station',
+        data: { stationId: 'station_helios', name: 'Helios Station', services: ['trade', 'repair'] },
+      };
+      state.entities.set(78, st);
+      if (!state.entityList.some((e) => e && e.id === 78)) state.entityList.push(st);
+      if (hudState === 'berth-run') {
+        st.pos = { x: 700, y: 0, z: -620 };
+        state.nav = state.nav || {};
+        state.nav.waypoint = { label: 'Helios Station', pos: { x: st.pos.x, z: st.pos.z }, targetEntityId: 78, waypointKind: 'local' };
+        state.nav.autopilot = { active: true, target: { x: st.pos.x, z: st.pos.z }, targetEntityId: 78, label: 'Helios Station', arrivalRadius: 36, status: 'armed' };
+        state.ui = state.ui || {};
+        state.ui.berthAutopilotStationId = 78;
+      }
     }
     if (hudState === 'world-prompt') {
       // Station projected cleanly in open upper-right sky so the unified Dock prompt anchors to it.
@@ -2097,7 +2120,8 @@ async function mountFlightHud(opts = {}) {
   }
 
   // Override worldToScreen in fight mode so far off-screen attackers project off-screen for threatHalo.
-  if (hudState === 'fight' || hudState === 'ship-status' || hudState === 'shield-collapse' || hudState === 'world-prompt') {
+  if (hudState === 'fight' || hudState === 'ship-status' || hudState === 'shield-collapse' || hudState === 'world-prompt'
+    || hudState === 'berth-offer' || hudState === 'berth-offer-near' || hudState === 'berth-run') {
     ctx.helpers.worldToScreen = (world, out = {}) => {
       const x = window.innerWidth / 2 + ((world && world.x) || 0) * 0.4;
       const y = window.innerHeight * 0.62 + ((world && world.z) || 0) * 0.4;
@@ -2153,12 +2177,19 @@ async function mountFlightHud(opts = {}) {
   document.body.classList.remove('sf-swarm-flight');
   // One persistent affordance + one warning through the live event path, so the annunciator is
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
-  if (opts.dockCue !== false) {
+  if (opts.dockCue !== false && !String(hudState).startsWith('berth-')) {
     bus.emit('dock:range', hudState === 'world-prompt'
       ? { inRange: true, stationId: 'station_helios' }
       : { inRange: true });
   }
   if (hudState === 'shield-collapse') {
+    // HUD-2 item 10: hold the 180 ms collapse beat on the glass (the class the live path sets),
+    // so the frame shows what the effect paints: the shield meter and a thin edge, nothing more.
+    setTimeout(() => {
+      hudRoot.classList.add('sf-hud--glitch');
+      const glitch = hudRoot.querySelector('.sf-hud-glitch-overlay');
+      if (glitch) { glitch.classList.add('active'); glitch.style.animation = 'none'; glitch.style.opacity = '1'; }
+    }, 400);
     bus.emit('combat:damage', {
       targetId: state.playerId, isPlayer: true, brokeShield: true,
       shieldDamage: 48, hullDamage: 12, applied: 60,
@@ -2313,6 +2344,9 @@ async function mountCrucibleHud() {
   if (hudStateParam === 'headlines') {
     const { swarmJuiceHud } = await import('../src/ui/swarmJuiceHud.js');
     swarmJuiceHud.init({ state, bus, helpers: { worldToScreen: (w, o = {}) => { o.x = window.innerWidth / 2 + (w?.x || 0) * 0.4; o.y = window.innerHeight * 0.62 + (w?.z || 0) * 0.4; o.onScreen = true; return o; } } });
+    // The announcer seats its line in its own DOM, which the first update builds (live, the
+    // frame loop has long since run before any word is spoken).
+    swarmJuiceHud.update(1 / 60, state);
     bus.emit('swarm:overdrive', { active: true });
     bus.emit('swarm:announce', { kind: 'multikill', text: 'SWARM WIPE', count: 5 });
     bus.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
@@ -2373,6 +2407,10 @@ async function mountCrucibleHud() {
       window.__benchAuxHud.race?.frame?.(state);
     }
   } catch { /* composition still; live route owns reactions */ }
+  // Chips measured by ResizeObserver (threat tells) seat on the frame after their text lands, as
+  // they do live; one real animation frame later, re-run the HUD so the still shows the seat.
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  try { for (let i = 0; i < 2; i++) window.__benchHud?.frame?.(1 / 60); } catch { /* still */ }
   const crun = document.querySelector('.sf-crun');
   note('— crucible HUD mounted (flight cluster + survival readout, swarm)'
     + ` · crun ${crun ? (crun.hidden ? 'hidden' : 'live') : 'missing'}`

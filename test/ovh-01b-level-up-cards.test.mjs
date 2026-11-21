@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import { createUiInput } from '../src/ui/input.js';
-import { PILOT_REROLL_SCRAP } from '../src/data/pilotTree.js';
+import { PILOT_REROLL_SCRAP, getPilotCard } from '../src/data/pilotTree.js';
 import {
   PILOT_BREATH_MAX_S,
   PILOT_CARD_INTENT,
@@ -170,8 +170,8 @@ test('cards render the offer\'s nodes in order, verbatim, with branch colour and
   assert.deepEqual(cards.map((c) => c.dataset.nodeId), ['gunner_hollow_point', 'bruiser_billiards', 'evolution_orbital_saw']);
   assert.deepEqual(cards.map((c) => c.dataset.index), ['0', '1', '2']);
   const texts = view.root.all((n) => n.className === 'pc__text').map((n) => n.textContent);
-  assert.equal(texts[0], 'Shots tear unshielded hulls 50 % faster.');
-  assert.equal(texts[1], 'A rock you shot kills the first enemy it meets at speed, whatever its hull.');
+  assert.equal(texts[0], getPilotCard('gunner_hollow_point').text);
+  assert.equal(texts[1], getPilotCard('bruiser_billiards').text);
   assert.deepEqual(view.root.all((n) => n.className === 'pc__name').map((n) => n.textContent),
     ['Hollow Point', 'Billiards', 'Orbital Saw']);
   // "Bruiser 3": the branch's held points ride the card; colour is a custom property, name is text.
@@ -231,10 +231,10 @@ test('a second banked pick shows the fresh hand in place and restarts the breath
   const { view, clock, closes } = mountView(state);
   view.key(key('1'));
   state.run.pilot.banked = 1;
-  state.run.pilot.offer = { cards: ['gunner_drum', 'ghost_decoy'], rerolls: 0 };
+  state.run.pilot.offer = { cards: ['gunner_drum', 'ghost_cloak'], rerolls: 0 };
   clock.t += 5000;
   view.tick(clock.t);
-  assert.deepEqual(view.cards.map((c) => c.dataset.nodeId), ['gunner_drum', 'ghost_decoy']);
+  assert.deepEqual(view.cards.map((c) => c.dataset.nodeId), ['gunner_drum', 'ghost_cloak']);
   assert.equal(closes.length, 0, 'the fresh hand got a fresh breath');
   view.key(key('1'));
   assert.equal(view.elements.status.textContent, '');

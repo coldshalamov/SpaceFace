@@ -304,7 +304,7 @@ const VERB_BINDINGS = {
   // Massline Physics Identity (Wave M2) level verbs — wheel latch slices; hold-to-toggle latch
   // opt-in via accessibility.holdToToggle.{bulletTime,gyreSnare}.
   bulletTime:     [],   // level: hold for time dilation (bulletTime system owns meter)
-  cloak:          [],   // edge: toggle the cloak module (cloak system owns energy/gating)
+  cloak:          ['KeyV'], // edge: toggle the cloak (module or the Stealth branch's Cloak; cloak system owns energy/gating)
   // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state):
   // hold to beam + hold the clump, release to bowl it.
   gyreSnare:      [],   // level: hold to pull/snag/grow a ball, release to bowl it

@@ -1,31 +1,23 @@
-// OVH-01a — the Pilot Tree as pure frozen data (design/overhaul/06_PROGRESSION_AND_ECONOMY.md §2.2,
-// transcribed node for node). No bus, no DOM, no RNG: eligibility, gates and bend locks are pure
-// functions of a run's pilot record; every random choice lives in the run owner
-// (runSession.drawPilotOffer) on state.rng, so a seed always draws the same offer.
+// The Pilot Tree as pure frozen data (design/overhaul/06_PROGRESSION_AND_ECONOMY.md §2; rebuilt by
+// the progression lead 2026-11-20 against the game as it plays today). No bus, no DOM, no RNG:
+// eligibility and gates are pure functions of a pilot record; every random choice lives in the run
+// owner (runSession.drawPilotOffer) on state.rng, so a seed always draws the same offer.
 //
-// Shape notes, so nobody re-derives them from prose:
-//  * Six combat branches shared by both doors, plus Industry (Adventure only) — 06 §2.1.
-//  * Tier gates are 06 §2.1's "tier 2 opens at 2 points in the branch, tier 3 at 4, the capstone
-//    at 6". A card is eligible when the branch's held points PLUS THE POINT IN HAND reach the
-//    gate: a tier-2 card first appears with 1 point in the branch (taking it makes 2), a tier-3
-//    card with 3, and a capstone with 5 — which is exactly 04_SWARM §3's "a capstone card appears
-//    only once a branch holds 5 points". The two documents say the same thing.
-//  * Conjurer's fifteen bends are one table row in 06 §2.2 ("2–3", tier spanned, per-power split
-//    not authored), so each bend carries tier '2-3' and gates at the tier-2 bound. Taking one
-//    bend of a power locks that power's other two for the run (06 §2.1 "mutually exclusive
-//    bends"). 06 gives the bends as a group row; each bend's card text below states only what the
-//    document commits that card to — its power and the one-per-power rule. Per-bend effect
-//    sentences arrive with the bends' own spec (doc 11 §3) in the node-effects packets.
-//  * Evolutions are named cross-branch cards (06 §2.2 tail): offered only once the run holds
-//    8 total points (04 §3 "can appear from 8 points") with both prerequisite branches at 5
-//    (06 §2.1 "two branches each hold 5 points"). They join the run's node list but grant no
-//    branch points.
-//  * Door restrictions are transcribed per node: Industry lives only in Adventure, and the four
-//    Ghost nodes 06 §2.2 marks *(Adventure)* are Adventure-only, so Swarm offers Ghost tiers 1–2
-//    and the capstone exactly as the branch header promises.
-//  * OVH-01a2: only LIVE nodes are dealt — isPilotCardEligible also gates on the director's
-//    live set (src/data/pilotLive.js), so a card whose effect is not built yet never reaches a
-//    hand, a re-roll or a choose.
+// Shape, so nobody re-derives it from prose:
+//  * Six combat branches shared by both doors (Guns, Knockback, Line, Powers, Ramming, Stealth) and
+//    three work branches that exist only in Adventure (Trading, Mining, Building).
+//  * Each node is one plain line a player feels within thirty seconds. A node whose effect is not
+//    in the build is not in this table (the old placeholders — the fifteen power bends, Second Line,
+//    Free Hand, Deep Cast after powers began firing on the press, Unstoppable, Dozer Blade, the Ghost
+//    nodes with no effect — were cut on 2026-11-20).
+//  * Tier gates (06 §2.1): tier 2 opens at 2 points in the branch, tier 3 at 4, the capstone at 6,
+//    counting the point in hand — so a tier-2 card appears with 1 point held, tier 3 with 3, the
+//    capstone with 5. Every combat branch holds at least five non-capstone nodes, so every capstone
+//    is reachable (pinned by test/progression-tree-reach.test.mjs).
+//  * Evolutions are named builds across two branches: one opens when BOTH branches hold 4 points
+//    (tier 3 reached in each). They join the pilot's node list but grant no branch point.
+//  * The pilot record a node reads is resolved in ONE place (activePilotRecord): a Swarm run reads
+//    its own run.pilot (it dies with the run); Adventure reads the saved state.player.pilot.
 
 import { pilotLiveNodeIds } from './pilotLive.js';
 
@@ -47,55 +39,27 @@ function branchNodes(branch, rows) {
   });
 }
 
-// The bends' one-line effects come from the authored power-bend table (design/game/11_THE_ARMORY
-// §3): a bend card never draws before its effect is live (pilotLive.js), so the text names the
-// behavior the build ships. `bendRows` pins each node id to its original bend word so a display
-// rename (Plough → Plow) cannot move a save-stable id.
-const BEND_LABELS = Object.freeze({ Plough: 'Plow' });
-const BEND_TEXTS = Object.freeze({
-  Vortex: 'The gathered pile spins as it gathers; release it and it sprays in a ring.',
-  Leash: 'The Pull well follows your ship; you tow the gathered pile like a flail.',
-  Implode: 'A tiny, far stronger well; two heavies become one wreck.',
-  Wave: 'A long forward cone; it clears a lane the length of the screen.',
-  Hammer: 'One target takes the whole Shove; a boss slides back a ship-length.',
-  Avalanche: 'Shove hits ×3 on rocks and debris only; the whole field moves as a wall.',
-  Nail: 'Pins one body to another instead of the ground; thrust fights thrust.',
-  Post: 'The pin holds until something breaks it; plant your own anchors and build a swing course.',
-  Stasis: 'Pins everything in a small ring for a beat; freeze a pile, then choose.',
-  Sticky: 'Sticks on and waits for Shove; plant six, press once.',
-  Cluster: 'Splits into five on the first bounce; a carpet.',
-  Sinker: 'A gravity charge: pulls the pile in, then blows.',
-  Plough: 'A wide, short wedge; you drive through a crowd.',
-  Sluice: 'A narrow, long channel; everything in it accelerates out the far end.',
-  Scoop: 'Curved; it gathers bodies as it pushes. Herd a pack into a hazard.',
-});
-
-function bendRows(power, names) {
-  return names.map((name) => [ '2-3', BEND_LABELS[name] || name, BEND_TEXTS[name] || `A ${power} bend — one bend per power.`, {
-    id: `conjurer_${snake(power)}_${snake(name)}`,
-    bendPower: power,
-  } ]);
-}
-
 // Branch NAMES are what a stranger reads on a card, the tree and Run Over: plain, short words for
 // the fighting style (director ruling, 2026-11-20). Ids stay the code's own (saves, tests, effects).
 export const PILOT_BRANCHES = Object.freeze([
   Object.freeze({ id: 'gunner', name: 'Guns', motto: 'nothing survives the stream' }),
   Object.freeze({ id: 'bruiser', name: 'Knockback', motto: 'one shot and he\'s across the room, through his friends' }),
-  Object.freeze({ id: 'rigger', name: 'Line', motto: 'the rope (reads your hull\'s mass)' }),
+  Object.freeze({ id: 'rigger', name: 'Line', motto: 'grab it, swing it, throw it' }),
   Object.freeze({ id: 'conjurer', name: 'Powers', motto: 'one press and the whole field moves' }),
   Object.freeze({ id: 'juggernaut', name: 'Ramming', motto: 'I don\'t dodge. I\'m the obstacle.' }),
   Object.freeze({ id: 'ghost', name: 'Stealth', motto: 'they never saw which way it came from' }),
-  Object.freeze({ id: 'industry', name: 'Industry', motto: 'Adventure only', adventureOnly: true }),
+  Object.freeze({ id: 'trader', name: 'Trading', motto: 'buy the rumour, sell the news', adventureOnly: true }),
+  Object.freeze({ id: 'prospector', name: 'Mining', motto: 'the pick of the rock', adventureOnly: true }),
+  Object.freeze({ id: 'builder', name: 'Building', motto: 'a yard that runs while you fly', adventureOnly: true }),
 ]);
 
 // Points held in the branch (plus the point in hand) at which each tier opens — 06 §2.1.
-export const PILOT_TIER_GATES = Object.freeze({ 1: 0, 2: 2, 3: 4, '2-3': 2, capstone: 6 });
+export const PILOT_TIER_GATES = Object.freeze({ 1: 0, 2: 2, 3: 4, capstone: 6 });
 
-// 04 §3 / 06 §2.1 evolution admission: the run's total point floor, and the per-branch
-// prerequisite both of an evolution's branches must hold.
+// Evolution admission: the pilot's total point floor, and the points BOTH of an evolution's
+// branches must hold (tier 3 reached in each).
 export const PILOT_EVOLUTION_TOTAL_POINTS_FLOOR = 8;
-export const PILOT_EVOLUTION_BRANCH_POINTS = 5;
+export const PILOT_EVOLUTION_BRANCH_POINTS = 4;
 
 // OVH-01b: re-rolling the dealt hand costs Scrap from the run purse (04 §3, starting price;
 // tune by play). The constant lives here, not in the sim-side run owner, so the card UI can
@@ -103,120 +67,100 @@ export const PILOT_EVOLUTION_BRANCH_POINTS = 5;
 export const PILOT_REROLL_SCRAP = 150;
 
 const GUNNER = branchNodes('gunner', [
-  [1, 'Steady Hands', 'Your fire does not spread while you move.'],
-  [1, 'Quick Vent', 'The cooling sweet spot is twice as wide.'],
-  [1, 'Hollow Point', 'Shots tear unshielded hulls 50 % faster.'],
-  [2, 'Shred', 'A target under your fire for a full second starts shedding armor plates — throwable debris.'],
-  [2, 'Spin-Up', 'Rapid-fire guns fire faster the longer you hold, up to ×1.8 at two seconds.'],
+  [1, 'Steady Hands', 'Your shots fly dead straight while you are moving.'],
+  [1, 'Hollow Point', 'Once a ship\'s shield is down, your shots tear its hull half again as fast.'],
   [2, 'Drum', 'Your heat bar is twice as long.'],
+  [2, 'Spin-Up', 'Hold the trigger and rapid-fire guns wind up to nearly double their rate in two seconds.'],
+  [3, 'Execution', 'An enemy down to the last fifth of its hull dies to your next hit and bursts into chunks.'],
   [3, 'Ricochet', 'Your bullets bounce once off rock and walls.'],
-  [3, 'Both Hands', 'Both weapon groups fire together without extra heat.'],
-  [3, 'Execution', 'A hull below 20 % dies to your next hit and bursts into chunks.'],
-  ['capstone', 'Gold Thread', 'Your rapid-fire stream pierces everything in a line; held for three seconds it becomes a beam that lights the room.'],
+  ['capstone', 'Gold Thread', 'Every shot you fire goes straight through the first ships it hits and keeps flying.'],
 ]);
 
 const BRUISER = branchNodes('bruiser', [
-  [1, 'Heavy Slugs', 'Heavy shots carry 30 % more kick.'],
-  [1, 'Cue Sight', 'The cue line on a rock shows its second bounce too.'],
-  [1, 'Stagger', 'A body you kick cannot fire for one second.'],
-  [2, 'Billiards', 'A rock you shot kills the first enemy it meets at speed, whatever its hull.'],
-  [2, 'Through and Through', 'Piercing shots nail the last body they reach to whatever is behind it for two seconds.'],
-  [2, 'Bowling', 'A body you kicked stays energised for six seconds and keeps its speed through the first kill.'],
-  [3, 'Breaker Rounds', 'A heavy hit on a rock splits it into three throwable chunks.'],
-  [3, 'Wall Splat', 'Anything you kick into a wall dies and leaves its scorch on the wall.'],
-  [3, 'Pass It On', 'When a body you kicked hits another, the second takes the full kick too.'],
-  ['capstone', 'Newton\'s Cradle', 'Momentum you give passes from body to body without loss, up to five times.'],
+  [1, 'Heavy Slugs', 'Heavy guns knock what they hit about a third further.'],
+  [1, 'Stagger', 'Anything you knock back cannot fire for a second.'],
+  [2, 'Billiards', 'Anything you knock flying kills the first enemy it hits, whatever its size.'],
+  [3, 'Pass It On', 'When something you knocked hits another body, that one flies too.'],
+  [3, 'Wall Splat', 'Anything you knock into a wall or a station dies.'],
+  ['capstone', 'Newton\'s Cradle', 'What you knock flying hands all its speed to what it hits, body to body, five times over.'],
 ]);
 
 const RIGGER = branchNodes('rigger', [
-  [1, 'Long Reel', 'The line reaches 50 % further.'],
-  [1, 'Quick Latch', 'Inside 120 m the latch is instant.'],
-  [1, 'Free Hand', 'Firing while latched has no aim penalty.'],
-  [2, 'Hummingbird', 'Orbiting an ANCHOR, you move and fire 30 % faster. (best on light hulls)'],
-  [2, 'Crane', 'A body you tow hits as if it were twice as heavy. (best on heavy hulls)'],
-  [2, 'Sweet Spot', 'The release window doubles; a perfect release adds a burst of speed to the thrown body.'],
-  [3, 'Second Line', 'Two lines at once.'],
-  [3, 'Whip Snap', 'Tap reel mid-swing to snap the line and fling the body at 1.5× without finishing the swing.'],
-  [3, 'Coupler', 'Your next latch ties two bodies together.'],
-  ['capstone', 'Untouchable / Wrecking Train', 'Light: shots that would hit you while you orbit an ANCHOR hit the anchor instead. Heavy: tow up to four bodies chained behind you.', { id: 'rigger_untouchable_wrecking_train' }],
+  [1, 'Long Reel', 'The Line reaches half again as far.'],
+  [1, 'Quick Latch', 'Up close, the Line grabs the moment you press it.'],
+  [2, 'Sweet Spot', 'The lit release window stays open twice as long, and a throw inside it leaves faster.'],
+  [2, 'Crane', 'Whatever is on your Line hits as if it were twice as heavy.'],
+  [3, 'Whip Snap', 'Throw a body while it is whipping round fast and it leaves half again as fast.'],
+  ['capstone', 'Hurricane', 'Anything you throw with the Line leaves twice as fast.'],
 ]);
 
 const CONJURER = branchNodes('conjurer', [
-  [1, 'Quick Cast', 'Powers recover 25 % faster.'],
-  [1, 'Wide Bore', 'Powers reach 40 % further.'],
-  [1, 'Deep Cast', 'Hold a power key to deepen its effect while you keep steering.'],
-  ...bendRows('Pull', ['Vortex', 'Leash', 'Implode']),
-  ...bendRows('Shove', ['Wave', 'Hammer', 'Avalanche']),
-  ...bendRows('Pin', ['Nail', 'Post', 'Stasis']),
-  ...bendRows('Bomb', ['Sticky', 'Cluster', 'Sinker']),
-  ...bendRows('Rig', ['Plough', 'Sluice', 'Scoop']),
-  [3, 'Echo', 'Every power fires twice, the second at half strength half a second later.'],
-  [3, 'Combo', 'A body touched by two different powers within two seconds detonates.'],
-  ['capstone', 'Avalanche', 'The plow holds twice as many bodies, captures enemies as well as rocks, and launches them at double speed.'],
+  [1, 'Quick Cast', 'Every power comes back a quarter sooner.'],
+  [1, 'Wide Bore', 'Every power reaches further and covers more ground.'],
+  [2, 'Implode', 'Pull makes a small, fierce well that crushes what it catches into each other.'],
+  [2, 'Heavy Shove', 'Shove throws everything twice as far.'],
+  [3, 'Echo', 'Pull, Shove and Bomb fire twice: the second half as strong, half a second later.'],
+  [3, 'Combo', 'A body hit by two different powers within two seconds blows up.'],
+  ['capstone', 'Landslide', 'The Plow holds twice as much, scoops up enemies lighter than you, and fires the lot twice as fast.', { id: 'conjurer_avalanche' }],
 ]);
 
 const JUGGERNAUT = branchNodes('juggernaut', [
-  [1, 'Ram Plate', 'Your bow takes no collision damage below 60 % of your cruise.'],
-  [1, 'Ballast', 'You are 30 % heavier: you win collisions — and the rope\'s ANCHOR/TOW lines move for you.'],
-  [1, 'Thick Skin', 'Armour regrows out of combat.'],
-  [2, 'Snowplow', 'Ramming a light enemy kills it and throws its pieces forward as shrapnel.', { id: 'juggernaut_snowplough' }],
-  [2, 'Run-Up', 'Each second of unbroken boost raises your top speed, up to double.'],
-  [2, 'Shoulder Check', 'Boosting into something kicks it like a heavy hit.'],
-  [3, 'Unstoppable', 'Collisions never take your helm.'],
-  [3, 'Dozer Blade', 'While boosting, the Plow\u2019s wedge rides your bow by itself.'],
-  [3, 'Last Stand', 'Below 15 % hull, collisions you cause repair you.'],
-  ['capstone', 'Juggernaut', 'Above cruise speed, you take no damage from anything you hit, and everything you hit takes double.'],
+  [1, 'Ram Plate', 'Bumps at less than about half your cruise speed never hurt you.'],
+  [1, 'Ballast', 'Your ship is a third heavier: you win every shoving match.'],
+  [1, 'Thick Skin', 'Four seconds out of the fight and your armour starts growing back.'],
+  [2, 'Snowplow', 'Ram an enemy no heavier than you at speed and it dies, its pieces thrown ahead of you.', { id: 'juggernaut_snowplough' }],
+  [2, 'Run-Up', 'Hold boost and your top speed keeps climbing, up to double.'],
+  [2, 'Shoulder Check', 'Boost into something and it is knocked away like a heavy-gun hit.'],
+  [3, 'Last Stand', 'With your hull nearly gone, every ram you land repairs you.'],
+  ['capstone', 'Juggernaut', 'Above cruise speed, nothing you hit hurts you, and everything you hit takes double.'],
 ]);
 
+// Stealth's root is the cloak itself: taking it gives the ship a cloak on V (no module needed).
 const GHOST = branchNodes('ghost', [
-  [1, 'Cold Drift', 'Cutting your drive drops your signature to almost nothing; your lights go out.'],
-  [1, 'Decoy', 'Drop a flare that draws fire and missiles for three seconds.'],
-  [1, 'Quiet Guns', 'Firing does not reveal you for one second.'],
-  [2, 'Ambush', 'The first attack out of stealth does triple damage and kick.'],
-  [2, 'Shadow Walker', 'Inside a real shadow, sensors cannot see you.', { adventureOnly: true }],
-  [2, 'Saboteur', 'Plant a charge on an unaware ship without breaking stealth.'],
-  [3, 'Ghost Line', 'Your line is invisible; a latched ship does not react for one second.', { adventureOnly: true }],
-  [3, 'Puppeteer', 'Fire the thrusters of a ship on your line (the thruster hijack).', { adventureOnly: true }],
-  [3, 'Vanish', 'A kill from stealth returns you to stealth.', { adventureOnly: true }],
-  ['capstone', 'Undertaker', 'Bodies you tumble do not recover their helm until they hit something.'],
+  [1, 'Cloak', 'Press V to go dark: enemies outside your ring lose you. Firing or a hull hit drops it.'],
+  [1, 'Cold Drift', 'Coasting in the dark, your ring shrinks to half: slip right past them.', { needs: 'ghost_cloak' }],
+  [2, 'Ambush', 'Your first shots out of the dark hit three times as hard.', { needs: 'ghost_cloak' }],
+  [2, 'Deep Shroud', 'Your cloak lasts twice as long and charges twice as fast.', { needs: 'ghost_cloak' }],
+  [3, 'Vanish', 'A kill in the second after you fire from the dark puts you straight back in it.', { needs: 'ghost_cloak' }],
+  ['capstone', 'Phantom', 'Firing no longer drops your cloak.', { needs: 'ghost_cloak' }],
 ]);
 
-const INDUSTRY = branchNodes('industry', [
-  [1, 'Prospector', 'Your scanner shows a rock\'s deep strata from space.'],
-  [1, 'Rover Licence', 'The rover; you can set down and dig.'],
-  [1, 'Smelter', 'You can refine iron and silica.'],
-  [2, 'Gas Work', 'Gas taps and generators.'],
-  [2, 'Fabrication', 'The fabricator: parts and synthetic backfill.'],
-  [2, 'Haulers', 'Transport drones.'],
-  [3, 'Ice Work', 'Ice-cooled machines run twice as fast.'],
-  [3, 'Conduits', 'Power along crystal and copper veins.'],
-  [3, 'Security', 'Security drones and towed defences.'],
-  ['capstone', 'Foreman', 'Mark a module on the board and your yard builds it from its own stock.'],
+// The work branches: Adventure only (ruling R21 — each rung of the ladder is its own game).
+const TRADER = branchNodes('trader', [
+  [1, 'Long Memory', 'Price charts show twice as much history.'],
+  [1, 'Market Sense', 'Every price chart names what the market is doing: climbing, sliding, swinging.'],
+  [1, 'Best Buyer', 'Anything in your hold shows the best price you know for it, and where.'],
 ]);
 
-// Conjurer carries the fifteen bends alongside its authored tiers (21 nodes); every other branch
-// is 06 §2.1's ten (three tiers of three plus the capstone). 7 × 10 = 70 is §2.1's idealised
-// shape — the bends are §2.2's stated exception, and they must be nodes for the bend locks to
-// exist at all. Total: 81.
-export const PILOT_NODES = Object.freeze([...GUNNER, ...BRUISER, ...RIGGER, ...CONJURER, ...JUGGERNAUT, ...GHOST, ...INDUSTRY]);
+const PROSPECTOR = branchNodes('prospector', [
+  [1, 'Assay Eye', 'Your scanner names a rock\'s ore and how rich its veins are before you cut.'],
+  [1, 'Steady Beam', 'Your mining laser pulls more of the good ore and less of the slag.'],
+  [1, 'Deep Bite', 'Your mining laser cuts through rock half again as fast.'],
+]);
 
-// The five evolutions 06 §2.2 names, with the exact prerequisite pairs it gives.
+const BUILDER = branchNodes('builder', [
+  [1, 'Foundations', 'Unlocks the next three module kinds on your claim\'s board.'],
+  [1, 'Tight Packing', 'Unlocks three more module kinds on your claim\'s board.'],
+  [1, 'Yard Hand', 'Unlocks the last three module kinds of the first set.'],
+]);
+
+export const PILOT_NODES = Object.freeze([
+  ...GUNNER, ...BRUISER, ...RIGGER, ...CONJURER, ...JUGGERNAUT, ...GHOST,
+  ...TRADER, ...PROSPECTOR, ...BUILDER,
+]);
+
+// The evolutions: named builds a player can describe, each opened by two branches at 4 points.
 export const PILOT_EVOLUTIONS = Object.freeze([
-  Object.freeze({ id: 'evolution_orbital_saw', kind: 'evolution', name: 'Orbital Saw', text: 'Orbiting an anchor, your bullets ricochet between it and its friends.', requires: Object.freeze(['gunner', 'rigger']) }),
-  Object.freeze({ id: 'evolution_molten_avalanche', kind: 'evolution', name: 'Molten Avalanche', text: 'Plow-captured rocks glow white-hot and ignite what they hit.', requires: Object.freeze(['conjurer', 'gunner']) }),
-  Object.freeze({ id: 'evolution_wrecking_ball', kind: 'evolution', name: 'Wrecking Ball', text: 'A thrown body does not stop at the first kill.', requires: Object.freeze(['bruiser', 'rigger']) }),
-  Object.freeze({ id: 'evolution_black_hole', kind: 'evolution', name: 'Black Hole', text: 'Pull and Bomb on one point make a well that eats everything for three seconds.', requires: Object.freeze(['conjurer', 'ghost']) }),
-  Object.freeze({ id: 'evolution_meteor', kind: 'evolution', name: 'Meteor', text: 'Boost through the plow and the whole pack rides your bow.', requires: Object.freeze(['juggernaut', 'conjurer']) }),
+  Object.freeze({ id: 'evolution_orbital_saw', kind: 'evolution', name: 'Orbital Saw', build: 'a light ship that swings on the Line and saws with its guns', text: 'While you are on the Line, every shot goes through every ship in its path.', requires: Object.freeze(['gunner', 'rigger']) }),
+  Object.freeze({ id: 'evolution_wrecking_ball', kind: 'evolution', name: 'Wrecking Ball', build: 'everything you hit becomes the next shot', text: 'Anything you knock or throw flying keeps killing: it no longer stops at the first enemy.', requires: Object.freeze(['bruiser', 'rigger']) }),
+  Object.freeze({ id: 'evolution_freight_train', kind: 'evolution', name: 'Freight Train', build: 'a heavy ram that tows and smashes', text: 'Whatever you tow on the Line smashes like a ram: it kills any enemy no heavier than you that it hits.', requires: Object.freeze(['juggernaut', 'rigger']) }),
+  Object.freeze({ id: 'evolution_meteor_shower', kind: 'evolution', name: 'Meteor Shower', build: 'a bulldozer that shoots its own wall of rock', text: 'Rocks fired from the Plow kill every enemy they hit and keep going.', requires: Object.freeze(['conjurer', 'gunner']) }),
+  Object.freeze({ id: 'evolution_black_hole', kind: 'evolution', name: 'Black Hole', build: 'a ghost that leaves a trap where it vanished', text: 'Going dark leaves a Pull well where you were; the pack chasing you falls into it.', requires: Object.freeze(['conjurer', 'ghost']) }),
 ]);
 
-// Each power's three bends; one taken locks its siblings (06 §2.1 / §2.2's "One per power").
-export const PILOT_BEND_GROUPS = Object.freeze([
-  Object.freeze({ power: 'Pull', bends: Object.freeze(['conjurer_pull_vortex', 'conjurer_pull_leash', 'conjurer_pull_implode']) }),
-  Object.freeze({ power: 'Shove', bends: Object.freeze(['conjurer_shove_wave', 'conjurer_shove_hammer', 'conjurer_shove_avalanche']) }),
-  Object.freeze({ power: 'Pin', bends: Object.freeze(['conjurer_pin_nail', 'conjurer_pin_post', 'conjurer_pin_stasis']) }),
-  Object.freeze({ power: 'Bomb', bends: Object.freeze(['conjurer_bomb_sticky', 'conjurer_bomb_cluster', 'conjurer_bomb_sinker']) }),
-  Object.freeze({ power: 'Rig', bends: Object.freeze(['conjurer_rig_plough', 'conjurer_rig_sluice', 'conjurer_rig_scoop']) }),
-]);
+// The fifteen power bends were cut (2026-11-20): none had an effect in the build. The export stays
+// (empty) so the lock machinery below keeps one code path if bends return as real nodes.
+export const PILOT_BEND_GROUPS = Object.freeze([]);
 
 const NODE_BY_ID = new Map(PILOT_NODES.map((node) => [node.id, node]));
 const EVOLUTION_BY_ID = new Map(PILOT_EVOLUTIONS.map((node) => [node.id, node]));
@@ -231,7 +175,12 @@ export function getPilotCard(id) {
   return NODE_BY_ID.get(id) || EVOLUTION_BY_ID.get(id) || null;
 }
 
-/** Which door's tree a run reads: Swarm runs get six branches (Ghost partial), Adventure all seven. */
+/** One branch record by id, or null. */
+export function getPilotBranch(id) {
+  return BRANCH_BY_ID.get(id) || null;
+}
+
+/** Which door's tree a run reads: Swarm runs get the six combat branches, Adventure all nine. */
 export function pilotDoorForRun(run) {
   return run && run.kind === 'survival' ? 'swarm' : 'adventure';
 }
@@ -248,18 +197,35 @@ function nodeAvailableInDoor(node, door) {
   return branchAvailableInDoor(node.branch, door);
 }
 
-/** Points a run's pilot holds in one branch. The query API for effect sites — never read run.pilot directly. */
+/**
+ * THE one resolver every effect site reads through: the pilot record that is in force right now.
+ * A live Swarm (or lab) run carries its own run.pilot, which dies with the run; an Adventure game
+ * reads the saved state.player.pilot. A non-Adventure run never falls back to the Adventure record,
+ * so a Swarm run started from an Adventure save cannot inherit its skills.
+ */
+export function activePilotRecord(state) {
+  if (!state) return null;
+  const run = state.run;
+  if (run && run.pilot && typeof run.pilot === 'object' && !Array.isArray(run.pilot)) return run.pilot;
+  if (run && run.kind && run.kind !== 'adventure' && run.phase && run.phase !== 'inactive') return null;
+  const pilot = state.player && state.player.pilot;
+  return pilot && typeof pilot === 'object' && !Array.isArray(pilot) ? pilot : null;
+}
+
+/** Points the active pilot holds in one branch. The query API for effect sites. */
 export function pilotPoints(state, branchId) {
-  const value = state && state.run && state.run.pilot && state.run.pilot.points
-    ? state.run.pilot.points[branchId] : undefined;
+  const pilot = activePilotRecord(state);
+  const value = pilot && pilot.points ? pilot.points[branchId] : undefined;
   return Number.isInteger(value) && value > 0 ? value : 0;
 }
 
-/** Whether a run's pilot holds a node (branch node or evolution). The query API for effect sites. */
+/** Whether the active pilot holds a node (branch node or evolution). The query API for effect sites. */
 export function pilotHas(state, nodeId) {
-  const nodes = state && state.run && state.run.pilot ? state.run.pilot.nodes : null;
+  const pilot = activePilotRecord(state);
+  const nodes = pilot ? pilot.nodes : null;
   return Array.isArray(nodes) && nodes.includes(nodeId);
 }
+
 
 /** Total points across branches (evolutions grant none and add none). */
 export function pilotTotalPoints(pilot) {
@@ -325,8 +291,43 @@ export function isPilotCardEligible(card, pilot, door) {
     return card.requires.every((branch) => (Number.isInteger(pilot?.points?.[branch]) ? pilot.points[branch] : 0) >= PILOT_EVOLUTION_BRANCH_POINTS);
   }
   if (!nodeAvailableInDoor(card, door)) return false;
+  // A node that builds on another (Stealth's nodes all need the Cloak) waits for it.
+  if (card.needs && !taken.has(card.needs)) return false;
   const held = Number.isInteger(pilot?.points?.[card.branch]) ? pilot.points[card.branch] : 0;
   return held + 1 >= tierGate(card.tier);
+}
+
+function heldIn(pilot, branchId) {
+  return Number.isInteger(pilot?.points?.[branchId]) ? pilot.points[branchId] : 0;
+}
+
+/**
+ * How a node stands for this pilot, in words the tree screen prints: 'taken', 'open' (could be
+ * taken with a point in hand) or 'locked', with the one line that says what it needs.
+ */
+export function pilotNodeStanding(card, pilot, door) {
+  if (!card) return { state: 'locked', needs: '' };
+  const taken = Array.isArray(pilot?.nodes) && pilot.nodes.includes(card.id);
+  if (taken) return { state: 'taken', needs: '' };
+  if (card.kind === 'evolution') {
+    const names = card.requires.map((b) => (BRANCH_BY_ID.get(b) || { name: b }).name);
+    const short = card.requires.filter((b) => heldIn(pilot, b) < PILOT_EVOLUTION_BRANCH_POINTS);
+    const needs = `Needs ${PILOT_EVOLUTION_BRANCH_POINTS} points in ${names[0]} and in ${names[1]}`;
+    return { state: short.length ? 'locked' : (isPilotCardEligible(card, pilot, door) ? 'open' : 'locked'), needs };
+  }
+  if (!nodeAvailableInDoor(card, door)) return { state: 'locked', needs: 'Adventure only' };
+  const branchName = (BRANCH_BY_ID.get(card.branch) || { name: card.branch }).name;
+  if (card.needs && !(Array.isArray(pilot?.nodes) && pilot.nodes.includes(card.needs))) {
+    const first = NODE_BY_ID.get(card.needs);
+    return { state: 'locked', needs: `Needs ${first ? first.name : card.needs} first` };
+  }
+  const gate = tierGate(card.tier);
+  const held = heldIn(pilot, card.branch);
+  if (held + 1 < gate) {
+    const more = gate - 1 - held;
+    return { state: 'locked', needs: `Needs ${more} more point${more === 1 ? '' : 's'} in ${branchName}` };
+  }
+  return { state: isPilotCardEligible(card, pilot, door) ? 'open' : 'locked', needs: '' };
 }
 
 /**

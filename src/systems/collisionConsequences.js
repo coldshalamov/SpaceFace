@@ -765,7 +765,17 @@ export const collisionConsequences = {
       }
       // billiards: a stamped body kills the first enemy it meets above the speed where
       // collisions begin to deal damage — whatever that enemy's hull — once per kick.
-      if (pilotHas(state, 'bruiser_billiards')
+      // evolution_wrecking_ball — the same kill, but the stamp is never spent: a body you knocked
+      // or threw keeps killing. evolution_meteor_shower — rocks fired from the Plow do the same.
+      const keepsKilling = pilotHas(state, 'evolution_wrecking_ball')
+        || (pilotHas(state, 'evolution_meteor_shower') && strikerKick.record && strikerKick.record.tag === 'plow_launch');
+      if (keepsKilling
+        && target.alive !== false
+        && closing > COLLISION_CONSEQUENCE_LIMITS.damageDeltaV
+        && (target.type === 'ship' || target.type === 'drone')
+        && isHostileForAI(state, target, player)) {
+        out.kill = { attackerId: strikerKick.by, sourceKind: 'collision_bruiser_billiards', structuralCap };
+      } else if (pilotHas(state, 'bruiser_billiards')
         && target.alive !== false
         && !isKickStampSpent(other, strikerKick)
         && closing > COLLISION_CONSEQUENCE_LIMITS.damageDeltaV
@@ -787,6 +797,19 @@ export const collisionConsequences = {
         || (other.physicsBody && other.physicsBody.dynamic === false))
       && closing > COLLISION_CONSEQUENCE_LIMITS.damageDeltaV) {
       out.kill = { attackerId: targetKick.by, sourceKind: 'collision_bruiser_wall_splat', structuralCap };
+    }
+
+    // evolution_freight_train — the body on the player's Line smashes like a ram: an enemy no
+    // heavier than the player that it meets above the damage speed dies.
+    const line = state.player && state.player.tether;
+    if (line && line.active && line.targetId === other.id && player
+      && target.alive !== false && target.id !== state.playerId
+      && pilotHas(state, 'evolution_freight_train')
+      && (target.type === 'ship' || target.type === 'drone')
+      && closing > COLLISION_CONSEQUENCE_LIMITS.damageDeltaV
+      && isHostileForAI(state, target, player)
+      && positiveMass(target) <= positiveMass(player)) {
+      out.kill = { attackerId: state.playerId, sourceKind: 'collision_craft', structuralCap };
     }
 
     // ── Juggernaut dealt-side: only ever reads when `other` IS the player. ──

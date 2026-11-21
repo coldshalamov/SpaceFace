@@ -87,145 +87,94 @@ function beginSwarm(harness, seed = 7) {
 
 function swarmNodeIds() {
   return PILOT_NODES
-    .filter((node) => !node.adventureOnly && node.branch !== 'industry')
+    .filter((node) => !['trader', 'prospector', 'builder'].includes(node.branch))
     .map((node) => node.id);
 }
 
-test('data shape: 06 §2.2 transcribed exactly — 81 nodes, every branch ten but Conjurer', () => {
-  // 06 §2.1 states the ten-node branch (3+3+3+capstone → 70 across seven branches), but §2.2's
-  // Conjurer table carries the fifteen bends as tier-2/3 nodes on top of its authored tiers
-  // (3 + 15 + 2 + capstone = 21). The bends must be nodes for the exclusive-bend locks to exist,
-  // so the exact transcription is 81, not the packet headline's 70.
+test('data shape: the rebuilt tree (2026-11-20) — only nodes whose effect is in the build', () => {
+  // The 81-node transcription of 06 §2.2 carried fifteen power bends, Second Line, Free Hand and
+  // most of Ghost with no effect behind them. The tree now holds only built nodes: six combat
+  // branches of at least five non-capstone nodes plus a capstone, and three Adventure work branches.
   const counts = {};
   for (const node of PILOT_NODES) counts[node.branch] = (counts[node.branch] || 0) + 1;
   assert.deepEqual(counts, {
-    gunner: 10, bruiser: 10, rigger: 10, conjurer: 21, juggernaut: 10, ghost: 10, industry: 10,
+    gunner: 7, bruiser: 6, rigger: 6, conjurer: 7, juggernaut: 8, ghost: 6,
+    trader: 3, prospector: 3, builder: 3,
   });
-  assert.equal(PILOT_NODES.length, 81);
-  assert.equal(new Set(PILOT_NODES.map((node) => node.id)).size, 81, 'ids are unique');
-  const tiers = { 1: 0, 2: 0, 3: 0, '2-3': 0, capstone: 0 };
+  assert.equal(new Set(PILOT_NODES.map((node) => node.id)).size, PILOT_NODES.length, 'ids are unique');
   for (const node of PILOT_NODES) {
-    assert.ok(tiers, `tier ${node.tier} is one of 1 / 2 / 3 / 2-3 / capstone`);
-    assert.ok(typeof node.tier in tiers || tiers[node.tier] !== undefined, `${node.id}: valid tier`);
+    assert.ok([1, 2, 3, 'capstone'].includes(node.tier), `${node.id}: valid tier`);
     assert.ok(node.name && typeof node.name === 'string', `${node.id}: named`);
     assert.ok(node.text && typeof node.text === 'string', `${node.id}: one-sentence text`);
     assert.ok(PILOT_BRANCHES.some((branch) => branch.id === node.branch), `${node.id}: known branch`);
   }
-  // The six combat branches follow 3+3+3+capstone; Conjurer alone bends the shape.
-  for (const branch of PILOT_BRANCHES.filter((b) => b.id !== 'conjurer')) {
+  for (const branch of PILOT_BRANCHES.filter((b) => !b.adventureOnly)) {
     const own = PILOT_NODES.filter((node) => node.branch === branch.id);
-    assert.equal(own.filter((n) => n.tier === 1).length, 3, `${branch.id}: three tier-1`);
-    assert.equal(own.filter((n) => n.tier === 2).length, 3, `${branch.id}: three tier-2`);
-    assert.equal(own.filter((n) => n.tier === 3).length, 3, `${branch.id}: three tier-3`);
+    assert.ok(own.filter((n) => n.tier !== 'capstone').length >= 5, `${branch.id}: five nodes under the capstone`);
     assert.equal(own.filter((n) => n.tier === 'capstone').length, 1, `${branch.id}: one capstone`);
   }
-  const conjurer = PILOT_NODES.filter((node) => node.branch === 'conjurer');
-  assert.equal(conjurer.filter((n) => n.tier === 1).length, 3);
-  assert.equal(conjurer.filter((n) => n.tier === '2-3').length, 15, 'the fifteen bends');
-  assert.equal(conjurer.filter((n) => n.tier === 3).length, 2, 'Echo and Combo');
-  assert.equal(conjurer.filter((n) => n.tier === 'capstone').length, 1);
 });
 
-test('data shape: six shared combat branches plus Adventure-only Industry, mottos as written', () => {
+test('data shape: six shared combat branches plus three Adventure-only work branches', () => {
   assert.deepEqual(PILOT_BRANCHES.map((branch) => branch.id), [
-    'gunner', 'bruiser', 'rigger', 'conjurer', 'juggernaut', 'ghost', 'industry',
+    'gunner', 'bruiser', 'rigger', 'conjurer', 'juggernaut', 'ghost', 'trader', 'prospector', 'builder',
   ]);
-  assert.equal(PILOT_BRANCHES[0].motto, 'nothing survives the stream');
-  assert.equal(PILOT_BRANCHES[3].motto, 'one press and the whole field moves');
-  assert.equal(PILOT_BRANCHES[6].adventureOnly, true, 'Industry exists only in Adventure');
-  // Ghost's four *(Adventure)* nodes and nothing else carry the flag.
-  assert.deepEqual(
-    PILOT_NODES.filter((node) => node.adventureOnly).map((node) => node.id).sort(),
-    ['ghost_ghost_line', 'ghost_puppeteer', 'ghost_shadow_walker', 'ghost_vanish'],
-  );
+  assert.deepEqual(PILOT_BRANCHES.map((branch) => branch.name), [
+    'Guns', 'Knockback', 'Line', 'Powers', 'Ramming', 'Stealth', 'Trading', 'Mining', 'Building',
+  ]);
+  assert.deepEqual(PILOT_BRANCHES.filter((b) => b.adventureOnly).map((b) => b.id), ['trader', 'prospector', 'builder']);
+  assert.equal(PILOT_NODES.filter((node) => node.adventureOnly).length, 0, 'no single node is door-flagged');
 });
 
-test('tier gates: 2 / 4 / 6 points in-branch with the point in hand, bends at the tier-2 bound', () => withAllCardsLive(() => {
-  assert.deepEqual(PILOT_TIER_GATES, { 1: 0, 2: 2, 3: 4, '2-3': 2, capstone: 6 });
+test('tier gates: 2 / 4 / 6 points in-branch with the point in hand; Stealth nodes need the Cloak', () => withAllCardsLive(() => {
+  assert.deepEqual(PILOT_TIER_GATES, { 1: 0, 2: 2, 3: 4, capstone: 6 });
   const door = 'adventure';
-  const held = (points) => ({ points, nodes: [], banked: 0, offer: null });
-  // A tier opens when held points + the point in hand reach the gate: tier 2 from 1 held,
-  // tier 3 from 3 held — and the capstone from 5 held, which is 04 §3's "a capstone card
-  // appears only once a branch holds 5 points" exactly.
-  assert.equal(isPilotCardEligible(getPilotCard('gunner_shred'), held({ gunner: 0 }), door), false);
-  assert.equal(isPilotCardEligible(getPilotCard('gunner_shred'), held({ gunner: 1 }), door), true);
+  const held = (points, nodes = []) => ({ points, nodes, banked: 0, offer: null });
+  assert.equal(isPilotCardEligible(getPilotCard('gunner_drum'), held({ gunner: 0 }), door), false);
+  assert.equal(isPilotCardEligible(getPilotCard('gunner_drum'), held({ gunner: 1 }), door), true);
   assert.equal(isPilotCardEligible(getPilotCard('gunner_ricochet'), held({ gunner: 2 }), door), false);
   assert.equal(isPilotCardEligible(getPilotCard('gunner_ricochet'), held({ gunner: 3 }), door), true);
   assert.equal(isPilotCardEligible(getPilotCard('gunner_gold_thread'), held({ gunner: 4 }), door), false);
   assert.equal(isPilotCardEligible(getPilotCard('gunner_gold_thread'), held({ gunner: 5 }), door), true);
-  assert.equal(isPilotCardEligible(getPilotCard('conjurer_pull_vortex'), held({ conjurer: 0 }), door), false);
-  assert.equal(isPilotCardEligible(getPilotCard('conjurer_pull_vortex'), held({ conjurer: 1 }), door), true);
+  assert.equal(isPilotCardEligible(getPilotCard('ghost_cold_drift'), held({ ghost: 0 }), door), false, 'Cold Drift waits for the Cloak');
+  assert.equal(isPilotCardEligible(getPilotCard('ghost_cloak'), held({ ghost: 0 }), door), true);
+  assert.equal(isPilotCardEligible(getPilotCard('ghost_cold_drift'), held({ ghost: 1 }, ['ghost_cloak']), door), true);
 }));
 
-test('spot transcriptions: names and sentences straight from 06 §2.2', () => {
+test('capstones and evolutions: named builds with plain one-line text', () => {
   const spots = [
-    ['gunner_gold_thread', 'capstone', 'Gold Thread',
-      'Your rapid-fire stream pierces everything in a line; held for three seconds it becomes a beam that lights the room.'],
-    ['bruiser_newtons_cradle', 'capstone', 'Newton\'s Cradle',
-      'Momentum you give passes from body to body without loss, up to five times.'],
-    ['rigger_untouchable_wrecking_train', 'capstone', 'Untouchable / Wrecking Train',
-      'Light: shots that would hit you while you orbit an ANCHOR hit the anchor instead. Heavy: tow up to four bodies chained behind you.'],
-    ['rigger_hummingbird', 2, 'Hummingbird',
-      'Orbiting an ANCHOR, you move and fire 30 % faster. (best on light hulls)'],
-    ['conjurer_avalanche', 'capstone', 'Avalanche',
-      'The plow holds twice as many bodies, captures enemies as well as rocks, and launches them at double speed.'],
-    ['juggernaut_juggernaut', 'capstone', 'Juggernaut',
-      'Above cruise speed, you take no damage from anything you hit, and everything you hit takes double.'],
-    ['ghost_undertaker', 'capstone', 'Undertaker',
-      'Bodies you tumble do not recover their helm until they hit something.'],
-    ['industry_foreman', 'capstone', 'Foreman',
-      'Mark a module on the board and your yard builds it from its own stock.'],
-    ['bruiser_through_and_through', 2, 'Through and Through',
-      'Piercing shots nail the last body they reach to whatever is behind it for two seconds.'],
+    ['gunner_gold_thread', 'capstone', 'Gold Thread'],
+    ['bruiser_newtons_cradle', 'capstone', "Newton's Cradle"],
+    ['rigger_hurricane', 'capstone', 'Hurricane'],
+    ['conjurer_avalanche', 'capstone', 'Landslide'],
+    ['juggernaut_juggernaut', 'capstone', 'Juggernaut'],
+    ['ghost_phantom', 'capstone', 'Phantom'],
   ];
-  for (const [id, tier, name, text] of spots) {
+  for (const [id, tier, name] of spots) {
     const node = getPilotCard(id);
     assert.ok(node, `${id} exists`);
     assert.equal(node.tier, tier, `${id} tier`);
     assert.equal(node.name, name, `${id} name`);
-    assert.equal(node.text, text, `${id} text`);
   }
-  // The Shove bend Avalanche and the Conjurer capstone Avalanche are distinct nodes.
-  assert.notEqual(getPilotCard('conjurer_shove_avalanche'), getPilotCard('conjurer_avalanche'));
-  assert.equal(getPilotCard('conjurer_shove_avalanche').bendPower, 'Shove');
+  for (const evo of PILOT_EVOLUTIONS) {
+    assert.ok(evo.build && evo.text, `${evo.id}: a build a player can describe, and what changes`);
+  }
 });
 
-test('evolutions: the five 06 names with their exact prerequisite branches', () => withAllCardsLive(() => {
+test('evolutions: two branches at 4 points each open a named build', () => withAllCardsLive(() => {
   assert.deepEqual(PILOT_EVOLUTIONS.map((evo) => [evo.id, [...evo.requires]]), [
     ['evolution_orbital_saw', ['gunner', 'rigger']],
-    ['evolution_molten_avalanche', ['conjurer', 'gunner']],
     ['evolution_wrecking_ball', ['bruiser', 'rigger']],
+    ['evolution_freight_train', ['juggernaut', 'rigger']],
+    ['evolution_meteor_shower', ['conjurer', 'gunner']],
     ['evolution_black_hole', ['conjurer', 'ghost']],
-    ['evolution_meteor', ['juggernaut', 'conjurer']],
   ]);
-  assert.equal(PILOT_EVOLUTION_TOTAL_POINTS_FLOOR, 8, '04 §3: an evolution can appear from 8 points');
-  assert.equal(PILOT_EVOLUTION_BRANCH_POINTS, 5, '06 §2.1: two branches each hold 5 points');
-  const pilot = { points: { gunner: 5, rigger: 5 }, nodes: [], banked: 0, offer: null };
+  assert.equal(PILOT_EVOLUTION_TOTAL_POINTS_FLOOR, 8);
+  assert.equal(PILOT_EVOLUTION_BRANCH_POINTS, 4, 'an evolution opens when both branches reach tier 3');
+  const pilot = { points: { gunner: 4, rigger: 4 }, nodes: [], banked: 0, offer: null };
   assert.equal(isPilotCardEligible(getPilotCard('evolution_orbital_saw'), pilot, 'swarm'), true);
-  // The 8-point floor alone is not enough — both prerequisites must hold.
   assert.equal(isPilotCardEligible(getPilotCard('evolution_orbital_saw'),
-    { points: { gunner: 5, rigger: 3 }, nodes: [], banked: 0, offer: null }, 'swarm'), false);
-  assert.equal(isPilotCardEligible(getPilotCard('evolution_orbital_saw'),
-    { points: { gunner: 4, rigger: 4 }, nodes: [], banked: 0, offer: null }, 'swarm'), false);
-}));
-
-test('bend groups: five powers × three named bends; one taken locks its siblings', () => withAllCardsLive(() => {
-  assert.deepEqual(PILOT_BEND_GROUPS.map((group) => [group.power, group.bends]), [
-    ['Pull', ['conjurer_pull_vortex', 'conjurer_pull_leash', 'conjurer_pull_implode']],
-    ['Shove', ['conjurer_shove_wave', 'conjurer_shove_hammer', 'conjurer_shove_avalanche']],
-    ['Pin', ['conjurer_pin_nail', 'conjurer_pin_post', 'conjurer_pin_stasis']],
-    ['Bomb', ['conjurer_bomb_sticky', 'conjurer_bomb_cluster', 'conjurer_bomb_sinker']],
-    ['Rig', ['conjurer_rig_plough', 'conjurer_rig_sluice', 'conjurer_rig_scoop']],
-  ]);
-  for (const group of PILOT_BEND_GROUPS) {
-    for (const id of group.bends) assert.equal(getPilotCard(id).bendPower, group.power);
-  }
-  const taken = { points: { conjurer: 1 }, nodes: ['conjurer_pull_vortex'], banked: 0, offer: null };
-  const locked = lockedPilotNodeIds(taken);
-  assert.equal(locked.has('conjurer_pull_leash'), true);
-  assert.equal(locked.has('conjurer_pull_implode'), true);
-  assert.equal(locked.has('conjurer_shove_wave'), false, 'other powers stay open');
-  assert.equal(isPilotCardEligible(getPilotCard('conjurer_pull_leash'), taken, 'adventure'), false);
+    { points: { gunner: 6, rigger: 3 }, nodes: [], banked: 0, offer: null }, 'swarm'), false);
 }));
 
 test('pilot tree data is frozen', () => {
@@ -309,57 +258,34 @@ test('draw rule: a capstone appears only once its branch holds 5 points', () => 
   assert.equal(goldThreadSeen, true, 'the capstone is on the table at 5 held');
 }));
 
-test('draw rule: an evolution needs 8 total points and both branches at 5', () => withAllCardsLive(() => {
+test('draw rule: an evolution needs both branches at 4', () => withAllCardsLive(() => {
   const at = (points, nodes) => ({ points, nodes, banked: 0, offer: null });
-  const gunnerFive = ['gunner_steady_hands', 'gunner_quick_vent', 'gunner_hollow_point', 'gunner_spin_up', 'gunner_drum'];
-  const riggerFive = ['rigger_long_reel', 'rigger_quick_latch', 'rigger_free_hand', 'rigger_hummingbird', 'rigger_crane'];
+  const gunnerFour = ['gunner_steady_hands', 'gunner_hollow_point', 'gunner_drum', 'gunner_spin_up'];
+  const riggerFour = ['rigger_long_reel', 'rigger_quick_latch', 'rigger_sweet_spot', 'rigger_crane'];
   for (let seed = 1; seed <= 40; seed++) {
-    for (const [points, nodes, label] of [
-      [{ gunner: 5, rigger: 4 }, [...gunnerFive, ...riggerFive.slice(0, 4)], 'prerequisite unmet'],
-      [{ gunner: 4, rigger: 4 }, gunnerFourEvolutionFixture(), '8 total but no branch at 5'],
-    ]) {
-      const harness = boot(seed);
-      beginSwarm(harness, seed);
-      harness.state.run.pilot = at(points, nodes);
-      for (const id of drawPilotOffer(harness.state)) {
-        assert.ok(!id.startsWith('evolution_'), `seed ${seed} (${label}): no evolution card — got ${id}`);
-      }
+    const harness = boot(seed);
+    beginSwarm(harness, seed);
+    harness.state.run.pilot = at({ gunner: 4, rigger: 3 }, [...gunnerFour, ...riggerFour.slice(0, 3)]);
+    for (const id of drawPilotOffer(harness.state)) {
+      assert.ok(!id.startsWith('evolution_'), `seed ${seed}: no evolution card at 4 + 3 — got ${id}`);
     }
   }
   let orbitalSawSeen = false;
   for (let seed = 1; seed <= 60; seed++) {
     const harness = boot(seed);
     beginSwarm(harness, seed);
-    harness.state.run.pilot = at({ gunner: 5, rigger: 5 }, [...gunnerFive, ...riggerFive]);
+    harness.state.run.pilot = at({ gunner: 4, rigger: 4 }, [...gunnerFour, ...riggerFour]);
     for (const id of drawPilotOffer(harness.state)) {
       if (id === 'evolution_orbital_saw') orbitalSawSeen = true;
     }
   }
-  assert.equal(orbitalSawSeen, true, 'Orbital Saw can appear once both branches hold 5');
+  assert.equal(orbitalSawSeen, true, 'Orbital Saw can appear once both branches hold 4');
 }));
 
 function gunnerFourEvolutionFixture() {
   return ['gunner_steady_hands', 'gunner_quick_vent', 'gunner_hollow_point', 'gunner_spin_up',
     'rigger_long_reel', 'rigger_quick_latch', 'rigger_free_hand', 'rigger_hummingbird'];
 }
-
-test('draw rule: a taken bend never locks out other powers, and never reappears itself', () => withAllCardsLive(() => {
-  const at = (points, nodes) => ({ points, nodes, banked: 0, offer: null });
-  const nodes = ['conjurer_pull_vortex'];
-  const otherBendSeen = new Set();
-  for (let seed = 1; seed <= 60; seed++) {
-    const harness = boot(seed);
-    beginSwarm(harness, seed);
-    harness.state.run.pilot = at({ conjurer: 1 }, nodes);
-    for (const id of drawPilotOffer(harness.state)) {
-      assert.notEqual(id, 'conjurer_pull_leash', `seed ${seed}: locked sibling never offered`);
-      assert.notEqual(id, 'conjurer_pull_implode', `seed ${seed}: locked sibling never offered`);
-      assert.notEqual(id, 'conjurer_pull_vortex', `seed ${seed}: taken node never offered`);
-      if (getPilotCard(id).bendPower) otherBendSeen.add(getPilotCard(id).bendPower);
-    }
-  }
-  assert.ok(otherBendSeen.size >= 1, 'other powers\' bends still come up');
-}));
 
 test('draw rule: graceful with fewer than three eligible, and empty when nothing is', () => withAllCardsLive(() => {
   const harness = boot(5);
@@ -373,11 +299,11 @@ test('draw rule: graceful with fewer than three eligible, and empty when nothing
   // Exactly one eligible card comes back on its own.
   harness.state.run.pilot = {
     points: {},
-    nodes: swarmNodeIds().filter((id) => id !== 'ghost_decoy'),
+    nodes: swarmNodeIds().filter((id) => id !== 'bruiser_stagger'),
     banked: 1,
     offer: null,
   };
-  assert.deepEqual(drawPilotOffer(harness.state), ['ghost_decoy']);
+  assert.deepEqual(drawPilotOffer(harness.state), ['bruiser_stagger']);
 }));
 
 test('the draw is deterministic for one seed', () => withAllCardsLive(() => {
@@ -428,11 +354,11 @@ test('choose applies an evolution without granting branch points, and refuses a 
   assert.equal(choosePilotCard(harness.state, 0), true);
   assert.deepEqual(harness.state.run.pilot.points, { gunner: 5, rigger: 5 }, 'evolutions add no points');
   assert.deepEqual(harness.state.run.pilot.nodes, ['evolution_orbital_saw']);
-  // A bend locked by a taken sibling is refused even if a stale offer still shows it.
-  harness.state.run.pilot = { points: { conjurer: 1 }, nodes: ['conjurer_pull_vortex'], banked: 1,
-    offer: { cards: ['conjurer_pull_leash'], rerolls: 0 } };
+  // A card the pilot cannot take is refused even if a stale offer still shows it.
+  harness.state.run.pilot = { points: {}, nodes: [], banked: 1,
+    offer: { cards: ['ghost_phantom'], rerolls: 0 } };
   assert.equal(choosePilotCard(harness.state, 0), false);
-  assert.equal(harness.state.run.pilot.nodes.length, 1, 'nothing applied');
+  assert.equal(harness.state.run.pilot.nodes.length, 0, 'nothing applied');
 }));
 
 test('reroll costs Scrap from the run purse, redraws, and refuses when broke', () => withAllCardsLive(() => {
@@ -566,14 +492,15 @@ test('query API: pilotHas / pilotPoints are the only way systems read the tree',
   assert.equal(pilotHas(harness.state, 'evolution_orbital_saw'), true);
   assert.equal(pilotHas(harness.state, 'gunner_drum'), false);
   // Absent or malformed pilot records read as zero/false, never throw.
-  const bare = { run: {} };
+  // A live Swarm run without its own record never reads the Adventure record.
+  const bare = { run: { kind: 'survival', phase: 'active' }, player: { pilot: { points: { gunner: 9 }, nodes: ['gunner_steady_hands'] } } };
   assert.equal(pilotPoints(bare, 'gunner'), 0);
   assert.equal(pilotHas(bare, 'gunner_steady_hands'), false);
   assert.equal(pilotPoints(null, 'gunner'), 0);
   assert.equal(pilotHas(null, 'gunner_steady_hands'), false);
   // The third-card weighting rides branch investment and, for evolutions, both prerequisites.
   assert.equal(pilotCardWeight(getPilotCard('gunner_drum'), run.pilot), 4);
-  assert.equal(pilotCardWeight(getPilotCard('ghost_decoy'), run.pilot), 1);
+  assert.equal(pilotCardWeight(getPilotCard('ghost_cloak'), run.pilot), 1);
   assert.equal(pilotCardWeight(getPilotCard('evolution_wrecking_ball'), run.pilot), 1, 'uninvested prerequisites weigh nothing extra');
   assert.equal(pilotDoorForRun(run), 'swarm');
   assert.equal(pilotDoorForRun(createRunState()), 'adventure');
@@ -584,20 +511,20 @@ test('card sentences are player language: no internal ids or document references
     assert.doesNotMatch(node.text, /twin_bridle|§|\b03\s*§|\bhead,?\s*\d/i,
       `${node.id} leaks an internal name or doc reference: ${node.text}`);
   }
-  assert.equal(getPilotCard('rigger_second_line').text, 'Two lines at once.');
-  assert.equal(getPilotCard('rigger_coupler').text, 'Your next latch ties two bodies together.');
+  assert.equal(getPilotCard('rigger_second_line'), null, 'Second Line replaced the rope instead of adding one: cut');
+  for (const node of [...PILOT_NODES, ...PILOT_EVOLUTIONS]) {
+    assert.doesNotMatch(node.text, /ANCHOR|\brope\b|\bRig\b|\d+\s*%/, `${node.id}: plain words, no bare percentage: ${node.text}`);
+  }
 });
 
-test('the swarm door never offers Industry or the Adventure-only Ghost nodes; Adventure offers all', () => withAllCardsLive(() => {
+test('the swarm door never offers the work branches; Adventure offers all nine', () => withAllCardsLive(() => {
   const swarmPilot = { points: {}, nodes: [], banked: 0, offer: null };
   for (const card of eligiblePilotCards(swarmPilot, 'swarm')) {
-    assert.notEqual(card.branch, 'industry');
-    assert.notEqual(card.adventureOnly, true);
+    assert.ok(!['trader', 'prospector', 'builder'].includes(card.branch), `Swarm never offers ${card.id}`);
   }
-  // With every branch deep enough, the adventure door still offers the full seven sectors.
-  const maxed = { points: { gunner: 9, bruiser: 9, rigger: 9, conjurer: 9, juggernaut: 9, ghost: 9, industry: 9 }, nodes: [], banked: 0, offer: null };
+  const maxed = { points: { gunner: 9, bruiser: 9, rigger: 9, conjurer: 9, juggernaut: 9, ghost: 9 }, nodes: ['ghost_cloak'], banked: 0, offer: null };
   const adventureEligible = eligiblePilotCards(maxed, 'adventure').map((card) => card.id);
-  for (const id of ['industry_foreman', 'ghost_vanish', 'gunner_gold_thread', 'conjurer_pin_nail']) {
+  for (const id of ['trader_long_memory', 'ghost_vanish', 'gunner_gold_thread', 'builder_foundations']) {
     assert.ok(adventureEligible.includes(id), `adventure offers ${id}`);
   }
 }));

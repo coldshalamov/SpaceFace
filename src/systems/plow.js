@@ -19,6 +19,8 @@ import { FIELD_DEFS } from '../data/fields.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { queryPhysicalBodies } from '../combat/physicalEffects.js';
 import { recordImpulseProvenance } from '../combat/impulseKernel.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 const SHIP_TYPES = new Set(['ship', 'station', 'turret']);
 const NEVER_TYPES = new Set(['projectile', 'pickup', 'massSeed', 'charge', 'bomb', 'mine', 'beacon', 'fx', 'planet', 'field_emitter']);
@@ -28,6 +30,33 @@ function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function bodyMass(e) {
   const spec = resolvePhysicsBodySpec(e);
   return Math.max(0.1, finite(spec && spec.mass, finite(e.mass, 1)));
+}
+
+// Pilot Tree capstone conjurer_avalanche ("Landslide", progression lead 2026-11-20): the Plow
+// holds twice as many bodies, takes bodies three times as heavy, scoops up enemy ships no heavier
+// than the player, and fires the lot twice as fast. Every other read keeps the authored numbers.
+export const LANDSLIDE_CAPACITY_MULT = 2;
+export const LANDSLIDE_MASS_MULT = 3;
+export const LANDSLIDE_LAUNCH_MULT = 2;
+function plowTuning(state) {
+  const k = FIELD_DEFS.cone.plow;
+  if (!pilotHas(state, 'conjurer_avalanche')) return k;
+  return {
+    ...k,
+    capacity: k.capacity * LANDSLIDE_CAPACITY_MULT,
+    maxMass: k.maxMass * LANDSLIDE_MASS_MULT,
+    launchSpeed: k.launchSpeed * LANDSLIDE_LAUNCH_MULT,
+    takesEnemies: true,
+  };
+}
+
+/** Landslide's extra catch: a hostile ship no heavier than the player. */
+function landslideTakes(state, entity, player, k) {
+  if (!k.takesEnemies || !entity || !player || entity.alive === false || !entity.pos) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (entity.id === state.playerId) return false;
+  if (!isHostileForAI(state, entity, player)) return false;
+  return bodyMass(entity) <= bodyMass(player);
 }
 
 export function ensurePlow(rt) {
@@ -58,7 +87,7 @@ function toLocal(player, x, z) {
  */
 export function tickPlow({ state, rt, player, dt, helpers, bus }) {
   const def = FIELD_DEFS.cone;
-  const k = def.plow;
+  const k = plowTuning(state);
   const plow = ensurePlow(rt);
   if (!player || !player.pos) return plow.held.length;
   const step = dt > 0 ? dt : 1 / 60;
@@ -104,7 +133,7 @@ export function tickPlow({ state, rt, player, dt, helpers, bus }) {
   const tanHalf = Math.tan(def.halfAngleRad);
   let captured = 0;
   for (const body of found) {
-    if (!plowCapturable(body, state.playerId) || heldIds.has(body.id)) continue;
+    if ((!plowCapturable(body, state.playerId) && !landslideTakes(state, body, player, k)) || heldIds.has(body.id)) continue;
     const loc = toLocal(player, body.pos.x, body.pos.z);
     const br = finite(body.radius, 8);
     if (loc.f < pr || loc.f > def.originGap + def.radius) continue;
@@ -133,7 +162,7 @@ export function tickPlow({ state, rt, player, dt, helpers, bus }) {
 
 /** Launch everything aboard along the nose. Returns how many bodies left. */
 export function launchPlow({ state, rt, player, bus }) {
-  const k = FIELD_DEFS.cone.plow;
+  const k = plowTuning(state);
   const plow = ensurePlow(rt);
   if (!player || !player.pos || plow.held.length === 0) { plow.held.length = 0; return 0; }
   const rot = finite(player.rot);

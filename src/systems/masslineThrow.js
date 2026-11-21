@@ -18,6 +18,7 @@
 import { massline2Flag } from '../data/featureFlags.js';
 import { pilotHas } from '../data/pilotTree.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { recordImpulseProvenance } from '../combat/impulseKernel.js';
 import { captureEntitySelection, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
@@ -678,6 +679,25 @@ export const masslineThrow = {
       ? queueSpeedFractionImpulse(payload, 0.25)
       : 0;
     if (sweetSpotDv > 0) impulses.push({ source: 'pilot_sweet_spot', impulse: null, dvWu: sweetSpotDv });
+    // Pilot Tree (2026-11-20). rigger_whip_snap — a body already whipping round fast (twice the
+    // throw floor) leaves half again as fast. rigger_hurricane (capstone) — every Line throw
+    // leaves twice as fast. Both ride the same impulse authority as the sweet spot.
+    const payloadSpeedNow = Math.hypot(finite(payload.vel && payload.vel.x), finite(payload.vel && payload.vel.z));
+    const whipDv = pilotHas(state, 'rigger_whip_snap') && payloadSpeedNow >= THROW_MIN_PAYLOAD_SPEED * 2
+      ? queueSpeedFractionImpulse(payload, 0.5) : 0;
+    if (whipDv > 0) impulses.push({ source: 'pilot_whip_snap', impulse: null, dvWu: whipDv });
+    const hurricaneDv = pilotHas(state, 'rigger_hurricane') ? queueSpeedFractionImpulse(payload, 1) : 0;
+    if (hurricaneDv > 0) impulses.push({ source: 'pilot_hurricane', impulse: null, dvWu: hurricaneDv });
+    // evolution_wrecking_ball — a Line throw is the player's kick: what it hits next is theirs.
+    if (pilotHas(state, 'evolution_wrecking_ball') && payload.vel) {
+      const mass = Math.max(0.1, finite(payload.physicsBody && payload.physicsBody.mass, finite(payload.mass, 1)));
+      const impulse = { x: finite(payload.vel.x) * mass, z: finite(payload.vel.z) * mass };
+      recordImpulseProvenance(payload, {
+        tag: 'line_throw', actorId: player.id, appliedTick: state.tick | 0,
+        magnitude: Math.hypot(impulse.x, impulse.z), by: player.id,
+        at: finite(state.simTime, state.tick / 60), impulse, kickHops: 0,
+      });
+    }
     runtime.lastThrow = {
       releaseId,
       source: 'massline',
@@ -789,7 +809,6 @@ export const masslineThrow = {
     const state = this.state;
     if (!massline2Flag('throw') || !state || state.mode !== 'flight') return;
     if (!this._swing) return;
-    this._whipSnap(state, payload);
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.vel) return;
     const speed = Math.hypot(finite(player.vel.x), finite(player.vel.z));
@@ -812,31 +831,6 @@ export const masslineThrow = {
     this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
   },
 
-  // OVH-01c2 rigger_whip_snap — tapping the reel key mid-swing snaps the line and flings the
-  // latched body at 1.5× its current speed without finishing the swing. tetherGameplay already
-  // performed the ordinary tap-cut (this handler rides its 'tether:cut'); this is the fling
-  // half. A deliberate tap only — the live grammar command — never a round-boundary auto-cut,
-  // and only a genuinely moving payload on a taut line ("mid-swing").
-  _whipSnap(state, payload = {}) {
-    if (!pilotHas(state, 'rigger_whip_snap')) return;
-    if (!this._swing || !this._swing.taut) return;
-    const command = state.input && state.input.actions && state.input.actions.massline;
-    if (!(command && command.cut)) return;
-    const body = payload.targetId != null && state.entities && state.entities.get
-      ? state.entities.get(payload.targetId) : null;
-    if (!body || body.alive === false || !body.vel || body.id === state.playerId) return;
-    const speed = Math.hypot(finite(body.vel.x), finite(body.vel.z));
-    if (speed < THROW_MIN_PAYLOAD_SPEED) return;
-    const dv = queueSpeedFractionImpulse(body, 0.5);
-    if (!(dv > 0)) return;
-    this.bus.emit('massline:whipSnap', {
-      sourceId: state.playerId,
-      payloadId: body.id,
-      dvWu: dv,
-      tick: state.tick,
-    });
-    this.bus.emit('audio:cue', { id: 'massline.throw', position: { x: body.pos.x, z: body.pos.z } });
-  },
 
 };
 

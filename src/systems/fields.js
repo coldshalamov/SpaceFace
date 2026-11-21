@@ -493,6 +493,10 @@ export const fields = {
         this.bus.on('run:waveCleared', () => this._releaseSwarmSpecialistAnchors('wave_cleared')),
         this.bus.on('run:ended', () => { this._releaseSwarmSpecialistAnchors('run_ended'); this._clearPilotQueues(); }),
         this.bus.on('game:newGame', () => this._clearPilotQueues()),
+        // evolution_black_hole (Pilot Tree, 2026-11-20): going dark leaves a Pull well, twice as
+        // strong, where the ship was — the pack chasing you falls into it. Queued like an Echo so
+        // it deploys inside this system's own tick, free of the Pull cooldown.
+        this.bus.on('cloak:engaged', () => this._queueBlackHole()),
         // Victory is a terminal phase reached by transition — no run:ended follows it, and the
         // wave owner may carry cohort bodies across run:started, so anchors release here.
         this.bus.on('run:transitioned', (p) => {
@@ -1275,6 +1279,16 @@ export const fields = {
    * free of the cooldown the first shot started. Sim time only; the queue is bounded and cleared
    * on every fields boundary.
    */
+  _queueBlackHole() {
+    const state = this.state;
+    if (!state || !pilotHas(state, 'evolution_black_hole')) return;
+    const player = this._player(state);
+    if (!player || !player.pos) return;
+    const queue = this._pilotEcho || (this._pilotEcho = []);
+    if (queue.length >= 8) queue.shift();
+    queue.push({ kind: 'well', center: { x: player.pos.x, z: player.pos.z }, at: nowOf(state), scale: 2 });
+  },
+
   _drainPilotEcho(state, rt) {
     const queue = this._pilotEcho;
     if (!queue || queue.length === 0) return;
@@ -1289,7 +1303,7 @@ export const fields = {
         center: rec.center,
         radius: rec.radius,
         strength: rec.strength,
-        strengthScale: PILOT_ECHO_STRENGTH,
+        strengthScale: Number.isFinite(rec.scale) ? rec.scale : PILOT_ECHO_STRENGTH,
       });
     }
   },
