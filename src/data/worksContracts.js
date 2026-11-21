@@ -27,7 +27,10 @@ const STATION_SECTOR = new Map();
 const STATION_NAME = new Map();
 const SECTOR_ROCKS = new Map();
 for (const sector of SECTORS) {
-  SECTOR_ROCKS.set(sector.id, [...new Set((sector.asteroidFields || sector.fields || []).map((f) => f && f.type).filter(Boolean))]);
+  // Only belts that really hold rocks: an authored `count: 0` is a named but empty field (the
+  // Bolus keeps one), and a job must never be posted for rocks that are not there.
+  SECTOR_ROCKS.set(sector.id, [...new Set((sector.asteroidFields || sector.fields || [])
+    .filter((f) => f && f.count !== 0).map((f) => f.type).filter(Boolean))]);
   for (const station of sector.stations || []) {
     STATION_SECTOR.set(station.id, sector.id);
     STATION_NAME.set(station.id, station.name);
@@ -341,9 +344,9 @@ export const WORKS_CONTRACTS = Object.freeze([
     goal: { kind: 'claims', qty: 3 },
   }),
   job({
-    id: 'works_bolus_rib_heart', rung: 'rover', stationId: 'station_bolus_rib', reward_cr: 9000,
-    title: 'Rib Heart', client: 'The Swallowed Rib Survey',
-    brief: 'The survey at the Rib takes samples from the one exotic body it can reach inside the Bolus. Xenium keeps to the heart there, under basalt and beside gas, and the survey pays for ore cut from that deep and no shallower.',
+    id: 'works_ashcache_heart', rung: 'rover', stationId: 'station_ashcache', reward_cr: 9000,
+    title: 'Ashfall Heart', client: 'Ruined Cache Salvors',
+    brief: 'The salvors holding the Ruined Cache trade in xenium, and nobody else will dig for it in Ashfall. It keeps to the heart of an exotic body, under basalt and beside gas, and they pay for ore cut from that deep and no shallower.',
     summary: 'Rover job. Cut 6 xenium by hand from the heart of an exotic body (Industrial beam). Shallow cuts and laser ore do not count. Bonuses for breaching no gas pocket and for opening 66 cells or fewer.',
     goal: { kind: 'cut', ore: 'cmdty_exotic_xenium', qty: 6, minDepth: 0.8 },
     bonus: [{ kind: 'sealed', pct: 0.25 }, { kind: 'par', cells: 66, pct: 0.25 }],

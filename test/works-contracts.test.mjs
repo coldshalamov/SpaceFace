@@ -217,6 +217,17 @@ test('every job is posted at a real station, under its own title, behind a job t
     for (const need of row.requires || []) assert.ok(ids.has(need), `${row.id} waits on a job that exists`);
   }
   assert.ok(new Set(WORKS_CONTRACTS.map((row) => row.stationId)).size >= 24, 'the jobs reach across the galaxy');
+  // A rover job is only posted where the sector's belts really hold a rock that carries the ore.
+  // The Bolus names an exotic field with no rocks in it; no job may lean on a belt like that.
+  const sectorOf = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((s) => [s.id, sector])));
+  assert.deepEqual(worksRockTypesFor('sector_the_bolus', 'cmdty_exotic_xenium'), []);
+  for (const row of WORKS_CONTRACTS) {
+    const sector = sectorOf.get(row.stationId);
+    assert.ok((sector.fields || []).some((field) => field && field.count !== 0), `${row.id}: ${sector.id} has rocks to work`);
+    if (row.goal.kind === 'cut') {
+      assert.ok(worksRockTypesFor(sector.id, row.goal.ore).length > 0, `${row.id}: a rock in ${sector.id} carries the ore`);
+    }
+  }
 });
 
 // The two yard goals read the REAL site system: claims staked by installing machines through
