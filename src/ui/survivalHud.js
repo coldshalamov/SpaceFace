@@ -1367,7 +1367,7 @@ export const survivalHud = {
   .sf-crun__castglyphs { display:inline-flex; align-items:center; gap:3px; flex:none; padding-top:2px; }
   .sf-crun__castglyph { display:block; width:14px; height:14px; flex:none; }
   .sf-crun__castline { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:13px;
-    line-height:1.28; color:#eef5f7; }
+    line-height:1.28; color:#eef5f7; text-wrap:balance; }
   .sf-crun__castanswer { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     line-height:1.25; color:#a9edf4; }
   .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;

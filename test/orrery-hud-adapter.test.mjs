@@ -248,8 +248,12 @@ test('D240: the live context strip is a measured obstacle again, for arrows and 
     'doctrine tells yield to the same measured strip');
   // ...and the tells resolve their seat from that reserved pool (74e6020171 replaced the per-frame
   // obstacle array with a reused blocker pool, so the call takes `reserved`, not a spread literal).
-  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, reserved,/,
-    'the tell seat is solved against the reserved strip and touch controls');
+  // dbe362bec1 / HUD-2 item 9: on desktop only the most urgent threat gets a chip, anchored at
+  // the edge it comes from (slot 0, edgeAnchor) and still solved against the reserved pool.
+  assert.match(src, /resolveDoctrineTellPlacement\(\s*w, h, proj, 0, reserved, null, slot\.geometry,\s*\{ edgeAnchor: true/,
+    'the desktop threat chip is edge-anchored and solved against the reserved strip and touch controls');
+  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, blockers,/,
+    'the phone seat solves against the reserved strip plus the deck avoid rects');
 });
 
 test('a settled Cluster frame writes nothing: springs at rest ignore a repeat target', async () => {

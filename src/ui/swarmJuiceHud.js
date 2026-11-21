@@ -46,7 +46,9 @@ const NEXT_MARK_REACH = 8;
 // Higher speaks over lower. Boss beats outrank kill words; counted repeats and small receipts
 // (a close call, a pile-up tick) never talk over a bigger moment.
 const CALL_PRIORITY = Object.freeze({ bossdown: 5, bossact: 4, overdrive: 3, chainstar: 3,
-  firstbeat: 4, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, collateral: 1, discharge: 1 });
+  firstbeat: 4, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, collateral: 1, discharge: 1,
+  // A recovery word (SHIELD BACK, HULL PATCHED) is a receipt, never news over a fight word.
+  recovery: 1 });
 const CALL_PRIORITY_DEFAULT = 2;
 /** A beat that waited this long behind a higher one is stale news — it is dropped, not shown late. */
 const BEAT_STALE_S = 12;
@@ -55,7 +57,11 @@ const BEAT_STALE_S = 12;
 export function swarmAnnounceDisplayText(text, kind = '') {
   const raw = String(text || '').trim();
   if (!raw) return '';
-  if (kind === 'collateral' || /^COLLATERAL$/i.test(raw)) return 'FRIENDLY FIRE';
+  // An enemy killed by the room or by another enemy: they caught each other, not "friendly fire"
+  // (which reads as the player hurting an ally).
+  const internal = /^(COLLATERAL|FRIENDLY FIRE)(?![A-Z])/i;
+  if (internal.test(raw)) return raw.replace(internal, 'CROSSFIRE');
+  if (kind === 'collateral') return 'CROSSFIRE';
   return raw;
 }
 

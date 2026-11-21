@@ -220,7 +220,9 @@ test('COLLATERAL: a cohort body killed by a cohort body is named and popups as F
   kill(h, { cause: 'ship_collision', surface: 'craft', killer: roomKiller.id });
   const calls = named(h, 'swarm:announce').filter((e) => e.payload.kind === 'collateral');
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].payload.text, 'COLLATERAL');
+  // The sim's word is FRIENDLY FIRE; the HUD prints it as CROSSFIRE (swarmAnnounceDisplayText,
+  // HUD-2 item 9: no internal or misleading words on screen).
+  assert.equal(calls[0].payload.text, 'FRIENDLY FIRE');
   assert.equal(named(h, 'swarm:killPopup')[0].payload.word, 'FRIENDLY FIRE');
   swarmJuice.destroy();
 });

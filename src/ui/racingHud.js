@@ -79,9 +79,13 @@ export function mountRacingHud({ root, bus, state, screens }) {
       applyWorldObjectSelection(state, selection, 'race-instrument');
   });
   select.hidden = true;
+  // Race verbs exist only inside a race; the frame reveals them for an authored race.
+  reset.hidden = true; restart.hidden = true; leave.hidden = true;
   const closeOptions = button('Close', () => setOptionsOpen(false, true));
   closeOptions.className += ' race-tape-options-close'; closeOptions.style.display = 'none';
   readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,options,row,live); root.appendChild(panel);
+  let cachedUtilityRow = null;
+  let utilityRowQueriedAt = -Infinity;
   const syncParent = (authored) => {
     // HUD reconstruction can replace the entire dock or utility row, so ownership is re-derived
     // each frame. In desktop visor mode the compact camera-view chip joins the unified top-right
@@ -89,9 +93,20 @@ export function mountRacingHud({ root, bus, state, screens }) {
     let parent = root;
     const mobileFlight = document.documentElement?.dataset?.sfMobileFlight === '1';
     if (!authored) {
-      const utilityRow = !mobileFlight
-        ? (root.querySelector?.('#sf-visor-utility-row') || document.getElementById?.('sf-visor-utility-row'))
-        : null;
+      // HUD-2 item 15: the row is resolved once and re-looked-up only when it leaves the document
+      // (a HUD rebuild), at most every 250 ms — never a selector query on every frame.
+      let utilityRow = null;
+      if (!mobileFlight) {
+        if (cachedUtilityRow && cachedUtilityRow.isConnected !== false) utilityRow = cachedUtilityRow;
+        else {
+          const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          if (nowMs - utilityRowQueriedAt >= 250) {
+            utilityRowQueriedAt = nowMs;
+            cachedUtilityRow = document.getElementById?.('sf-visor-utility-row') || null;
+            utilityRow = cachedUtilityRow;
+          }
+        }
+      }
       if (utilityRow && utilityRow.isConnected !== false) {
         parent = utilityRow;
       } else {

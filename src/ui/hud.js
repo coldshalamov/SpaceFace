@@ -57,6 +57,7 @@ import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibi
 import { enemyMindTell } from '../presentation/enemyMindTells.js';
 import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { createVisorDockCue } from './orrery/visorDockCue.js';
+import { createFlightHelm } from './flightHelm.js';
 import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -2352,6 +2353,7 @@ export function createHud(ctx, alerts) {
       return band && !dragged ? band : null;
     },
   ];
+  let adoptCommsTicks = 0;
   const adoptCommsChrome = () => {
     const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     const host = mobileFlight ? commsTapeSlots : utilityRow;
@@ -2640,6 +2642,16 @@ export function createHud(ctx, alerts) {
   
   const radar = createRadar(ctx);
   const visorDockCue = createVisorDockCue(root);
+  // HUD-2 items 12-13: the one flight-mode chip and the "[E] Fly to berth" offer + approach lane.
+  let helmDockInRange = false;
+  on('dock:range', (p) => { helmDockInRange = !!(p && p.inRange); });
+  on('dock:docked', () => { helmDockInRange = false; });
+  const flightHelm = createFlightHelm(root, state, {
+    worldToScreen: (w, o) => (helpers && typeof helpers.worldToScreen === 'function' ? helpers.worldToScreen(w, o) : null),
+    dockInRange: () => helmDockInRange,
+    attention: () => root.getAttribute('data-hud-attention') || 'calm',
+  });
+  if (typeof window !== 'undefined') window.addEventListener('resize', () => flightHelm.resize());
   mountRadarKit(radar.el);
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
@@ -5359,10 +5371,15 @@ export function createHud(ctx, alerts) {
     if (panelObstacles.right) markClipRects.push(panelObstacles.right);
     if (panelObstacles.orrery) markClipRects.push(panelObstacles.orrery);
     if (panelObstacles.rail && panelObstacles.rail !== panelObstacles.orrery) markClipRects.push(panelObstacles.rail);
-    const utilRect = utilityRow && utilityRow.style.display !== 'none' ? plateBox(utilityRow) : null;
+    // HUD-2 item 15: the utility row and the prompt deck move only on resize or when their
+    // content changes; their boxes are cached (re-read at most every 400 ms), not measured per frame.
+    const utilRect = utilityRow && utilityRow.style.display !== 'none' ? cachedMarkClipBox(markClipCache.util, utilityRow) : null;
     if (utilRect) markClipRects.push(utilRect);
-    const deckEl = typeof document !== 'undefined' ? document.getElementById('sf-prompt-deck') : null;
-    const deckRect = deckEl && !deckEl.hidden ? plateBox(deckEl) : null;
+    if (markClipCache.deckEl === undefined || (markClipCache.deckEl && !markClipCache.deckEl.isConnected)) {
+      markClipCache.deckEl = typeof document !== 'undefined' ? document.getElementById('sf-prompt-deck') : null;
+    }
+    const deckEl = markClipCache.deckEl;
+    const deckRect = deckEl && !deckEl.hidden ? cachedMarkClipBox(markClipCache.deck, deckEl) : null;
     if (deckRect) markClipRects.push(deckRect);
     const crunEl = contactCrunElement();
     const crunRect = crunEl && !crunEl.hidden && crunEl.style?.display !== 'none' ? plateBox(crunEl) : null;
@@ -6755,7 +6772,9 @@ export function createHud(ctx, alerts) {
         const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
         if (commsTape.style.display !== want) commsTape.style.display = want;
         if (utilityRow.style.display !== want) utilityRow.style.display = want;
-        if (slow && !swarmRadioOff && !temporaryCircuit) adoptCommsChrome();
+        // HUD-2 item 15: adoption walks six document lookups; chips mount once per session, so
+        // once a second is soon enough to pick up a late one (it was every 10 Hz tick).
+        if (slow && !swarmRadioOff && !temporaryCircuit && (++adoptCommsTicks % 10 === 1)) adoptCommsChrome();
       }
       updateTetherFeedback(tether, latching, ml);
       const auto = !!(state.input && state.input.autoFire);
@@ -6911,6 +6930,7 @@ export function createHud(ctx, alerts) {
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
     if (overlayTick && trackedDockCue) placeFlightReadouts(window.innerWidth, window.innerHeight, trackedDockCue);
+    if (overlayTick) flightHelm.frame(overlayDt || frameDt, window.innerWidth, window.innerHeight);
     if (slow) {
       // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
       // through the explicit invalidations (layout/settings/resize events), so re-placing on every
@@ -7994,13 +8014,24 @@ export function createHud(ctx, alerts) {
     });
     hudUnsubscribers.push(() => swarmColumnObserver.disconnect());
   }
+  // Contact-mark clip boxes (utility row, prompt deck): one measure per 400 ms or resize.
+  const markClipCache = { util: { el: null, at: -Infinity, box: null }, deck: { el: null, at: -Infinity, box: null }, deckEl: undefined };
+  function cachedMarkClipBox(slot, el) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (slot.el !== el || now - slot.at > 400) { slot.el = el; slot.at = now; slot.box = plateBox(el); }
+    return slot.box;
+  }
+  if (typeof window !== 'undefined') window.addEventListener('resize', () => { markClipCache.util.at = -Infinity; markClipCache.deck.at = -Infinity; });
+  let swarmColumnQueriedAt = -Infinity;
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
-    if (swarmColumnObserver && state.run?.ruleset === 'swarm' && !observedSwarmColumn?.isConnected) {
+    if (swarmColumnObserver && state.run?.ruleset === 'swarm' && !observedSwarmColumn?.isConnected
+      && performance.now() - swarmColumnQueriedAt >= 250) {
+      swarmColumnQueriedAt = performance.now();
       observedSwarmColumn = document.querySelector('.sf-sj__col');
       swarmColumnObserver.disconnect();
       if (observedSwarmColumn) swarmColumnObserver.observe(observedSwarmColumn);

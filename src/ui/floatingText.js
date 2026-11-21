@@ -356,6 +356,13 @@ export function createFloatingText(ctx) {
     ? new MutationObserver(markPadStaticsStale) : null;
   padStaticsObserver?.observe?.(document.documentElement, { attributes: true, attributeFilter: ['data-sf-mobile-flight'] });
 
+  // HUD-2 item 15: the dock prompt's presence is tracked from the same events that raise and
+  // clear it (alerts.js), not looked up in the document every frame.
+  let dockPromptInRange = false;
+  on('dock:range', (p) => { dockPromptInRange = !!(p && p.inRange); });
+  on('dock:committed', () => { dockPromptInRange = false; });
+  on('dock:docked', () => { dockPromptInRange = false; });
+
   function syncPadLabels() {
     padLabelRects.length = 0;
     // The loading shell covers the HUD: the pad pass under it only restyles elements nobody sees.
@@ -367,8 +374,7 @@ export function createFloatingText(ctx) {
     const selectedPad = nearestSwarmFloorPad(state);
     const inArena = state.run?.ruleset === 'swarm' || state.run?.kind === 'survival';
     const underFire = isPlayerUnderFire(state, now, lastPlayerDamageAt);
-    const dockPromptLive = typeof document !== 'undefined'
-      && !!document.querySelector?.('#alerts .sf-alert--dock:not([hidden])');
+    const dockPromptLive = dockPromptInRange;
 
     // HUD-2 Item 8: at most ONE priced pad expands to a readable card at a time — the closest
     // eligible pad within tight proximity (115 wu). While under fire or showing a dock prompt,

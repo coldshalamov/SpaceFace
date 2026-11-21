@@ -86,7 +86,8 @@ test('Iron Maw’s live opening clears incidental callouts and does not replay t
   assert.equal(h.dom.calls.hidden, true, 'stale callouts do not return after the opening');
   h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×3' });
   h.tick();
-  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['COLLATERAL ×3']);
+  // HUD-2 item 9: the sim's internal word prints in plain words on the glass.
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['CROSSFIRE ×3']);
 });
 
 test('the CSS gives no centre piece a private vh offset', () => {
@@ -110,7 +111,9 @@ test('round slam, boss card, clear tally, scoreboard and boss-down never show to
   h.tick();
   assert.deepEqual(h.shown(), ['bossDown'], 'BOSS DOWN outranks the slam');
   h.tick(3);
-  assert.deepEqual(h.shown(), ['slam'], 'the slam is still pending, so it takes the lane back');
+  // HUD-2 item 9: a headline lives at most ~1.5 s; a round slam that waited behind BOSS DOWN is
+  // stale news by then and is dropped — the waiting boss card (never yet shown) takes the lane.
+  assert.deepEqual(h.shown(), ['card'], 'the stale slam is dropped; the waiting card takes the lane');
   swarmJuiceHud.destroy();
 });
 
@@ -124,9 +127,9 @@ test('a waiting boss card starts its clock when it first shows, then ends', () =
   assert.deepEqual(h.shown(), ['slam'], 'FIGHT lingers first');
   h.tick(1.2);
   assert.deepEqual(h.shown(), ['card'], 'the card shows once the slam clears');
-  h.tick(1.5);
-  assert.deepEqual(h.shown(), ['card'], 'still inside its own 2 s');
-  h.tick(1);
+  h.tick(1.2);
+  assert.deepEqual(h.shown(), ['card'], 'still inside its own ~1.5 s (HUD-2 item 9: one short headline)');
+  h.tick(0.6);
   assert.deepEqual(h.shown(), [], 'then it ends');
   swarmJuiceHud.destroy();
 });
@@ -146,12 +149,14 @@ test('a clear tally held behind BOSS DOWN is not spent while it waits', () => {
 });
 
 test('the announcer speaks one line: higher priority replaces, lower is dropped, repeats update in place', () => {
+  // HUD-2 item 9: a crossfire kill (the room's work, not the pilot's) is the lowest word; the
+  // pilot's own pile-up outranks it.
   const h = boot();
-  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
-  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×4' });          // lower: dropped
+  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×4' });
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });      // lower: dropped
   h.tick();
-  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['COLLATERAL']);
-  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×2' });    // same kind: in place
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['PILE-UP ×4']);
+  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×5' });          // same kind: in place
   h.emit('swarm:announce', { kind: 'bossdown', text: 'BOSS DOWN' });          // higher: replaces
   h.tick();
   assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['BOSS DOWN']);
