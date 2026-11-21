@@ -830,6 +830,30 @@ export function createSimLaneRuntime({
     }
     poseFacadeRows = touched;
   }
+  // Weapon-VFX projectiles are not journaled bodies, so the pose table does not carry them; they
+  // arrive by reply. Between replies (or while replies lag) each one flies on from its last reply
+  // state along its own velocity at the table's sim time, instead of hanging mid-air.
+  const projectileBases = new Map();
+  function stampProjectileBases(simTime) {
+    const t = Number.isFinite(simTime) ? simTime : 0;
+    for (const [id, row] of readModel.weaponVfxProjectiles) {
+      let b = projectileBases.get(id);
+      if (!b) projectileBases.set(id, b = { x: 0, y: 0, z: 0, t: 0 });
+      b.x = row.pos.x; b.y = row.pos.y; b.z = row.pos.z; b.t = t;
+    }
+    for (const id of projectileBases.keys()) if (!readModel.weaponVfxProjectiles.has(id)) projectileBases.delete(id);
+  }
+  function flyProjectilesTo(simTime) {
+    if (!readModel.weaponVfxProjectiles.size || !Number.isFinite(simTime)) return;
+    for (const [id, row] of readModel.weaponVfxProjectiles) {
+      const b = projectileBases.get(id);
+      if (!b || row.alive === false) continue;
+      const age = Math.min(0.5, Math.max(0, simTime - b.t));
+      row.prevPos.x = row.pos.x; row.prevPos.z = row.pos.z;
+      row.pos.x = b.x + row.vel.x * age;
+      row.pos.z = b.z + row.vel.z * age;
+    }
+  }
   function readPoseFeed() {
     poseFeed.advanced = false;
     if (laneClosed || !ready || laneLegacy) {
@@ -853,6 +877,7 @@ export function createSimLaneRuntime({
       poseFeedFrames++;
       if (advanced) poseFeedLastAdvanceAtMs = now;
       applyPoseFeedToFacade(snapshot, poseTableCoastFactor(now));
+      flyProjectilesTo(snapshot.simTime);
       // Ruling: a simulation that cannot step for over a tenth of a second during unpaused flight
       // is never shown as a silently frozen world — the hold plate covers it (WORLD_HOLD_PLATE_MS
       // of no table writes while the clock is wanted and nothing else is on screen).
@@ -1378,6 +1403,7 @@ export function createSimLaneRuntime({
     if (msg.initRebuild?.pack) foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end, true);
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
+      stampProjectileBases(msg.simTime);
     }
     applyLaneAuxDelta(msg);
     applyDomainUpdates(msg.domainUpdates);
@@ -1492,6 +1518,7 @@ export function createSimLaneRuntime({
     }
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
+      stampProjectileBases(msg.simTime);
     }
     if (Array.isArray(msg.entityVitals) && msg.entityVitals.length) {
       applyEntityVitals(readModel, msg.entityVitals, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
