@@ -127,6 +127,56 @@ for (const { name, breakApproach, reason } of [
   });
 }
 
+test('a small rock still takes the rover: a Line slack at its minimum length is settled', () => {
+  // Radius 6 with the anchor on the near face: parked, the Line would need to be about 12 WU,
+  // under its 18 WU minimum. It hangs slack for ever; that must not strand the approach.
+  const h = harness({ targetAnchorLocal: { x: -6, z: 0 }, asteroidRadius: 6 });
+  h.line.sourceAnchorLocal = { x: 6, z: 0 }; // the spool sits forward on the hull, toward the rock
+  h.bus.emit('drill:approachRequested', request(h));
+  tick(h);
+  consumePhysicsCommand(h.player);
+  settleAtDrillSurface(h);
+  for (let i = 0; i < 120 && h.events.completed.length === 0; i++) { tick(h); consumePhysicsCommand(h.player); }
+  assert.equal(h.events.completed.length, 1, 'the rover goes down');
+  assert.equal(h.events.cancelled.length, 0);
+  const sourceWorld = entityLocalPointToWorld(h.player, h.line.sourceAnchorLocal);
+  const targetWorld = entityLocalPointToWorld(h.asteroid, h.line.targetAnchorLocal);
+  assert.ok(Math.hypot(sourceWorld.x - targetWorld.x, sourceWorld.z - targetWorld.z) < h.line.restLength,
+    'the fixture really is the slack case');
+});
+
+test('a ship that holds station beside a spinning rock is settled, and a timed-out approach says so', () => {
+  const h = harness({ targetAnchorLocal: { x: 16, z: 0 } });
+  const toasts = [];
+  h.bus.on('toast', (p) => toasts.push(p.text));
+  h.bus.emit('drill:approachRequested', request(h));
+  tick(h);
+  consumePhysicsCommand(h.player);
+  settleAtDrillSurface(h);
+  // The rock spins: its anchor sweeps round, so the Line's commanded length never stops moving.
+  for (let i = 0; i < 200 && h.events.completed.length === 0; i++) {
+    h.asteroid.rot += 0.21;
+    tick(h);
+    consumePhysicsCommand(h.player);
+  }
+  assert.equal(h.events.completed.length, 1, 'holding station for a second and a half is enough');
+  assert.equal(h.events.cancelled.length, 0);
+
+  const far = harness({ targetAnchorLocal: { x: 16, z: 0 } });
+  const said = [];
+  far.bus.on('toast', (p) => said.push(p.text));
+  far.bus.emit('drill:approachRequested', request(far));
+  for (let i = 0; i < 60 * 9 && far.events.cancelled.length === 0; i++) {
+    // never parked: the ship keeps sliding past
+    far.player.vel.x = far.asteroid.vel.x + 40;
+    tick(far);
+    consumePhysicsCommand(far.player);
+  }
+  assert.equal(far.events.cancelled.length, 1);
+  assert.equal(far.events.cancelled[0].reason, 'timeout');
+  assert.ok(said.some((text) => /could not hold steady beside that rock/.test(text)), 'the pilot is told');
+});
+
 test('one press sets the rover down: with no line on the rock, the line owner latches it and reels in', () => {
   const h = harness({ line: false });
   const latched = [];
@@ -160,7 +210,7 @@ test('a rover press that goes stale is dropped, never replayed as a surprise lat
   assert.equal(h.events.started.length, 0);
 });
 
-function harness({ targetAnchorLocal = { x: -16, z: 0 }, line = true } = {}) {
+function harness({ targetAnchorLocal = { x: -16, z: 0 }, line = true, asteroidRadius = 16 } = {}) {
   const player = entity('player', 'ship', 0, 0, {
     radius: 8,
     mass: 40,
@@ -168,7 +218,7 @@ function harness({ targetAnchorLocal = { x: -16, z: 0 }, line = true } = {}) {
     physicsBody: { dynamic: true, mass: 40 },
   });
   const asteroid = entity('asteroid', 'asteroid', 120, 0, {
-    radius: 16,
+    radius: asteroidRadius,
     mass: 640,
     physicsBody: { dynamic: false, mass: 640 },
   });

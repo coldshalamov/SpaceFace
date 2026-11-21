@@ -154,6 +154,13 @@ const DRILL_APPROACH_POSITION_GAIN = 3.5;
 const DRILL_APPROACH_VELOCITY_GAIN = 2.6;
 const DRILL_APPROACH_MAX_SURFACE_WU = 220;
 const DRILL_APPROACH_TIMEOUT_S = 8;
+// The rover goes down once the ship is parked at the rock and steady. "Parked" used to also mean
+// "the Line is exactly its commanded length", which a small rock can never satisfy: the parked gap
+// is shorter than the Line's minimum length, so the Line hangs slack for ever and the approach
+// timed out in silence. A slack Line at its minimum is settled, and a ship that has simply held
+// station for this long is settled whatever the Line is doing (a spinning rock keeps moving its
+// anchor, so the commanded length never stops changing).
+const DRILL_APPROACH_STEADY_HOLD_S = 1.5;
 // Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
 // phase says so, even while the physical rating ratio (strain) is still low. strain*2.5 lets real
 // tension overtake the floor. tether.load is presentation-only — tether.strain stays the untouched
@@ -1753,14 +1760,19 @@ export const tetherGameplay = {
       finite(player && player.vel && player.vel.x) - finite(asteroid && asteroid.vel && asteroid.vel.x),
       finite(player && player.vel && player.vel.z) - finite(asteroid && asteroid.vel && asteroid.vel.z),
     );
-    return !!(attachment && attachment.state === 'active')
-      && Math.abs(finite(attachment.restLength, geometry.desiredRestLength) - geometry.desiredRestLength)
-        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
-      && Math.abs(geometry.currentEndpointDistance - attachment.restLength)
-        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
-      && Number.isFinite(distance)
+    if (!(attachment && attachment.state === 'active')) return false;
+    const parked = Number.isFinite(distance)
       && Math.abs(distance - geometry.desiredCenterDistance) <= DRILL_APPROACH_DISTANCE_EPSILON_WU
       && relativeSpeed <= DRILL_APPROACH_SPEED_EPSILON_WU_S;
+    const now = state && Number.isFinite(state.simTime) ? state.simTime : finite(state && state.tick) / 60;
+    if (!parked) { approach.steadySince = null; return false; }
+    if (approach.steadySince == null) approach.steadySince = now;
+    const reeled = Math.abs(finite(attachment.restLength, geometry.desiredRestLength) - geometry.desiredRestLength)
+      <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU;
+    const slackOrTaut = geometry.restClamped
+      ? geometry.currentEndpointDistance - attachment.restLength <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      : Math.abs(geometry.currentEndpointDistance - attachment.restLength) <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU;
+    return (reeled && slackOrTaut) || now - approach.steadySince >= DRILL_APPROACH_STEADY_HOLD_S;
   },
 
   _completeDrillApproach(state) {
@@ -1789,6 +1801,13 @@ export const tetherGameplay = {
       attachmentId: approach.attachmentId,
       reason,
     });
+    // A press that ends with no rover says why. These are the ways an approach gives up on its
+    // own; a pilot who cut the Line or flew off already knows.
+    const text = reason === 'timeout' ? 'The ship could not hold steady beside that rock. Come to a stop near it and set the rover down again.'
+      : reason === 'out_of_range' ? 'Too far to set the rover down. Fly closer to the rock.'
+        : reason === 'target_lost' ? 'Lost the rock. Fly back to it and set the rover down again.'
+          : null;
+    if (text) this.bus.emit('toast', { text, kind: 'warn', ttl: 4.5 });
     return true;
   },
 
@@ -4282,6 +4301,8 @@ function drillApproachGeometry(def, attachment, player, asteroid, state = null) 
     desiredCenterDistance,
     desiredPlayerCenter,
     desiredRestLength: clamp(desiredEndpointDistance, minLength, maxLength),
+    // The parked gap is shorter than the Line can be: it will hang slack at its minimum.
+    restClamped: desiredEndpointDistance < minLength,
     currentCenterDistance,
     currentEndpointDistance,
   };

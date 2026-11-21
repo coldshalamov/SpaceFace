@@ -1161,7 +1161,7 @@ const HOST_STONE = Object.freeze({
   ast_metallic: Object.freeze([0.84, 0.70, 0.66]),     // iron-dark, rust in the shadows
   ast_icy: Object.freeze([0.70, 1.08, 1.58]),          // pale, cold blue-grey
   ast_crystalline: Object.freeze([0.66, 1.02, 0.94]),  // green-grey slate
-  ast_gas_cloud: Object.freeze([1.02, 1.12, 0.62]),    // sulphur ochre
+  ast_gas_cloud: Object.freeze([0.76, 0.88, 1.04]),    // ash grey: gas pockets are olive and yellow, so the body must not be
   ast_rare_exotic: Object.freeze([0.52, 0.46, 0.96]),  // charcoal violet
 });
 const HOST_STONE_PLAIN = HOST_STONE.ast_common_rock;

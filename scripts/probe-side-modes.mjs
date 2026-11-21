@@ -272,6 +272,25 @@ const pickRock = (page) => page.evaluate((wantType) => {
   const rocks = st.entityList.filter((e) => e && e.alive !== false && e.type === 'asteroid' && (e.data?.yieldU || 0) > 6
     && (!wantType || e.data?.typeId === wantType));
   let best = null;
+  if (wantType) {
+    // A chosen rock type: take the one with the most room around it, and say which side is
+    // clear, so the ship is not set down inside a neighbour and knocked away from its rock.
+    const solids = st.entityList.filter((e) => e && e.alive !== false && e.pos
+      && ['asteroid', 'station', 'wreck', 'machine', 'garden', 'freighter'].includes(e.type));
+    for (const r of rocks) {
+      let room = Infinity; let near = null;
+      for (const o of solids) {
+        if (o === r) continue;
+        const gap = Math.hypot(o.pos.x - r.pos.x, o.pos.z - r.pos.z) - (o.radius || 10) - (r.radius || 10);
+        if (gap < room) { room = gap; near = o; }
+      }
+      if (!best || room > best.room) best = { room, r, near };
+    }
+    if (!best) return null;
+    const away = best.near ? Math.atan2(best.r.pos.z - best.near.pos.z, best.r.pos.x - best.near.pos.x) : Math.PI;
+    return { id: best.r.id, x: best.r.pos.x, z: best.r.pos.z, radius: best.r.radius || 10, typeId: best.r.data?.typeId,
+      rocks: rocks.length, room: Math.round(best.room), side: { x: Math.cos(away), z: Math.sin(away) } };
+  }
   for (const r of rocks) {
     let n = 0;
     for (const o of rocks) if (Math.hypot(o.pos.x - r.pos.x, o.pos.z - r.pos.z) < 320) n++;
@@ -536,7 +555,23 @@ async function runRover(page) {
         return e && e.pos ? { x: e.pos.x, z: e.pos.z } : null;
       }, rock.id);
       if (live) { rock.x = live.x; rock.z = live.z; }
-      await relocate(page, { x: rock.x - stand, z: rock.z, heading: 0 });
+      // Neighbours stream in once the ship is close: park on the side facing away from whatever
+      // solid is nearest the rock NOW, so the Line has a clear run.
+      const side = await page.evaluate((id) => {
+        const st = window.SF.state; const r = st.entities.get(id);
+        if (!r) return null;
+        let near = null; let best = Infinity;
+        for (const o of st.entityList) {
+          if (!o || o === r || o.alive === false || !o.pos || o.id === st.playerId) continue;
+          if (!['asteroid', 'station', 'wreck', 'machine', 'garden', 'freighter'].includes(o.type)) continue;
+          const gap = Math.hypot(o.pos.x - r.pos.x, o.pos.z - r.pos.z);
+          if (gap < best) { best = gap; near = o; }
+        }
+        if (!near) return null;
+        const a = Math.atan2(r.pos.z - near.pos.z, r.pos.x - near.pos.x);
+        return { x: Math.cos(a), z: Math.sin(a) };
+      }, rock.id) || rock.side || { x: -1, z: 0 };
+      await relocate(page, { x: rock.x + side.x * stand, z: rock.z + side.z * stand, heading: 0 });
       await page.waitForTimeout(2500);
       const gap = await page.evaluate((id) => {
         const st = window.SF.state; const e = st.entities.get(id); const p = st.entities.get(st.playerId);
@@ -568,6 +603,17 @@ async function runRover(page) {
     });
     const pressedAt = Date.now();
     await page.keyboard.press(labels.drill || 'KeyB');
+    // What the ship and the rock do in the seconds after the press: a rock that vanishes is the
+    // game's fault, a ship that is carried off is where this probe parked it.
+    facts.roverAfterB = [];
+    for (let i = 0; i < 24 && !(await page.evaluate(() => !!window.SF.state.drill)); i++) {
+      facts.roverAfterB.push(await page.evaluate((id) => {
+        const st = window.SF.state; const me = st.entities.get(st.playerId); const r = st.entities.get(id);
+        return { t: Math.round(st.simTime * 10) / 10, speed: me ? Math.round(Math.hypot(me.vel.x, me.vel.z)) : null,
+          rock: !!r && r.alive !== false, gap: me && r ? Math.round(Math.hypot(me.pos.x - r.pos.x, me.pos.z - r.pos.z)) : null };
+      }, rock.id));
+      await page.waitForTimeout(250);
+    }
     await page.waitForFunction(() => !!window.SF.state.drill, null, { timeout: 30000 });
     const sessionAt = Date.now();
     await page.waitForTimeout(1200);
