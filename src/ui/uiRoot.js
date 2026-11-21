@@ -178,6 +178,8 @@ const SCREEN_MODULES = [
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
+  // The Pilot Tree (T): the skill tree both doors share — Research stays reachable from the station.
+  { path: './screens/pilotTree.js', load: () => import('./screens/pilotTree.js'), name: 'pilotTreeScreen' },
   { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
   { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
   { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },

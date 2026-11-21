@@ -1171,6 +1171,8 @@ export const pauseScreen = {
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
     if (!inRun) mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
+    // The Pilot Tree (T): in Adventure where points are spent; in a Swarm run, this run so far (read-only).
+    mk('Pilot Tree', () => nav(ctx, 'pushScreen', 'pilotTree'), { group: inRun ? 'Run' : 'Ship', bank: true, icon: 'ready', hint: 'T' });
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at

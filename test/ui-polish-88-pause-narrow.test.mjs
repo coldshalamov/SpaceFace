@@ -214,7 +214,7 @@ test('covered then shown: a crossing while another screen is over pause lands on
 // The column as Chromium lays it out at 700x800 (tools/ui-bench.html?screen=pause, measured):
 // a full-width RESUME over left-aligned banked rows. [left, top, width, height] in list order.
 const COLUMN_700 = [[42, 361, 616, 49], [42, 439, 92, 23], [148, 439, 51, 23], [213, 439, 52, 23], [42, 491, 152, 23],
-  [208, 491, 79, 23], [301, 491, 251, 23], [42, 515, 141, 23], [42, 567, 159, 23], [215, 567, 66, 23], [295, 567, 143, 23],
+  [208, 491, 79, 23], [301, 491, 90, 23], [405, 491, 251, 23], [42, 515, 141, 23], [42, 567, 159, 23], [215, 567, 66, 23], [295, 567, 143, 23],
   [452, 567, 105, 23], [42, 618, 66, 23], [122, 618, 74, 23], [209, 618, 57, 23], [42, 670, 201, 23], [42, 721, 91, 23], [42, 773, 106, 23]];
 
 test('d-pad Down/Up at 700 step every verb in list order from Resume (no jump to Achievements)', () => {
@@ -282,7 +282,7 @@ test('d-pad off either end of the column at 700 falls back to geometry (Up from 
 const DIAL_1280 = {
   'Resume': [299, 263, 154, 32],
   'Settings': [414, 304, 67, 16], 'Save': [503, 304, 35, 16], 'Load': [560, 304, 36, 16],
-  'Mission Log (J)': [411, 338, 94, 16], 'My Ship': [527, 338, 59, 16], 'Operations (Automation)': [608, 338, 198, 16],
+  'Mission Log (J)': [411, 338, 94, 16], 'My Ship': [527, 338, 59, 16], 'Pilot Tree': [608, 338, 90, 16], 'Operations': [720, 338, 198, 16],
   'Help / Controls': [515, 371, 125, 16], 'Codex': [662, 371, 48, 16], 'Achievements': [732, 371, 110, 16], 'Records Wall': [864, 371, 81, 16],
   'Photo': [437, 405, 48, 16], 'Replay': [507, 405, 54, 16], 'Clips': [583, 405, 42, 16],
   'Physics challenges': [414, 438, 151, 16], 'Sandbox': [392, 472, 67, 16], 'Main Menu': [385, 505, 76, 16],
@@ -313,7 +313,7 @@ test('d-pad Down/Up on the 1280 dial steps category by category (no skipped rows
   const { dom, root, list, by, all } = mountDial1280();
   try {
     assert.ok(dial(root));
-    assert.equal(list.length, 17);
+    assert.equal(list.length, 18, 'every verb, the Pilot Tree included');
     // the cause: pure geometry from Resume skips whole categories (Reference here)
     const geo = [list[0]];
     for (let at = list[0], n; (n = spatialFocusTarget(list, at, 'down')); at = n) { geo.push(n); if (geo.length > 40) break; }
@@ -331,7 +331,7 @@ test('d-pad Left/Right on the 1280 dial step verb by verb in list order', () => 
   try {
     assert.deepEqual(labels(walk(list, list[0], 'right')), labels(list), 'Right walks every verb, rows in order');
     assert.deepEqual(labels(walk(list, list[list.length - 1], 'left')), labels([...list].reverse()), 'Left walks them back');
-    assert.equal(label(padFocusTarget(all, by('My Ship'), 'right')), 'Operations (Automation)');
+    assert.equal(label(padFocusTarget(all, by('My Ship'), 'right')), 'Pilot Tree');
     // the ends stop, like the keyboard walk: no geometric bounce (Right from Main Menu was Sandbox)
     assert.equal(padFocusTarget(all, by('Main Menu'), 'right'), null);
     assert.equal(padFocusTarget(all, list[0], 'left'), null);

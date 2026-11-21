@@ -826,6 +826,12 @@ export const runSession = {
         banked: next.banked,
         entityId: this.state.playerId,
       });
+      // The beat in words: it never opens anything over the fight; the point waits on the tree.
+      this._emit('toast', {
+        text: `Level ${next.level}: ${next.banked === 1 ? 'a point' : next.banked + ' points'} to spend in the Pilot Tree (T)`,
+        kind: 'good',
+        ttl: 4,
+      });
     }
     return true;
   },

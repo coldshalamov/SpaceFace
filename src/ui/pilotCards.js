@@ -45,20 +45,22 @@ export function pilotBreathSeconds(banked) {
 
 // One colour and one icon per branch. The branch NAME always prints beside the colour, so colour
 // is never the only channel.
-const BRANCH_LOOK = Object.freeze({
+export const BRANCH_LOOK = Object.freeze({
   gunner: Object.freeze({ color: '#f2b950', icon: 'weapon' }),
   bruiser: Object.freeze({ color: '#ff6f4a', icon: 'repel' }),
   rigger: Object.freeze({ color: '#4fd3e8', icon: 'line' }),
   conjurer: Object.freeze({ color: '#b68cff', icon: 'well' }),
   juggernaut: Object.freeze({ color: '#86d96f', icon: 'shield' }),
   ghost: Object.freeze({ color: '#9fb6dc', icon: 'offline' }),
-  industry: Object.freeze({ color: '#dba466', icon: 'industry' }),
+  trader: Object.freeze({ color: '#e7c873', icon: 'cargo' }),
+  prospector: Object.freeze({ color: '#dba466', icon: 'mining' }),
+  builder: Object.freeze({ color: '#8fc7a8', icon: 'industry' }),
 });
-const EVOLUTION_LOOK = Object.freeze({ color: '#ffd77a', icon: 'spark' });
+export const EVOLUTION_LOOK = Object.freeze({ color: '#ffd77a', icon: 'spark' });
 const BRANCH_BY_ID = new Map(PILOT_BRANCHES.map((branch) => [branch.id, branch]));
 const PIP_COUNT = 6;
 
-const TIER_TAG = Object.freeze({ 1: 'Tier 1', 2: 'Tier 2', 3: 'Tier 3', '2-3': 'Bend', capstone: 'Capstone' });
+const TIER_TAG = Object.freeze({ 1: 'Tier 1', 2: 'Tier 2', 3: 'Tier 3', capstone: 'Capstone' });
 
 function branchRead(state, branchId) {
   const branch = BRANCH_BY_ID.get(branchId);

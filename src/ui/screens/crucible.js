@@ -4137,6 +4137,13 @@ export const crucibleResultsScreen = {
       if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) again.disabled = false;
     });
 
+    // The run's Pilot Tree, its path lit (progression lead 2026-11-20): read-only, Back returns here.
+    if (ctx.state && ctx.state.run && ctx.state.run.pilot && (ctx.state.run.pilot.nodes || []).length) {
+      const tree = addWord(word('Pilot Tree for this run', 'k-word--emph'));
+      tree.dataset.action = 'pilot-tree';
+      tree.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'pilotTree', source: 'crucible-results' }));
+    }
+
     // §7.4 — the ways out name where they go: Again (same seed above), the Hangar (the
     // swarm door IS the hangar — bounty, tracks, zones all live there), or the Main menu.
     const newSeed = addWord(word(

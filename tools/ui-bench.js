@@ -72,6 +72,7 @@ const SCREENS = Object.freeze({
   statistics: () => import('../src/ui/screens/statistics.js').then((m) => m.statisticsScreen),
   gameOver: () => import('../src/ui/screens/gameOver.js').then((m) => m.gameOverScreen),
   techTree: () => import('../src/ui/screens/techTree.js').then((m) => m.techTreeScreen),
+  pilotTree: () => import('../src/ui/screens/pilotTree.js').then((m) => m.pilotTreeScreen),
   range: () => import('../src/ui/screens/range.js').then((m) => m.rangeScreen),
   footprint: () => import('../src/ui/screens/footprint.js').then((m) => m.footprintScreen),
   automation: () => import('../src/ui/screens/automationPanel.js').then((m) => m.automationScreen),
@@ -424,7 +425,42 @@ function seedPilotCardsShot(shot) {
   );
 }
 
+const PILOT_TREE_BENCH_NODES = Object.freeze({
+  adventure: ['gunner_steady_hands', 'gunner_hollow_point', 'gunner_drum', 'rigger_long_reel', 'rigger_quick_latch',
+    'rigger_crane', 'juggernaut_ballast', 'prospector_deep_bite', 'ghost_cloak'],
+  swarm: ['bruiser_heavy_slugs', 'bruiser_stagger', 'bruiser_billiards', 'conjurer_quick_cast'],
+  'run-over': ['gunner_steady_hands', 'gunner_hollow_point', 'gunner_drum', 'gunner_spin_up', 'gunner_execution',
+    'rigger_long_reel', 'rigger_quick_latch', 'rigger_sweet_spot', 'rigger_crane', 'evolution_orbital_saw', 'gunner_gold_thread'],
+});
+let pilotTreeRunSaved = null;
+function seedPilotTreeShot(shot) {
+  const kind = shot && shot.pilotTree;
+  if (!kind) {
+    delete state.player.pilot;
+    if (pilotTreeRunSaved) { Object.assign(state.run, pilotTreeRunSaved); delete state.run.pilot; pilotTreeRunSaved = null; }
+    return;
+  }
+  const nodes = PILOT_TREE_BENCH_NODES[kind] || [];
+  const points = {};
+  for (const id of nodes) if (!id.startsWith('evolution_')) { const b = id.split('_')[0]; points[b] = (points[b] || 0) + 1; }
+  if (kind === 'adventure') {
+    delete state.player.pilot;
+    state.player.pilot = { schema: 1, xp: 5200, level: 12, points, nodes: nodes.slice(), banked: 2, respecs: 0 };
+    return;
+  }
+  delete state.player.pilot;
+  if (!pilotTreeRunSaved) pilotTreeRunSaved = { kind: state.run.kind, phase: state.run.phase, level: state.run.level };
+  state.run.kind = 'survival';
+  state.run.phase = kind === 'run-over' ? 'ended' : 'active';
+  state.run.level = nodes.length + 1;
+  state.run.pilot = { points, nodes: nodes.slice(), banked: 0, offer: null };
+}
+
 function seedCrucibleShot(screenId, shot) {
+  if (screenId === 'pilotTree') {
+    seedPilotTreeShot(shot);
+    return;
+  }
   if (screenId === 'pilotCards') {
     seedPilotCardsShot(shot);
     return;
@@ -1262,6 +1298,9 @@ async function goto(rawId) {
   // A shot with `research` mounts that career's researched nodes and a research-point balance.
   state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
   state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
+  // A shot with `pilotTree` mounts a pilot: 'adventure' (some hours in, two points to spend),
+  // 'swarm' (a run in progress) or 'run-over' (the run's path, lit). Cleared on every other shot.
+  seedPilotTreeShot(shot);
   clearOverlayHost();
   if (id !== 'bootOverlay') hideBenchLoading();
   try {
@@ -2155,6 +2194,39 @@ async function mountFlightHud(opts = {}) {
     benchComms = auxMods[0].createComms(ctx);
   }
   const hud = createHud(ctx, null);
+  // CARGO-BAG-UI: `?bag=empty|half|full|over|gear|salvage|picked|drag|split|sealed` opens the bag
+  // in flight over a seeded hold (the real module, the real intents).
+  const bagFixture = params.get('bag');
+  if (bagFixture && window.__sfCargoBag) {
+    const c = state.player.cargo;
+    c.slotCount = 16;
+    const S = (commodityId, qty) => ({ commodityId, qty });
+    c.slots = bagFixture === 'empty' ? []
+      : bagFixture === 'full' || bagFixture === 'over'
+        ? Array.from({ length: bagFixture === 'over' ? 18 : 16 }, (_, i) => S(['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ice_water', 'cmdty_refined_metals'][i % 4], i % 4 === 2 ? 10 : 20))
+        : [S('cmdty_ore_iron', 20), S('cmdty_ore_iron', 13), S('cmdty_ore_copper', 20), S('cmdty_ice_water', 7),
+          S('cmdty_refined_metals', 4), S('cmdty_filament_sample', 1), S('cmdty_gem_ruby', 3)];
+    c.items = {};
+    for (const s of c.slots) c.items[s.commodityId] = (c.items[s.commodityId] || 0) + s.qty;
+    c.usedMass = 41.6;
+    state.player.moduleInventory = bagFixture === 'gear'
+      ? [{ defId: 'mod_shield_booster_s', instanceId: 'g1' }, { defId: 'mod_shield_liner_s', instanceId: 'g2' }, { defId: 'mod_shield_capacitor_m', instanceId: 'g3' }]
+      : [];
+    state.player.marketMemory = { station_helios: { cmdty_ore_iron: { sell: 19, buy: 22, seenAt: 200 } } };
+    window.__sfCargoBag.open();
+    if (bagFixture === 'gear' || bagFixture === 'salvage') window.__sfCargoBag.setTab(bagFixture);
+    if (bagFixture === 'picked' || bagFixture === 'split') window.__sfCargoBag.pick(1);
+    if (bagFixture === 'sealed') bus.emit('cargo:jettisonSealed', { commodityId: 'cmdty_refined_metals', requested: 4, sellable: 0, reserved: 4, slotIndex: 4 });
+    if (bagFixture === 'drag') {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const slot = document.querySelector('#sf-bag .sf-bag__slot[data-slot="1"]');
+      const r = slot.getBoundingClientRect();
+      const opts = (x, y) => ({ bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse' });
+      slot.dispatchEvent(new PointerEvent('pointerdown', opts(r.x + 20, r.y + 20)));
+      document.dispatchEvent(new PointerEvent('pointermove', opts(r.x - 40, r.y + 30)));
+      document.dispatchEvent(new PointerEvent('pointermove', opts(window.innerWidth * 0.58, window.innerHeight * 0.36)));
+    }
+  }
   if (mountAuxCalm && auxMods) {
     benchBand = auxMods[1].createBandHud(ctx);
     benchFb = auxMods[2].createFieldBuildMode({ state, bus, registry });

@@ -14,7 +14,8 @@ const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 6px rgb(4 6 9 / .9), 0 0 14px 
 const POOL = (inset = '-40px -56px') => `content:""; position:absolute; z-index:-1; inset:${inset}; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .82), rgb(4 6 9 / .6) 58%, rgb(4 6 9 / 0));`;
 
-const T = 'html body #screens > #sf-techtree.con-research';
+// The Pilot Tree (#sf-pilottree) wears the Research Constellation's look (progression lead 2026-11-20).
+const T = 'html body #screens > :is(#sf-techtree, #sf-pilottree).con-research';
 
 const RESEARCH = `
 ${T}.k-screen { box-sizing:border-box; display:grid !important;

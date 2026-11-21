@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { startBenchServer } from '../scripts/lib/benchServer.mjs';
 import { loadPlaywright } from '../scripts/lib/load-playwright.mjs';
 
-const RUN = ['Resume', 'Settings', 'Help / Controls', 'Records Wall', 'Photo', 'End run'];
+// The Pilot Tree joins the run's entries (2026-11-20): this run so far, read-only.
+const RUN = ['Resume', 'Settings', 'Pilot Tree', 'Help / Controls', 'Records Wall', 'Photo', 'End run'];
 const BANNED = /^(Save|Load|Mission Log|My Ship|Operations|Physics|Sandbox|Codex|Achievements|Replay|Clips|Main Menu|Quit)/i;
 
 async function pauseView(page, base, run) {

@@ -22,7 +22,7 @@ const PAUSING_SCREENS = new Set([
   'pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex',
   'drill', 'base', 'station', 'sandbox',
   'ship', 'range', 'footprint',
-  'galaxyMap', 'starmap', 'localmap', 'missionLog', 'techTree', 'automation',
+  'galaxyMap', 'starmap', 'localmap', 'missionLog', 'techTree', 'pilotTree', 'automation',
   'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleFortify', 'crucibleResults', 'pilotCards',
 ]);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });

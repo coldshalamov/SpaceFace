@@ -114,6 +114,8 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'palletJack:drop',
   'palletJack:trail',
   'physics-venues:records',
+  'pilot:nodeRequested',
+  'pilot:respecRequested',
   'pirateDisengage:verdict',
   'pirateParley:choose',
   'player:recoveryRequested',
@@ -156,6 +158,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'save:restoring',
   'scenario:branchChoice',
   'scenario:scavengerResponse',
+  'sector:exit',
   'service:decantRequest',
   'settings:changed',
   'ship:appearanceChanged',
@@ -330,6 +333,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ui:closeFieldBuild',
   'ui:closeScreen',
   'ui:confirm',
+  'ui:contextWheelToggle',
   'ui:cycleComponent',
   'ui:cycleTarget',
   'ui:endgameConfirm',
@@ -360,4 +364,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=197 dynamic=42 legacy=18 excluded=6 total=229 knownUnforwarded=91
+// provenance: census=203 dynamic=42 legacy=23 excluded=6 total=239 knownUnforwarded=92
