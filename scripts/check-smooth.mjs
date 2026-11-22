@@ -67,7 +67,7 @@ for (const name of names) {
   const out = join(SMOOTH, `${STAMP}-${name}`);
   console.log(`[smooth] ${route.label}: ${SECONDS} s of dense input (waiting for the game lock)...`);
   const run = spawnSync(process.execPath, ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath, 'scripts/probe-smooth-electron.mjs',
-    ...route.args, `--seconds=${SECONDS}`, `--cap=${CAP}`, ...(argv.trace === true ? ['--trace'] : []),
+    ...route.args, `--seconds=${SECONDS}`, `--cap=${CAP}`, ...(argv.trace ? [`--trace${argv.trace === true ? '' : `=${argv.trace}`}`] : []),
     ...(argv.census === true ? ['--census'] : []), ...(typeof argv['eval-file'] === 'string' ? [`--eval-file=${argv['eval-file']}`] : []),
     ...(argv.profile ? [`--profile${argv.profile === true ? '' : `=${argv.profile}`}`] : []), ...(argv['profile-interval'] ? [`--profile-interval=${argv['profile-interval']}`] : []), `--out=${out}`],
   { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', // The wait for the game lock can be long (first come, first served); it is not part of the run budget.

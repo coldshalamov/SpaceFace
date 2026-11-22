@@ -58,7 +58,10 @@ const SEED = Number(argv.seed || 4242);
 const SECONDS = Number(argv.seconds || 60);
 const LIFT_CAP = Number(argv.cap ?? 60);
 const SEGMENT_S = Number(argv.segment || 10);
-const TRACE = argv.trace === true;
+const TRACE = argv.trace === true || typeof argv.trace === 'string';
+// --trace=deep also records the compositor's own events and which DOM nodes had their style,
+// layout or paint invalidated and why (heavy: use short runs).
+const TRACE_DEEP = argv.trace === 'deep';
 const PROFILE = argv.profile === true || (typeof argv.profile === 'string' && argv.profile !== '0');
 const PROFILE_INTERVAL_US = Math.max(100, Number(argv['profile-interval'] || 500));
 const CENSUS = argv.census === true;
@@ -74,7 +77,7 @@ const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 const { installCspSafePlaywrightPolling } = await import('./lib/playwrightCspPolling.mjs');
 const { installFirstLightPromptHandler } = await import('./player-truth/routes.mjs');
 const { createHand, PRESS_THROUGH_SCREENS } = await import('./lib/playHand.mjs');
-const { summarizeSmoothProfile, formatSmoothProfile, summarizeSmoothTrace, formatSmoothTrace, SMOOTH_PROFILE_SYNC_FN } = await import('./lib/smoothProfile.mjs');
+const { summarizeSmoothProfile, formatSmoothProfile, summarizeSmoothTrace, formatSmoothTrace, summarizeSmoothInvalidations, formatSmoothInvalidations, SMOOTH_PROFILE_SYNC_FN } = await import('./lib/smoothProfile.mjs');
 const { installSmoothCensus, collectSmoothCensus, formatSmoothCensus } = await import('./lib/smoothCensus.mjs');
 const { _electron: electron } = await loadPlaywright();
 
@@ -409,7 +412,8 @@ try {
     report.__trace = [];
     cdp.on('Tracing.dataCollected', (ev) => { for (const e of ev.value || []) report.__trace.push(e); });
     await cdp.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: {
-      includedCategories: ['__metadata', 'toplevel', 'devtools.timeline', 'v8', 'disabled-by-default-v8.gc', 'gpu', 'viz', 'blink.user_timing'],
+      includedCategories: ['__metadata', 'toplevel', 'devtools.timeline', 'v8', 'disabled-by-default-v8.gc', 'gpu', 'viz', 'blink.user_timing',
+        ...(TRACE_DEEP ? ['cc', 'disabled-by-default-devtools.timeline.invalidationTracking'] : [])],
       excludedCategories: ['*'] } }).catch((e) => console.log('tracing start', String(e)));
     // A named mark at a known page time ties the trace clock to the page clock.
     const mark = await cdp.send('Runtime.evaluate', { returnByValue: true, expression: "performance.mark('__smTraceSync').startTime" }).catch(() => null);
@@ -451,6 +455,10 @@ try {
 
   // ---- tail window: GPU time per pass (timer queries are OFF in his build, so never in the judged window) ----
   hand.down('KeyW'); hand.trigger(true);
+  // A picture of the live fight with its HUD (end.png is often a level-up card): taken here, after
+  // the judged window, so the capture's own stall is never measured.
+  for (let i = 0; i < 12 && !(await isLive()); i++) { await page.evaluate(PRESS_THROUGH_SCREENS).catch(() => {}); await sleep(500); }
+  if (await isLive()) { await sleep(1200); await page.screenshot({ path: join(OUT, 'live.png') }).catch(() => {}); }
   report.gpu = await page.evaluate(async () => {
     const g = window.SF.state.render.gpuTimers;
     if (!g || !g.setEnabled) return { status: 'unavailable' };
@@ -684,7 +692,8 @@ try {
     try {
       const sync = ev.find((e) => e.name === '__smTraceSync' && Number.isFinite(e.ts));
       const tb = summarizeSmoothTrace({ events: ev, syncTs: sync ? sync.ts : NaN, syncPageMs: report.__traceSyncPageMs, ticks: { tn: raw.tn, flags }, liveAt, frames });
-      writeFileSync(join(OUT, 'trace-breakdown.txt'), formatSmoothTrace(tb, { title: `${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}, ${SECONDS} s` }));
+      writeFileSync(join(OUT, 'trace-breakdown.txt'), formatSmoothTrace(tb, { title: `${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}, ${SECONDS} s` })
+        + (TRACE_DEEP ? formatSmoothInvalidations(summarizeSmoothInvalidations({ events: ev, frames: frames.length })) : ''));
       report.traceBreakdown = tb.ok ? { ok: true, file: 'trace-breakdown.txt', threads: tb.threads.map((t) => ({ thread: t.thread, busyMsPerFrame: t.busyMsPerFrame, self: t.self.slice(0, 12) })) } : { ok: false, why: tb.why };
       console.log(tb.ok ? `smooth probe trace breakdown in ${join(OUT, 'trace-breakdown.txt')}` : `smooth probe trace breakdown NOT MADE: ${tb.why}`);
     } catch (e) { report.notes.push(`trace breakdown failed: ${String(e).slice(0, 160)}`); }

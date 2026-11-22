@@ -260,3 +260,31 @@ export function formatSmoothTrace(t, { title = '' } = {}) {
   }
   return `${L.join('\n')}\n`;
 }
+
+// ---- --trace=deep: which DOM nodes had style, layout or paint invalidated, and why ----
+export function summarizeSmoothInvalidations({ events, frames }) {
+  const kinds = new Map();
+  for (const e of events) {
+    if (!/InvalidationTracking$/.test(e.name || '')) continue;
+    const d = (e.args && e.args.data) || {};
+    const why = d.reason || d.changedAttribute || d.changedClass || d.changedId || d.changedPseudo || d.selectorPart || (d.invalidationSet ? 'invalidation set' : '') || d.extraData || '';
+    const st = d.stackTrace && d.stackTrace[0];
+    const site = st ? ` @ ${st.functionName || '(anon)'} ${String(st.url || '').replace(/^.*\/(src|vendor)\//, '$1/')}:${st.lineNumber}` : '';
+    const key = `${d.nodeName || '?'} :: ${String(why).slice(0, 90)}${site}`;
+    let m = kinds.get(e.name); if (!m) kinds.set(e.name, m = new Map());
+    m.set(key, (m.get(key) || 0) + 1);
+  }
+  const f = Math.max(1, frames | 0);
+  return { frames: f, kinds: [...kinds.entries()].map(([name, m]) => ({ name, total: [...m.values()].reduce((a, b) => a + b, 0),
+    top: [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 45).map(([key, n]) => ({ key, perFrame: +(n / f).toFixed(2) })) })) };
+}
+
+export function formatSmoothInvalidations(v) {
+  if (!v || !v.kinds.length) return '\nINVALIDATIONS: none recorded\n';
+  const L = ['', `DOM INVALIDATIONS per presented frame (whole trace, ${v.frames} judged frames; node :: reason @ script site)`];
+  for (const k of v.kinds) {
+    L.push(''); L.push(`${k.name}: ${(k.total / v.frames).toFixed(1)} per frame`);
+    for (const r of k.top) L.push(`${String(r.perFrame.toFixed(2)).padStart(8)}  ${r.key}`);
+  }
+  return `${L.join('\n')}\n`;
+}

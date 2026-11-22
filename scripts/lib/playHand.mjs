@@ -76,6 +76,10 @@ export const PRESS_THROUGH_SCREENS = `(() => {
   const all = [...document.querySelectorAll('#screens button, #screens [role="button"]')].filter((x) => x.offsetParent && !x.disabled);
   const take = all.find((x) => /TAKE$/i.test(n(x.textContent)));
   if (take) { take.click(); return 'take'; }
+  // A pause plate offers both Resume and Restart: resume. Restarting there threw away the fight
+  // being measured (the referee's pause-and-resume step did it whenever the resume ran late).
+  const resume = all.find((x) => /^Resume/i.test(n(x.textContent)));
+  if (resume) { resume.click(); return 'resume'; }
   const again = all.find((x) => /^(Retry|Restart|Run it again|Run again|Play again|New run|Try again)/i.test(n(x.textContent)));
   if (again) { again.click(); return 'again'; }
   const b = all.find((x) => /^(Launch round \\d+|Launch|Keep current loadout|Continue|Resume|Start run|Begin|Retry|Restart|Respawn|Undock|Skip)/i.test(n(x.textContent)));
