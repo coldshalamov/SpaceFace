@@ -382,11 +382,20 @@ async function fillWork(page, shot) {
   const bays = [];
   for (const c of [MID + 2, MID - 1, MID + 1]) { const t = await tile(c, 2); if (t && t.type === 'empty' && c !== f.parked?.col) bays.push(c); }
   f.bays = bays;
-  f.coreClick = await clickCell(bays[0] ?? MID + 2, 2);
+  // The first Core goes in a bay beside the rover (the board's own rule); the extractor then
+  // takes a bay next to the middle of the tunnel, so the cell dug under the middle is one it reads.
+  const here = (await at()) || f.parked || { col: MID };
+  const beside = bays.filter((c) => Math.abs(c - here.col) === 1).sort((p, q) => Math.abs(q - MID) - Math.abs(p - MID));
+  const coreCol = beside[0] ?? bays[0] ?? MID + 2;
+  const rest = bays.filter((c) => c !== coreCol).sort((p, q) => Math.abs(p - MID) - Math.abs(q - MID));
+  const extCol = rest.find((c) => Math.abs(c - MID) === 1) ?? rest[0] ?? MID - 1;
+  f.seats = { rover: here.col, core: coreCol, extractor: extCol };
+  f.coreClick = await clickCell(coreCol, 2);
   f.afterCore = await site();
   await shot('05c-core');
   f.extractorKey = await arm('sm_extractor');
-  f.extractorClick = await clickCell(bays[1] ?? MID - 1, 2);
+  // The rover has to stand beside the bay it builds in: step off the extractor's bay if it is on it.
+  f.extractorClick = await clickCell(extCol, 2);
   f.afterExtractor = await site();
   await shot('05d-extractor');
   // Strip-mine a cell the extractor was reading: one down from the middle of the tunnel.
@@ -500,10 +509,12 @@ async function fillWork(page, shot) {
   await shot('05k-belt-claimed-rock');
   const second = seen && seen.free[0];
   if (second) {
-    await page.keyboard.press('Digit1');
-    await page.waitForTimeout(400);
+    // As a player does it: pick the rock, read its card, then claim it.
     await page.mouse.click(second.x, second.y);
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(900);
+    b.freeCard = (await cardText()).slice(0, 300);
+    await page.keyboard.press('Digit1');
+    await page.waitForTimeout(1800);
   }
   b.afterSecondClaim = await claims();
   b.secondToasts = await toasts();

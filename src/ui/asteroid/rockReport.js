@@ -75,8 +75,12 @@ export function rockReportLines(report, { nameOf = () => 'a rock' } = {}) {
 /** One sentence for a list row or a parting line: "Mining, grade B. Makes 2.4 iron ore a minute." */
 export function rockReportSentence(report) {
   if (!report) return '';
-  const trade = TRADE_WORD[report.role && report.role.id] || 'claim';
-  const head = `${trade.charAt(0).toUpperCase()}${trade.slice(1)}${report.seating && report.seating.grade ? `, grade ${report.seating.grade}` : ''}.`;
+  const roleId = report.role && report.role.id;
+  const trade = TRADE_WORD[roleId] || 'claim';
+  // A rock with a Core and nothing else has no trade yet.
+  const head = (!roleId || roleId === 'outpost')
+    ? 'A bare claim.'
+    : `${trade.charAt(0).toUpperCase()}${trade.slice(1)}${report.seating && report.seating.grade ? `, grade ${report.seating.grade}` : ''}.`;
   const makes = report.makes.length ? ` Makes ${flowLine(report.makes)}.` : ' Makes nothing yet.';
   const lift = report.lift && report.lift.mult > 1 ? ` Neighbours add ${pct(report.lift.mult - 1)}.` : '';
   return `${head}${makes}${lift}`;
@@ -110,9 +114,12 @@ export function claimedRockLine(entity, state) {
     if (claimCache.size >= CLAIM_CACHE_MAX) claimCache.delete(claimCache.keys().next().value);
     claimCache.set(site.id, hit);
   }
-  const trade = TRADE_WORD[classifySiteSpecialization(site).id] || 'claim';
+  const roleId = classifySiteSpecialization(site).id;
   const out = (Array.isArray(site.links) ? site.links : []).filter((l) => l && l.active !== false).length;
-  const parts = [`Your claim: ${trade}${hit.grade ? `, grade ${hit.grade}` : ''}`, count(site.machines.length, 'machine')];
+  const head = roleId === 'outpost'
+    ? 'Your claim'
+    : `Your claim: ${TRADE_WORD[roleId] || 'works'}${hit.grade ? `, grade ${hit.grade}` : ''}`;
+  const parts = [head, count(site.machines.length, 'machine')];
   if (out) parts.push(`${count(out, 'line')} out`);
   return parts.join(' · ');
 }

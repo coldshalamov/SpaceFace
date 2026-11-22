@@ -979,7 +979,11 @@ export const asteroidScreen = {
       lastMachineCount = s && s.machines ? s.machines.length : 0;
       projDirty = false;
       hudEls.industry.style.display = projection ? '' : 'none';
-      hudEls.industry.textContent = projection ? industryReadout({ sites: [projection] }).crest : '';
+      // The grade for how well the rock is dug rides the header, so wasting a contact or
+      // packing one back shows at once, here, and not only on the belt view afterwards.
+      const dug = projection && projection.seating && projection.seating.grade;
+      hudEls.industry.textContent = projection
+        ? `${industryReadout({ sites: [projection] }).crest}${dug ? ` · Dug ${dug}` : ''}` : '';
     }
 
     // Consume projDirty first (a tick can mutate rates/progress without replacing identity),
@@ -3405,10 +3409,9 @@ export const asteroidScreen = {
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.18, 0.7);
       setTimeout(() => {
         if (ctx.screenManager) ctx.screenManager.popScreen();
-        // With a haul to report, the rock's line rides the report card; a flight notice can be
-        // dropped while a fight is on, and a card cannot. With no haul it is a notice.
+        // The rock's line rides the haul card. It is not also a flight notice: the flight glass
+        // keeps prose off the cockpit by rule, and the target card names a claim there instead.
         if (total > 0) showSummary(yields, parting);
-        else if (parting && ctx.bus) ctx.bus.emit('toast', { text: parting, kind: 'good', ttl: 7 });
         if (state.ui) state.ui.lastRockParting = parting;
         setTimeout(() => {
           if (fade) {
