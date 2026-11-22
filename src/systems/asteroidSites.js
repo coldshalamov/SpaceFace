@@ -2450,7 +2450,7 @@ export const asteroidSites = {
     this._ensureDefenseProp(site, defense);
     const ent = this.state?.entities?.get?.(site.asteroidId);
     if (ent?.data) ent.data.siteDefenses = site.defenses.length;
-    this._ledger(site, 'good', `${spec.name} deployed on flank orbit.`);
+    this._ledger(site, 'good', `${spec.name} built beside the rock.`);
     this.bus.emit('site:defenseDeployed', { siteId: site.id, defense });
     return { ok: true, defense };
   },
