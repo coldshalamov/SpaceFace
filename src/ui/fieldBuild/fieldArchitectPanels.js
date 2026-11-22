@@ -731,13 +731,13 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   const weather = vm.weather;
 
   const head = el('div', 'fb-card-head');
-  head.append(el('h3', 'fb-card-title', 'Weather & Belt Charters'), el('span', 'fb-badge', `${empire.completedCharters?.length || 0} done`));
+  head.append(el('h3', 'fb-card-title', 'Weather, raids and charters'), el('span', 'fb-badge', `${empire.completedCharters?.length || 0} done`));
   panel.appendChild(head);
 
   if (weather) {
     const wCard = el('div', 'fb-struct-card');
     const top = el('div', 'fb-kv-row');
-    top.append(el('strong', '', `Weather: ${weather.name}`), el('span', 'fb-kv-val', `${weather.remainingS}s`));
+    top.append(el('strong', '', `Belt weather: ${weather.name}`), el('span', 'fb-kv-val', `${weather.remainingS}s`));
     wCard.append(top, el('div', 'fb-tool-sub', weather.summary));
     panel.appendChild(wCard);
   }
@@ -849,7 +849,7 @@ export function renderFieldArchitectWorkspace({ inspector, vm, sys, callbacks })
   if (vm.weather) {
     const wStrip = el('div', 'fb-weather-strip');
     wStrip.append(
-      el('span', '', `${vm.weather.name}`),
+      el('span', '', `Belt weather: ${vm.weather.name}`),
       el('span', 'fb-kv-val', `${vm.weather.remainingS}s`),
     );
     inspector.appendChild(wStrip);
