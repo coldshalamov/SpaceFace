@@ -306,6 +306,66 @@ try {
       replyQueue: d.replyQueue, replySlices: d.replySlices || null, slowApplies: (d.workerSlowApplies || []).map((a) => ({ ms: Math.round(a.applyMs), mode: a.mode, n: a.eventCount, types: a.eventTypes })),
       slowEvents: (d.workerSlowEvents || []).map((e) => ({ t: e.t, ms: +e.ms.toFixed(1) })) };
   }).catch((e) => ({ err: String(e) }));
+  // Hull census: what each ship on the glass costs (nodes, draws, triangles), which detail tier it
+  // is on, how large it is on screen, and why it is or is not allowed to drop a tier.
+  report.hulls = await page.evaluate(() => {
+    const S = window.SF.state;
+    const meshes = S.render.meshes;
+    const rows = [];
+    if (!meshes || typeof meshes.forEach !== 'function') return null;
+    meshes.forEach((root, id) => {
+      const e = S.entities && S.entities.get ? S.entities.get(id) : null;
+      if (!e || e.type !== 'ship' || !root || root.visible === false) return;
+      let nodes = 0, draws = 0, tris = 0, auto = 0;
+      root.traverseVisible((o) => {
+        nodes++; if (o.matrixAutoUpdate) auto++;
+        if (!(o.isMesh || o.isPoints || o.isLine) || (o.isInstancedMesh && o.count === 0)) return;
+        draws += Array.isArray(o.material) ? o.material.length : 1;
+        const g = o.geometry; const n = g && (g.index ? g.index.count : (g.attributes.position ? g.attributes.position.count : 0));
+        tris += Math.floor((n || 0) / 3);
+      });
+      const u = root.userData || {}; const d = e.data || {}; const ai = d.ai || {};
+      const why = ['isBoss', 'encounterBoss', 'missionBoss', 'bossId', 'bossDressing', 'champion', 'namedAceId', 'aceId', 'aceMemory', 'promotedPilot', 'storyTargetId', 'missionTag', 'missionId', 'trafficRole', 'name', 'callsign', 'interactive', 'missionCritical'].filter((k) => d[k])
+        .concat(['isBoss', 'namedAceId', 'aceId', 'ace', 'fanatic', 'name'].filter((k) => ai[k]).map((k) => 'ai.' + k));
+      rows.push({ id, def: d.defId || d.typeId || null, player: id === S.playerId, team: e.team, nodes, auto, draws, tris,
+        family: u.wholeShipLodFamilyInstalled === true, level: u.wholeShipLodActiveLevel || (u.lod && u.lod.level) || null,
+        px: u.initialShipLodSample && Number.isFinite(u.initialShipLodSample.px) ? Math.round(u.initialShipLodSample.px) : null,
+        exempt: why });
+    });
+    const by = new Map();
+    for (const r of rows) {
+      const key = [r.def, r.level, r.family ? 'family' : 'nofamily', r.exempt.join('+') || 'ordinary'].join(' | ');
+      const g = by.get(key) || { key, hulls: 0, nodes: 0, draws: 0, tris: 0, px: [] };
+      g.hulls++; g.nodes += r.nodes; g.draws += r.draws; g.tris += r.tris; if (r.px != null) g.px.push(r.px);
+      by.set(key, g);
+    }
+    return { ships: rows.length, groups: [...by.values()].sort((x, y) => y.draws - x.draws).slice(0, 20) };
+  }).catch((e) => ({ err: String(e) }));
+  // One material drawn by objects of different shader variants (instanced and not, with and without
+  // instance colours, tangents, vertex alpha) makes three rebuild its program parameters every time
+  // the variant flips inside a frame (getProgram under setProgram). Name those materials.
+  report.materialVariants = await page.evaluate(() => {
+    const scene = window.SF.state.render.scene;
+    const byMat = new Map();
+    scene.traverseVisible((o) => {
+      if (!(o.isMesh || o.isPoints || o.isLine) || !o.geometry || (o.isInstancedMesh && o.count === 0)) return;
+      const g = o.geometry;
+      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+        if (!m) continue;
+        const sig = [o.isInstancedMesh ? 'inst' : 'mesh', o.isInstancedMesh && o.instanceColor ? 'icolor' : '', o.isSkinnedMesh ? 'skin' : '', o.isBatchedMesh ? 'batch' : '',
+          m.vertexColors === true && g.attributes.color && g.attributes.color.itemSize === 4 ? 'valpha' : '',
+          g.attributes.tangent && (m.normalMap || m.anisotropy > 0) ? 'tangent' : '',
+          g.morphAttributes && g.morphAttributes.position ? 'morph' : ''].filter(Boolean).join('+');
+        let row = byMat.get(m);
+        if (!row) { row = { name: String(m.name || m.type).slice(0, 48), type: m.type, sigs: new Map() }; byMat.set(m, row); }
+        const ex = row.sigs.get(sig) || { n: 0, example: String(o.name || o.type).slice(0, 40) };
+        ex.n++; row.sigs.set(sig, ex);
+      }
+    });
+    const mixed = [...byMat.values()].filter((r) => r.sigs.size > 1)
+      .map((r) => ({ name: r.name, type: r.type, variants: [...r.sigs].map(([sig, v]) => sig + ' x' + v.n + ' (' + v.example + ')') }));
+    return { materials: byMat.size, mixed: mixed.length, drawsOnMixed: mixed.reduce((n, r) => n + r.variants.reduce((k, v) => k + Number((/ x(\d+) /.exec(v) || [0, 0])[1]), 0), 0), top: mixed.slice(0, 30) };
+  }).catch((e) => ({ err: String(e) }));
   report.uploadCensus = await page.evaluate(async () => {
     const scene = window.SF.state.render.scene;
     const seen = new Map();
@@ -322,7 +382,7 @@ try {
           if (!row) {
             let root = o; while (root.parent && root.parent !== scene) root = root.parent;
             // bytes is the whole array: an upper bound, a ranged upload sends less.
-            row = { root: String(root.name || root.type).replace(/_d+$/, '').slice(0, 40), mesh: String(o.name || o.type).slice(0, 40), attr: label, bytes: data.array ? data.array.byteLength : 0, v: data.version, changes: 0 };
+            row = { root: String(root.name || root.type).replace(/_\d+$/, '').slice(0, 40), mesh: String(o.name || o.type).slice(0, 40), attr: label, bytes: data.array ? data.array.byteLength : 0, v: data.version, changes: 0 };
             seen.set(data, row);
           } else if (row.frame !== frame && data.version !== row.v) { row.changes++; row.v = data.version; }
           row.frame = frame;
@@ -586,6 +646,18 @@ try {
         offGpu: pct(a.gpu, 0.5), onGpu: pct(b.gpu, 0.5), gpuRatio: pct(a.gpu, 0.5) ? +(pct(b.gpu, 0.5) / pct(a.gpu, 0.5)).toFixed(3) : null });
     }
   }
+  // A fight grows while it is measured, so "on after off" reads worse than it is. The bracketed
+  // ratio compares each on-window with the mean of the off-windows on both sides of it.
+  report.bracketed = [];
+  for (let i = 1; i + 1 < windowsList.length; i++) {
+    const before = windowsList[i - 1], on = windowsList[i], after = windowsList[i + 1];
+    if (on.side !== 'on' || before.side !== 'off' || after.side !== 'off') continue;
+    if (on.cb.length < 6 || before.cb.length < 6 || after.cb.length < 6) continue;
+    const offNoUi = (pct(before.noUi, 0.5) + pct(after.noUi, 0.5)) / 2;
+    const offCb = (pct(before.cb, 0.5) + pct(after.cb, 0.5)) / 2;
+    report.bracketed.push({ noUiRatio: +(pct(on.noUi, 0.5) / offNoUi).toFixed(3), cbRatio: +(pct(on.cb, 0.5) / offCb).toFixed(3),
+      offNoUi: +offNoUi.toFixed(2), onNoUi: pct(on.noUi, 0.5) });
+  }
   report.sides = sides;
   report.dynResTrace = data.frames.filter((f, i) => i % 15 === 0).map((f) => [f.dyn, f.bound, f.dynOn, f.dynEl, f.why, Math.round(f.dt), Math.round(f.cb || 0), f.gpu != null ? Math.round(f.gpu) : null]);
   report.longFrames = data.frames.filter((f) => f.dt > 50).slice(0, 60).map((f) => ({ dt: f.dt, cb: f.cb, side: f.side, mode: f.mode, programs: f.programs }));
@@ -609,5 +681,5 @@ try {
   try { server.kill(); } catch {}
 }
 writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 1));
-console.log(JSON.stringify({ tag: TAG, setup: report.setup, sides: report.sides && Object.fromEntries(Object.entries(report.sides).map(([k, v]) => [k, { ...v, glPerFrame: undefined }])), pairs: report.pairs, frameTasks: report.frameTasks, lane: report.lane, uploads: report.uploadCensus, modes: report.modes, errors: report.errors }, null, 1));
+console.log(JSON.stringify({ tag: TAG, setup: report.setup, sides: report.sides && Object.fromEntries(Object.entries(report.sides).map(([k, v]) => [k, { ...v, glPerFrame: undefined }])), pairs: report.pairs, frameTasks: report.frameTasks, lane: report.lane, uploads: report.uploadCensus, hulls: report.hulls, materialVariants: report.materialVariants, modes: report.modes, errors: report.errors }, null, 1));
 process.exit(ok ? 0 : 1);
