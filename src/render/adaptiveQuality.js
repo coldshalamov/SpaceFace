@@ -352,9 +352,19 @@ export function applyQualityPreset(settings, presetId) {
  * working. Manual choices still go through `applyQualityPreset`.
  */
 export function applyAutoQualityPreset(settings, presetId) {
+  const priorVideo = settings && settings.video;
+  const priorFrameCap = priorVideo && typeof priorVideo === 'object' ? priorVideo.frameCap : undefined;
   const applied = applyQualityPreset(settings, presetId);
   if (!applied) return applied;
   const video = settings && settings.video;
+  // The cadence of an Auto posture belongs to the presentation governor (30 or 60, whichever the
+  // frame holds), not to the preset's fixed cap: keep whatever cap the player had (0 = none), so
+  // the preset's 30 never becomes an 'explicit' cap that pins the game at 30 for good.
+  if (video && video.frameCap !== priorFrameCap) {
+    video.frameCap = priorFrameCap === undefined ? 0 : priorFrameCap;
+    const at = applied.changed.indexOf('frameCap');
+    if (at >= 0) applied.changed.splice(at, 1);
+  }
   if (video && video.qualityMode !== 'auto') {
     video.qualityMode = 'auto';
     if (!applied.changed.includes('qualityMode')) applied.changed.push('qualityMode');
