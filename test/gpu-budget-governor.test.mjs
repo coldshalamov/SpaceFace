@@ -199,3 +199,18 @@ test('the Auto cap applies only to integrated GPUs on the Auto policy; explicit 
   assert.equal(autoPresentationCapFor({ tier: 'discrete' }, auto, { autoPresentCap: 60 }), 0);
   assert.equal(autoPresentationCapFor({ tier: 'integrated' }, { qualityMode: 'manual' }, { autoPresentCap: 60 }), 0);
 });
+
+test('a 30 fps cap stored by the old automatic posture is cleared once; an explicit one is kept', async () => {
+  const { mergeProfileSettings } = await import('../src/core/graphicsProfileBootstrap.js');
+  const base = { video: { frameCap: 0, qualityMode: 'auto', qualityPreset: 'medium' } };
+  const old = mergeProfileSettings(base, { video: { frameCap: 30, qualityMode: 'auto', qualityPreset: 'low' } });
+  assert.equal(old.video.frameCap, 0, 'the old automatic 30 comes out as no cap (Auto)');
+  assert.equal(old.video.autoFrameCapVersion, 1);
+  old.video.frameCap = 30; // the player picks 30 afterwards and saves
+  const again = mergeProfileSettings(base, JSON.parse(JSON.stringify({ video: old.video })));
+  assert.equal(again.video.frameCap, 30, 'a 30 stored after the stamp is the player\'s own');
+  const manual = mergeProfileSettings(base, { video: { frameCap: 30, qualityMode: 'manual', qualityPreset: 'low' } });
+  assert.equal(manual.video.frameCap, 30, 'a Manual High performance preset keeps its documented 30');
+  const sixty = mergeProfileSettings(base, { video: { frameCap: 60, qualityMode: 'auto', qualityPreset: 'low' } });
+  assert.equal(sixty.video.frameCap, 60);
+});

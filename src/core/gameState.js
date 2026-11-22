@@ -5,7 +5,7 @@ import { mulberry32 } from './rng.js';
 import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
-import { AUDIO_DEFAULT_MUTE_VERSION, GAME_MOTION_DEFAULT_VERSION, SHADOWS_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
+import { AUDIO_DEFAULT_MUTE_VERSION, AUTO_FRAME_CAP_VERSION, GAME_MOTION_DEFAULT_VERSION, SHADOWS_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
 import { createRunState } from './runState.js';
 
 function defaultSettings() {
@@ -45,7 +45,7 @@ function defaultSettings() {
     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.40, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, nocturne: true, nocturneShadows: false, nocturneAtmosphere: true, nocturneQuality: 'auto', energyMaterials: true, renderGraph: false, dynamicResolution: false, qualityMode: 'auto', chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.40, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, autoFrameCapVersion: AUTO_FRAME_CAP_VERSION, nocturne: true, nocturneShadows: false, nocturneAtmosphere: true, nocturneQuality: 'auto', energyMaterials: true, renderGraph: false, dynamicResolution: false, qualityMode: 'auto', chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
     gameplay: {
       // 300s default: the worker-lane autosave captures in one synchronous task,
       // which stalls sim ticks for its full duration on mature saves. Until the

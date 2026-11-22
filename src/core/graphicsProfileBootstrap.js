@@ -2,7 +2,7 @@
 // renderer/VFX systems. This boundary is deliberately read-only: boot must never rewrite the raw
 // localStorage profile merely because it consumed it.
 
-import { applyAutoQualityPreset } from '../render/adaptiveQuality.js';
+import { applyAutoQualityPreset, qualityModeForVideo } from '../render/adaptiveQuality.js';
 import { isMobileRenderContext } from '../render/renderCapabilityProfile.js';
 
 export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
@@ -12,6 +12,8 @@ export const ONE_SET_OF_KEYS_VERSION = 1;
 export const AUDIO_DEFAULT_MUTE_VERSION = 2;
 export const GAME_MOTION_DEFAULT_VERSION = 1;
 export const SHADOWS_DEFAULT_VERSION = 1;
+// Stamp for the Auto frame-cap migration below.
+export const AUTO_FRAME_CAP_VERSION = 1;
 
 const LOCKED_GAMEPLAY_KEYS = Object.freeze([
   'physicsBackend',
@@ -130,6 +132,26 @@ export function migrateDefaultShadowsProfile(settings) {
   return settings;
 }
 
+/**
+ * The automatic High performance posture used to write its own 30 fps cap into settings.video.
+ * Stored in a profile or a save, that 30 reads as the player's explicit choice and pins the game
+ * at 30 past the Auto cadence governor (30 or 60, whichever the frame holds). Nothing automatic
+ * stores a cap any more; a 30 left behind by the old code (Auto policy, High performance posture,
+ * no stamp) is cleared once, here, on every path that restores settings. After the stamp a 30 is
+ * the player's own and is kept.
+ */
+export function migrateAutoFrameCap(incomingVideo, mergedVideo) {
+  if (!isPlainObject(mergedVideo)) return mergedVideo;
+  const stamped = isPlainObject(incomingVideo) && typeof incomingVideo.autoFrameCapVersion === 'number'
+    && incomingVideo.autoFrameCapVersion >= AUTO_FRAME_CAP_VERSION;
+  if (!stamped && isPlainObject(incomingVideo) && Number(incomingVideo.frameCap) === 30
+      && incomingVideo.qualityPreset === 'low' && qualityModeForVideo(incomingVideo) === 'auto') {
+    mergedVideo.frameCap = 0;
+  }
+  mergedVideo.autoFrameCapVersion = AUTO_FRAME_CAP_VERSION;
+  return mergedVideo;
+}
+
 export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
@@ -140,6 +162,8 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
   if (isPlainObject(incomingControls) && Object.hasOwn(incomingControls, 'bindings')) {
     merged.controls.bindings = clonePlain(incomingControls.bindings);
   }
+
+  migrateAutoFrameCap(profileSettings && profileSettings.video, merged.video);
 
   // Older profiles predate qualityMode. Do not let the current default ('auto') mask the old
   // video values before qualityModeForVideo can distinguish an untouched Balanced profile from a
