@@ -84,6 +84,16 @@ const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 const EMPTY_SWEEP_LIST = Object.freeze([]);
+// Per-sweep admission grid: the union rock/actor rows are binned once per sweepProjectiles
+// call so each projectile filters only the cells its segment touches instead of the whole
+// union list — O(P·(R+A)) becomes O(P + Σcell hits). Cells store union-list indices and the
+// gather sorts them back ascending, so the candidate order (and therefore promotion order
+// and `into` order) is identical to the former linear scan.
+const SWEEP_ADMIT_CELL = 256; // WU
+// A sweep may wake only this many dormant bodies per call. Each promotion is a full entity
+// mint (index insert + next-sync native body); a kill-wave barrage could mint dozens inside
+// one physics step. Overflow ids retry deterministically on the next sweep that covers them.
+const SWEEP_ADMIT_PROMOTE_CAP = 8;
 const SG02_STEP_SUMMARY_OPTIONS = Object.freeze({ detailedDiagnostics: false });
 // Exact (or sub-ulp) XZ overlap: hypot is 0 so dx/dist is {0,0} and pushApart is a no-op.
 // 1e-12 world units is far below gameplay contact scale; 47-A goldens never co-locate.
@@ -1404,7 +1414,11 @@ export const physics = {
       const unionReach = Math.hypot(unionMaxX - unionMinX, unionMaxZ - unionMinZ) * 0.5;
       queryAsteroidField(state, unionCenter, unionReach, unionRocks);
       queryFarActors(state, unionCenter, unionReach, unionActors);
+      this._binSweepUnionRows(unionRocks, unionActors);
     }
+    // Promotion budget for this sweep call: mints beyond the cap stay dormant and retry
+    // next sweep (see SWEEP_ADMIT_PROMOTE_CAP). Reset here, not per projectile.
+    this._sweepPromoteBudget = SWEEP_ADMIT_PROMOTE_CAP;
     // Any projectile that appears mid-sweep (a promote spawning one) was not covered by the
     // union disc; _admitProjectileSweepBodies falls back to its own queries in that case.
     this._sweepUnionBoundsX0 = unionMinX;
@@ -1450,7 +1464,8 @@ export const physics = {
       }
       extra.length = 0;
       this._admitProjectileSweepBodies(state, proj, start, end, extra);
-      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null, honorAuthored);
+      let bestTarget = this._bestProjectileTarget(
+        proj, start, end, candidates, null, honorAuthored, useBroadphase ? this._projectileHullPadding : -1);
       bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget, honorAuthored);
       let broodOwner = null;
       let broodCandidate = null;
@@ -1540,12 +1555,29 @@ export const physics = {
 
   _syncProjectileBroadphase(state) {
     const index = state && state.entityIndex;
-    this._projectileHullPadding = 0;
-    for (const entity of index?.collidables || state.entityList || []) {
-      if (!entity?.alive || !entity.collides || entity.shield > 0 || entity.type === 'projectile') continue;
-      const manifest = resolveCollisionProxyManifest(entity);
-      this._projectileHullPadding = Math.max(this._projectileHullPadding,
-        projectileProxyRadius(entity, manifest) - (entity.radius || 0));
+    const list = index?.collidables || state.entityList || [];
+    const version = index && index.__spacefaceEntityIndexV1 ? (index.classifiableVersion | 0) : -1;
+    // Hull padding is a pure function of the classified collider roster (which entities own
+    // proxy manifests and how much larger each proxy is than entity.radius). Membership
+    // changes move classifiableVersion/length; a same-life manifest, body revision or proxy
+    // swap rides refreshEntityPhysicsIndex, which bumps spatialStaticVersion — so the three
+    // together capture every change the sweep can observe, and the per-step fingerprint
+    // cache inside resolveCollisionProxyManifest keeps the rescan cheap when it does run.
+    const padKey = version < 0 ? -1 : `${version}|${index.spatialStaticVersion | 0}|${list.length}`;
+    if (version < 0 || padKey !== this._broadphaseHullPadVersion) {
+      let pad = 0;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        // Shielded colliders stay in the padding even though the sweep gives them a null
+        // manifest: entity.shield is a runtime stat the versions below do not track, so a
+        // shield dropping mid-sweep must not leave the cached pad smaller than the now-live
+        // proxy needs. Over-covering is safe — the pad only pre-filters; exact checks rule.
+        if (!entity?.alive || !entity.collides || entity.type === 'projectile') continue;
+        const manifest = resolveCollisionProxyManifest(entity);
+        pad = Math.max(pad, projectileProxyRadius(entity, manifest) - (entity.radius || 0));
+      }
+      this._projectileHullPadding = Math.max(0, pad);
+      this._broadphaseHullPadVersion = padKey;
     }
     const ready = !!(index && index.__spacefaceEntityIndexV1
       && Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics));
@@ -1554,15 +1586,46 @@ export const physics = {
     if (!this._projectileBroadphase) this._projectileBroadphase = new SpatialHash(64);
     // Solid dressing rows join the sweep so rounds stop on the hulls the player sees.
     const staticLayer = dressingStaticLayerFor(state, index.spatialStatics, index.spatialStaticVersion || 0);
+    const dynamics = index.spatialDynamics;
+    const dynamicsVersion = index.spatialDynamicsVersion || 0;
+    // The incremental rebuildLayers pass still walks every lane member each call — an
+    // O(spatialDynamics) visit per projectile-live tick on top of the main hash's own sync.
+    // The committed buckets are already exact when versions, membership and each member's
+    // cell-span mix match the last committed sync (queries read live entity.pos either way),
+    // so an identical gate skips the walk entirely — same verdict shouldMaintainDynamicSpatialHash
+    // gives the primary hash. A periodic force-sync backstops silent pose writers.
+    const gate = this._projectileBroadphaseGate
+      || (this._projectileBroadphaseGate = { mix: 0, members: -1, staticVersion: -1, dynamicsVersion: -1, indexVersion: -1, source: null, lastSyncTick: -1 });
+    const tick = Number.isInteger(state?.tick) ? state.tick : 0;
+    const indexVersion = entityIndexGateVersion(state);
+    const members = this._projectileBroadphase._dynamicMembers
+      ? this._projectileBroadphase._dynamicMembers.size : 0;
+    const settled = gate.lastSyncTick >= 0
+      && tick - gate.lastSyncTick < SPATIAL_HASH_FORCE_SYNC_TICKS
+      && gate.staticVersion === staticLayer.staticVersion
+      && gate.dynamicsVersion === dynamicsVersion
+      && gate.source === dynamics
+      && gate.members === members
+      && (indexVersion == null || indexVersion === gate.indexVersion)
+      && gate.mix === dynamicMembershipMix(this._projectileBroadphase.cell, dynamics);
+    if (settled) return;
     this._projectileBroadphase.rebuildLayers(
       staticLayer.statics,
-      index.spatialDynamics,
+      dynamics,
       staticLayer.staticVersion,
-      index.spatialDynamicsVersion || 0,
+      dynamicsVersion,
     );
+    gate.mix = dynamicMembershipMix(this._projectileBroadphase.cell, dynamics);
+    gate.members = this._projectileBroadphase._dynamicMembers
+      ? this._projectileBroadphase._dynamicMembers.size : 0;
+    gate.staticVersion = staticLayer.staticVersion;
+    gate.dynamicsVersion = dynamicsVersion;
+    gate.indexVersion = indexVersion;
+    gate.source = dynamics;
+    gate.lastSyncTick = tick;
   },
 
-  _bestProjectileTarget(proj, start, end, list, bestTarget, honorAuthored) {
+  _bestProjectileTarget(proj, start, end, list, bestTarget, honorAuthored, padReject = -1) {
     if (!list || list.length === 0) return bestTarget;
     const hit = this._segmentHitScratch;
     const bestHit = this._bestSegmentHitScratch;
@@ -1574,6 +1637,7 @@ export const physics = {
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
       if (!canCollide(proj, tgt, honorAuthored) && !canCollide(tgt, proj, honorAuthored)) continue;
+      if (padReject >= 0 && !segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0) + padReject)) continue;
       // Optic recipes own circular receiver geometry at the reference radius; the visual
       // asset proxy and calibrated moving-body envelope cannot change their bank/fuse paths.
       const manifest = tgt.shield > 0 || authoredOpticReceiver(tgt, proj) ? null : resolveCollisionProxyManifest(tgt);
@@ -1610,15 +1674,18 @@ export const physics = {
     const ids = this._sweepAdmitIds || (this._sweepAdmitIds = []);
     const hit = this._segmentHitScratch;
     // The step-level union rows from sweepProjectiles replace the per-projectile grid query
-    // when this segment sits inside the union bbox (a projectile spawned mid-sweep does not);
-    // rows outside this segment still get filtered by segmentCircleHitInto exactly as before.
+    // when this segment sits inside the union bbox (a projectile spawned mid-sweep does not).
+    // Covered segments read the binned union rows — only the cells the segment's disc
+    // touches are visited — then the same segmentCircleHitInto filter decides admission.
     const cx = (start.x + end.x) * 0.5;
     const cz = (start.z + end.z) * 0.5;
     const covered = this._sweepUnionBoundsX0 <= cx - reach && cx + reach <= this._sweepUnionBoundsX1
       && this._sweepUnionBoundsZ0 <= cz - reach && cz + reach <= this._sweepUnionBoundsZ1;
     let rocks;
+    let rockOrder = null;
     if (covered) {
       rocks = this._sweepUnionRocksLive || EMPTY_SWEEP_LIST;
+      rockOrder = this._gatherSweepAdmitIndices(rocks, this._sweepAdmitBinRocks, '_sweepAdmitSeenRocks', cx, cz, reach);
     } else {
       const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
       center.x = cx;
@@ -1631,16 +1698,28 @@ export const physics = {
       );
     }
     ids.length = 0;
-    for (let i = 0; i < rocks.length; i++) {
-      const rec = rocks[i];
-      if (!rec || rec.alive === false || !rec.pos) continue;
-      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
-      ids.push(rec.id);
+    if (rockOrder) {
+      for (let k = 0; k < rockOrder.length; k++) {
+        const rec = rocks[rockOrder[k]];
+        if (!rec || rec.alive === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
+    } else {
+      for (let i = 0; i < rocks.length; i++) {
+        const rec = rocks[i];
+        if (!rec || rec.alive === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
     }
     const helpers = this.helpers;
     for (let i = 0; i < ids.length; i++) {
+      // Over budget: leave the rock dormant; the shot re-tests it on a later sweep.
+      if (this._sweepPromoteBudget <= 0) break;
       const entity = promoteAsteroidFieldRock(state, ids[i], helpers, 'projectile');
       if (!entity || entity.alive === false) continue;
+      this._sweepPromoteBudget--;
       wake.push(entity);
       into.push(entity);
     }
@@ -1652,19 +1731,108 @@ export const physics = {
         reach,
         this._farQueryScratch || (this._farQueryScratch = []),
       );
+    const actorOrder = covered
+      ? this._gatherSweepAdmitIndices(actors, this._sweepAdmitBinActors, '_sweepAdmitSeenActors', cx, cz, reach)
+      : null;
     ids.length = 0;
-    for (let i = 0; i < actors.length; i++) {
-      const rec = actors[i];
-      if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
-      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
-      ids.push(rec.id);
+    if (actorOrder) {
+      for (let k = 0; k < actorOrder.length; k++) {
+        const rec = actors[actorOrder[k]];
+        if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
+    } else {
+      for (let i = 0; i < actors.length; i++) {
+        const rec = actors[i];
+        if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
     }
     for (let i = 0; i < ids.length; i++) {
+      if (this._sweepPromoteBudget <= 0) break;
       const entity = promoteFarActor(state, ids[i], helpers);
       if (!entity || entity.alive === false) continue;
+      this._sweepPromoteBudget--;
       wake.push(entity);
       into.push(entity);
     }
+  },
+
+  // Bin the once-per-sweep union rows into cell buckets keyed by covered cells. Each entity
+  // is inserted into every cell its circle overlaps, so a segment's disc always shares at
+  // least one cell with any entity it could hit (the disc-overlap point lies in one cell for
+  // both). Buckets hold union-list indices; gathers sort them back to union order, which
+  // keeps promotion/wake order identical to the old linear scan.
+  _binSweepUnionRows(unionRocks, unionActors) {
+    this._sweepAdmitBinRocks = this._binSweepRowsInto(this._sweepAdmitBinRocks, unionRocks);
+    this._sweepAdmitBinActors = this._binSweepRowsInto(this._sweepAdmitBinActors, unionActors);
+  },
+
+  _binSweepRowsInto(map, list) {
+    if (!map) {
+      map = new Map();
+      map._pool = [];
+    }
+    for (const row of map.values()) {
+      for (const bucket of row.values()) {
+        bucket.length = 0;
+        map._pool.push(bucket);
+      }
+      row.clear();
+    }
+    map.clear();
+    const C = SWEEP_ADMIT_CELL;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || !e.pos) continue;
+      const r = Math.max(0, e.radius || 0);
+      const x0 = Math.floor((e.pos.x - r) / C), x1 = Math.floor((e.pos.x + r) / C);
+      const z0 = Math.floor((e.pos.z - r) / C), z1 = Math.floor((e.pos.z + r) / C);
+      for (let gx = x0; gx <= x1; gx++) {
+        let row = map.get(gx);
+        if (!row) { row = new Map(); map.set(gx, row); }
+        for (let gz = z0; gz <= z1; gz++) {
+          let bucket = row.get(gz);
+          if (!bucket) { bucket = map._pool.pop() || []; row.set(gz, bucket); }
+          bucket.push(i);
+        }
+      }
+    }
+    return map;
+  },
+
+  // Collect the union-list indices of every entity binned into a cell the segment's disc
+  // touches, deduped via a stamp array and sorted ascending — the same subset and order a
+  // linear scan of the union list produces, minus the cells the disc cannot reach.
+  _gatherSweepAdmitIndices(list, binMap, seenProp, cx, cz, reach) {
+    const out = this._sweepAdmitOrder || (this._sweepAdmitOrder = []);
+    out.length = 0;
+    if (!binMap || !list || list.length === 0) return out;
+    let seen = this[seenProp];
+    if (!seen) seen = this[seenProp] = [];
+    while (seen.length < list.length) seen.push(0);
+    const stamp = (this._sweepAdmitVisit = (this._sweepAdmitVisit | 0) + 1);
+    const C = SWEEP_ADMIT_CELL;
+    const x0 = Math.floor((cx - reach) / C), x1 = Math.floor((cx + reach) / C);
+    const z0 = Math.floor((cz - reach) / C), z1 = Math.floor((cz + reach) / C);
+    for (let gx = x0; gx <= x1; gx++) {
+      const row = binMap.get(gx);
+      if (!row) continue;
+      for (let gz = z0; gz <= z1; gz++) {
+        const bucket = row.get(gz);
+        if (!bucket) continue;
+        for (let k = 0; k < bucket.length; k++) {
+          const i = bucket[k];
+          if (seen[i] === stamp) continue;
+          seen[i] = stamp;
+          out.push(i);
+        }
+      }
+    }
+    out.sort((a, b) => a - b);
+    return out;
   },
 
   _considerProjectileNearMiss(proj, start, end, state) {

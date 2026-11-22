@@ -271,6 +271,7 @@ export function createReadModel() {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
     rosterVersion: 0,      // bumped on every entities set/delete so the lane can skip list rebuilds
     weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
+    weaponVfxVersion: 0,   // bumped on vfx row add/remove and alive flips (list membership only)
     aux: new Map(),        // rowId -> aux row (far | rock | dressing)
     auxCells: new Map(),   // numeric cellKey -> Set(rowId)
     auxVersion: 0,
@@ -282,6 +283,9 @@ export function createReadModel() {
 
 export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
   const seen = new Set();
+  // Membership/alive changes bump the version so the lane can rebuild its flat
+  // list only when it actually changed (the map itself carries no diff signal).
+  const bump = () => { readModel.weaponVfxVersion = (readModel.weaponVfxVersion || 0) + 1; };
   for (const info of projectileInfos || []) {
     if (!info || !Number.isSafeInteger(info.entityId)) continue;
     const id = info.entityId;
@@ -290,9 +294,16 @@ export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
     if (!row) {
       row = { id, type: 'projectile', pos: {}, prevPos: {}, vel: {}, data: {} };
       readModel.weaponVfxProjectiles.set(id, row);
+      bump();
     }
     row.type = 'projectile';
-    row.alive = info.alive !== false;
+    const alive = info.alive !== false;
+    if (row.alive !== alive) {
+      // The presented list filters on this flag — a flip is a membership change
+      // even though the map itself is untouched.
+      row.alive = alive;
+      bump();
+    }
     row.team = Number.isFinite(info.team) ? info.team : 0;
     row.ownerId = Number.isSafeInteger(info.ownerId) ? info.ownerId : null;
     row.pos.x = finite(info.x);
@@ -309,7 +320,10 @@ export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
     row.data.weaponId = typeof info.weaponId === 'string' ? info.weaponId : null;
   }
   for (const id of readModel.weaponVfxProjectiles.keys()) {
-    if (!seen.has(id)) readModel.weaponVfxProjectiles.delete(id);
+    if (!seen.has(id)) {
+      readModel.weaponVfxProjectiles.delete(id);
+      bump();
+    }
   }
 }
 

@@ -481,22 +481,26 @@ export const plantsRuntime = {
         this._boundPlants.push(plant);
       }
     }
+    this._initBoundPlants = this._boundPlants;
+    this._updatablePlants = this._boundPlants.filter(p => typeof p.update === 'function');
   },
   update(dt, state) {
     if (!ownsContext(this) || state !== this._ctx.state) return;
     if (isRacingCorridorSession(state)) return;
-    const plants = this._boundPlants;
+    // Only plants that have an update are walked (most are event-only).
+    const plants = this._boundPlants === this._initBoundPlants ? this._updatablePlants : this._boundPlants;
+    const prof = getSimStepProfiler();
+    const profActive = prof.active;
     for (let i = 0; i < plants.length; i++) {
       const plant = plants[i];
       if (typeof plant.update !== 'function') continue;
       // The ordered tick can reach every child. Isolate failures at the call so a
       // routine update does not allocate a callback for each plant.
-      const prof = getSimStepProfiler();
-      const t0 = prof.active ? nowNs() : 0;
+      const t0 = profActive ? nowNs() : 0;
       try {
         plant.update(dt, state);
         // Per-plant attribution (no-freeze world speed): only while the profiler is armed.
-        if (prof.active) prof.record(`plants.${plant.name || i}`, nowNs() - t0);
+        if (profActive) prof.record(`plants.${plant.name || i}`, nowNs() - t0);
       } catch (err) {
         reportPlantFailure(plant.name, err);
       }
@@ -510,6 +514,8 @@ export const plantsRuntime = {
       CHILD_OWNERS.delete(plant);
     }
     this._boundPlants = [];
+    this._initBoundPlants = null;
+    this._updatablePlants = null;
     this._ctx = null;
   },
 };

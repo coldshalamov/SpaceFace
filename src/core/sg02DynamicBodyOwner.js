@@ -95,9 +95,16 @@ export function mayRapierIslandSleep(entity, spec) {
   const data = entity.data;
   if (data && (data.jobId || data.activityActorSlotId || data.ceresActivityCast)) return false;
   const tier = entity.activity && entity.activity.simTier;
-  return tier === SIM_TIER.S2_ABSTRACT
+  if (tier === SIM_TIER.S2_ABSTRACT
     || tier === SIM_TIER.S3_DORMANT
-    || tier === SIM_TIER.S4_AGGREGATE;
+    || tier === SIM_TIER.S4_AGGREGATE) return true;
+  if (!simCoreFlag('s0BodySleep')) return false;
+  const type = entity.type;
+  return type === 'asteroid'
+    || type === 'wreck'
+    || type === 'payload'
+    || type === 'debris'
+    || type === 'pickup';
 }
 
 /** Sleeping islands keep last pose; skip WASM translation/linvel writeback. */
@@ -224,6 +231,28 @@ const COINCIDENT_SPAWN_AXIAL_EPS = 2.0;      // extra WU past each spine end (ca
 const COINCIDENT_SPAWN_NUDGE = 2.5;          // WU per ladder step
 const COINCIDENT_SPAWN_MAX_NUDGES = 64;      // 160 WU of pile; a fuller pile keeps the walked slot
 const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
+// Kill-wave smoothing (burst-scaled WASM mint/remove cost): a destroyed hull mints
+// 2-5 WASM objects (body + colliders) synchronously inside syncFromEntityLayers, and the
+// mirrored removals run in the same pass. These budgets cap the EXPENSIVE op — a real
+// createRigidBody / removeRigidBody call — per sync pass. Pooled retire/reuse bypasses the
+// budget entirely (setEnabled(false/true) is cheap). An entity whose mint is deferred is
+// already logically alive; its body arrives on a later pass — the same deferral the
+// codebase already accepts for recordBelongsToPriorLife / attachment-held removals. A
+// deferred removal keeps the record managed for one more pass and retries automatically.
+const SG02_SYNC_NATIVE_MINT_BUDGET = 12;     // fresh WASM bodies minted per sync pass
+const SG02_SYNC_NATIVE_REMOVE_BUDGET = 8;    // non-pooled WASM bodies freed per sync pass
+// Pool bucket granularity for collider geometry. Reuse always re-asserts the exact
+// authored dimensions on the collider, so the bucket only trades pool hit rate for a
+// couple of cheap setter calls — never for a different collision shape.
+const BODY_POOL_RADIUS_QUANTUM = 0.5;        // WU
+// Per-key ceiling on retired bodies. A balanced kill wave drains the pool as fast as it
+// fills, but a one-sided retire (cleanup sweeping a field with no respawns) must not
+// accumulate disabled WASM bodies without bound — overflow falls through to a real,
+// budgeted removal.
+const SG02_BODY_POOL_PER_KEY = 32;
+// Sentinel returned by _createRecord when the per-sync mint budget is exhausted and the
+// caller opted into deferral. The entity stays logically alive and retries next sync.
+const BODY_MINT_DEFERRED = Symbol('sg02.bodyMintDeferred');
 
 export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.1;
 export const PLAYER_CONTACT_MAX_CRUISE_FRACTION = 0.10;
@@ -348,7 +377,28 @@ export class Sg02DynamicBodyOwner {
     this._syncSerial = 0;
     this.captureContactImpacts = options.captureContactImpacts !== false;
     this._colliderOwners = new Map();
-    this._ghostProjectilePool = new Map();
+    // Retired-body pool keyed by collider contract (shape + bucketed geometry + collision
+    // groups + material identity + canSleep/ccd). It began life as _ghostProjectilePool:
+    // projectile ghosts were the first class proved interchangeable (no contact pairs), and
+    // the same retire-via-setEnabled(false) machinery now covers single-collider dynamic
+    // debris (wreck/shard/fracture/pod/payload) — the kill-wave mint/remove burst. Entries
+    // are normalized at retirement so a reuse needs only pose/velocity writes plus an exact
+    // geometry re-assert when the bucket quantized it away.
+    this._retiredBodyPool = new Map();
+    this._poolMaterialIds = new WeakMap();
+    this._poolMaterialSerial = 0;
+    this._poolCanReshape = !!(RAPIER.Collider && RAPIER.Collider.prototype
+      && typeof RAPIER.Collider.prototype.setRadius === 'function');
+    // Per-sync WASM mint/remove budgets (see SG02_SYNC_NATIVE_* above). null = unbudgeted
+    // (syncFromEntities, adoption/restore, orchard handoffs and test seams keep immediate
+    // semantics); syncFromEntityLayers opens a budgeted pass.
+    this._mintBudget = null;
+    this._removeBudget = null;
+    this._deferredStaticLayer = false;
+    // id -> entity for live dynamics whose budgeted mint is still pending. applyImpulse uses
+    // it to park a hit on the entity's own command queue instead of dropping it: the first
+    // step after the body lands consumes the queue, so the delivery still happens exactly once.
+    this._deferredMintEntities = new Map();
     this._contactImpacts = [];
     this._eventQueue = this.captureContactImpacts && typeof RAPIER.EventQueue === 'function'
       ? new RAPIER.EventQueue(true) : null;
@@ -755,11 +805,24 @@ export class Sg02DynamicBodyOwner {
         claimed.add(entity.id); handles.add(handle); remapped.set(savedId, entity.id);
       }
       if (claimed.size !== live.length) throw new Error('unclaimed_current_body');
-      // Disabled pooled bodies still affect future reuse/arena allocation. Until their pool
-      // ownership and ordering are serialized, their presence requires honest scalar fallback.
+      // A retired pooled body stays in the world disabled and rides takeSnapshot into the
+      // bytes. Its only state was a reuse slot — not part of the adopt contract — so the
+      // candidate drops it rather than rejecting. An unclaimed ENABLED body still means an
+      // unrepresented native body and keeps the atomic rejection.
+      const unclaimed = [];
       candidate.world.forEachRigidBody(body => {
-        if (!handles.has(body.handle)) throw new Error('unrepresented_native_body');
+        if (!handles.has(body.handle)) unclaimed.push(body);
       });
+      for (const body of unclaimed) {
+        if (body.isEnabled()) throw new Error('unrepresented_native_body');
+        const colliders = Array.from({ length: body.numColliders() }, (_, index) => body.collider(index));
+        for (const collider of colliders) {
+          if (candidate.world.getCollider(collider.handle) === collider) {
+            candidate.world.removeCollider(collider, false);
+          }
+        }
+        if (candidate.world.getRigidBody(body.handle) === body) candidate.world.removeRigidBody(body);
+      }
       const restoreOrder = (keys, expected) => {
         const ordered = keys.map(key => candidate.records.get(remapped.get(key)));
         if (ordered.length !== expected.size || new Set(ordered).size !== expected.size
@@ -1124,9 +1187,10 @@ export class Sg02DynamicBodyOwner {
     const posZ = translation.z;
     const global = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
     const wy = -finite(angvel.y) || 0;
-    const ghostPoolKey = spec.dynamic && material.ghost && spec.material === 'projectile'
-      ? ghostProjectilePoolKey(spec)
-      : null;
+    // Snapshot-restored bodies carry the same collider contract a constructed record would,
+    // so they retire into the same pool (the restore contract already validated it).
+    const poolGeo = poolGeometryFor(entity, spec, proxyManifest);
+    const poolKey = poolGeo ? this._bodyPoolKey(entity, spec, material, poolGeo) : null;
     const record = {
       entity,
       spec,
@@ -1155,7 +1219,8 @@ export class Sg02DynamicBodyOwner {
       _preStepYawDirty: true,
       _preStepYaw: 0,
       proxyId: proxyManifest ? proxyManifest.id : null,
-      ghostPoolKey,
+      poolKey,
+      poolGeo: poolGeo || null,
       appliedForce: zero3(),
       appliedTorque: zero3(),
       controlForce: zero3(),
@@ -1206,6 +1271,13 @@ export class Sg02DynamicBodyOwner {
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
     if(!orchardNativeMutationReady(this))return false;
     this._syncSerial++;
+    // Burst cap: at most SG02_SYNC_NATIVE_* real WASM mint/remove calls this pass. Pooled
+    // retire/reuse does not consume either budget. Deferred work retries next pass; a
+    // deferred STATIC-layer item also invalidates the layer version so the next pass runs
+    // the static diff again instead of waiting for a content version change.
+    this._mintBudget = SG02_SYNC_NATIVE_MINT_BUDGET;
+    this._removeBudget = SG02_SYNC_NATIVE_REMOVE_BUDGET;
+    this._deferredStaticLayer = false;
     const version = Math.max(0, Math.trunc(finite(staticVersion)));
     const staticChanged = this._staticLayerVersion !== version;
     const dynamicLive = this._liveDynamicEntityIds;
@@ -1233,9 +1305,12 @@ export class Sg02DynamicBodyOwner {
         this._syncRecord(entity, spec);
       }
       for (const [id, rec] of this.records) {
-        if (!rec.spec.dynamic && !staticLive.has(id)) {const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world)return false;}
+        if (!rec.spec.dynamic && !staticLive.has(id)) {
+          if (this._removeBudget <= 0 && !this._poolRetirable(rec)) { this._deferredStaticLayer = true; continue; }
+          const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world){this._mintBudget=null;this._removeBudget=null;return false;}
+        }
       }
-      this._staticLayerVersion = version;
+      this._staticLayerVersion = this._deferredStaticLayer ? null : version;
     }
 
     let dynamicCount = 0;
@@ -1255,9 +1330,24 @@ export class Sg02DynamicBodyOwner {
       this._syncRecord(entity, spec);
     }
     for (const [id, rec] of this.records) {
-      if (rec.spec.dynamic && !dynamicLive.has(id)) {const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world)return false;}
+      if (rec.spec.dynamic && !dynamicLive.has(id)) {
+        // Past the remove budget the record stays managed one more pass — the body keeps
+        // colliding until then (deferred destruction), and the dynamic loop re-runs every
+        // sync so no version nudge is needed. Pooled retires never consume the budget.
+        if (this._removeBudget <= 0 && !this._poolRetirable(rec)) continue;
+        const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world){this._mintBudget=null;this._removeBudget=null;return false;}
+      }
     }
     this._resumeSuspendedAttachments(dynamicLive, this._liveStaticEntityIds);
+    // An entity that died or left the dynamic layer while waiting for its mint is no
+    // longer a pending impulse target.
+    for (const id of this._deferredMintEntities.keys()) {
+      if (!dynamicLive.has(id)) this._deferredMintEntities.delete(id);
+    }
+    // The budgeted pass is closed — a leftover zero must never defer _syncRecord calls
+    // arriving through unbudgeted entry points (syncFromEntities, staged twin, tests).
+    this._mintBudget = null;
+    this._removeBudget = null;
 
     this._writeSyncDiagnostics('layered', 0, staticCount, dynamicCount, version);
     publishOrchardPoseReceipts(this,ORCHARD_OWNER_CAPABILITIES.get(this));
@@ -1377,13 +1467,14 @@ export class Sg02DynamicBodyOwner {
     for (const pending of this._pendingNativeRebuilds.values()) clearPhysicsBodyNativeFailure(pending.entity,this,pending.failureReceipt);
     this._pendingNativeRebuilds.clear();
     for (const [id, rec] of this.records) this._removeRecord(id, rec);
-    for (const bucket of this._ghostProjectilePool.values()) {
+    for (const bucket of this._retiredBodyPool.values()) {
       for (const entry of bucket) {
         for (const collider of entry.colliders) this.world.removeCollider(collider, false);
         this.world.removeRigidBody(entry.body);
       }
     }
-    this._ghostProjectilePool.clear();
+    this._retiredBodyPool.clear();
+    this._deferredMintEntities.clear();
     if (this.world && typeof this.world.free === 'function') this.world.free();
     if (this._eventQueue && typeof this._eventQueue.free === 'function') this._eventQueue.free();
     this._eventQueue = null;
@@ -1396,7 +1487,17 @@ export class Sg02DynamicBodyOwner {
   applyImpulse(input = {}) {
     if(!orchardNativeMutationReady(this))return false;
     const rec = this.records.get(input.entityId);
-    if (!rec) return false;
+    if (!rec) {
+      // A budgeted mint can leave a live dynamic entity without a native body for a few
+      // passes. Dropping the hit would lose it forever; parking it on the entity command
+      // queue replays it against the body the first step after minting — the same channel
+      // an impulse queued the ordinary way would have taken.
+      const pending = this._deferredMintEntities.get(input.entityId);
+      if (pending && pending.alive !== false && pending.physicsBody !== false) {
+        return queuePhysicsImpulse(pending, input.impulse, input);
+      }
+      return false;
+    }
     if (!rec.spec.dynamic) {
       // Only anchored moored bodies answer a push through the recoil channel; an
       // ordinary fixed body (a static rock with no anchor) simply refuses.
@@ -1730,7 +1831,8 @@ export class Sg02DynamicBodyOwner {
     // A skipped sleeping record never reaches expected-kinematics capture. Keep the owner-turn
     // cache closed on that path, and close every record if any pre-solver work throws so an
     // out-of-phase public torque call cannot consume a stale pre-step sample.
-    const preStepRecords = [];
+    const preStepRecords = this._preStepRecordsScratch || (this._preStepRecordsScratch = []);
+    preStepRecords.length = 0;
     // E2 sub-phase attribution (off unless the realm profiler is on).
     const sph = getSimStepProfiler();
     const sphOn = sph.active;
@@ -1919,12 +2021,14 @@ export class Sg02DynamicBodyOwner {
     }
     for (const rec of recoilRecords) this._syncEntityFromKinematics(rec, this._enforcePlane(rec));
     this._persistIslandSleep();
+    preStepRecords.length = 0;
     if (sphOn) { sph.record('sg02.publish', nowNs() - sphT); }
     } catch (error) {
       for (const rec of preStepRecords) {
         closePreStepAngular(rec);
         closePreStepYaw(rec);
       }
+      preStepRecords.length = 0;
       throw error;
     }
   }
@@ -2929,7 +3033,7 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
-  _createRecord(entity, spec, replacing = null) {
+  _createRecord(entity, spec, replacing = null, options = null) {
     const recovery = ORCHARD_RECOVERY_FACTORIES.get(this);
     const orchardPreparation = prepareOrchardFrameConstruction(entity,this);
     const constructionWorld = this.world, constructionQueue = this._eventQueue;
@@ -2943,6 +3047,19 @@ export class Sg02DynamicBodyOwner {
     const posZ = local.z;
     const vel = vector3(entity.vel);
     const material = contactMaterialFor(entity, spec);
+    const proxyManifest = proxyManifestForBody(entity, spec);
+    // The retired-body pool covers every single-collider dynamic mint, ghost or solid. A
+    // pool hit skips the createRigidBody + createCollider WASM burst entirely; a pool miss
+    // still mints, but only while the per-sync budget has room. Deferral returns BEFORE any
+    // entity.pos writeback — the authored pose is retried with the next sync's nudge pass.
+    const poolGeo = poolGeometryFor(entity, spec, proxyManifest, orchardPreparation);
+    const poolKey = poolGeo ? this._bodyPoolKey(entity, spec, material, poolGeo) : null;
+    if (poolKey == null || !this._hasPooledBody(poolKey)) {
+      if (this._mintBudget != null) {
+        if (this._mintBudget <= 0 && options && options.budgeted === true) return BODY_MINT_DEFERRED;
+        if (this._mintBudget > 0) this._mintBudget--;
+      }
+    }
     // Coincident-center guard (see COINCIDENT_SPAWN_* above). Ghost-material bodies skip the
     // ladder entirely: their collision groups join no contact pairs and a projectile's swept
     // segment must keep its authored line. The writeback to entity.pos is required — pose
@@ -2988,17 +3105,14 @@ export class Sg02DynamicBodyOwner {
       );
     }
 
-    // Ghost projectile bodies join no contact pairs, so a retired body is interchangeable with
-    // a fresh one at the same shape/mass key. Reuse skips the per-shot createRigidBody +
-    // createCollider WASM burst; the pose/velocity reset below restores the exact creation-desc
-    // state, and with zero gravity, zero damping, and no contacts the motion is identical.
-    const ghostPoolKey = spec.dynamic && material.ghost && spec.material === 'projectile'
-      ? ghostProjectilePoolKey(spec)
-      : null;
-    const pooled = ghostPoolKey ? this._takePooledGhostBody(ghostPoolKey) : null;
+    // A retired body is interchangeable with a fresh one at the same collider contract —
+    // the pose/velocity reset below restores the exact creation-desc state, and with zero
+    // gravity and retire-time normalization the motion is identical. Ghost bodies were the
+    // original case (no contact pairs at all); single-collider solid debris reuses the same
+    // machinery with groups/material/geometry all bound into the pool key.
+    const pooled = poolKey ? this._takePooledBody(poolKey) : null;
     let body;
     let colliders;
-    let proxyManifest = null;
     try {
       if (pooled) {
         body = pooled.body;
@@ -3008,12 +3122,12 @@ export class Sg02DynamicBodyOwner {
         body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
         body.setAngvel({ x: 0, y: -boundedYawRate(entity.angVel), z: 0 }, true);
         body.setEnabled(true);
+        this._conformPooledBody(pooled, spec, poolGeo);
       } else {
         assertConstructionCurrent();
         body = constructionWorld.createRigidBody(desc);
         if(recovery){recovery.body=body;recovery.bodyHandle=body.handle;}
         assertConstructionCurrent();
-        proxyManifest = proxyManifestForBody(entity, spec);
         let colliderDescs;
         if (proxyManifest) {
           colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts, this.world.integrationParameters);
@@ -3095,7 +3209,8 @@ export class Sg02DynamicBodyOwner {
       _preStepYawDirty: true,
       _preStepYaw: 0,
       proxyId: proxyManifest ? proxyManifest.id : null,
-      ghostPoolKey,
+      poolKey,
+      poolGeo: poolGeo || null,
       appliedForce: zero3(),
       appliedTorque: zero3(),
       controlForce: zero3(),
@@ -3143,19 +3258,54 @@ export class Sg02DynamicBodyOwner {
   // the WASM poses and the scan costs no WASM calls.
   _resolveCoincidentSpawnSlot(posX, posZ, candidateEntity, candidateSpec, exclude = null) {
     const candidateDynamic = candidateSpec && candidateSpec.dynamic === true;
+    // Eligible partner windows, lazily built from the first full scan: every filter below
+    // except the two position tests is nudge-invariant, so they are harvested once and the
+    // ladder only re-tests the +x window overlap. The verdict per attempt is identical to
+    // re-running the full scan — a co-located corpse pile used to pay O(records) per nudge.
+    let partners = null;
     for (let attempts = 0; attempts < COINCIDENT_SPAWN_MAX_NUDGES; attempts++) {
+      if (partners == null) {
+        let coincident = false;
+        partners = [];
+        // The ladder only ever walks +x to posX + NUDGE*MAX, and posZ is constant — so a
+        // partner can matter only when its reach square touches that corridor. Harvesting
+        // on the corridor (not just the start point) keeps partners AHEAD of the walk that
+        // a later nudge approaches; every filter above the position tests is also evaluated
+        // once, exactly as the per-attempt rescan did.
+        const ladderEnd = posX + COINCIDENT_SPAWN_NUDGE * COINCIDENT_SPAWN_MAX_NUDGES;
+        for (const other of this.records.values()) {
+          if (!other || other === exclude) continue;
+          if (!candidateDynamic && !(other.spec && other.spec.dynamic)) continue;
+          if (!other.entity || other.entity.alive === false) continue;
+          const partnerX = finite(other._bodyPoseX, NaN);
+          const partnerZ = finite(other._bodyPoseZ, NaN);
+          if (!Number.isFinite(partnerX) || !Number.isFinite(partnerZ)) continue;
+          const reach = coincidentPartnerReach(other);
+          if (Math.abs(posZ - partnerZ) > reach) continue;
+          if (partnerX + reach < posX || partnerX - reach > ladderEnd) continue;
+          if (contactMaterialFor(other.entity, other.spec).ghost) continue;
+          if (!collisionPairsForm(candidateEntity, candidateSpec, other.entity, other.spec)) continue;
+          partners.push({ rec: other, x: partnerX, z: partnerZ, reach });
+          if (!coincident && pointHitsCoincidentWindow(other, partnerX, partnerZ, posX, posZ)) {
+            coincident = true;
+          }
+        }
+        if (!coincident) { partners = null; return posX; }
+        partners.sort((a, b) => (a.x - a.reach) - (b.x - b.reach));
+        posX += COINCIDENT_SPAWN_NUDGE;
+        continue;
+      }
+      // Sorted by (x - reach); the ladder only walks +x, so a two-pointer window covers
+      // every partner whose canReach square could still contain posX. The |posZ - z| test
+      // completes the square bound — both halves together equal canReachCoincidentWindow.
+      let lo = 0;
+      while (lo < partners.length && partners[lo].x + partners[lo].reach < posX) lo++;
       let coincident = false;
-      for (const other of this.records.values()) {
-        if (!other || other === exclude) continue;
-        if (!candidateDynamic && !(other.spec && other.spec.dynamic)) continue;
-        if (!other.entity || other.entity.alive === false) continue;
-        const partnerX = finite(other._bodyPoseX, NaN);
-        const partnerZ = finite(other._bodyPoseZ, NaN);
-        if (!Number.isFinite(partnerX) || !Number.isFinite(partnerZ)) continue;
-        if (!canReachCoincidentWindow(other.coincidentSpines, posX - partnerX, posZ - partnerZ)) continue;
-        if (contactMaterialFor(other.entity, other.spec).ghost) continue;
-        if (!collisionPairsForm(candidateEntity, candidateSpec, other.entity, other.spec)) continue;
-        if (pointHitsCoincidentWindow(other, partnerX, partnerZ, posX, posZ)) {
+      for (let j = lo; j < partners.length; j++) {
+        const p = partners[j];
+        if (p.x - p.reach > posX) break;
+        if (Math.abs(posZ - p.z) > p.reach) continue;
+        if (pointHitsCoincidentWindow(p.rec, p.x, p.z, posX, posZ)) {
           coincident = true;
           break;
         }
@@ -3194,19 +3344,21 @@ export class Sg02DynamicBodyOwner {
     this.dynamicRecords.delete(rec);
     this.ceresWorkfleetRecords.delete(rec);
     const colliders = Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders : [rec.collider];
-    if (rec.ghostPoolKey != null && this.world.getRigidBody(rec.body.handle) === rec.body && typeof rec.body.setEnabled === 'function') {
+    if (this._poolRetirable(rec) && this.world.getRigidBody(rec.body.handle) === rec.body && typeof rec.body.setEnabled === 'function') {
       // Retire, don't free: disabled bodies/colliders leave the broad phase and the solver.
+      this._normalizePooledRetirement(rec);
       rec.body.setEnabled(false);
-      let bucket = this._ghostProjectilePool.get(rec.ghostPoolKey);
+      let bucket = this._retiredBodyPool.get(rec.poolKey);
       if (!bucket) {
         bucket = [];
-        this._ghostProjectilePool.set(rec.ghostPoolKey, bucket);
+        this._retiredBodyPool.set(rec.poolKey, bucket);
       }
-      bucket.push({ body: rec.body, colliders });
+      bucket.push({ body: rec.body, colliders, geo: rec.poolGeo || null });
       for (const collider of colliders) this._colliderOwners.delete(collider.handle);
       this.records.delete(id);
       return true;
     }
+    if (this._removeBudget != null && this._removeBudget > 0) this._removeBudget--;
     for (const collider of colliders) {
       if (this._colliderOwners.get(collider.handle)?.rec === rec) this._colliderOwners.delete(collider.handle);
       if (this.world.getCollider(collider.handle) === collider) this.world.removeCollider(collider, false);
@@ -3265,6 +3417,7 @@ export class Sg02DynamicBodyOwner {
       pending.lastAttemptSerial=this._syncSerial;pending.attempts++;
       try {
         const next=this._createRecord(entity,spec);
+        this._deferredMintEntities.delete(id);
         this.records.set(id,next);
         if(next.spec.dynamic)this.dynamicRecords.add(next);
         this._applyCcdGate(next,entity);
@@ -3311,10 +3464,92 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
-  _takePooledGhostBody(key) {
-    const bucket = this._ghostProjectilePool.get(key);
+  _hasPooledBody(key) {
+    const bucket = this._retiredBodyPool.get(key);
+    return !!(bucket && bucket.length);
+  }
+
+  _takePooledBody(key) {
+    const bucket = this._retiredBodyPool.get(key);
     if (!bucket || !bucket.length) return null;
     return bucket.pop();
+  }
+
+  // A record may retire into the pool only while its colliders still match the
+  // creation-time contract the key encodes AND the bucket has room — the gate in
+  // syncFromEntityLayers reads this same verdict, so a full bucket defers like any
+  // other over-budget real removal. Anything that mutates the collider set post-mint
+  // (workfleet articulation, orchard frames, compound proxies) nulls the key.
+  _poolRetirable(rec) {
+    if (!rec || rec.poolKey == null) return false;
+    const bucket = this._retiredBodyPool.get(rec.poolKey);
+    return !bucket || bucket.length < SG02_BODY_POOL_PER_KEY;
+  }
+
+  _poolMaterialId(material) {
+    let id = this._poolMaterialIds.get(material);
+    if (id == null) {
+      id = ++this._poolMaterialSerial;
+      this._poolMaterialIds.set(material, id);
+    }
+    return id;
+  }
+
+  // Everything the collider descs read, bound into one string: shape kind, bucketed
+  // geometry, collision groups, material identity, and the two body flags with no runtime
+  // setter (canSleep is desc-only; authored ccd is restored at retirement). Mass, inertia,
+  // contact overrides and pose/velocity are re-asserted per reuse and stay OUT of the key.
+  _bodyPoolKey(entity, spec, material, geo) {
+    const groups = computeCollisionGroups(entity, spec, material);
+    const matId = this._poolMaterialId(material);
+    const canSleep = mayRapierIslandSleep(entity, spec) ? 1 : 0;
+    const ccd = spec.ccd ? 1 : 0;
+    if (geo.kind === 'cap') {
+      return `cap|${bodyPoolBucket(this, geo.capRadius)}|${bodyPoolBucket(this, geo.halfHeight)}|${geo.comX}|${geo.comZ}|${groups}|${matId}|${canSleep}|${ccd}`;
+    }
+    return `ball|${bodyPoolBucket(this, geo.radius)}|${groups}|${matId}|${canSleep}|${ccd}`;
+  }
+
+  // A fresh desc is awake, force-free and carries the authored shape. Tumble swaps
+  // restitution/combine/damping on the live colliders, the speed gate toggles enableCcd,
+  // and user force/torque accumulators persist across steps — all are normalized here at
+  // retirement so reuse is a pose/velocity write plus at most a couple of shape setters.
+  _normalizePooledRetirement(rec) {
+    if (rec._tumbleMaterial) this._syncTumbleMaterial(rec, false);
+    if (rec.spec && rec.ccdEnabled !== !!rec.spec.ccd && typeof rec.body.enableCcd === 'function') {
+      rec.body.enableCcd(!!rec.spec.ccd);
+    }
+    // _refreshSleepPolicy toggles canSleep at runtime (attachment holds, noInterp) without
+    // touching the key — restore the authored eligibility so the entry matches its bucket.
+    if (typeof rec.body.setCanSleep === 'function') {
+      rec.body.setCanSleep(mayRapierIslandSleep(rec.entity, rec.spec));
+    }
+    if (typeof rec.body.resetForces === 'function') rec.body.resetForces(true);
+    if (typeof rec.body.resetTorques === 'function') rec.body.resetTorques(true);
+  }
+
+  // Reuse-time conformance: a retired body can be asleep (a fresh desc is always awake),
+  // and a bucket-quantized entry may need its exact authored dims re-asserted on the collider.
+  // Runs after setEnabled(true): a wake call on a disabled body is a no-op in some compat
+  // builds, and a fresh desc is always awake.
+  _conformPooledBody(pooled, spec, geo) {
+    const body = pooled.body;
+    if (typeof body.wakeUp === 'function') body.wakeUp();
+    const stored = pooled.geo;
+    const collider = Array.isArray(pooled.colliders) ? pooled.colliders[0] : null;
+    if (!collider || !geo || !stored || stored.kind !== geo.kind) return;
+    if (geo.kind === 'ball') {
+      if (stored.radius !== geo.radius && typeof collider.setRadius === 'function') {
+        collider.setRadius(geo.radius);
+      }
+      return;
+    }
+    if (stored.capRadius !== geo.capRadius && typeof collider.setRadius === 'function') {
+      collider.setRadius(geo.capRadius);
+    }
+    if (stored.halfHeight !== geo.halfHeight && typeof collider.setHalfHeight === 'function') {
+      collider.setHalfHeight(geo.halfHeight);
+    }
   }
 
   _syncCeresWorkfleetRecord(rec) {
@@ -3326,6 +3561,10 @@ export class Sg02DynamicBodyOwner {
     rec.ceresWorkfleetLife = rec.entity.occupantGeneration;
     syncCeresWorkfleetColliders(rec, coincidentSpineForCollider, this.RAPIER);
     this.ceresWorkfleetRecords.add(rec);
+    // Workfleet articulation rewrites the collider set after mint — the pooled-reuse
+    // contract assumes the creation-time colliders, so the record leaves the pool.
+    rec.poolKey = null;
+    rec.poolGeo = null;
   }
 
   _syncRecord(entity, spec) {
@@ -3379,6 +3618,7 @@ export class Sg02DynamicBodyOwner {
             this.attachments.delete(attachment.id);
           }
           this._removeRecord(entity.id, rec);
+          this._deferredMintEntities.delete(entity.id);
           this.records.set(entity.id, next);
           if (next.spec.dynamic) this.dynamicRecords.add(next);
           for (const attachment of held) {
@@ -3409,10 +3649,18 @@ export class Sg02DynamicBodyOwner {
         return rec;
       }
       let next;
-      try {next = this._createRecord(entity, spec);} catch (error) {
+      try {next = this._createRecord(entity, spec, null, { budgeted: true });} catch (error) {
         this._queueNativeRebuildFailure(entity,error);
         return null;
       }
+      if (next === BODY_MINT_DEFERRED) {
+        // Over this pass's native mint budget: the entity is logically alive and retries
+        // with a fresh budget next sync. Any predecessor record was already retired above.
+        if (spec.dynamic) this._deferredMintEntities.set(entity.id, entity);
+        else this._deferredStaticLayer = true;
+        return null;
+      }
+      this._deferredMintEntities.delete(entity.id);
       this.records.set(entity.id, next);
       if (next.spec.dynamic) this.dynamicRecords.add(next);
       this._applyCcdGate(next, entity);
@@ -5225,9 +5473,44 @@ function proxyIdForEntity(entity, spec) {
   return manifest ? manifest.id : null;
 }
 
-function ghostProjectilePoolKey(spec) {
-  const com = spec.centerOfMass || {};
-  return [spec.shape || 'ball', spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
+// Quantize a collider dimension into a pool bucket. Reuse re-asserts the exact authored
+// size on the collider, so the bucket only trades hit rate for a setter call. When the
+// runtime lacks the shape setters the key degrades to exact values — a pooled collider can
+// never keep a size the entity did not ask for.
+function bodyPoolBucket(owner, value) {
+  if (!owner._poolCanReshape) return `x${value}`;
+  return Math.round(value / BODY_POOL_RADIUS_QUANTUM);
+}
+
+// The single-collider geometry a fresh mint would build, mirroring the collider-desc
+// selection in _createRecord. Multi-collider classes (compound proxies) are rejected by
+// the caller's proxyManifest check, so only the ball and craft-capsule paths remain.
+function pooledColliderGeometry(entity, spec) {
+  if (spec.shape === 'capsule' || (!spec.shape && (entity.type === 'ship' || entity.type === 'drone'))) {
+    const proportions = resolveCraftProportions(entity, spec);
+    const ref = positive(spec && spec.radius, positive(entity && entity.radius, 14));
+    const length = Math.max(0.1, positive(proportions && proportions.length, 1.35) * ref);
+    const halfWidth = Math.max(0.1, positive(proportions && proportions.halfWidth, 0.42) * ref);
+    const com = spec.centerOfMass || {};
+    return {
+      kind: 'cap',
+      capRadius: halfWidth,
+      halfHeight: Math.max(0, (length * 0.5) - halfWidth),
+      comX: finite(com.x, 0),
+      comZ: finite(com.z, 0),
+    };
+  }
+  return { kind: 'ball', radius: spec.radius };
+}
+
+// Pool eligibility: dynamic, single-collider, and built by the ordinary desc path. Orchard
+// frames/pods and workfleet-articulated bodies carry post-mint collider mutation the pool
+// cannot replay, so they mint fresh (and retire by removal, not reuse).
+function poolGeometryFor(entity, spec, proxyManifest, orchardPreparation = null) {
+  if (!spec || spec.dynamic !== true || proxyManifest || orchardPreparation) return null;
+  if (claimsOrchardFrame(entity) || claimsOrchardPod(entity)) return null;
+  if (ceresWorkfleetSlideRole(entity)) return null;
+  return pooledColliderGeometry(entity, spec);
 }
 
 export {
@@ -5310,6 +5593,21 @@ function canReachCoincidentWindow(spines, dx, dz) {
     if (!(distance > reach)) return true;
   }
   return false;
+}
+
+// Square half-extent a partner can possibly reach, matching canReachCoincidentWindow's
+// max(|dx|,|dz|) bound: the largest spine reach, or Infinity for spine-less records whose
+// fallback never early-outs. Used by the sorted partner index in _resolveCoincidentSpawnSlot.
+function coincidentPartnerReach(rec) {
+  const spines = rec && rec.coincidentSpines;
+  if (!spines || !spines.length) return Infinity;
+  let reach = 0;
+  for (const spine of spines) {
+    const r = Math.abs(spine.ox) + Math.abs(spine.oz) + spine.halfLen
+      + COINCIDENT_SPAWN_AXIAL_EPS + COINCIDENT_SPAWN_BAND;
+    if (r > reach) reach = r;
+  }
+  return reach;
 }
 
 // True when a candidate centre at (posX,posZ) — frame coords — sits inside any of the partner's

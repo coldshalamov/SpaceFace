@@ -31,6 +31,14 @@ const DEFAULTS = Object.freeze({
   economySlicing: true,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
   lazySg02Snapshot: true,
+  /**
+   * Let resting rocks, wrecks, payloads, debris and pickups near the player sleep in Rapier.
+   * DEFAULT OFF: with it on, fracture shards were not in flight after a detonation, the Lantern
+   * Ward service stand fouled its loaded route and the prospector did not finish its work
+   * (physics-sandbox-routes, lantern-ward-center-lane, prospector-field-report). A sleeping body
+   * needs a wake on every path that expects it to move before this can ship.
+   */
+  s0BodySleep: false,
 });
 
 let overrides = null;

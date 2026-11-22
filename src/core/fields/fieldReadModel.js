@@ -241,10 +241,11 @@ export function fieldBodyMembershipProfile(entity, profile) {
  * Target selection is intentionally absent: only an earned combat-status multiplier changes field
  * response, so clicking another contact can neither grant nor transfer Gravity Mark.
  */
-export function fieldBodyProfile(entity, state, out = null) {
+export function fieldBodyProfile(entity, state, out = null, skipMembership = false) {
   const profile = out || {};
-  const runtime = entity && state && state.combat && state.combat.entities
-    ? state.combat.entities[String(entity.id)]
+  const id = entity ? entity.id : null;
+  const runtime = id != null && state && state.combat && state.combat.entities
+    ? state.combat.entities[id]
     : null;
   const fieldResponse = runtime && runtime.multipliers && runtime.multipliers.fieldCoupling;
   const massScale = runtime && runtime.physicsResponse && runtime.physicsResponse.massScale;
@@ -254,8 +255,8 @@ export function fieldBodyProfile(entity, state, out = null) {
     : 0;
   profile.mass = hullMass + hitchMass;
   profile.radius = entity?.radius;
-  fieldBodyMembershipProfile(entity, profile);
-  profile.coated = gooStatus(state, entity) != null;
+  if (!skipMembership) fieldBodyMembershipProfile(entity, profile);
+  profile.coated = state?.combat?.statuses ? gooStatus(state, entity) != null : false;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
     : 1;
@@ -264,8 +265,8 @@ export function fieldBodyProfile(entity, state, out = null) {
     : (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
   profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
   profile.hitchedTo = null;
-  if (entity && entity.id != null && state && state.fields && state.fields.hitches) {
-    const hitch = state.fields.hitches[entity.id] || state.fields.hitches[String(entity.id)];
+  if (id != null && state && state.fields && state.fields.hitches) {
+    const hitch = state.fields.hitches[id];
     if (hitch && hitch.sourceId != null) profile.hitchedTo = hitch.sourceId;
   }
   // The transient mass/inertia scale the physics owner will solve this body at (Pinned = 6x,

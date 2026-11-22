@@ -2300,42 +2300,175 @@ export const fields = {
     if (this._inertTouched) this._inertTouched.clear();
     this._pinWatch.length = 0;
     this._pinWatchSeen.clear();
+    const memberCache = this._tickMemberCache || (this._tickMemberCache = new Map());
+    memberCache.clear();
+    const memberPool = this._tickMemberPool || (this._tickMemberPool = []);
+    let memberPoolIdx = 0;
     const queryRadius = this.helpers && this.helpers.queryRadius;
     const affected = this._affected;
     affected.clear();
     this._massStateFields.clear();
     this._massStateStrengths.clear();
     let queries = 0;
+    const membershipPool = (pass & 1)
+      ? (this._membershipPoolOdd || (this._membershipPoolOdd = []))
+      : (this._membershipPoolEven || (this._membershipPoolEven = []));
+    membershipPool.length = 0;
     // One bounded spatial-hash query per active field, then union cargo/debris/wrecks that the
     // hash never stored because they spawn with collides:false (jettisoned cargo). A well that
     // only tugs colliding hulls is a toy for ships, not a pile-maker.
+    const maxUnionSpanWu = 2000;
+    let useBatch = false;
+    let minFx = Infinity, maxFx = -Infinity, minFz = Infinity, maxFz = -Infinity;
+    const forceFields = this._forceFieldsScratch || (this._forceFieldsScratch = []);
+    const fieldEnvs = this._forceFieldEnvsScratch || (this._forceFieldEnvsScratch = []);
+    const fieldEnvSq = this._forceFieldEnvSqScratch || (this._forceFieldEnvSqScratch = []);
+    forceFields.length = 0;
+    fieldEnvs.length = 0;
+    fieldEnvSq.length = 0;
     for (let i = 0; i < fieldsList.length; i++) {
-      const field = fieldsList[i];
-      if (field.thermal) continue;
-      this._collectFieldCandidates(field, state, this._queryOut);
-      if (typeof queryRadius === 'function') queries++;
-      let fieldAffected = 0;
-      const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
-      for (let j = 0; j < this._queryOut.length; j++) {
-        const e = this._queryOut[j];
-        this._noteFamilyPin(field, e);
-        if (this._forceableBody(e)) {
-          const profile = fieldBodyMembershipProfile(e, this._membershipProfile);
-          // Excluded matter slips the face. It is not a member of this field's
-          // force set, so the impulse below cannot include it.
-          if (fieldExcludesMaterial(field, profile.materialCategory)) {
-            this._noteInertFieldPass(e, field, state);
-            continue;
+      const f = fieldsList[i];
+      if (!f || f.thermal || !f.center) continue;
+      const env = (f.kind === FIELD_KINDS.SHEET || f.kind === FIELD_KINDS.LANE)
+        ? Math.hypot(finite(f.radius, 0), finite(f.halfWidth, 0)) : finite(f.radius, 0);
+      if (!(env > 0)) continue;
+      forceFields.push(f);
+      fieldEnvs.push(env);
+      fieldEnvSq.push(env * env);
+      const cx = finite(f.center.x, 0), cz = finite(f.center.z, 0);
+      if (cx - env < minFx) minFx = cx - env;
+      if (cx + env > maxFx) maxFx = cx + env;
+      if (cz - env < minFz) minFz = cz - env;
+      if (cz + env > maxFz) maxFz = cz + env;
+    }
+    if (forceFields.length >= 2 && (maxFx - minFx) <= maxUnionSpanWu && (maxFz - minFz) <= maxUnionSpanWu) {
+      useBatch = true;
+    }
+    if (useBatch) {
+      const ux = (minFx + maxFx) * 0.5;
+      const uz = (minFz + maxFz) * 0.5;
+      const ur = Math.hypot((maxFx - minFx) * 0.5, (maxFz - minFz) * 0.5);
+      const unionCenter = this._unionCenterScratch || (this._unionCenterScratch = { x: 0, z: 0 });
+      unionCenter.x = ux;
+      unionCenter.z = uz;
+      const unionOpts = this._unionQueryOpts || (this._unionQueryOpts = {
+        sort: false,
+        contains: (e) => {
+          const ex = e.pos.x, ez = e.pos.z;
+          for (let fi = 0; fi < forceFields.length; fi++) {
+            const f = forceFields[fi];
+            const dx = ex - f.center.x, dz = ez - f.center.z;
+            if (dx * dx + dz * dz <= fieldEnvSq[fi] && fieldContainsPoint(f, ex, ez)) return true;
           }
-          if (!fieldAffectsBody(field, profile)) continue;
-          const membership = affected.get(e) || [];
-          membership.push(field);
-          affected.set(e, membership);
-          this._considerMassState(field, e);
-          fieldAffected++;
-          if (fieldAffected >= maxAffected) break;
+          return false;
+        },
+      });
+      const unionOut = this._unionQueryOut || (this._unionQueryOut = []);
+      queryPhysicalBodies(state, unionCenter, ur, this.helpers, unionOut, unionOpts);
+      if (typeof queryRadius === 'function') queries += forceFields.length;
+      const perFieldOut = this._queryOut;
+      for (let i = 0; i < forceFields.length; i++) {
+        const field = forceFields[i];
+        const fcx = field.center.x, fcz = field.center.z;
+        const envSq = fieldEnvSq[i];
+        perFieldOut.length = 0;
+        for (let k = 0; k < unionOut.length; k++) {
+          const e = unionOut[k];
+          const dx = e.pos.x - fcx, dz = e.pos.z - fcz;
+          if (dx * dx + dz * dz <= envSq && fieldContainsPoint(field, e.pos.x, e.pos.z)) {
+            this._noteFamilyPin(field, e);
+            perFieldOut.push(e);
+          }
+        }
+        const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
+        if (perFieldOut.length > maxAffected) {
+          perFieldOut.sort((a, b) => {
+            const ad = (a.pos.x - fcx) * (a.pos.x - fcx) + (a.pos.z - fcz) * (a.pos.z - fcz);
+            const bd = (b.pos.x - fcx) * (b.pos.x - fcx) + (b.pos.z - fcz) * (b.pos.z - fcz);
+            return ad - bd || (a.id - b.id);
+          });
+        }
+        let fieldAffected = 0;
+        for (let j = 0; j < perFieldOut.length; j++) {
+          const e = perFieldOut[j];
+          if (this._forceableBody(e)) {
+            let profile = memberCache.get(e);
+            if (!profile) {
+              profile = memberPoolIdx < memberPool.length
+                ? memberPool[memberPoolIdx++]
+                : (memberPool[memberPoolIdx++] = {});
+              fieldBodyMembershipProfile(e, profile);
+              memberCache.set(e, profile);
+            }
+            if (fieldExcludesMaterial(field, profile.materialCategory)) {
+              this._noteInertFieldPass(e, field, state);
+              continue;
+            }
+            if (!fieldAffectsBody(field, profile)) continue;
+            let membership = affected.get(e);
+            if (!membership) {
+              membership = this._membershipSpare?.pop() || [];
+              membership.length = 0;
+              affected.set(e, membership);
+              membershipPool.push(membership);
+            }
+            membership.push(field);
+            this._considerMassState(field, e);
+            fieldAffected++;
+            if (fieldAffected >= maxAffected) break;
+          }
         }
       }
+    } else {
+      for (let i = 0; i < fieldsList.length; i++) {
+        const field = fieldsList[i];
+        if (field.thermal) continue;
+        this._collectFieldCandidates(field, state, this._queryOut);
+        if (typeof queryRadius === 'function') queries++;
+        let fieldAffected = 0;
+        const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
+        for (let j = 0; j < this._queryOut.length; j++) {
+          const e = this._queryOut[j];
+          this._noteFamilyPin(field, e);
+          if (this._forceableBody(e)) {
+            let profile = memberCache.get(e);
+            if (!profile) {
+              profile = memberPoolIdx < memberPool.length
+                ? memberPool[memberPoolIdx++]
+                : (memberPool[memberPoolIdx++] = {});
+              fieldBodyMembershipProfile(e, profile);
+              memberCache.set(e, profile);
+            }
+            // Excluded matter slips the face. It is not a member of this field's
+            // force set, so the impulse below cannot include it.
+            if (fieldExcludesMaterial(field, profile.materialCategory)) {
+              this._noteInertFieldPass(e, field, state);
+              continue;
+            }
+            if (!fieldAffectsBody(field, profile)) continue;
+            let membership = affected.get(e);
+            if (!membership) {
+              membership = this._membershipSpare?.pop() || [];
+              membership.length = 0;
+              affected.set(e, membership);
+              membershipPool.push(membership);
+            }
+            membership.push(field);
+            this._considerMassState(field, e);
+            fieldAffected++;
+            if (fieldAffected >= maxAffected) break;
+          }
+        }
+      }
+    }
+    const spare = this._membershipSpare || (this._membershipSpare = []);
+    const stalePool = (pass & 1) ? this._membershipPoolEven : this._membershipPoolOdd;
+    if (stalePool && stalePool.length) {
+      for (let i = 0; i < stalePool.length; i++) {
+        stalePool[i].length = 0;
+        spare.push(stalePool[i]);
+      }
+      stalePool.length = 0;
     }
     // Publish the claimed set — including bodies at convergence equilibrium whose net accel is
     // ~0 this tick. The field owns their motion until they leave the radius; the classifier pin
@@ -2344,20 +2477,29 @@ export const fields = {
     // R11 / 03 §5: anything a field moves (the player's powers, hazards, an arena's planted well)
     // is energised for 3 s — what it then slams into is a consequence, not a bump.
     const energisedUntil = nowOf(state) + 3;
-    for (const e of affected.keys()) {
+    const playerId = state.playerId;
+    for (const [e, mf] of affected) {
       affectedIds.add(e.id);
-      if (e.data && e.id !== state.playerId) { e.data.energisedUntil = energisedUntil; e.data.energisedHop = 0; }
+      if (e.data && e.id !== playerId) { e.data.energisedUntil = energisedUntil; e.data.energisedHop = 0; }
       // OVH-01c2 conjurer_combo — field membership is the power's touch, equilibrium or not.
-      this._noteFieldComboTouches(state, rt, e, affected.get(e));
+      this._noteFieldComboTouches(state, rt, e, mf);
     }
     const accel = this._accel;
+    const impulseOpts = this._impulseOptsScratch || (this._impulseOptsScratch = {
+      scaleEnvironment: false, continuous: true, dt: 0,
+    });
+    impulseOpts.dt = dt;
     let affectedCount = 0, accelSum = 0;
-    for (const e of affected.keys()) {
+    for (const [e, mf] of affected) {
       const massStateField = this._massStateFields.get(e);
       if (massStateField) this._refreshMassState(state, e, massStateField);
-      const profile = this._profileFor(e, state);
+      const cachedMember = memberCache.get(e);
+      const profile = cachedMember
+        ? fieldBodyProfile(e, state, cachedMember, true)
+        : fieldBodyProfile(e, state, this._bodyProfile);
+      profile.primed = this._isPrimedLight(e, state);
       const velSample = fieldVelocityTermApplies(e, profile) ? e.vel : null;
-      sampleFieldAcceleration(e.pos, velSample, affected.get(e), now, profile, accel, this._wellContributions);
+      sampleFieldAcceleration(e.pos, velSample, mf, now, profile, accel, this._wellContributions);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
       // A Well pins the very bodies it pulls (massScale 6) and a Repulsor unmoors the ones it shoves
@@ -2375,9 +2517,8 @@ export const fields = {
       impulse.x = accel.ax * mass * dt;
       impulse.y = 0;
       impulse.z = accel.az * mass * dt;
-      const evidence = this._fieldEvidence(e, affected.get(e), state, profile);
-      const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence,
-        { scaleEnvironment: false, continuous: true, dt });
+      const evidence = this._fieldEvidence(e, mf, state, profile);
+      const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence, impulseOpts);
       if (!delivered.accepted) continue;
       let feedback = this._acceptedFieldAccel.get(e);
       if (!feedback) { feedback = {}; this._acceptedFieldAccel.set(e, feedback); }
@@ -2385,7 +2526,12 @@ export const fields = {
       feedback.az = delivered.impulse.z / (mass * dt);
       feedback.tick = state.tick; feedback.pass = pass;
       feedback.generation = e.occupantGeneration;
-      feedback.fields = affected.get(e);
+      if (feedback.fields) {
+        feedback.fields.length = 0;
+        if (mf) for (let fi = 0; fi < mf.length; fi++) feedback.fields.push(mf[fi]);
+      } else {
+        feedback.fields = affected.get(e).slice();
+      }
       if (evidence?.provenance?.actorId != null) recordImpulseProvenance(e, {
         ...evidence.provenance, magnitude: Math.hypot(impulse.x, impulse.z), appliedTick: state.tick,
       });

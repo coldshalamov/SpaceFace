@@ -517,6 +517,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
   function recordTransformIfChanged(tick, entity) {
     assertOpen();
+    if (suppressTransforms && suppressTransforms()) return 0;
     return poseChanged(entity) ? recordTransform(tick, entity) : 0;
   }
 

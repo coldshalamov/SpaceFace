@@ -399,43 +399,67 @@ export function advanceCollisionProxyResolveEpoch() {
   proxyResolveEpoch = proxyResolveEpoch >= 0x3fffffff ? 1 : proxyResolveEpoch + 1;
 }
 
-function proxyFingerprintMatches(entity, fp) {
+function proxyFingerprintMatches(entity, fp, allDataUndef = false, nullBody = false) {
   if (!fp || fp.length !== PROXY_FP_LENGTH) return false;
+  if (fp[PROXY_FP_ID] !== entity.id
+    || fp[PROXY_FP_TYPE] !== entity.type
+    || fp[PROXY_FP_DATA] !== entity.data
+    || fp[PROXY_FP_BODY] !== entity.physicsBody
+    || fp[PROXY_FP_RADIUS] !== entity.radius
+    || fp[PROXY_FP_COLLIDES] !== entity.collides
+    || fp[PROXY_FP_KIND] !== entity.kind) return false;
   const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  if (nullBody) {
+    if (body !== null) return false;
+  } else if (fp[PROXY_FP_BODY_REVISION] !== (body ? body.revision : entity.physicsBody)
+    || fp[PROXY_FP_BODY_RADIUS] !== (body ? body.radius : undefined)
+    || fp[PROXY_FP_BODY_MANIFEST] !== (body ? body.collisionProxyManifest : undefined)
+    || fp[PROXY_FP_BODY_MATERIAL] !== (body ? body.material : undefined)
+    || fp[PROXY_FP_BODY_MEASURED_SKIN] !== (body ? body.useMeasuredSkin : undefined)
+    || fp[PROXY_FP_BODY_SHAPE] !== (body ? body.shape : undefined)
+    || fp[PROXY_FP_BODY_DYNAMIC] !== (body ? body.dynamic : undefined)) return false;
   const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
-  return fp[PROXY_FP_BODY] === entity.physicsBody
-    && fp[PROXY_FP_BODY_REVISION] === (body ? body.revision : entity.physicsBody)
-    && fp[PROXY_FP_BODY_MANIFEST] === (body ? body.collisionProxyManifest : undefined)
-    && fp[PROXY_FP_BODY_MATERIAL] === (body ? body.material : undefined)
-    && fp[PROXY_FP_BODY_MEASURED_SKIN] === (body ? body.useMeasuredSkin : undefined)
-    && fp[PROXY_FP_BODY_SHAPE] === (body ? body.shape : undefined)
-    && fp[PROXY_FP_BODY_DYNAMIC] === (body ? body.dynamic : undefined)
-    && fp[PROXY_FP_COLLIDES] === entity.collides
-    && fp[PROXY_FP_TYPE] === entity.type
-    && fp[PROXY_FP_ID] === entity.id
-    && fp[PROXY_FP_RADIUS] === entity.radius
-    && fp[PROXY_FP_KIND] === entity.kind
-    && fp[PROXY_FP_DATA] === entity.data
-    && fp[PROXY_FP_DATA_PROXY] === (data ? data.collisionProxy : undefined)
-    && fp[PROXY_FP_DATA_ROOM_OWNER] === (data ? data.roomOwner : undefined)
-    && fp[PROXY_FP_DATA_ROOM_KIND] === (data ? data.roomKind : undefined)
-    && fp[PROXY_FP_DATA_COMPOUND_SKIN] === (data ? data.compoundSkin : undefined)
-    && fp[PROXY_FP_DATA_DEF_ID] === (data ? data.defId : undefined)
-    && fp[PROXY_FP_DATA_TYPE_ID] === (data ? data.typeId : undefined)
-    && fp[PROXY_FP_DATA_SILHOUETTE] === (data ? data.silhouette : undefined)
-    && fp[PROXY_FP_DATA_MAJOR_WRECK] === (data ? data.isMajorWreck : undefined)
-    && fp[PROXY_FP_DATA_PLACE_ID] === (data ? data.placeId : undefined)
-    && fp[PROXY_FP_DATA_ARCHETYPE_GLB] === (data ? data.archetypeGlb : undefined)
-    && fp[PROXY_FP_DATA_STATION_TYPE_ID] === (data ? data.stationTypeId : undefined)
-    && fp[PROXY_FP_DATA_LOOT_TABLE_ID] === (data ? data.lootTableId : undefined)
-    && fp[PROXY_FP_DATA_TRAFFIC_ROLE] === (data ? data.trafficRole : undefined)
-    && fp[PROXY_FP_DATA_IS_GATE] === (data ? data.isGate : undefined)
-    && fp[PROXY_FP_DATA_IS_WORMHOLE] === (data ? data.isWormhole : undefined)
-    && fp[PROXY_FP_DATA_IS_LANDMARK] === (data ? data.isLandmark : undefined)
-    && fp[PROXY_FP_DATA_IS_LANDMARK_ROCK] === (data ? data.isLandmarkRock : undefined)
-    && fp[PROXY_FP_DATA_LANDMARK] === (data ? data.landmark : undefined)
-    && fp[PROXY_FP_DATA_ARCHETYPE] === (data ? data.archetype : undefined)
-    && fp[PROXY_FP_BODY_RADIUS] === (body ? body.radius : undefined);
+  if (!data) return true;
+  if (allDataUndef) {
+    return data.collisionProxy === undefined
+      && data.roomOwner === undefined
+      && data.roomKind === undefined
+      && data.compoundSkin === undefined
+      && data.defId === undefined
+      && data.typeId === undefined
+      && data.silhouette === undefined
+      && data.isMajorWreck === undefined
+      && data.placeId === undefined
+      && data.archetypeGlb === undefined
+      && data.stationTypeId === undefined
+      && data.lootTableId === undefined
+      && data.trafficRole === undefined
+      && data.isGate === undefined
+      && data.isWormhole === undefined
+      && data.isLandmark === undefined
+      && data.isLandmarkRock === undefined
+      && data.landmark === undefined
+      && data.archetype === undefined;
+  }
+  return fp[PROXY_FP_DATA_PROXY] === data.collisionProxy
+    && fp[PROXY_FP_DATA_ROOM_OWNER] === data.roomOwner
+    && fp[PROXY_FP_DATA_ROOM_KIND] === data.roomKind
+    && fp[PROXY_FP_DATA_COMPOUND_SKIN] === data.compoundSkin
+    && fp[PROXY_FP_DATA_DEF_ID] === data.defId
+    && fp[PROXY_FP_DATA_TYPE_ID] === data.typeId
+    && fp[PROXY_FP_DATA_SILHOUETTE] === data.silhouette
+    && fp[PROXY_FP_DATA_MAJOR_WRECK] === data.isMajorWreck
+    && fp[PROXY_FP_DATA_PLACE_ID] === data.placeId
+    && fp[PROXY_FP_DATA_ARCHETYPE_GLB] === data.archetypeGlb
+    && fp[PROXY_FP_DATA_STATION_TYPE_ID] === data.stationTypeId
+    && fp[PROXY_FP_DATA_LOOT_TABLE_ID] === data.lootTableId
+    && fp[PROXY_FP_DATA_TRAFFIC_ROLE] === data.trafficRole
+    && fp[PROXY_FP_DATA_IS_GATE] === data.isGate
+    && fp[PROXY_FP_DATA_IS_WORMHOLE] === data.isWormhole
+    && fp[PROXY_FP_DATA_IS_LANDMARK] === data.isLandmark
+    && fp[PROXY_FP_DATA_IS_LANDMARK_ROCK] === data.isLandmarkRock
+    && fp[PROXY_FP_DATA_LANDMARK] === data.landmark
+    && fp[PROXY_FP_DATA_ARCHETYPE] === data.archetype;
 }
 
 /** Declared manifests and adopted measured skins resolve here. An authored
@@ -465,7 +489,7 @@ export function resolveCollisionProxyManifest(entity) {
           && fp[PROXY_FP_DATA_PROXY] === (data ? data.collisionProxy : undefined)) {
           return slot.manifest;
         }
-      } else if (proxyFingerprintMatches(entity, slot.fp)) {
+      } else if (proxyFingerprintMatches(entity, slot.fp, slot.allDataUndef, slot.nullBody)) {
         slot.epoch = proxyResolveEpoch;
         return slot.manifest;
       }
@@ -474,10 +498,18 @@ export function resolveCollisionProxyManifest(entity) {
     // A sealed or frozen body can't take the slot — it resolves fresh every call,
     // exactly as before the cache existed.
     if (Object.isExtensible(entity)) {
+      const fp = captureProxyFingerprint(entity, slot && slot.fp ? slot.fp : new Array(PROXY_FP_LENGTH));
+      let allDataUndef = true;
+      for (let i = PROXY_FP_DATA_PROXY; i <= PROXY_FP_DATA_ARCHETYPE; i++) {
+        if (fp[i] !== undefined) { allDataUndef = false; break; }
+      }
+      const nullBody = !(entity.physicsBody && typeof entity.physicsBody === 'object');
       entity._collisionProxyResolve = {
-        fp: captureProxyFingerprint(entity, slot && slot.fp ? slot.fp : new Array(PROXY_FP_LENGTH)),
+        fp,
         manifest,
         epoch: proxyResolveEpoch,
+        allDataUndef,
+        nullBody,
       };
     }
     return manifest;

@@ -936,9 +936,9 @@ export function releaseActivityPhysicsInterest(state, owner, lease) {
  * already-classified world. Any non-projectile spawn or a shrink of the live
  * list still takes the full classify.
  */
-export function admitSameTickProjectiles(state, runtime, membership) {
+export function admitSameTickProjectiles(state, runtime, membership, allowStride = false) {
   if (!state || !runtime || !runtime.ready) return false;
-  if (runtime.classifiedTick !== (state.tick | 0)) return false;
+  if (!allowStride && runtime.classifiedTick !== (state.tick | 0)) return false;
   const list = state.entityList || [];
   const lastN = runtime.lastLiveCount | 0;
   if (list.length < lastN) return false;
@@ -1821,6 +1821,18 @@ function classifyWorld(state, runtime) {
   ctx.pinsNormalized = false;
 
   const passWorldRecordBag = state.world && state.world.records && state.world.records.byId;
+  const currentSectorId = state.world ? state.world.currentSectorId : undefined;
+  const hasAggro = facts.aggro.size > 0;
+  const hasProjThreat = facts.projectileThreat.size > 0;
+  const hasFieldDriven = facts.fieldDriven.size > 0;
+  const hasPhysInterest = facts.physicalInterest.size > 0;
+  const hasTether = facts.tether.size > 0;
+  const hasTracked = facts.tracked.size > 0;
+  const hasDmgBy = facts.damagedByPlayerUntil.size > 0;
+  const hasDmgPlayer = facts.damagedPlayerUntil.size > 0;
+  const hasDockId = facts.dockId != null;
+  const hasHailId = facts.hailId != null;
+  const hasMiningId = facts.miningId != null;
   // Presentation reads keep their local tier/pin stamps for visibility, asset
   // residency and audio, while completed worker messages own pose and records.
   const canWriteWorld = !PRESENTATION_MIRRORS.has(state.entities);
@@ -1865,6 +1877,7 @@ function classifyWorld(state, runtime) {
         continue;
       }
     }
+    const eid = entity.id;
     const px = finite(entity.pos && entity.pos.x);
     const pz = finite(entity.pos && entity.pos.z);
     const dx = px - origin.x;
@@ -1876,34 +1889,34 @@ function classifyWorld(state, runtime) {
     const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
     const onRunway = submitRunway || prefetchKeep;
     const ai = rockBody ? null : ownerAiRecord(entity);
-    runtime.currentEntityIds.add(entity.id);
-    const firstActivityObservation = !runtime.seenEntityIds.has(entity.id);
-    runtime.seenEntityIds.add(entity.id);
+    runtime.currentEntityIds.add(eid);
+    const firstActivityObservation = !runtime.seenEntityIds.has(eid);
+    runtime.seenEntityIds.add(eid);
     ctx.visibleOnGlass = onGlass;
     ctx.onGlass = onGlass;
     ctx.onRunway = onRunway;
-    ctx.mapOrRadar = entity.type === 'ship' || entity.type === 'station' || entity.type === 'drone';
-    ctx.hostileAggro = facts.aggro.has(entity.id);
-    ctx.projectileThreat = facts.projectileThreat.has(entity.id);
-    ctx.fieldDriven = facts.fieldDriven.has(entity.id);
-    ctx.physicalInterest = facts.physicalInterest.has(entity.id);
-    ctx.tetherOrAttachment = facts.tether.has(entity.id)
+    ctx.mapOrRadar = entityType === 'ship' || entityType === 'station' || entityType === 'drone';
+    ctx.hostileAggro = hasAggro && facts.aggro.has(eid);
+    ctx.projectileThreat = hasProjThreat && facts.projectileThreat.has(eid);
+    ctx.fieldDriven = hasFieldDriven && facts.fieldDriven.has(eid);
+    ctx.physicalInterest = hasPhysInterest && facts.physicalInterest.has(eid);
+    ctx.tetherOrAttachment = (hasTether && facts.tether.has(eid))
       || !!(entity.flags && entity.flags.tethered)
       || data.tethered === true;
-    ctx.dockingOrLanding = facts.dockId != null && entity.id === facts.dockId;
+    ctx.dockingOrLanding = hasDockId && eid === facts.dockId;
     ctx.escortOrFollow = !!(data.escort || (ai && (ai.escort || ai.follow)));
-    ctx.hailOrConversation = facts.hailId != null && entity.id === facts.hailId;
-    ctx.playerMiningTarget = facts.miningId != null && entity.id === facts.miningId;
-    ctx.playerScannedAndTracked = facts.tracked.has(entity.id);
-    ctx.damagedByPlayerUntilT = facts.damagedByPlayerUntil.has(entity.id)
-      ? facts.damagedByPlayerUntil.get(entity.id)
+    ctx.hailOrConversation = hasHailId && eid === facts.hailId;
+    ctx.playerMiningTarget = hasMiningId && eid === facts.miningId;
+    ctx.playerScannedAndTracked = hasTracked && facts.tracked.has(eid);
+    ctx.damagedByPlayerUntilT = hasDmgBy && facts.damagedByPlayerUntil.has(eid)
+      ? facts.damagedByPlayerUntil.get(eid)
       : -1;
-    ctx.damagedPlayerUntilT = facts.damagedPlayerUntil.has(entity.id)
-      ? facts.damagedPlayerUntil.get(entity.id)
+    ctx.damagedPlayerUntilT = hasDmgPlayer && facts.damagedPlayerUntil.has(eid)
+      ? facts.damagedPlayerUntil.get(eid)
       : -1;
     const recId = data.worldRecordId;
     const worldRec = recId && passWorldRecordBag ? passWorldRecordBag[recId] : null;
-    const scheduledWakeDue = durableWakeDue(worldRec, simTime)
+    const scheduledWakeDue = (worldRec ? durableWakeDue(worldRec, simTime) : false)
       || liveWakeDue(entity, simTime) != null;
     if (scheduledWakeDue) runtime.wakeCandidates.push(entity);
     ctx.hasItinerary = !!data.itinerary || scheduledWakeDue;
@@ -1933,10 +1946,12 @@ function classifyWorld(state, runtime) {
       || entity === runtime.tallyClearanceBody
       // One budgeted named courier must physically finish/return across the whole
       // surveyed course, including corners beyond the player's local physics reach.
-      || (isRedKiteEntity(entity) && data.homeSectorId === state.world?.currentSectorId)
-      || (data.persistenceOwner === 'palletJack' && data.homeSectorId === state.world?.currentSectorId)
-      || (data.persistenceOwner === 'mothlight' && data.homeSectorId === state.world?.currentSectorId)
-      || (data.persistenceOwner === 'secondRinse' && data.homeSectorId === state.world?.currentSectorId)
+      || (currentSectorId !== undefined && (
+        (isRedKiteEntity(entity) && data.homeSectorId === currentSectorId)
+        || (data.persistenceOwner === 'palletJack' && data.homeSectorId === currentSectorId)
+        || (data.persistenceOwner === 'mothlight' && data.homeSectorId === currentSectorId)
+        || (data.persistenceOwner === 'secondRinse' && data.homeSectorId === currentSectorId)
+      ))
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor
@@ -1955,6 +1970,8 @@ function classifyWorld(state, runtime) {
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
       // the exact owner view; generic far passive traffic remains wake-gated below.
       || authoredActiveCombat);
+    // With no collision authority the lookahead is computed from the two bodies, so this is
+    // never skipped on an empty id set.
     ctx.imminentCollision = imminentCollisionFor(player, entity, collisionIds);
     // Distant-sleep gate: a generic ship off the submit (draw) runway is aggregate population.
     // Test against `submitRunway` alone — `onRunway` also includes `prefetchKeep`, the mesh
@@ -2170,6 +2187,27 @@ export function ensureActivityClassified(state) {
     && runtime.classifiedStaticAuthority === staticAuthority) {
     return runtime;
   }
+  // Swarm: every body in the arena is live (no abstract, dormant or aggregate tiers), so a
+  // reclassify can only change pins. With membership unchanged, nothing asked to be
+  // reclassified and nothing withdrawn, the last pass is reused for up to two more steps
+  // (projectiles spawned meanwhile are admitted on the cheap path).
+  const strideTick = runtime._swarmStrideTick ?? -100;
+  if (state.run?.kind === 'survival' && runtime.ready === true && membership != null
+    && runtime.classifiedClassifiableMembership === entityIndexClassifiableVersion(state)
+    && runtime.classifiedStaticAuthority === staticAuthority
+    && (runtime.requestedReclassifyIds?.size || 0) === 0
+    && (runtime.physicsInterestWithdrawals?.size || 0) === 0
+    && runtime.counts.s2 === 0 && runtime.counts.s3 === 0 && runtime.counts.s4 === 0
+    && state.mode === runtime._swarmStrideMode
+    && tick >= strideTick && (tick - strideTick) < 3) {
+    if (runtime.classifiedMembership === membership
+      || admitSameTickProjectiles(state, runtime, membership, true)) {
+      runtime.classifiedTick = tick;
+      runtime.classifiedStaticAuthority = staticAuthority;
+      publishScalars(state, runtime);
+      return runtime;
+    }
+  }
   if (admitSameTickProjectiles(state, runtime, membership)) {
     runtime.classifiedTick = tick;
     runtime.classifiedStaticAuthority = staticAuthority;
@@ -2186,6 +2224,8 @@ export function ensureActivityClassified(state) {
   runtime.lastEntityList = list;
   runtime.lastLiveCount = list.length;
   runtime.ready = true;
+  runtime._swarmStrideTick = tick;
+  runtime._swarmStrideMode = state.mode;
   publishScalars(state, runtime);
   return runtime;
 }

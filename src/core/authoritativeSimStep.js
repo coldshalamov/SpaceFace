@@ -91,11 +91,14 @@ export function createAuthoritativeStepper({
           postInputPartitions.drainStep(dt, state);
           profiler.record('core.tickDrains', nowNs() - t0);
         }
+        const queue = updateQueueForThisStep(postInputPartitions, state);
+        const updateDt = postInputPartitions.updateDt;
         // Sampled path: one clock pair per executed system. Same queue, same order, same
         // updateDt arguments — profiling must not change what the step computes.
-        for (const s of updateQueueForThisStep(postInputPartitions, state)) {
+        for (let i = 0; i < queue.length; i++) {
+          const s = queue[i];
           const t0 = nowNs();
-          s.update(postInputPartitions.updateDt(s, dt, state), state);
+          s.update(updateDt(s, dt, state), state);
           profiler.record(s.name, nowNs() - t0);
         }
         if (core && typeof core.lifetimeSweep === 'function') {
@@ -109,8 +112,11 @@ export function createAuthoritativeStepper({
         if (input && input.update) input.update(dt, state);
         publishBoundary(tickBoundary);
         postInputPartitions.drainStep(dt, state);
-        for (const s of updateQueueForThisStep(postInputPartitions, state)) {
-          s.update(postInputPartitions.updateDt(s, dt, state), state);
+        const queue = updateQueueForThisStep(postInputPartitions, state);
+        const updateDt = postInputPartitions.updateDt;
+        for (let i = 0; i < queue.length; i++) {
+          const s = queue[i];
+          s.update(updateDt(s, dt, state), state);
         }
         if (core && typeof core.lifetimeSweep === 'function') core.lifetimeSweep(dt, state);
       }
