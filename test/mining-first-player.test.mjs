@@ -31,10 +31,12 @@ test('adjacent powered first machines skip unnecessary cable and lane lessons', 
   const c = { ...context(), extractorMissing: {}, projection: { machines: [core] } };
   assert.equal(miningNextStep(c).selection, 'sm_extractor');
   c.projection.machines.push(extractor);
-  assert.equal(miningNextStep(c).selection, 'refining');
+  // Straight on to the smelter: no cable lesson and no lane lesson comes between.
+  assert.equal(miningNextStep(c).id, 'refine');
+  assert.equal(miningNextStep(c).selection, 'sm_refinery');
   c.projection.lanes = [{ store: { cmdty_ore_iron: 2 } }];
-  assert.equal(miningNextStep(c).action, 'site');
-  assert.match(miningNextStep(c).detail, /indefinitely/);
+  assert.equal(miningNextStep(c).id, 'refine');
+  assert.match(miningNextStep(c).detail, /rock faces intact/);
 });
 
 test('a pilot who could afford only the Core gets the remaining shopping list', () => {
@@ -47,9 +49,14 @@ test('a pilot who could afford only the Core gets the remaining shopping list', 
 });
 
 test('a broken connection overrides expansion advice and recovers from live state', () => {
-  const c = { ...context(), projection: { machines: [core, { ...extractor, powerRatio: 0 }], lanes: [] } };
-  assert.equal(miningNextStep(c).selection, 'power');
-  c.projection.machines[1] = { ...extractor, laneKey: null };
+  // Machines as the board really reports them: a dark machine carries its draw and a 'no-power'
+  // status, a cut-off one a 'no-network' status. (The guide stopped reading bare powerRatio and
+  // laneKey when the projection grew those fields; these fixtures had not followed.)
+  const dark = { ...extractor, capability: { powerDraw: 4 }, powerRatio: 0, status: { state: 'no-power', limit: 'power' } };
+  const c = { ...context(), projection: { machines: [core, dark], lanes: [] } };
+  assert.equal(miningNextStep(c).id, 'power-capacity');
+  assert.match(miningNextStep(c).detail, /needs 4 MW/);
+  c.projection.machines[1] = { ...extractor, laneKey: null, status: { state: 'no-network', limit: 'lane' } };
   assert.equal(miningNextStep(c).selection, 'lane');
   c.projection.machines[1] = { ...extractor, status: { state: 'no-geology' } };
   assert.equal(miningNextStep(c).id, 'geology');
@@ -59,11 +66,14 @@ test('a broken connection overrides expansion advice and recovers from live stat
 
 test('processors teach input logistics before suggesting another expensive kit', () => {
   const c = { ...context(), projection: { machines: [core, extractor,
-    { defId: 'sm_refinery', powerRatio: 1, laneKey: 0, status: { state: 'starved' } }] } };
+    { defId: 'sm_refinery', powerRatio: 1, laneKey: 0, status: { state: 'starved', limit: 'input:cmdty_ore_iron' } }],
+    lanes: [{ key: 0, store: {} }] } };
   assert.equal(miningNextStep(c).id, 'inputs');
-  c.projection.machines[2].status.state = 'running';
-  assert.equal(miningNextStep(c).selection, 'courier');
-  c.projection.machines.push({ defId: 'sm_fabricator', powerRatio: 1, laneKey: 0 });
+  assert.match(miningNextStep(c).title, /iron ore/i);
+  c.projection.machines[2].status = { state: 'running' };
+  // A running smelter with nowhere to ship: the cargo port comes before any more kit.
+  assert.equal(miningNextStep(c).selection, 'sm_cargo_port');
+  c.projection.machines.push({ defId: 'sm_fabricator', powerRatio: 1, laneKey: 0 }, { defId: 'sm_cargo_port', powerRatio: 1, laneKey: 0 });
   assert.equal(miningNextStep(c).selection, 'construction');
   c.projection.machines[2].status.state = 'backlogged';
   assert.equal(miningNextStep(c).id, 'storage');
