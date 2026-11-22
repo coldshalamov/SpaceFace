@@ -470,7 +470,7 @@ const HOST_CSS = `
    z-index:14 keeps HUD instrument panels above world markers (#sf-ml2 z-index:6, .sf-lockdiamond z-index:13)
    so the aim/tether white diamond never paints over the power bar or vitals. */
 #hud[data-hud="orrery"] .orr-hud-cluster { position:absolute; left:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:24px; z-index:14; pointer-events:none; transform:none; }
-#hud[data-hud="orrery"] .orr-hud-cluster:has(.orr-cluster--visor) { left:calc(clamp(12px, 1.435vw, 24px) + var(--sf-safe-inset-x, 0px)); bottom:clamp(24px, 4.36vh, 43px); }
+#hud[data-hud="orrery"] .orr-hud-cluster.orr-hud-cluster--visor { left:calc(clamp(12px, 1.435vw, 24px) + var(--sf-safe-inset-x, 0px)); bottom:clamp(24px, 4.36vh, 43px); }
 #hud { --orr-cluster-scale:.85; --orr-cluster-h:calc(${FLIGHT_CLUSTER_SIZE.height}px * var(--orr-cluster-scale)); }
 @media (max-width:1700px), (max-height:850px) { #hud { --orr-cluster-scale:.71; } }
 @media (max-width:1100px), (max-height:660px) { #hud { --orr-cluster-scale:.64; } }
@@ -592,8 +592,12 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   });
   cluster.el.setAttribute('data-why-above', '');
   host.appendChild(cluster.el);
+  // The visor layout names itself on the host and on #hud (the rules that used :has() to find it
+  // made every HUD text write re-check them).
+  host.classList.add('orr-hud-cluster--visor');
   root.appendChild(host);
   root.dataset.hud = 'orrery';
+  root.dataset.hudCluster = 'visor';
   const removeSkin = applyOrreryHudSkin(document);
   cluster.arrive();
   const tracker = createCooldownTracker();
@@ -858,6 +862,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       host.remove();
       removeSkin();
       if (root.dataset.hud === 'orrery') delete root.dataset.hud;
+      delete root.dataset.hudCluster;
     },
   };
 }

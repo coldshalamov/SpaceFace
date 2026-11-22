@@ -133,7 +133,7 @@ export function gateStrokeRole(state) {
 // and the column itself. `background: transparent` on the canvas only undoes styles/ui.css's legacy
 // `.sf-range__canvas { background: var(--bg) }` until Task D deletes it; the sky is the ground.
 const CSS = `
-html:has(> body[data-k-screen="range"]) {
+html:not(body)[data-k-screen="range"] {
   --sf-you: rgb(236 230 216); --sf-foe: rgb(255 80 56); --sf-goal: rgb(242 185 80); --sf-calm: rgba(236,230,216,.4);
   --sf-paper: rgb(236 230 216); --sf-surface: transparent; --sf-edge: #1d3350;
 }

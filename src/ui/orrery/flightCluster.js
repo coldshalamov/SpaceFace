@@ -669,6 +669,22 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
   if (readouts) root.append(readouts.el, keyLayer, captionEl, nextEl, payload, perksWrap);
   else root.append(dial.el, energyRead, heatRead, legend, nextEl, payload, perksWrap);
 
+  // The visor skin hides the field pill's cone label while the Rig socket is active. The page reads
+  // that from one attribute on <body>, written here when a socket's state actually changes: a
+  // body-level :has() rule made the browser re-scan the whole document on every HUD text write.
+  let rigMirrorDirty = true;
+  let rigMirror = false;
+  function syncRigMirror() {
+    if (!rigMirrorDirty) return;
+    rigMirrorDirty = false;
+    const on = visor && !!root.querySelector('[data-power="rig"].is-active');
+    if (on === rigMirror) return;
+    rigMirror = on;
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body) return;
+    if (on) body.setAttribute('data-sf-rig-active', '1'); else body.removeAttribute('data-sf-rig-active');
+  }
+
   // ---- update --------------------------------------------------------------------------------------
   const last = {};
   const changed = (k, v) => { if (last[k] === v) return false; last[k] = v; return true; };
@@ -682,6 +698,10 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
       hullRow.val.innerHTML = `${Math.round(hullF * 100)}<i>%</i>`;
       hullRow.val.classList.toggle('is-critical', hullF < 0.3);
       hullRow.lab.classList.toggle('is-critical', hullF < 0.3);
+      // The visor reading turns its fill to danger with the value. A class on the reading, set here
+      // where the value changes: a :has() rule re-scanned the cluster on every text write.
+      const hullReading = typeof hullRow.val.closest === 'function' ? hullRow.val.closest('.orr-visor__reading') : null;
+      if (hullReading) hullReading.classList.toggle('has-critical', hullF < 0.3);
       readouts?.setMeter('hull', hullF);
     }
     const shieldF = frac(d.shield, d.shieldMax);
@@ -730,6 +750,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
         perksWrap.appendChild(chip);
         perkChips.set(pk.id, { node: chip, pulse: 0 });
       }
+      // The caption makes room for the chips; the cluster says so itself (no :has()).
+      root.classList.toggle('has-perk', perkChips.size > 0);
     }
     const perkPulses = d.perkPulses && typeof d.perkPulses === 'object' ? d.perkPulses : {};
     for (const [id, chip] of perkChips) {
@@ -792,7 +814,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     if (openTo < 0) openTo = Math.max(0, groups.findIndex((g) => g.slots.some((sl) => sid(sl) === handSlot)));
     // Only groups with a choice of powers unfold. Single powers change state in place.
     if (visor || groups[openTo]?.slots.length === 1) openTo = -1;
-    if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); }
+    if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); rigMirrorDirty = true; }
     let handAngle = null;
     let handArmed = false;
     // One paint for every socket that speaks for ONE verb: an unfolded key, or a collapsed node whose band
@@ -827,6 +849,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
         sk.firing = firing;
         sk.held = held;
         sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}${active ? ' is-active' : ''}${running ? ' is-running' : ''}${detonate ? ' is-detonate' : ''}${held ? ' is-held' : ''}${firing ? ' is-firing' : ''}`;
+        rigMirrorDirty = true;
         const lit = state === 'armed' || active || running || detonate || firing;
         sk.armed.setAttribute('opacity', lit ? '1' : '0');
         sk.armedB.setAttribute('opacity', lit ? '.34' : '0');
@@ -927,6 +950,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
       armBloom.setAttribute('opacity', handArmed ? '.34' : '0');
       armPip.setAttribute('opacity', handArmed ? '1' : '.7');
     }
+    syncRigMirror();
     // tether
     const t = d.tether || null;
     // X3 Adventure glass: the payload readout is mass/strain prose. The beam, the strain dial
@@ -1006,6 +1030,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     setHull,
     setPowerCaption,
     dispose() {
+      if (rigMirror && typeof document !== 'undefined' && document.body) document.body.removeAttribute('data-sf-rig-active');
+      rigMirror = false;
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();
       for (const sk of sockets) sk.spring.stop();

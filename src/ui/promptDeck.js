@@ -210,6 +210,18 @@ export function createPromptDeck(ctx = {}) {
       deckSeat = null;
     }
   }
+  // The visor skin moves its utility row aside while a prompt card is up. <body> carries that as
+  // one attribute, written here on the deck's own changes: the body-level :has() rule that used to
+  // read it made the browser re-scan the whole document on every HUD text write.
+  let promptOpenMirror = false;
+  function syncPromptOpenMirror() {
+    const open = !destroyed && !root.hidden && !!root.querySelector('.sf-prompt');
+    if (open === promptOpenMirror) return;
+    promptOpenMirror = open;
+    const body = doc.body;
+    if (!body || typeof body.setAttribute !== 'function') return;
+    if (open) body.setAttribute('data-sf-prompt-open', '1'); else body.removeAttribute('data-sf-prompt-open');
+  }
   /** Every hidden toggle funnels here so the seat claim tracks the deck's real visibility. */
   function setDeckHidden(v) {
     if (root.hidden !== v) {
@@ -217,6 +229,7 @@ export function createPromptDeck(ctx = {}) {
       doc.body?.classList.toggle('sf-flight-decision-open', !v);
       bus?.emit?.('hud:receiptGeometryChanged');
     }
+    syncPromptOpenMirror();
     syncDeckSeat();
   }
 
@@ -859,6 +872,7 @@ export function createPromptDeck(ctx = {}) {
     leaving.delete(id);
     clearTimeout(rec.timer);
     for (const node of rec.nodes) node.remove();
+    syncPromptOpenMirror();
   }
 
   function remove(id) {
@@ -886,11 +900,13 @@ export function createPromptDeck(ctx = {}) {
         for (const node of nodes) node.remove();
         // The last node out turns the root off; leaving nodes own the root's visibility tail.
         if (root.isConnected && !root.childElementCount) setDeckHidden(true);
+        syncPromptOpenMirror();
       }, 170);
       leaving.set(id, { timer, nodes });
     } else {
       if (frame) frame.remove();
       if (chip) chip.remove();
+      syncPromptOpenMirror();
     }
     if (raisedId === id) raisedId = null;
     layout();
@@ -926,6 +942,7 @@ export function createPromptDeck(ctx = {}) {
     clearAll();
     root.remove();
     live.remove();
+    syncPromptOpenMirror();
     if (_deck === api) setPromptDeck(null);
   }
 

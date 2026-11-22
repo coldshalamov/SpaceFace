@@ -26,7 +26,7 @@ ${S} {
 }
 
 @media (min-width:761px) {
-  :root:not([data-sf-mobile-flight="1"]) ${S} #hud[data-hud="orrery"]:has(.orr-cluster--visor)::before {
+  :root:not([data-sf-mobile-flight="1"]) ${S} #hud[data-hud="orrery"][data-hud-cluster="visor"]::before {
     background:none;
   }
 }
@@ -359,7 +359,7 @@ ${S} #hud > .sf-leftcontext > .sf-mission-tracker .sf-mt-dial__ring { fill:rgb(9
 }
 @media (min-width:1400px) and (min-height:780px) {
   ${S} #sf-prompt-deck { top:calc(26px + var(--sf-safe-inset-top, 0px)); }
-  :root:not([data-sf-mobile-flight="1"]) ${S}:has(#sf-prompt-deck:not([hidden]) .sf-prompt) #hud .sf-visor-utility-row {
+  :root:not([data-sf-mobile-flight="1"]) ${S}[data-sf-prompt-open="1"][data-sf-prompt-open] #hud#hud .sf-visor-utility-row {
     right:calc(clamp(334px, 24.4vw, 405px) + 34px + var(--sf-safe-inset-x, 0px));
   }
 }
@@ -594,7 +594,7 @@ ${S} #sf-why-tip[data-visor-tip] {
 ${S} #sf-why-tip[data-visor-tip]::first-line { font-weight:700; color:#f1f5f3; }
 
 ${S} #hud[data-hud="orrery"] > .sf-vtape { display:none !important; }
-${S}:has(.orr-cluster--visor [data-power="rig"].is-active) .sf-field-pill.field-cone-projecting {
+${S}[data-sf-rig-active="1"][data-sf-rig-active][data-sf-rig-active] .sf-field-pill.field-cone-projecting {
   display:none !important;
 }
 @media (prefers-reduced-motion:reduce) {
