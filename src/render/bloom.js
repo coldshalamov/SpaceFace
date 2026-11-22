@@ -1440,6 +1440,31 @@ const COMPOSITE_FRAG = /* glsl */`
   }
 `;
 
+// Programs created inside a presented scene pass (see renderScenePass): the proof instrument for
+// 'no shader compiles while the world is live'.
+const ON_GLASS_PROGRAM_LOG_N = 64;
+const onGlassPrograms = { rows: new Array(ON_GLASS_PROGRAM_LOG_N), head: 0, programs: 0, passes: 0 };
+function noteProgramsCreatedOnGlass(keys, wrappers, passMs, at) {
+  onGlassPrograms.passes++;
+  onGlassPrograms.programs += wrappers.length;
+  const names = [];
+  for (let i = 0; i < wrappers.length && names.length < 6; i++) {
+    const w = wrappers[i];
+    names.push(String((w && w.name) || '') + ':' + String(keys[i] || '').slice(0, 48));
+  }
+  onGlassPrograms.rows[onGlassPrograms.head] = { at: Math.round(at), passMs: +Number(passMs).toFixed(1), count: wrappers.length, names };
+  onGlassPrograms.head = (onGlassPrograms.head + 1) % ON_GLASS_PROGRAM_LOG_N;
+}
+export function readProgramsCreatedOnGlass() {
+  const rows = [];
+  for (let i = 0; i < ON_GLASS_PROGRAM_LOG_N; i++) {
+    const row = onGlassPrograms.rows[(onGlassPrograms.head + i) % ON_GLASS_PROGRAM_LOG_N];
+    if (row) rows.push(row);
+  }
+  return { programs: onGlassPrograms.programs, passes: onGlassPrograms.passes, rows };
+}
+if (typeof globalThis !== 'undefined' && !globalThis.__SF_LIVE_PROGRAMS__) globalThis.__SF_LIVE_PROGRAMS__ = readProgramsCreatedOnGlass;
+
 // Programs already counted in renderer.info can still be linking. Three's draw path
 // never polls isReady() — gl.useProgram waits out the driver, which is the leftover
 // ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
@@ -1592,6 +1617,7 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  const drawGuardCtxRecord = drawGuardGl && typeof drawGuardGl === 'object' ? programHandleContext(drawGuardGl) : null;
   const guardNow = typeof renderer.__sfDrawGuardNow === 'function'
     ? renderer.__sfDrawGuardNow : unreadyGuardNowMs;
   // Exact-target admission uses the same context-generation ownership as presented draws.
@@ -1683,14 +1709,59 @@ function installUnreadyDrawGuard(renderer) {
           const rec = props.get(material);
           const current = rec && rec.currentProgram;
           if (current) {
-            const variant = linkedDrawProgramVariant(renderer, rec, material, object);
-            // The current wrapper can still be linking when the scoped scene scan
-            // misses a live bind, just as a cached sibling can. Validate either
-            // selected wrapper before first-use discovery can block this draw.
-            // Three caches ready=true; warm draws issue no new GL readiness query.
-            compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
-            if (compiled && typeof variant.isReady === 'function') {
-              try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+            const drawMask = instancingFlags(object)
+              | (object && object.isBatchedMesh === true ? 8 : 0)
+              | (geometry && geometry.isInstancedBufferGeometry === true ? 16 : 0);
+            const target = typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null;
+            const toneMapping = Number(material.toneMapped === true
+              && (!target || target.isXRRenderTarget === true)
+              ? renderer.toneMapping
+              : THREE.NoToneMapping);
+            const cs = !target
+              ? renderer.outputColorSpace
+              : target.isXRRenderTarget === true
+                ? target.texture && target.texture.colorSpace
+                : THREE.ColorManagement.workingColorSpace;
+            const ctxGen = drawGuardCtxRecord ? drawGuardCtxRecord.generation : 0;
+            const cacheValid = rec.__sfWarmGl === drawGuardGl
+              && rec.__sfWarmCtxGen === ctxGen
+              && rec.__sfWarmProg === current
+              && rec.__sfWarmVer === material.version
+              && rec.__sfWarmTone === toneMapping
+              && rec.__sfWarmCs === cs;
+            const cachedVariant = cacheValid && rec.__sfWarmVariants ? rec.__sfWarmVariants[drawMask] : null;
+            if (cachedVariant && cachedVariant.program && !retiredProgramWrappers.has(cachedVariant)
+                && cachedVariant.program === (rec.__sfWarmHandles && rec.__sfWarmHandles[drawMask])) {
+              compiled = true;
+            } else {
+              const variant = linkedDrawProgramVariant(renderer, rec, material, object);
+              // The current wrapper can still be linking when the scoped scene scan
+              // misses a live bind, just as a cached sibling can. Validate either
+              // selected wrapper before first-use discovery can block this draw.
+              // Three caches ready=true; warm draws issue no new GL readiness query.
+              compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
+              if (compiled && typeof variant.isReady === 'function') {
+                try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+              }
+              if (compiled && variant) {
+                if (!cacheValid) {
+                  rec.__sfWarmGl = drawGuardGl;
+                  rec.__sfWarmCtxGen = ctxGen;
+                  rec.__sfWarmProg = current;
+                  rec.__sfWarmVer = material.version;
+                  rec.__sfWarmTone = toneMapping;
+                  rec.__sfWarmCs = cs;
+                  if (!rec.__sfWarmVariants) rec.__sfWarmVariants = [];
+                  else rec.__sfWarmVariants.length = 0;
+                  if (!rec.__sfWarmHandles) rec.__sfWarmHandles = [];
+                  else rec.__sfWarmHandles.length = 0;
+                }
+                rec.__sfWarmVariants[drawMask] = variant;
+                rec.__sfWarmHandles[drawMask] = variant.program;
+              } else if (rec.__sfWarmVariants) {
+                rec.__sfWarmVariants[drawMask] = null;
+                if (rec.__sfWarmHandles) rec.__sfWarmHandles[drawMask] = null;
+              }
             }
           } else {
             // No program at all: this draw would link it inside the presented frame.
@@ -2304,6 +2375,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   };
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
+  let casEnabled = true;
   let casActive = false;
   let casScaling = false;
   // The display footprint the CAS gate compares against is owned by the caller (renderer
@@ -3095,6 +3167,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           ? performance.now()
           : 0) - startedAt;
         const geometriesAfter = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+        // Programs created inside this presented pass: each one is a compile the warm-up missed.
+        // Counted and named in a small ring (globalThis.__SF_LIVE_PROGRAMS__()) so a probe can
+        // prove 'no shader compiled while the world was live' or name the ones that did.
+        if (programsBefore != null && Array.isArray(info?.programs) && info.programs.length > programsBefore) {
+          noteProgramsCreatedOnGlass(exactNewProgramKeys(programsBefore), info.programs.slice(programsBefore), elapsedMs, startedAt);
+        }
         const warnMs = Number(renderer.userData && renderer.userData.spacefaceBrickWarnMs);
         const brick = elapsedMs > (Number.isFinite(warnMs) && warnMs > 0 ? warnMs : BRICK_WARN_MS);
         const grewGeometries = geometriesAfter != null && geometriesBefore != null
@@ -3562,7 +3640,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function syncCasSetup() {
-    casActive = resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
+    casActive = casEnabled && resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
     casScaling = casActive && (contentW !== W || contentH !== H)
       && casSupportsScaling(contentW, contentH, W, H);
     applyCasSetup(casMat.uniforms, CAS_SHARPNESS,
@@ -3600,6 +3678,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof o.enabled === 'boolean') enabled = o.enabled;
     if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
     if (typeof o.compactBloom === 'boolean') compactBloom = o.compactBloom;
+    if (typeof o.casEnabled === 'boolean' && o.casEnabled !== casEnabled) {
+      casEnabled = o.casEnabled;
+      syncCasSetup();
+    }
     if (typeof o.strength === 'number') {
       strength = Math.max(0, o.strength);
       compositeMat.uniforms.uStrength.value = strength;

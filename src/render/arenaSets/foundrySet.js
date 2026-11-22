@@ -73,6 +73,58 @@ export function isFoundrySetEntry(event, arenaId) {
   return event === 'swarm:arenaEntered' && arenaId === FOUNDRY_ARENA_ID;
 }
 
+function freezeStaticMatrix(object) {
+  object.updateMatrix();
+  object.matrixAutoUpdate = false;
+  return object;
+}
+
+function buildSimpleBoxGeometry() {
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  if (geometry.getAttribute('uv')) geometry.deleteAttribute('uv');
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.name = 'sf-foundry-simple-box';
+  return geometry;
+}
+
+function buildDeckPlateGeometry() {
+  // Exact chamfered-corner unit slab matching plateCorner's corner cut at far fewer triangles
+  // than the beveled ExtrudeGeometry (28 tris vs 60 tris per plate across 169 floor bays).
+  const c = 0.03;
+  const h = 0.5;
+  const ring = [
+    [-h + c, -h], [h - c, -h], [h, -h + c], [h, h - c],
+    [h - c, h], [-h + c, h], [-h, h - c], [-h, -h + c],
+  ];
+  const positions = [];
+  const normals = [];
+  const pushTri = (ax, ay, az, bx, by, bz, cx, cy, cz, nx, ny, nz) => {
+    positions.push(ax, ay, az, bx, by, bz, cx, cy, cz);
+    normals.push(nx, ny, nz, nx, ny, nz, nx, ny, nz);
+  };
+  for (let i = 1; i < ring.length - 1; i++) {
+    const a = ring[0], b = ring[i], d = ring[i + 1];
+    pushTri(a[0], h, a[1], d[0], h, d[1], b[0], h, b[1], 0, 1, 0);
+    pushTri(a[0], -h, a[1], b[0], -h, b[1], d[0], -h, d[1], 0, -1, 0);
+  }
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    const ex = b[0] - a[0], ez = b[1] - a[1];
+    const len = Math.hypot(ex, ez) || 1;
+    const nx = ez / len, nz = -ex / len;
+    pushTri(a[0], -h, a[1], b[0], -h, b[1], b[0], h, b[1], nx, 0, nz);
+    pushTri(a[0], -h, a[1], b[0], h, b[1], a[0], h, a[1], nx, 0, nz);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.name = 'sf-foundry-deck-plate';
+  return geometry;
+}
+
 function blocks(root, name, geometry, material, rows, receives = true, casts = false) {
   const batch = new THREE.InstancedMesh(geometry, material, rows.length);
   batch.name = name;
@@ -88,23 +140,26 @@ function blocks(root, name, geometry, material, rows, receives = true, casts = f
     batch.setMatrixAt(i, pose.matrix);
     if (hex != null) batch.setColorAt(i, color.setHex(hex));
   });
+  freezeStaticMatrix(batch);
   root.add(batch);
   return batch;
 }
 
-function buildDeck(root, planeMaterial, steel, box, plateGeometry) {
+function buildDeck(root, planeMaterial, steel, simpleBox, plateGeometry, trimOut) {
   const foundation = new THREE.Mesh(new THREE.PlaneGeometry(DECK_SIZE, DECK_SIZE), planeMaterial);
   foundation.name = 'Foundry deck foundation';
   foundation.rotation.x = -Math.PI / 2;
   foundation.position.y = FOUNDRY_DECK_Y - 1.25;
+  foundation.castShadow = false;
   foundation.receiveShadow = true;
   // The grout plane lies under ~95 % of the screen, beneath the steel plates. Drawn first it shaded
   // every deck pixel twice; drawn after them, early depth rejects all but the visible joints. The
   // opaque state sort (opaqueStateSort.js) orders by renderOrder first, and it is also mounted after
   // the plates for the raw traversal order (?rfx=-sort).
   foundation.renderOrder = 1;
+  freezeStaticMatrix(foundation);
 
-  const plate = [], runners = [], insets = [];
+  const plate = [];
   const finishes = [0x454743, 0x494945, 0x464946, 0x484b48, 0x444644];
   const half = (DECK_BAYS - 1) / 2;
   for (let row = -half; row <= half; row++) {
@@ -115,31 +170,28 @@ function buildDeck(root, planeMaterial, steel, box, plateGeometry) {
       const finish = (Math.abs(row * 19 + col * 13) + col * col) % finishes.length;
       plate.push([x, FOUNDRY_DECK_Y - 0.6, z, BAY - 1, 1.2, BAY - 1, finishes[finish]]);
       if ((col - row * 2) % 5 === 0) {
-        insets.push([x - 23, FOUNDRY_DECK_Y + 0.15, z + 17, 14, 0.3, 27, 0x252b30]);
+        trimOut.push([x - 23, FOUNDRY_DECK_Y + 0.15, z + 17, 14, 0.3, 27, 0x252b30]);
         for (let slot = 0; slot < 5; slot++) {
-          insets.push([x - 23, FOUNDRY_DECK_Y + 0.55, z + 7 + 5 * slot, 12, 0.5, 1.4, 0x555754]);
+          trimOut.push([x - 23, FOUNDRY_DECK_Y + 0.55, z + 7 + 5 * slot, 12, 0.5, 1.4, 0x555754]);
         }
       }
     }
   }
   for (const side of [-1, 1]) {
     for (const x of [97, 112, 171, 187]) {
-      runners.push([side * x, FOUNDRY_DECK_Y + 0.8, 0, 1.6, 1.6, 780, 0x373a3a]);
+      trimOut.push([side * x, FOUNDRY_DECK_Y + 0.8, 0, 1.6, 1.6, 780, 0x373a3a]);
     }
     for (let z = -378; z <= 378; z += 28) {
       const x = side * 95;
-      runners.push([x, FOUNDRY_DECK_Y + 0.12, z, 2.6, 0.24, 14, 0x806340]);
+      trimOut.push([x, FOUNDRY_DECK_Y + 0.12, z, 2.6, 0.24, 14, 0x806340]);
     }
   }
-  blocks(root, 'Foundry steel plating', plateGeometry, steel, plate);
-  blocks(root, 'Foundry rail beds', box, steel, runners);
-  blocks(root, 'Foundry access grilles', box, steel, insets);
-  root.add(foundation);
+  blocks(root, 'Foundry steel plating', plateGeometry, steel, plate, true, false);
   return foundation;
 }
 
-function buildMachinery(root, steel, box, fixtures) {
-  const frames = [], rollers = [], hot = [], lamps = [];
+function buildMachinery(root, steel, simpleBox, fixtures, trimOut) {
+  const frames = [], hot = [], lamps = [];
   const y = FOUNDRY_DECK_Y;
   for (const belt of CONVEYORS) {
     frames.push([belt.x, y + 9, belt.z, 25, 5, BELT_LENGTH, 0x262d30]);
@@ -150,7 +202,7 @@ function buildMachinery(root, steel, box, fixtures) {
       }
     }
     for (let i = -22; i <= 22; i++) {
-      rollers.push([belt.x, y + 12, belt.z + i * 6.8, 23, 1, 2.3, 0x595b58]);
+      trimOut.push([belt.x, y + 12, belt.z + i * 6.8, 23, 1, 2.3, 0x595b58]);
     }
     for (const end of [-1, 1]) {
       const z = belt.z + end * BELT_LENGTH / 2;
@@ -183,18 +235,17 @@ function buildMachinery(root, steel, box, fixtures) {
   frames.push([-248, y + 24, -316, 11, 48, 13, 0x4b4744]);
   frames.push([-214, y + 49, -316, 78, 5, 14, 0x686258]);
   lamps.push([-195, y + 52, -316, 20, 1, 4]);
-  blocks(root, 'Foundry machinery and trusses', box, steel, frames, true, true);
-  blocks(root, 'Foundry conveyor rollers', box, steel, rollers);
-  blocks(root, 'Foundry furnace cores', box, fixtures.hot, hot, false);
-  blocks(root, 'Foundry work-lamp lenses', box, fixtures.lamp, lamps, false);
+  blocks(root, 'Foundry machinery and trusses', simpleBox, steel, frames, true, false);
+  blocks(root, 'Foundry furnace cores', simpleBox, fixtures.hot, hot, false, false);
+  blocks(root, 'Foundry work-lamp lenses', simpleBox, fixtures.lamp, lamps, false, false);
 }
 
 // The arena camera never brings these set pieces close: a cargo pod is ~40-100 px on screen, a
-// rack or gantry a few hundred. Their LOD0 bodies (12.6k tris a pod, 17k a rack) cost ~250k of
-// the round-20 frame's triangles and ~16 ms of GPU (render lead, same-page hide toggle). The
-// packages ship authored LOD1 bodies (~40 % of the triangles, same silhouette and materials);
-// the set mounts those, the way the whole-ship LOD picks LOD1 below 240 px.
+// rack or gantry a few hundred. The set mounts the packages' authored LOD1 bodies (~40 % of the
+// LOD0 triangles, same silhouette and materials), the way the whole-ship LOD picks LOD1 below 240 px.
+// Pieces that never move are merged into one mesh per material (mountStaticChunksMerged).
 const SET_PIECE_LOD = 'lod1';
+const STATIC_PROP_LOD = 'lod1';
 
 function primitiveLod(primitive) {
   const tag = primitive && primitive.tags && primitive.tags.lod;
@@ -230,10 +281,252 @@ export function recordAtLod(record, lod = SET_PIECE_LOD) {
   return derived;
 }
 
-function mountPart(root, record, placements, name, batches, own) {
+function recordAtPreferredLod(record, preferredLod = STATIC_PROP_LOD) {
+  const picked = recordAtLod(record, preferredLod);
+  return picked !== record ? picked : recordAtLod(record, SET_PIECE_LOD);
+}
+
+function textureIdentityKey(texture) {
+  if (!texture) return 'none';
+  const sourceKey = texture.userData?.spacefaceSharedImageSourceKey
+    || texture.source?.uuid
+    || texture.image?.src
+    || texture.uuid;
+  return `${sourceKey}:${texture.wrapS}:${texture.wrapT}:${texture.channel || 0}`;
+}
+
+function staticMaterialKey(material) {
+  if (!material || Array.isArray(material) || material.transparent || material.alphaTest > 0) return null;
+  if (!material.isMeshStandardMaterial && !material.isMeshBasicMaterial
+      && !material.isMeshPhongMaterial && !material.isMeshLambertMaterial) return null;
+  const programKey = typeof material.customProgramCacheKey === 'function'
+    ? String(material.customProgramCacheKey()) : '';
+  const emissiveHex = material.emissive ? material.emissive.getHexString() : '000000';
+  const emissiveIntensity = Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 0;
+  const lampChannel = material.userData?.spacefaceLampBusChannel || material.userData?.lampBus || '';
+  const role = material.userData?.spacefaceMaterialRole || '';
+  const textures = [
+    textureIdentityKey(material.map),
+    textureIdentityKey(material.normalMap),
+    textureIdentityKey(material.roughnessMap),
+    textureIdentityKey(material.metalnessMap),
+    textureIdentityKey(material.aoMap),
+    textureIdentityKey(material.emissiveMap),
+  ].join('/');
+  return [
+    material.type,
+    programKey,
+    role,
+    lampChannel,
+    Number(material.roughness ?? 1).toFixed(3),
+    Number(material.metalness ?? 0).toFixed(3),
+    Number(material.envMapIntensity ?? 1).toFixed(3),
+    material.dithering ? 1 : 0,
+    material.flatShading ? 1 : 0,
+    emissiveHex,
+    emissiveIntensity.toFixed(3),
+    textures,
+  ].join('|');
+}
+
+const _mergeVec = new THREE.Vector3();
+const _mergeNormal = new THREE.Vector3();
+const _mergeNormalMat = new THREE.Matrix3();
+
+function mergeStaticChunkGeometries(chunks, bakeVertexColors) {
+  const first = chunks[0].geometry;
+  const candidateAttrs = ['position', 'normal', 'tangent', 'uv'];
+  const attrNames = candidateAttrs.filter((name) => {
+    const ref = first.getAttribute(name);
+    if (!ref) return false;
+    return chunks.every(({ geometry }) => {
+      const a = geometry.getAttribute(name);
+      return !!a && a.itemSize === ref.itemSize;
+    });
+  });
+  if (!attrNames.includes('position')) return null;
+
+  let vertexTotal = 0;
+  let indexTotal = 0;
+  for (const { geometry } of chunks) {
+    const pos = geometry.getAttribute('position');
+    if (!pos || pos.count <= 0) return null;
+    // A package geometry whose CPU arrays were released after upload cannot be read back: leave
+    // those pieces unmerged (they draw from their own GPU buffers through the fallback path).
+    for (const name of attrNames) {
+      const a = geometry.getAttribute(name);
+      if (!a.array || a.array.length < a.count * a.itemSize) return null;
+    }
+    if (geometry.index && (!geometry.index.array || geometry.index.array.length < geometry.index.count)) return null;
+    vertexTotal += pos.count;
+    indexTotal += geometry.index ? geometry.index.count : pos.count;
+  }
+  if (vertexTotal <= 0 || vertexTotal > 2000000) return null;
+
+  const out = {};
+  for (const name of attrNames) {
+    out[name] = new Float32Array(vertexTotal * first.getAttribute(name).itemSize);
+  }
+  if (bakeVertexColors) out.color = new Float32Array(vertexTotal * 3);
+  const index = vertexTotal <= 65535 ? new Uint16Array(indexTotal) : new Uint32Array(indexTotal);
+
+  let vOffset = 0;
+  let iOffset = 0;
+  for (const { geometry, matrix, material } of chunks) {
+    const pos = geometry.getAttribute('position');
+    const count = pos.count;
+    const det = matrix.determinant();
+    const flipWinding = det < 0;
+    _mergeNormalMat.getNormalMatrix(matrix);
+
+    for (const name of attrNames) {
+      const a = geometry.getAttribute(name);
+      const size = a.itemSize;
+      const dst = out[name];
+      for (let v = 0; v < count; v++) {
+        const o = (vOffset + v) * size;
+        if (name === 'position') {
+          _mergeVec.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix4(matrix);
+          dst[o] = _mergeVec.x; dst[o + 1] = _mergeVec.y; dst[o + 2] = _mergeVec.z;
+        } else if (name === 'normal') {
+          _mergeNormal.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix3(_mergeNormalMat).normalize();
+          dst[o] = _mergeNormal.x; dst[o + 1] = _mergeNormal.y; dst[o + 2] = _mergeNormal.z;
+        } else if (name === 'tangent' && size === 4) {
+          _mergeNormal.set(a.getX(v), a.getY(v), a.getZ(v)).transformDirection(matrix);
+          dst[o] = _mergeNormal.x; dst[o + 1] = _mergeNormal.y; dst[o + 2] = _mergeNormal.z;
+          dst[o + 3] = flipWinding ? -a.getW(v) : a.getW(v);
+        } else {
+          for (let c = 0; c < size; c++) {
+            dst[o + c] = c === 0 ? a.getX(v) : c === 1 ? a.getY(v) : c === 2 ? a.getZ(v) : a.getW(v);
+          }
+        }
+      }
+    }
+
+    if (bakeVertexColors) {
+      const tint = material.color;
+      const r = tint ? tint.r : 1;
+      const g = tint ? tint.g : 1;
+      const b = tint ? tint.b : 1;
+      const srcColor = geometry.getAttribute('color');
+      const dst = out.color;
+      for (let v = 0; v < count; v++) {
+        const o = (vOffset + v) * 3;
+        if (srcColor) {
+          dst[o] = srcColor.getX(v) * r;
+          dst[o + 1] = srcColor.getY(v) * g;
+          dst[o + 2] = srcColor.getZ(v) * b;
+        } else {
+          dst[o] = r; dst[o + 1] = g; dst[o + 2] = b;
+        }
+      }
+    }
+
+    if (geometry.index) {
+      const srcIdx = geometry.index;
+      if (flipWinding) {
+        for (let k = 0; k < srcIdx.count; k += 3) {
+          index[iOffset + k] = srcIdx.getX(k) + vOffset;
+          index[iOffset + k + 1] = srcIdx.getX(k + 2) + vOffset;
+          index[iOffset + k + 2] = srcIdx.getX(k + 1) + vOffset;
+        }
+      } else {
+        for (let k = 0; k < srcIdx.count; k++) index[iOffset + k] = srcIdx.getX(k) + vOffset;
+      }
+      iOffset += srcIdx.count;
+    } else if (flipWinding) {
+      for (let k = 0; k < count; k += 3) {
+        index[iOffset + k] = vOffset + k;
+        index[iOffset + k + 1] = vOffset + k + 2;
+        index[iOffset + k + 2] = vOffset + k + 1;
+      }
+      iOffset += count;
+    } else {
+      for (let k = 0; k < count; k++) index[iOffset + k] = vOffset + k;
+      iOffset += count;
+    }
+    vOffset += count;
+  }
+
+  const merged = new THREE.BufferGeometry();
+  for (const name of attrNames) {
+    merged.setAttribute(name, new THREE.BufferAttribute(out[name], first.getAttribute(name).itemSize));
+  }
+  if (bakeVertexColors) merged.setAttribute('color', new THREE.BufferAttribute(out.color, 3));
+  merged.setIndex(new THREE.BufferAttribute(index, 1));
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+  return merged;
+}
+
+function coalesceMaterialBuckets(chunks, own, keepSingleInFallback = false) {
+  const buckets = new Map();
+  const fallback = [];
+  for (const chunk of chunks) {
+    const key = staticMaterialKey(chunk.material);
+    if (!key || !chunk.geometry?.isBufferGeometry) {
+      fallback.push(chunk);
+      continue;
+    }
+    let bucket = buckets.get(key);
+    if (!bucket) { bucket = []; buckets.set(key, bucket); }
+    bucket.push(chunk);
+  }
+  const merged = [];
+  for (const bucket of buckets.values()) {
+    const baseMaterial = bucket[0].material;
+    const baseColorHex = baseMaterial.color ? baseMaterial.color.getHex() : 0xffffff;
+    const hasDistinctColors = bucket.some((c) => (c.material.color ? c.material.color.getHex() : 0xffffff) !== baseColorHex);
+    const hasAnyVertexColors = bucket.some((c) => !!c.geometry.getAttribute('color'));
+    const bakeVertexColors = hasDistinctColors || hasAnyVertexColors;
+    if (keepSingleInFallback && bucket.length === 1 && !bakeVertexColors) {
+      fallback.push(bucket[0]);
+      continue;
+    }
+    const mergedGeometry = mergeStaticChunkGeometries(bucket, bakeVertexColors);
+    if (!mergedGeometry) {
+      for (const item of bucket) fallback.push(item);
+      continue;
+    }
+    own(mergedGeometry);
+    let material = baseMaterial;
+    if (bakeVertexColors && typeof baseMaterial.clone === 'function') {
+      material = own(baseMaterial.clone());
+      if (material.color) material.color.setHex(0xffffff);
+      material.vertexColors = true;
+      material.needsUpdate = true;
+    }
+    merged.push({ name: bucket[0].name, geometry: mergedGeometry, material });
+  }
+  return { merged, fallback };
+}
+
+function mountStaticChunksMerged(root, chunks, own) {
+  const { merged, fallback } = coalesceMaterialBuckets(chunks, own, false);
+  for (const item of merged) {
+    const mesh = new THREE.Mesh(item.geometry, item.material);
+    mesh.name = 'Foundry static props';
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    freezeStaticMatrix(mesh);
+    root.add(mesh);
+  }
+  for (const item of fallback) {
+    const mesh = new THREE.Mesh(item.geometry, item.material);
+    mesh.name = item.name || 'Foundry static prop';
+    mesh.applyMatrix4(item.matrix);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    freezeStaticMatrix(mesh);
+    root.add(mesh);
+  }
+}
+
+function mountPart(root, record, placements, name, batches, own, staticChunks = null, preferredLod = STATIC_PROP_LOD) {
   const model = new THREE.Group();
   model.name = name;
-  instantiatePackagedPrimitives(frameCostFixOn('setLod') ? recordAtLod(record) : record, model);
+  const mountedRecord = frameCostFixOn('setLod') ? recordAtPreferredLod(record, preferredLod) : record;
+  instantiatePackagedPrimitives(mountedRecord, model);
   const bounds = new THREE.Box3().setFromObject(model);
   if (bounds.isEmpty()) return;
   const centre = bounds.getCenter(new THREE.Vector3());
@@ -251,8 +544,36 @@ function mountPart(root, record, placements, name, batches, own) {
     pose.updateMatrix();
     return pose.matrix.clone();
   });
-  for (const mesh of model.children) {
-    const batch = own(new THREE.InstancedMesh(mesh.geometry, mesh.material, placements.length));
+  if (!moving && staticChunks) {
+    for (const mesh of model.children) {
+      mesh.updateMatrix();
+      for (const poseMatrix of poses) {
+        staticChunks.push({
+          name,
+          geometry: mesh.geometry,
+          material: mesh.material,
+          matrix: new THREE.Matrix4().multiplyMatrices(poseMatrix, mesh.matrix),
+        });
+      }
+    }
+    return;
+  }
+  const localChunks = model.children.map((mesh) => {
+    mesh.updateMatrix();
+    return {
+      name,
+      geometry: mesh.geometry,
+      material: mesh.material,
+      matrix: mesh.matrix.clone(),
+    };
+  });
+  const { merged, fallback } = coalesceMaterialBuckets(localChunks, own, true);
+  const entries = [
+    ...merged.map((item) => ({ ...item, primitive: null })),
+    ...fallback.map((item) => ({ ...item, primitive: item.matrix })),
+  ];
+  for (const { geometry, material, primitive } of entries) {
+    const batch = own(new THREE.InstancedMesh(geometry, material, placements.length));
     batch.name = name;
     batch.receiveShadow = true;
     // The authored kits contain fine ribs and fasteners. The structural silhouettes cast.
@@ -260,10 +581,11 @@ function mountPart(root, record, placements, name, batches, own) {
     if (moving) {
       batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       batch.frustumCulled = false;
-      batches.push({ batch, poses, primitive: mesh.matrix });
+      batches.push({ batch, poses, primitive });
     } else {
-      poses.forEach((poseMatrix, i) => batch.setMatrixAt(i, matrix.multiplyMatrices(poseMatrix, mesh.matrix)));
+      poses.forEach((poseMatrix, i) => batch.setMatrixAt(i, primitive ? matrix.multiplyMatrices(poseMatrix, primitive) : poseMatrix));
     }
+    freezeStaticMatrix(batch);
     root.add(batch);
   }
 }
@@ -285,26 +607,21 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
     lamp: own(new THREE.MeshBasicMaterial({ color: new THREE.Color(FOUNDRY_LIGHT.lampCore).multiplyScalar(1.4) })),
   };
   const box = machinedBoxGeometry();
-  // Floor plates keep small clipped corners in world units. Scaling the prop
-  // bevel straight up would cut broad dark holes in every floor joint.
-  const plateGeometry = own(box.clone());
-  const vertices = plateGeometry.getAttribute('position');
-  for (let i = 0; i < vertices.count; i++) {
-    vertices.setX(i, plateCorner(vertices.getX(i)));
-    vertices.setZ(i, plateCorner(vertices.getZ(i)));
-  }
-  plateGeometry.computeVertexNormals();
-  plateGeometry.computeBoundingBox();
-  plateGeometry.computeBoundingSphere();
-  own(buildDeck(root, grout, floor, box, plateGeometry).geometry);
-  buildMachinery(root, steel, box, fixtures);
+  const simpleBox = own(buildSimpleBoxGeometry());
+  const plateGeometry = own(buildDeckPlateGeometry());
+  const trimRows = [];
+  const foundation = buildDeck(root, grout, floor, simpleBox, plateGeometry, trimRows);
+  own(foundation.geometry);
+  buildMachinery(root, steel, simpleBox, fixtures, trimRows);
+  blocks(root, 'Foundry deck trim and rollers', simpleBox, steel, trimRows, true, false);
+  root.add(foundation);
   for (const object of root.children) if (object.isInstancedMesh) own(object);
 
   const blank = [0, 0, 0, 1, 1, 1, 0xffffff];
   const walls = own(blocks(root, 'Foundry bank foundations', box, steel,
     Array(BANK_CAPACITY * 9).fill(blank), true, true));
-  const bankLenses = own(blocks(root, 'Foundry bank marker lenses', box, fixtures.lamp,
-    Array(BANK_CAPACITY * 2).fill(blank), false));
+  const bankLenses = own(blocks(root, 'Foundry bank marker lenses', simpleBox, fixtures.lamp,
+    Array(BANK_CAPACITY * 2).fill(blank), false, false));
   walls.count = bankLenses.count = 0;
   const pose = new THREE.Object3D();
   const color = new THREE.Color();
@@ -331,18 +648,27 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
   const active = () => !disposed;
   const assetRoot = isReleaseAssetMode() ? RELEASE_PROP_ROOT : PROP_ROOT;
   const jobs = [
-    ['place_conveyor_truss', CONVEYORS, 'Foundry conveyor truss'],
-    ['place_container_rack', RACKS, 'Foundry panel racks'],
-    ['place_maintenance_gantry', GANTRIES, 'Foundry maintenance gantries'],
+    ['place_conveyor_truss', CONVEYORS, 'Foundry conveyor truss', STATIC_PROP_LOD],
+    ['place_container_rack', RACKS, 'Foundry panel racks', STATIC_PROP_LOD],
+    ['place_maintenance_gantry', GANTRIES, 'Foundry maintenance gantries', STATIC_PROP_LOD],
     ['place_cargo_pod_standard', CONVEYORS.flatMap(belt => Array.from({ length: CRATES_PER_BELT }, () =>
-      ({ x: belt.x, z: 0, y: FOUNDRY_DECK_Y + BELT_HEIGHT, yaw: belt.yaw, fit: 19 }))), 'Foundry cargo'],
+      ({ x: belt.x, z: 0, y: FOUNDRY_DECK_Y + BELT_HEIGHT, yaw: belt.yaw, fit: 19 }))), 'Foundry cargo', STATIC_PROP_LOD],
   ];
-  const ready = renderer ? Promise.all(jobs.map(async ([file, placements, name]) => {
+  const ready = renderer ? Promise.all(jobs.map(async ([file, placements, name, preferredLod]) => {
     const record = await loadPart(`${assetRoot}${file}.glb`, {
       renderer, slot: 'place', optional: true, residencyOwner: owner, isResidencyOwnerActive: active,
     });
-    if (record?.primitives?.length && active()) mountPart(root, record, placements, name, cargo, own);
-  })) : Promise.resolve();
+    return { record, placements, name, preferredLod };
+  })).then((loaded) => {
+    if (!active()) return;
+    const staticChunks = [];
+    for (const { record, placements, name, preferredLod } of loaded) {
+      if (record?.primitives?.length) {
+        mountPart(root, record, placements, name, cargo, own, staticChunks, preferredLod);
+      }
+    }
+    if (staticChunks.length > 0) mountStaticChunksMerged(root, staticChunks, own);
+  }) : Promise.resolve();
 
   function setBankBlock(batch, index, bank, x, y, z, width, height, depth, hex) {
     const { rot, pos } = bank;
@@ -414,7 +740,7 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
           const phase = (elapsed * 11 + (i % CRATES_PER_BELT) * BELT_LENGTH / CRATES_PER_BELT) % BELT_LENGTH;
           matrix.copy(poses[i]);
           matrix.elements[14] += belt.z + (belt.x < 0 ? 1 : -1) * (phase - BELT_LENGTH / 2);
-          batch.setMatrixAt(i, matrix.multiply(primitive));
+          batch.setMatrixAt(i, primitive ? matrix.multiply(primitive) : matrix);
         }
         batch.instanceMatrix.needsUpdate = true;
       }
