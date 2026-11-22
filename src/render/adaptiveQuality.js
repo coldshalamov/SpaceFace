@@ -805,8 +805,12 @@ export function createAdaptiveResolution(opts = {}) {
 //   under budget  -> climb one band at a time, only after the predicted cost of the higher band
 //                    has stayed under the budget with margin for upHoldS
 //   deadband      -> between those two nothing moves, so the picture does not pump
-//   no benefit    -> if a drop did not buy the GPU time the pixel model promised (the time is not
-//                    pixel-bound), the old scale is restored and drops wait out a doubling hold
+//   no benefit    -> if a drop bought under 40 % of the GPU time the pixel model promised (below
+//                    that scale the frame is bound by geometry or draw submission, not pixels), the
+//                    previous scale is restored and further drops wait out a doubling hold. The
+//                    timer measures the span of the pass on the GPU, so a pass the main thread
+//                    feeds slowly reads long however few pixels it shades: this is what stops the
+//                    governor from trading sharpness for nothing in that case
 //
 // Samples rendered at the old scale are discarded by frame id after every change. No allocation per
 // update. The caller owns eligibility (live flight only) and feeds each GPU frame total once.
@@ -822,7 +826,9 @@ export function createGpuBudgetResolution(opts = {}) {
   const aimRatio = clamp(Number(opts.aimRatio) || 0.94, 0.5, 1);
   const smoothS = clamp(Number(opts.smoothS) || 0.15, 0.02, 2);
   const upHoldS = clamp(Number(opts.upHoldS) || 2, 0.2, 60);
-  const minSamples = Math.max(1, Math.floor(Number(opts.minSamples) || 2));
+  const minSamples = Math.max(1, Math.floor(Number(opts.minSamples) || 3));
+  const maxDropStep = clamp(Number(opts.maxDropStep) || 0.6, 0.3, 0.95);
+  const benefitShare = clamp(Number(opts.benefitShare) || 0.4, 0.05, 0.9);
   const noBenefitHoldS = clamp(Number(opts.noBenefitHoldS) || 15, 1, 600);
   const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
 
@@ -919,9 +925,12 @@ export function createGpuBudgetResolution(opts = {}) {
           fixedMs = clamp(emaMs - pixelAtOne * scale * scale, 0, emaMs);
         }
         const fromScale = pending.fromScale;
+        const fromMs = pending.fromMs;
         pending = null;
-        if (promised > 0.5 && got < promised * 0.25) {
-          // The GPU time did not move: it is not pixel-bound, so the lower band only costs sharpness.
+        // Only a drop big enough to stand out of the measurement noise is judged (15 % promised).
+        if (promised > fromMs * 0.15 && got < promised * benefitShare) {
+          // The GPU time did not move as pixels would: below this scale the frame is bound by
+          // something else (geometry, draw submission), so the lower scale only costs sharpness.
           dropHoldS = noBenefitHoldS * (2 ** Math.min(noBenefitStreak, 3));
           noBenefitStreak++;
           set(fromScale, currentFrameId, 'no-benefit');
@@ -931,10 +940,10 @@ export function createGpuBudgetResolution(opts = {}) {
       }
 
       if (emaMs > budgetMs * downRatio && scale > floor + 1e-3 && dropHoldS <= 0) {
-        const pixelMs = Math.max(0.001, emaMs - fixedMs);
-        const room = budgetMs * aimRatio - fixedMs;
-        // With no room under the fixed part, the pixel model cannot reach the budget: one band.
-        const wanted = room > 0 ? scale * Math.sqrt(room / pixelMs) : scale - band;
+        // Pure pixel model (cost ~ scale^2), at most a 0.6x step per decision: each step is then
+        // large enough to be judged, and the descent stops at the scale where pixels stop being
+        // the cost instead of running to the floor for nothing.
+        const wanted = Math.max(scale * Math.sqrt((budgetMs * aimRatio) / emaMs), scale * maxDropStep);
         const next = clamp(Math.min(snapDown(wanted), scale - band), floor, 1);
         const fromScale = scale;
         const fromMs = emaMs;

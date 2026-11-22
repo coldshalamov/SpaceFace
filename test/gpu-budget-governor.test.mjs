@@ -8,7 +8,7 @@ import {
 } from '../src/render/adaptiveQuality.js';
 
 // A GPU whose frame costs fixed + pixel * scale^2 ms, measured two frames late.
-function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2 } = {}) {
+function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2, costAt = null } = {}) {
   const applied = [];
   const governor = createGpuBudgetResolution({ floor, apply: (s) => applied.push(s) });
   const cost = { fixed, pixel };
@@ -21,7 +21,7 @@ function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2 } = {})
     const ready = pipeline.length > latency ? pipeline.shift() : null;
     governor.update(1 / fps, ready ? ready.ms : null, ready ? ready.frame : 0, frame);
     const s = governor.getScale();
-    pipeline.push({ frame, ms: cost.fixed + cost.pixel * s * s });
+    pipeline.push({ frame, ms: costAt ? costAt(s) : cost.fixed + cost.pixel * s * s });
     return s;
   };
   const run = (seconds) => { const n = Math.round(seconds * fps); for (let i = 0; i < n; i++) step(); };
@@ -87,15 +87,27 @@ test('samples rendered at the old scale are ignored after a change', () => {
   const applied = [];
   const g = createGpuBudgetResolution({ floor: 0.5, apply: (s) => applied.push(s) });
   g.update(0.033, 30, 1, 3);
-  g.update(0.033, 30, 2, 4); // second sample: drop, valid from frame 4
+  g.update(0.033, 30, 2, 4);
+  g.update(0.033, 30, 3, 5); // third sample: drop, valid from frame 5
   assert.equal(applied.length, 1);
   const scale = g.getScale();
-  for (let i = 0; i < 6; i++) g.update(0.033, 30, 3, 5 + i); // stale frame-3 totals keep arriving
+  for (let i = 0; i < 6; i++) g.update(0.033, 30, 4, 6 + i); // stale frame-4 totals keep arriving
   assert.equal(g.getScale(), scale, 'stale samples did not drive a second drop');
 });
 
 // The display delivers a present every 1/cap seconds when the frame fits, and every third 60 Hz
 // beat (45 a second on average) when 60 is asked for but the frame does not fit.
+test('a pass the main thread feeds slowly stops the descent where pixels stop paying', () => {
+  // The timer reads the span of the pass: the longer of the pixel work and the 35 ms it takes
+  // the main thread to submit the scene. Below about 0.73 a lower scale buys nothing.
+  const r = rig({ fps: 10, latency: 1, costAt: (s) => Math.max(35, 66 * s * s) });
+  let atFloorFrames = 0;
+  let frames = 0;
+  for (let i = 0; i < 600; i++) { r.run(0.1); frames++; if (r.governor.atFloor()) atFloorFrames++; }
+  assert.ok(r.governor.getScale() >= 0.6 && r.governor.getScale() < 1, `scale ${r.governor.getScale()}`);
+  assert.ok(atFloorFrames / frames < 0.1, `share of time at the floor: ${(atFloorFrames / frames).toFixed(2)}`);
+});
+
 function runCadence(governor, seconds, { workMs, gpuMs = null, atFloor = false, gpuBound = false }) {
   let t = 0;
   while (t < seconds) {
