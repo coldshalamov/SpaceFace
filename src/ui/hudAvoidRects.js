@@ -230,8 +230,15 @@ const hudRectCacheOn = () => frameCostFixOn('hudRects');
 // rectangles read there are already computed and cost nothing. afterLayout(doc, fn) runs fn in that
 // slot of the current frame (a hidden one-pixel sentinel is nudged so the observer fires). Hosts
 // without a ResizeObserver or a body (tests, partial DOMs) get `false` back and read directly.
+//
+// The slot is free only while nothing in it writes: a job that moves the HUD (the receipt lane)
+// followed by a job that reads a rectangle made the browser lay the whole page out a second time
+// inside the slot (60+ ms in a round-6 fight, 87 ms inside the longest main-thread task). So jobs
+// that only read run first, jobs declared as writers (opts.writes) run last, and the slot stops
+// taking new jobs once it has spent AFTER_LAYOUT_BUDGET_MS: the rest ride the next frame's slot.
+export const AFTER_LAYOUT_BUDGET_MS = 2;
 const layoutPhases = new WeakMap();
-export function afterLayout(doc, fn) {
+export function afterLayout(doc, fn, opts = null) {
   const view = doc && doc.defaultView;
   const Observer = view && view.ResizeObserver;
   if (typeof Observer !== 'function' || !doc.body || typeof doc.createElement !== 'function'
@@ -242,16 +249,37 @@ export function afterLayout(doc, fn) {
     if (!sentinel || !sentinel.style) return false;
     sentinel.setAttribute?.('aria-hidden', 'true');
     sentinel.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;visibility:hidden;pointer-events:none;contain:strict;';
-    phase = { sentinel, pending: new Set(), tall: false, observer: null, running: false, nudgeQueued: false, nudgedAt: -Infinity };
+    phase = { sentinel, pending: new Set(), writers: new Set(), tall: false, observer: null, running: false, nudgeQueued: false, nudgedAt: -Infinity, carry: null };
     try {
       phase.observer = new Observer(() => {
         if (!phase.pending.size) return;
-        const run = Array.from(phase.pending);
+        const all = Array.from(phase.pending);
+        const run = all.filter((job) => !phase.writers.has(job)).concat(all.filter((job) => phase.writers.has(job)));
         phase.pending.clear();
         phase.running = true;
+        const perf = view.performance;
+        const started = perf && typeof perf.now === 'function' ? perf.now() : 0;
+        let done = 0;
         try {
-          for (const job of run) { try { job(); } catch (_) { /* one reader never blocks the rest */ } }
+          for (; done < run.length; done += 1) {
+            // Always one job; after that only while the slot is inside its budget.
+            if (done > 0 && perf && perf.now() - started > AFTER_LAYOUT_BUDGET_MS) break;
+            const job = run[done];
+            phase.writers.delete(job);
+            try { job(); } catch (_) { /* one reader never blocks the rest */ }
+          }
         } finally { phase.running = false; }
+        if (done < run.length) {
+          // Carried jobs keep their order ahead of anything asked for during this slot.
+          const late = Array.from(phase.pending);
+          phase.pending.clear();
+          for (let i = done; i < run.length; i += 1) phase.pending.add(run[i]);
+          for (const job of late) phase.pending.add(job);
+          if (!phase.nudgeQueued && phase.carry && typeof view.requestAnimationFrame === 'function') {
+            phase.nudgeQueued = true;
+            view.requestAnimationFrame(phase.carry);
+          }
+        }
       });
       doc.body.appendChild(sentinel);
       phase.observer.observe(sentinel);
@@ -261,6 +289,7 @@ export function afterLayout(doc, fn) {
   if (phase.sentinel.isConnected === false) { try { doc.body.appendChild(phase.sentinel); } catch (_) { return false; } }
   const first = phase.pending.size === 0;
   phase.pending.add(fn);
+  if (opts && opts.writes === true) phase.writers.add(fn);
   const clock = () => (view.performance && typeof view.performance.now === 'function' ? view.performance.now() : Date.now());
   const nudge = () => {
     phase.nudgeQueued = false;
@@ -269,6 +298,7 @@ export function afterLayout(doc, fn) {
     phase.sentinel.style.height = phase.tall ? '2px' : '1px';
     phase.nudgedAt = clock();
   };
+  phase.carry = nudge;
   if (phase.running) {
     // Asked from inside the post-layout slot itself: nudging the sentinel now would make the
     // observer loop on its own element, so the job takes the next frame's slot.

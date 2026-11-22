@@ -138,7 +138,7 @@ for (const r of results) {
   }
   const g = rep.gpu && rep.gpu.passes ? Object.entries(rep.gpu.passes).map(([k, v]) => `${k} ${v.avg}`).join(', ') : null;
   lines.push(`${pad('', 31)}world x${rep.world.speed}${rep.world.worst10s != null ? ` (worst 10 s x${rep.world.worst10s})` : ''}; worker step p50 ${rep.worker.stepP50} p95 ${rep.worker.stepP95} ms; longest task ${rep.longTasks.longestMs} ms (${rep.longTasks.over50} over 50); freeze log ${rep.freeze.logEntries}; data age ${rep.freeze.dataAgeMaxMs} ms; GPU ms ${g || (rep.gpu && rep.gpu.status) || 'n/a'}`);
-  lines.push(`${pad('', 31)}fight: round ${rep.fight.wave.join('-')}, ${rep.fight.shipsMedian} ships (max ${rep.fight.shipsMax}), ${rep.fight.drawCallsMedian} draw calls, live ${Math.round(rep.fight.liveFraction * 100)} %${rep.fight.sectors.length > 1 ? `, sectors ${rep.fight.sectors.join(' -> ')}` : ''}; other load on the machine ${rep.machine.otherLoadFraction != null ? Math.round(rep.machine.otherLoadFraction * 100) + ' %' : '?'}`);
+  lines.push(`${pad('', 31)}fight: round ${rep.fight.wave.join('-')}, ${rep.fight.shipsMedian} ships (max ${rep.fight.shipsMax}), ${rep.fight.drawCallsMedian} draw calls, live ${Math.round(rep.fight.liveFraction * 100)} %${rep.fight.sectors.length > 1 ? `, sectors ${rep.fight.sectors.join(' -> ')}` : ''}; other load on the machine ${rep.machine.otherLoadFraction != null ? Math.round(rep.machine.otherLoadFraction * 100) + ' %' : '?'}${rep.machine.otherLoadFraction > 0.4 ? '  ** LOADED: a worst-case number, not a verdict **' : ''}`);
 }
 for (const r of results) for (const n of (r.report && r.report.notes) || []) lines.push(`note (${r.label}): ${n}`);
 lines.push('');
@@ -179,6 +179,7 @@ for (const r of results) {
 }
 lines.push('');
 lines.push(`MILESTONE 1 (locked 30): ${results.some((r) => !r.m1) || m1Failed ? 'NOT MET' : 'MET'}    SHIP BAR (60): ${failed ? 'NOT MET' : 'MET'}`);
+if (results.some((r) => r.report && r.report.machine && r.report.machine.otherLoadFraction > 0.4)) lines.push('LOADED: other work was using more than 40 % of the machine during at least one route. Worst case, not a verdict.');
 lines.push(failed ? 'IS IT SMOOTH: NO' : 'IS IT SMOOTH: YES');
 console.log(lines.join('\n'));
 try { writeFileSync(join(SMOOTH, `${STAMP}-summary.txt`), lines.join('\n')); } catch (_) { /* evidence only */ }
@@ -194,7 +195,7 @@ for (const r of results) {
       world: rep.world.speed, worst10s: rep.world.worst10s, stepP50: rep.worker.stepP50, stepP95: rep.worker.stepP95,
       longestTask: rep.longTasks.longestMs, tasksOver50: rep.longTasks.over50, freezeLog: rep.freeze.logEntries, dataAge: rep.freeze.dataAgeMaxMs,
       gpu: rep.gpu && rep.gpu.passes ? Object.fromEntries(Object.entries(rep.gpu.passes).map(([k, v]) => [k, v.avg])) : null,
-      ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loadS: rep.loadS });
+      ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loaded: rep.machine.otherLoadFraction > 0.4, loadS: rep.loadS });
   }
   appendFileSync(join(SMOOTH, 'history.jsonl'), `${JSON.stringify(row)}\n`);
 }

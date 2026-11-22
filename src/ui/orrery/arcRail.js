@@ -557,9 +557,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     trailHost.appendChild(svg('path', { d: arcD(geo.pivot.x, geo.pivot.y, geo.ri - 8, a0, a1), class: 'orr-arcrail__trail', 'stroke-width': 1.4 }));
   }
 
+  // The size the last build seated the dial for: an observer report of that same size is not a resize.
+  let builtW = -1; let builtH = -1;
   function build() {
     const W = host.clientWidth || doc.documentElement.clientWidth;
     const H = host.clientHeight || doc.documentElement.clientHeight;
+    builtW = host.clientWidth; builtH = host.clientHeight;
     let all = rows();
     // a re-seat inside the arrival window would replay the head/rule entrances on the new nodes —
     // the entrance is a first-open gesture, not a relayout one. Strip the class once heads have
@@ -1236,7 +1239,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
 
   let ro = null;
   if (typeof ResizeObserver === 'function') {
-    ro = new ResizeObserver(() => build());
+    // A ResizeObserver always reports once on observe(); the mount build two lines down has already
+    // seated the dial at that size, and each build costs a whole-page layout (60-70 ms mid-fight,
+    // on the frame after Esc). Only a real change of the host's size re-seats.
+    ro = new ResizeObserver(() => { if (host.clientWidth !== builtW || host.clientHeight !== builtH) build(); });
     ro.observe(host);
   }
   build();
@@ -1245,7 +1251,9 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   // apply, so seat them again then (a row measured early packs its verbs on top of each other).
   const relayout = () => { if (root.isConnected) { build(); paintHand(handSpring.value); } };
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(relayout));
-  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(relayout, () => {});
+  // Fonts already in when the dial mounts: the mount build measured the real words, and the
+  // two-frame relayout above still follows. Only a font that arrives later needs its own pass.
+  if (doc.fonts && doc.fonts.status !== 'loaded' && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(relayout, () => {});
   // A grouped row's seat depends on each verb's measured width, and the DOM localization bridge
   // rewrites those words on a microtask after mount (D136): a row seated in English overruns its
   // host the moment its words widen. Re-seat the dial in the same checkpoint the text changes —

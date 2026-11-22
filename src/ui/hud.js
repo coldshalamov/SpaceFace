@@ -8236,7 +8236,7 @@ export function createHud(ctx, alerts) {
     if (typeof document !== 'undefined' && frameCostFixOn('hudLayout')) {
       const t = postLayoutNow();
       if (receiptFlushAskedAt !== -Infinity && t - receiptFlushAskedAt < POST_LAYOUT_PATIENCE_MS) return;
-      if (receiptFlushAskedAt === -Infinity && afterLayout(document, runDeferredReceiptFlush)) {
+      if (receiptFlushAskedAt === -Infinity && afterLayout(document, runDeferredReceiptFlush, { writes: true })) {
         receiptFlushAskedAt = t;
         return;
       }
