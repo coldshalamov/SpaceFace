@@ -187,3 +187,76 @@ export function formatSmoothProfile(p, { title = '' } = {}) {
   section('INCLUSIVE TIME BY FUNCTION (a function and everything it calls)', p.inclusive, 170);
   return `${L.join('\n')}\n`;
 }
+
+// ---- trace breakdown (--trace): what the browser itself does around the game's JavaScript ----
+// The sampling profile lumps everything outside JavaScript into "(program)". A trace names it:
+// style, layout, paint, commit, and whether the compositor or the GPU process is the one saturated.
+// Self time per event name on every thread, counted only for events that start in a live judged
+// tick, in ms per presented frame. `syncTs` is the trace timestamp (us) of a performance.mark whose
+// page time is `syncPageMs`.
+export function summarizeSmoothTrace({ events, syncTs, syncPageMs, ticks, liveAt, frames }) {
+  const out = { ok: false, why: '' };
+  if (!Array.isArray(events) || !events.length) { out.why = 'no trace events'; return out; }
+  if (!Number.isFinite(syncTs) || !Number.isFinite(syncPageMs)) { out.why = 'trace clock mark missing'; return out; }
+  const off = syncTs / 1000 - syncPageMs;
+  const { tn, flags } = ticks; const T = tn.length;
+  const inFrame = new Uint8Array(T);
+  let frameCount = 0;
+  for (const f of frames) { if (!Number.isInteger(f.i0)) continue; frameCount++; for (let k = f.i0 + 1; k <= f.i1 && k < T; k++) inFrame[k] = 1; }
+  if (!frameCount) { out.why = 'no frames'; return out; }
+  const liveTick = (pageMs) => {
+    let lo = 1; let hi = T - 1;
+    if (!(pageMs >= tn[0]) || pageMs >= tn[T - 1]) return false;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (tn[mid] > pageMs) hi = mid; else lo = mid + 1; }
+    const seg = (flags[lo] >> 1) & 3;
+    return !!(inFrame[lo] && liveAt[lo] && liveAt[lo - 1] && (seg === 1 || seg === 2));
+  };
+  const threadName = new Map(); const procName = new Map();
+  for (const e of events) {
+    if (e.ph !== 'M') continue;
+    if (e.name === 'thread_name') threadName.set(`${e.pid}:${e.tid}`, e.args && e.args.name);
+    if (e.name === 'process_name') procName.set(e.pid, e.args && e.args.name);
+  }
+  const byThread = new Map();
+  for (const e of events) {
+    if (e.ph !== 'X' || !(e.dur > 0)) continue;
+    const key = `${e.pid}:${e.tid}`;
+    let list = byThread.get(key); if (!list) byThread.set(key, list = []);
+    list.push(e);
+  }
+  const threads = [];
+  for (const [key, list] of byThread) {
+    list.sort((a, b) => a.ts - b.ts || b.dur - a.dur);
+    const self = new Map(); let busy = 0;
+    const stack = [];
+    const close = (s) => { if (s.live) self.set(s.name, (self.get(s.name) || 0) + Math.max(0, s.dur - s.kids) / 1000); };
+    for (const e of list) {
+      while (stack.length && stack.at(-1).end <= e.ts) close(stack.pop());
+      const live = liveTick(e.ts / 1000 - off);
+      if (stack.length) stack.at(-1).kids += e.dur; else if (live) busy += e.dur / 1000;
+      const d = (e.args && e.args.data) || {};
+      // Name JavaScript by what the browser called, everything else by its event name.
+      const name = e.name === 'FunctionCall' || e.name === 'EvaluateScript' || e.name === 'v8.callFunction' ? 'JavaScript'
+        : e.name === 'TimerFire' || e.name === 'FireAnimationFrame' || e.name === 'EventDispatch' ? `${e.name}${d.type ? ` ${d.type}` : ''}` : e.name;
+      stack.push({ end: e.ts + e.dur, dur: e.dur, kids: 0, name, live });
+    }
+    while (stack.length) close(stack.pop());
+    if (busy <= 0) continue;
+    const pid = Number(key.split(':')[0]);
+    threads.push({ thread: `${threadName.get(key) || key} (${procName.get(pid) || pid})`, busyMsPerFrame: +(busy / frameCount).toFixed(2),
+      self: [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([name, ms]) => ({ name, ms: +(ms / frameCount).toFixed(2) })).filter((r) => r.ms >= 0.03) });
+  }
+  threads.sort((a, b) => b.busyMsPerFrame - a.busyMsPerFrame);
+  out.ok = true; out.frames = frameCount; out.threads = threads.slice(0, 10);
+  return out;
+}
+
+export function formatSmoothTrace(t, { title = '' } = {}) {
+  if (!t || !t.ok) return `TRACE BREAKDOWN NOT MADE: ${t ? t.why : 'no data'}\n`;
+  const L = [`BROWSER TRACE, live world only${title ? `: ${title}` : ''}`, `ms per presented frame over ${t.frames} frames; self time by event name, busiest thread first. Tracing itself slows the run: read shares.`];
+  for (const th of t.threads) {
+    L.push(''); L.push(`${th.thread}: busy ${th.busyMsPerFrame} ms per frame`);
+    for (const r of th.self) L.push(`${String(r.ms.toFixed(2)).padStart(9)}  ${r.name}`);
+  }
+  return `${L.join('\n')}\n`;
+}

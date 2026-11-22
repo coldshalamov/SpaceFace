@@ -31,6 +31,12 @@
 // refreshes taken (scripts/lib/smoothProfile.mjs). The sampler costs a few percent, so a profiled
 // run is for finding owners, not for the scoreboard.
 //
+// --census: after the judged window, a few seconds with the renderer wrapped: WebGL calls by name,
+// every draw with its owner, material, program and geometry, and the scene-graph size, per presented
+// frame (<out>/census.txt; scripts/lib/smoothCensus.mjs).
+// --eval-file=<path>: JavaScript run in the page before the route starts, for an on/off experiment
+// in the referee's own setup (a live switch, a style rule). The run is marked as an experiment.
+//
 // Writes <out>/report.json (+ frames.json, loaf.json, samples.json). npm run check:smooth judges.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -55,6 +61,8 @@ const SEGMENT_S = Number(argv.segment || 10);
 const TRACE = argv.trace === true;
 const PROFILE = argv.profile === true || (typeof argv.profile === 'string' && argv.profile !== '0');
 const PROFILE_INTERVAL_US = Math.max(100, Number(argv['profile-interval'] || 500));
+const CENSUS = argv.census === true;
+const EVAL_FILE = typeof argv['eval-file'] === 'string' ? resolve(ROOT, argv['eval-file']) : '';
 const WANT = { w: 1536, h: 864, dpr: 1.25 };
 const TRANSITION_S = 3;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/smooth/adhoc-${ROUTE}`));
@@ -66,7 +74,8 @@ const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 const { installCspSafePlaywrightPolling } = await import('./lib/playwrightCspPolling.mjs');
 const { installFirstLightPromptHandler } = await import('./player-truth/routes.mjs');
 const { createHand, PRESS_THROUGH_SCREENS } = await import('./lib/playHand.mjs');
-const { summarizeSmoothProfile, formatSmoothProfile, SMOOTH_PROFILE_SYNC_FN } = await import('./lib/smoothProfile.mjs');
+const { summarizeSmoothProfile, formatSmoothProfile, summarizeSmoothTrace, formatSmoothTrace, SMOOTH_PROFILE_SYNC_FN } = await import('./lib/smoothProfile.mjs');
+const { installSmoothCensus, collectSmoothCensus, formatSmoothCensus } = await import('./lib/smoothCensus.mjs');
 const { _electron: electron } = await loadPlaywright();
 
 // His video settings, read-only. Only the settings profile is copied; saves are never touched.
@@ -127,6 +136,15 @@ try {
   // The window is never activated; tell the page it has focus, as a player's window does.
   await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
   await cdp.send('Performance.enable').catch(() => {});
+  if (EVAL_FILE) {
+    // An experiment: run the file's JavaScript in the page (through the debugger, so the page's
+    // script policy does not apply). The report says so; it is never a scoreboard row.
+    const res = await cdp.send('Runtime.evaluate', { expression: readFileSync(EVAL_FILE, 'utf8'), returnByValue: true, awaitPromise: true }).catch((e) => ({ exceptionDetails: { text: String(e) } }));
+    if (res.exceptionDetails) fail(`--eval-file threw: ${JSON.stringify(res.exceptionDetails).slice(0, 300)}`);
+    report.experiment = { file: EVAL_FILE.replace(ROOT, '').replace(/\\/g, '/'), returned: res.result ? res.result.value ?? null : null };
+    report.notes.push(`EXPERIMENT: ${report.experiment.file} was run in the page before the route started`);
+    console.log('experiment', JSON.stringify(report.experiment));
+  }
 
   // ---- his screen: 1536x864 CSS px at 1.25 = a 1920x1080 drawing buffer ----
   const readRealm = () => page.evaluate(() => ({ w: innerWidth, h: innerHeight, dpr: globalThis.devicePixelRatio || 1,
@@ -393,6 +411,9 @@ try {
     await cdp.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: {
       includedCategories: ['__metadata', 'toplevel', 'devtools.timeline', 'v8', 'disabled-by-default-v8.gc', 'gpu', 'viz', 'blink.user_timing'],
       excludedCategories: ['*'] } }).catch((e) => console.log('tracing start', String(e)));
+    // A named mark at a known page time ties the trace clock to the page clock.
+    const mark = await cdp.send('Runtime.evaluate', { returnByValue: true, expression: "performance.mark('__smTraceSync').startTime" }).catch(() => null);
+    report.__traceSyncPageMs = mark && mark.result ? Number(mark.result.value) : NaN;
   }
   let which = 0;
   while (Date.now() < judgedEnd) {
@@ -441,6 +462,18 @@ try {
     for (const [k, v] of Object.entries(rep.passes || {})) if (v.samples > 0) passes[k] = { avg: +v.avg.toFixed(2), max: +v.max.toFixed(2), samples: v.samples };
     return { status: rep.status, passes };
   }).catch((e) => ({ status: String(e).slice(0, 120) }));
+  if (CENSUS) {
+    try {
+      await page.evaluate(installSmoothCensus);
+      await sleep(3500);
+      const census = await page.evaluate(collectSmoothCensus);
+      writeFileSync(join(OUT, 'census.json'), JSON.stringify(census, null, 1));
+      writeFileSync(join(OUT, 'census.txt'), formatSmoothCensus(census, { title: `${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}` }));
+      report.census = census ? { file: 'census.txt', drawsPerFrame: census.drawsPerFrame, materialChangesPerFrame: census.materialChangesPerFrame, programChangesPerFrame: census.programChangesPerFrame,
+        uniformCallsPerFrame: census.uniformCallsPerFrame, bufferSubDataPerFrame: census.gl.bufferSubData || 0, sceneNodes: census.scene.nodes, visibleNodes: census.scene.visibleNodes } : null;
+      console.log(`smooth probe census in ${join(OUT, 'census.txt')}`);
+    } catch (e) { report.notes.push(`census failed: ${String(e).slice(0, 200)}`); }
+  }
   hand.releaseAll(); hand.stop();
 
   // ---- collect ----
@@ -647,6 +680,16 @@ try {
         return { wallMs: +(tk.dur / 1000).toFixed(0), cpuMs: tk.tdur != null ? +(tk.tdur / 1000).toFixed(0) : null, parts: kids };
       });
     }
+    // What the browser does around the game's JavaScript, per presented frame, live world only.
+    try {
+      const sync = ev.find((e) => e.name === '__smTraceSync' && Number.isFinite(e.ts));
+      const tb = summarizeSmoothTrace({ events: ev, syncTs: sync ? sync.ts : NaN, syncPageMs: report.__traceSyncPageMs, ticks: { tn: raw.tn, flags }, liveAt, frames });
+      writeFileSync(join(OUT, 'trace-breakdown.txt'), formatSmoothTrace(tb, { title: `${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}, ${SECONDS} s` }));
+      report.traceBreakdown = tb.ok ? { ok: true, file: 'trace-breakdown.txt', threads: tb.threads.map((t) => ({ thread: t.thread, busyMsPerFrame: t.busyMsPerFrame, self: t.self.slice(0, 12) })) } : { ok: false, why: tb.why };
+      console.log(tb.ok ? `smooth probe trace breakdown in ${join(OUT, 'trace-breakdown.txt')}` : `smooth probe trace breakdown NOT MADE: ${tb.why}`);
+    } catch (e) { report.notes.push(`trace breakdown failed: ${String(e).slice(0, 160)}`); }
+    delete report.__traceSyncPageMs;
+    report.traced = true;
     writeFileSync(join(OUT, 'trace.json'), JSON.stringify(ev));
   }
   // The game's own ten-second frame-rate lines for this run (what the owner's next launch will log):
@@ -685,7 +728,7 @@ try {
   console.log(e && e.smoothAssert ? `PROBE REFUSED: ${e.message}` : `PROBE FAILED ${String((e && e.stack) || e).slice(0, 800)}`);
   report.ok = false;
   report.failed = String((e && e.message) || e);
-  delete report.__trace;
+  delete report.__trace; delete report.__traceSyncPageMs;
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   process.exitCode = 2;
 } finally {

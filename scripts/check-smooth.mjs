@@ -4,6 +4,12 @@
 //   npm run check:smooth                 five routes, about 75 s each plus load
 //   npm run check:smooth -- --quick      Swarm round 6 in his room only, about 45 s plus load
 //   npm run check:smooth -- --routes=swarm-r6,adventure-helios [--seconds=60] [--cap=60] [--trace]
+//   npm run check:smooth -- --routes=swarm-r2 --census      also a draw census after the judged window
+//       (<evidence>/census.txt: WebGL calls by name, every draw by owner/material/program, scene size)
+//   npm run check:smooth -- --routes=swarm-r2 --trace       also what the browser does around the
+//       game's JavaScript, per thread (<evidence>/trace-breakdown.txt)
+//   npm run check:smooth -- --routes=swarm-r2 --eval-file=x.js   an experiment: x.js runs in the page
+//       before the route starts (history marks the row; never a scoreboard row)
 //   npm run check:smooth -- --routes=swarm-r2 --profile     also a per-function main-thread profile,
 //       live world only, in ms per presented frame (<evidence>/profile.txt). A profiled run carries
 //       the sampler's own cost: it finds owners, it is not a scoreboard row (history marks it).
@@ -62,6 +68,7 @@ for (const name of names) {
   console.log(`[smooth] ${route.label}: ${SECONDS} s of dense input (waiting for the game lock)...`);
   const run = spawnSync(process.execPath, ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath, 'scripts/probe-smooth-electron.mjs',
     ...route.args, `--seconds=${SECONDS}`, `--cap=${CAP}`, ...(argv.trace === true ? ['--trace'] : []),
+    ...(argv.census === true ? ['--census'] : []), ...(typeof argv['eval-file'] === 'string' ? [`--eval-file=${argv['eval-file']}`] : []),
     ...(argv.profile ? [`--profile${argv.profile === true ? '' : `=${argv.profile}`}`] : []), ...(argv['profile-interval'] ? [`--profile-interval=${argv['profile-interval']}`] : []), `--out=${out}`],
   { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', // The wait for the game lock can be long (first come, first served); it is not part of the run budget.
     timeout: (SECONDS + 900) * 1000 + 4 * 3600 * 1000 });
@@ -191,10 +198,23 @@ for (const r of results) {
   lines.push(`   ${'all'.padStart(8)}${'made30'.padStart(8)}${'3'.padStart(8)}${'4+'.padStart(8)}  by entry point, then self time by file, then by function`);
   for (const row of [...pr.entryPoints.slice(0, 6), ...pr.byFile.slice(0, 10), ...pr.self.slice(0, 22)]) lines.push(`   ${n(row.all)}${n(row.made30)}${n(row.three)}${n(row.long)}  ${row.fn}`);
 }
+for (const r of results) {
+  const c = r.report && r.report.census; if (!c) continue;
+  lines.push('');
+  lines.push(`CENSUS (${r.label}), per presented frame: ${c.drawsPerFrame} draws, ${c.materialChangesPerFrame} material changes, ${c.programChangesPerFrame} program changes, ${c.uniformCallsPerFrame} uniform calls, ${c.bufferSubDataPerFrame} buffer uploads; scene ${c.sceneNodes} nodes (${c.visibleNodes} visible); full: ${join(r.out, 'census.txt').replace(ROOT, '').replace(/\\/g, '/')}`);
+}
+for (const r of results) {
+  const tb = r.report && r.report.traceBreakdown; if (!tb) continue;
+  lines.push('');
+  if (!tb.ok) { lines.push(`TRACE (${r.label}): not made: ${tb.why}`); continue; }
+  lines.push(`TRACE (${r.label}), live world only, ms per presented frame, self time by browser event; full: ${join(r.out, 'trace-breakdown.txt').replace(ROOT, '').replace(/\\/g, '/')}`);
+  for (const t of tb.threads.slice(0, 5)) lines.push(`   ${String(t.busyMsPerFrame).padStart(7)} busy  ${t.thread}: ${t.self.slice(0, 9).map((x) => `${x.name} ${x.ms}`).join(', ')}`);
+}
 lines.push('');
 lines.push(`MILESTONE 1 (locked 30): ${results.some((r) => !r.m1) || m1Failed ? 'NOT MET' : 'MET'}    SHIP BAR (60): ${failed ? 'NOT MET' : 'MET'}`);
 if (results.some((r) => r.report && r.report.machine && r.report.machine.otherLoadFraction > 0.4)) lines.push('LOADED: other work was using more than 40 % of the machine during at least one route. Worst case, not a verdict.');
-if (results.some((r) => r.report && r.report.profiled)) lines.push('PROFILED RUN: the sampler was on. Use it to find owners; judge the bars on a run without --profile.');
+if (results.some((r) => r.report && r.report.experiment)) lines.push(`EXPERIMENT RUN: ${results.map((r) => r.report && r.report.experiment && r.report.experiment.file).filter(Boolean)[0]} was run in the page. Not the shipped game; not a scoreboard row.`);
+if (results.some((r) => r.report && (r.report.profiled || r.report.traced))) lines.push('PROFILED OR TRACED RUN: the instrument was on. Use it to find owners; judge the bars on a run without --profile or --trace.');
 lines.push(failed ? 'IS IT SMOOTH: NO' : 'IS IT SMOOTH: YES');
 console.log(lines.join('\n'));
 try { writeFileSync(join(SMOOTH, `${STAMP}-summary.txt`), lines.join('\n')); } catch (_) { /* evidence only */ }
@@ -210,7 +230,7 @@ for (const r of results) {
       world: rep.world.speed, worst10s: rep.world.worst10s, stepP50: rep.worker.stepP50, stepP95: rep.worker.stepP95,
       longestTask: rep.longTasks.longestMs, tasksOver50: rep.longTasks.over50, freezeLog: rep.freeze.logEntries, dataAge: rep.freeze.dataAgeMaxMs,
       gpu: rep.gpu && rep.gpu.passes ? Object.fromEntries(Object.entries(rep.gpu.passes).map(([k, v]) => [k, v.avg])) : null,
-      profiled: rep.profiled === true, ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loaded: rep.machine.otherLoadFraction > 0.4, loadS: rep.loadS });
+      profiled: rep.profiled === true || rep.traced === true, experiment: rep.experiment ? rep.experiment.file : undefined, ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loaded: rep.machine.otherLoadFraction > 0.4, loadS: rep.loadS });
   }
   appendFileSync(join(SMOOTH, 'history.jsonl'), `${JSON.stringify(row)}\n`);
 }
