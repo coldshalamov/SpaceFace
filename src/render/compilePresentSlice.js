@@ -362,7 +362,73 @@ export function yieldAfterPresent() {
  * get the next turn. A bare scheduler.yield() inherits priority and boosts the continuation.
  * (vm-drop shader-admission-slice, PERF backlog #27)
  */
+// --- Who ran long? -------------------------------------------------------------------------------
+// Every background lane (pipeline admission, decode, parts builds, program-binary harvest, queue
+// drains) resumes through the dispatchers below, so a long task shows up in a trace as this file's
+// `fire` whatever the work was. This ring names the work: each dispatched task is timed from its
+// start through the continuations it resumes (three microtask turns), and any task over
+// BACKGROUND_TASK_LOG_MS is recorded with a label. The label is the callback's own
+// `sfTaskLabel`/name; a harness that sets globalThis.__SF_TASK_TRACE__ = true also gets the
+// file:line that armed the task (a stack capture per arm, so it is off in the shipped game).
+// Read it with readBackgroundTaskLog() or globalThis.__SF_BG_TASKS__().
+export const BACKGROUND_TASK_LOG_MS = 4;
+const TASK_LOG_N = 96;
+const taskLog = { rows: new Array(TASK_LOG_N), head: 0, total: 0, over4: 0, over50: 0, worstMs: 0 };
+
+function taskNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now();
+}
+
+function armSiteLabel() {
+  if (globalThis.__SF_TASK_TRACE__ !== true) return null;
+  const lines = String(new Error().stack || '').split(String.fromCharCode(10));
+  for (let i = 2; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.indexOf('compilePresentSlice.js') >= 0) continue;
+    const m = /\/(src\/[^)\s]+)/.exec(line);
+    if (m) return m[1].replace(/\?[^:]*/, '');
+  }
+  return null;
+}
+
+function recordBackgroundTask(label, startedAt) {
+  const ms = taskNow() - startedAt;
+  taskLog.total++;
+  if (ms < BACKGROUND_TASK_LOG_MS) return;
+  taskLog.over4++;
+  if (ms >= 50) taskLog.over50++;
+  if (ms > taskLog.worstMs) taskLog.worstMs = ms;
+  taskLog.rows[taskLog.head] = { at: startedAt, ms, label };
+  taskLog.head = (taskLog.head + 1) % TASK_LOG_N;
+}
+
+function runTimedBackgroundTask(callback, site) {
+  const startedAt = taskNow();
+  const label = site || (callback && (callback.sfTaskLabel || callback.name)) || 'anonymous';
+  try {
+    callback();
+  } finally {
+    // The callback is often a promise resolver: the awaiting code resumes in the microtasks that
+    // follow. Close the measurement three turns later so that resumed work is inside it.
+    Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve())
+      .then(() => recordBackgroundTask(label, startedAt));
+  }
+}
+
+/** Tasks over BACKGROUND_TASK_LOG_MS, oldest first, plus counters since boot. */
+export function readBackgroundTaskLog() {
+  const rows = [];
+  for (let i = 0; i < TASK_LOG_N; i++) {
+    const row = taskLog.rows[(taskLog.head + i) % TASK_LOG_N];
+    if (row) rows.push({ at: Math.round(row.at), ms: +row.ms.toFixed(1), label: row.label });
+  }
+  return { total: taskLog.total, over4: taskLog.over4, over50: taskLog.over50, worstMs: +taskLog.worstMs.toFixed(1), rows };
+}
+if (typeof globalThis !== 'undefined' && !globalThis.__SF_BG_TASKS__) globalThis.__SF_BG_TASKS__ = readBackgroundTaskLog;
+
 export function postTaskAtBackgroundPriority(callback) {
+  const site = armSiteLabel();
   const sched = typeof globalThis.scheduler === 'object' && globalThis.scheduler
     ? globalThis.scheduler
     : null;
@@ -376,7 +442,7 @@ export function postTaskAtBackgroundPriority(callback) {
     let started = false;
     const run = () => {
       started = true;
-      callback();
+      runTimedBackgroundTask(callback, site);
     };
     const fallback = () => {
       if (!started) setTimeout(run, 0);
@@ -392,8 +458,9 @@ export function postTaskAtBackgroundPriority(callback) {
     }
     return;
   }
-  if (yieldFn) Promise.resolve(yieldFn()).then(callback, () => { callback(); });
-  else setTimeout(callback, 0);
+  const timed = () => runTimedBackgroundTask(callback, site);
+  if (yieldFn) Promise.resolve(yieldFn()).then(timed, timed);
+  else setTimeout(timed, 0);
 }
 
 /**
@@ -406,14 +473,19 @@ export function postTaskAtBackgroundPriority(callback) {
 export function postTaskAtBackgroundPriorityBounded(callback, boundMs = 48) {
   let fired = false;
   let fallback;
+  const site = armSiteLabel();
+  let viaTimer = true;
   const fire = () => {
     if (fired) return;
     fired = true;
     clearTimeout(fallback);
-    callback();
+    // Through the background dispatcher the task is already being timed; the timer fallback is not.
+    if (viaTimer) runTimedBackgroundTask(callback, site);
+    else callback();
   };
+  fire.sfTaskLabel = site || (callback && (callback.sfTaskLabel || callback.name)) || 'anonymous';
   fallback = setTimeout(fire, Math.max(0, Number(boundMs) || 0));
-  postTaskAtBackgroundPriority(fire);
+  postTaskAtBackgroundPriority(() => { viaTimer = false; try { fire(); } finally { viaTimer = true; } });
 }
 
 /**
