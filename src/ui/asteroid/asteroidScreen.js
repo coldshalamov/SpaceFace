@@ -3392,6 +3392,8 @@ export const asteroidScreen = {
       // was dug and what it makes. The same summary heads its card in the belt view.
       let parting = null;
       let partingCard = null;
+      // Read now: the session, and with it currentSiteId, is gone by the time the fade ends.
+      const partingSiteId = currentSiteId;
       try {
         const site = currentSiteId && siteSys && typeof siteSys.getSite === 'function' ? siteSys.getSite(currentSiteId) : null;
         if (site && site.anchored && typeof siteSys.sectorNetworkProjection === 'function') {
@@ -3418,9 +3420,9 @@ export const asteroidScreen = {
         // With nothing hauled the card still shows, once, whenever the rock's summary has changed
         // since the pilot last read it: the work done inside is summed up at the door.
         const seen = state.ui ? (state.ui.rockPartings || (state.ui.rockPartings = {})) : {};
-        const changed = !!parting && seen[currentSiteId] !== parting;
+        const changed = !!parting && !!partingSiteId && seen[partingSiteId] !== parting;
         if (total > 0 || changed) showSummary(yields, partingCard);
-        if (parting && currentSiteId) seen[currentSiteId] = parting;
+        if (parting && partingSiteId) seen[partingSiteId] = parting;
         if (state.ui) state.ui.lastRockParting = parting;
         setTimeout(() => {
           if (fade) {
