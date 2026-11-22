@@ -462,7 +462,9 @@ export function createFieldBuildMode(ctx) {
   // What a new line did for the two rocks it joins: the good-neighbours rule, said once, at the
   // moment the player draws the line.
   function lineResultText(kind, fromSiteId, toSiteId) {
-    const base = kind === 'power' ? 'Power line run.' : 'Cargo line run.';
+    // One sentence: the belt view's notices share the flight glass, which drops prose of two.
+    const what = kind === 'power' ? 'Power line run' : 'Cargo line run';
+    const base = `${what}.`;
     try {
       const sys = currentSiteSys();
       const net = sys && sys.sectorNetworkProjection ? sys.sectorNetworkProjection(state?.world?.currentSectorId || null) : null;
@@ -472,8 +474,8 @@ export function createFieldBuildMode(ctx) {
       const gain = (node) => Math.round(((node.report.lift && node.report.lift.mult) || 1) * 100 - 100);
       const ga = gain(a);
       const gb = gain(b);
-      if (ga <= 0 && gb <= 0) return `${base} Both rocks do the same work, so neither speeds the other up.`;
-      return `${base} ${rockName(a.asteroidId)} now runs ${ga}% faster and ${rockName(b.asteroidId)} ${gb}% faster.`;
+      if (ga <= 0 && gb <= 0) return `${what}, but both rocks do the same work so neither speeds the other up.`;
+      return `${what}: ${rockName(a.asteroidId)} now runs ${ga}% faster and ${rockName(b.asteroidId)} ${gb}% faster.`;
     } catch (_) { return base; }
   }
 
@@ -583,7 +585,7 @@ export function createFieldBuildMode(ctx) {
         setTool('commission');
         return;
       }
-      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Claimed. It is mining.');
+      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Claimed and mining.');
       return;
     }
     if (toolId === 'turret' || toolId === 'sensor' || toolId === 'solar_sail') {

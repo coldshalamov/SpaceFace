@@ -751,7 +751,9 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   raidSec.appendChild(rRow);
   raidSec.appendChild(el('div', 'fb-tool-sub', pressure > 0
     ? 'Every three minutes raiders test this belt. If the guard falls short they take up to a fifth of the stock at the worst-guarded rock, and less for every turret or patrol drone you add.'
-    : 'One claim draws no raiders. A second one does.'));
+    : ((vm.network.totals?.siteCount || 0) >= 2
+      ? 'Raiders will test this belt within three minutes. Turrets and patrol drones are the guard.'
+      : 'One claim draws no raiders. A second one does.')));
   if (empire.raidStatus?.lastMessage) {
     raidSec.appendChild(el('div', 'fb-tool-sub', empire.raidStatus.lastMessage));
   }
