@@ -78,6 +78,7 @@ import {
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
   makeGrimeTexture, makePatchTexture, makeNoseArtTexture,
 } from './canvasTextures.js';
+import { hydrateCanvasTextures, persistCanvasTexture, storeStats } from './canvasTextureStore.js';
 import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, paintDecalForPersonality, PLAYER_NOSE_ART } from '../data/palettes.js';
 import { paletteWithShipAppearance, resolveShipDecal } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
@@ -290,6 +291,19 @@ const _mat = new Map();
 const _extTex = new Map(); // external jpg assets from our visual generation pipeline (B-*, ore_*, fx_*, ship_*, ui_*)
 const _pendingVolatileMaterials = new Set();
 
+// Procedural-texture persistence (B5): the store hydrates while the loading screens play and
+// getTexture serves from it; any key that loses the race (or the first boot ever) builds and
+// backfills. Same pixels by construction — the store keeps lossless PNG of the seeded build.
+let _storedTex = new Map();
+hydrateCanvasTextures().then((stored) => {
+  // Keys already built this boot (they raced hydration) keep their fresh texture; the rest
+  // waits in the store map for getTexture to serve them.
+  for (const [key, texture] of stored) {
+    if (_tex.has(key)) continue;
+    if (!_storedTex.has(key)) _storedTex.set(key, texture);
+  }
+}).catch(() => { /* an unreadable store behaves like an empty one */ });
+
 function noDispose(obj) { obj.dispose = () => {}; return obj; }
 
 // Simple cached external texture loader for the beautiful generated assets (Bibles, ores, FX, ships, UI, cinematics stills).
@@ -404,8 +418,19 @@ function recipeFor(defId) {
 }
 
 function getTexture(key, build) {
-  let t = _tex.get(key);
-  if (!t) { t = build(); _tex.set(key, t); }
+  let t = _storedTex.get(key);
+  if (t) {
+    _storedTex.delete(key);
+    storeStats.served += 1;
+  } else {
+    t = _tex.get(key);
+  }
+  if (!t) {
+    t = build();
+    storeStats.built += 1;
+    persistCanvasTexture(key, t);
+  }
+  _tex.set(key, t);
   return t;
 }
 

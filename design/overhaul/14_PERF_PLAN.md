@@ -308,6 +308,15 @@ hygiene sweep, not a performance task — nothing loads them.
   pixel-exact on the comparison frame). The audit's remaining 45 mergeable rows are dominated
   by dynamic-part hulls (`last_argument`: 144 of 169 meshes are individually-addressed
   dynamics) that must keep their own draws — the container-level heuristic overcounts them.
+- **B5 landed** (same day): procedural canvas textures persist to IndexedDB
+  (`src/render/canvasTextureStore.js`, the programBinaryCache pattern) and later boots serve
+  them from the store while the loading screens play. On the measured route a cold boot builds
+  19 canvas textures and persists the 10 canvas-backed ones (0.4 MB); warm boots build only the
+  9 cheap DataTexture ramps (no canvas to persist). Served pixels are bit-identical to fresh
+  builds (0/65,536 on the identity probe; the flipY decode path is separately proven live).
+  Boot wall-clock on this machine is agent-load noise (17–60 s swings) — the build count is
+  the signal. The full boot win still wants B1–B3 (static batches, worker parse, transcode
+  cache), which queue behind other lanes' files.
 - **Corrections to this plan from execution:** the `layTether` rAF item in R1 is over-attributed
   — its settle loop is bounded (≤3 passes + one 900 ms tail); steady state has no per-frame
   reads. The G2 tranche is blocked by power-of-two quantization: every flagged body's 2×-closest-framing
