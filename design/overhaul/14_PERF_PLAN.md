@@ -321,6 +321,17 @@ hygiene sweep, not a performance task — nothing loads them.
   dynamic-role nodes using each render package's own semantic table. The naive count was
   45 rows / 2,669 dc; role-aware it is 38 rows / 1,502 dc — the honest remaining debt, most of
   it in scene-root packages whose parentId shape the cross-parent pass does not yet reach.
+- **Scene-root per-LOD-level merge: tried and reverted (negative result, 2026-11-22 later).**
+  Extending the cross-parent merge to scene-root packages with per-LOD-level buckets rebuilt
+  241 packages but moved the audit from 38/1,502 to 39/1,525 — no gain, pure churn. The
+  remaining ~1,500 flagged calls sit under MOTION-pivot or dynamic ancestors (correctly
+  refused) or are material-fragmented statics (merging cannot reduce their draws). **The merge
+  campaign is done at its honest limit.** The churn was reverted; the landed chunks keep their
+  verified gains.
+- **Found for the director (2026-11-22, later):** `build-render-package-pilots --check` now
+  fails at HEAD on `parts-rack: input descriptor is stale` — introduced by a lane that landed
+  after `d9164ced33` (the merge chunks verified 422/422 fresh at their commit). Whatever
+  changed a pilot-descriptor input (motions, tier work) needs the pilots rebuilt with it.
 - **Corrections to this plan from execution:** the `layTether` rAF item in R1 is over-attributed
   — its settle loop is bounded (≤3 passes + one 900 ms tail); steady state has no per-frame
   reads. The G2 tranche is blocked by power-of-two quantization: every flagged body's 2×-closest-framing
