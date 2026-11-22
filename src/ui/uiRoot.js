@@ -53,6 +53,7 @@ import { createDerelictExpeditionHud } from '../features/derelictExpedition/hud.
 import { BLACKBOX_RUNS_SITE } from '../features/derelictExpedition/site.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { contactCensus } from './contactCensus.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { laneInputWrite, laneSetComponentSelection, laneTargetWritePending } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -2280,15 +2281,20 @@ export const ui = {
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
       if (this.fieldBuild && typeof this.fieldBuild.frame === 'function') this.fieldBuild.frame(dt, { hudVisible });
       if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
-      this.physicsVenueHud?.frame(st);
-      this.spectrumOverlay?.frame(st);
+      // Dormant presenters don't get a call: each exposes wantsFrame(st) — true while its
+      // live condition holds OR its surface is still shown and owed the one hide pass that
+      // retires it. Mounts without the API (tests, adapters) still frame as before.
+      const presenterWants = (presenter) => typeof presenter?.wantsFrame !== 'function' || presenter.wantsFrame(st);
+      if (this.physicsVenueHud && presenterWants(this.physicsVenueHud)) this.physicsVenueHud.frame(st);
+      if (this.spectrumOverlay && presenterWants(this.spectrumOverlay)) this.spectrumOverlay.frame(st);
       this.physicalJobsPrompt?.frame();
       this.blackFlagPrompt?.frame();
       this.logbookRecap?.frame();
       this.proExperiences?.frame(dt, st, hudVisible);
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
-      if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
+      if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function'
+          && presenterWants(this.capitalBossOverlay)) {
         this.capitalBossOverlay.draw(st);
       }
       // TOWJAW's attack warnings project the fight's real danger geometry. Same-lane sims hand the
@@ -2307,7 +2313,7 @@ export const ui = {
         }) : null;
         if (this.towjawOverlay && towjawReal) towjawReal.setPresentation(this.towjawOverlay);
       }
-      this.towjawOverlay?.draw();
+      if (this.towjawOverlay && presenterWants(this.towjawOverlay)) this.towjawOverlay.draw();
       // BLACKBOX RUNS: the low-chrome expedition instrument mounts once the
       // registry can hand over its system (real same-lane, mirrored facade in
       // the worker lane), then repaints at 8 Hz under the shared flight gate.
@@ -2327,20 +2333,32 @@ export const ui = {
       }
       const derelictVisible = hudVisible && st.world?.currentSectorId === BLACKBOX_RUNS_SITE.sectorId;
       this._derelictHudElapsed = (this._derelictHudElapsed || 0) + Math.max(0, Number.isFinite(dt) ? dt : 0);
+      this._derelictHudFrames = (this._derelictHudFrames || 0) + 1;
       if (!derelictVisible) {
-        this.derelictExpeditionHud?.update({ visible: false });
+        // The hide pass needs one call on the visible→hidden edge, not one per hidden frame.
+        if (this._derelictHidden !== true) this.derelictExpeditionHud?.update({ visible: false });
+        this._derelictHidden = true;
         this._derelictHudElapsed = 0.125;
-      } else if (this._derelictHudElapsed >= 0.125) {
-        this._derelictHudElapsed = 0;
-        this.derelictExpeditionHud?.update({ visible: true });
+        this._derelictHudFrames = 0;
+      } else {
+        this._derelictHidden = false;
+        // The elapsed gate collapses to every frame once frames run slower than 0.125 s; the
+        // frame count keeps the repaint at every other presented frame in that regime.
+        if (this._derelictHudElapsed >= 0.125 && this._derelictHudFrames >= 2) {
+          this._derelictHudElapsed = 0;
+          this._derelictHudFrames = 0;
+          this.derelictExpeditionHud?.update({ visible: true });
+        }
       }
-      if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
+      // An empty deck's tick() is a no-op; only fan it out while entries can expire or lay out.
+      if (this.promptDeck && typeof this.promptDeck.tick === 'function'
+          && (typeof this.promptDeck.size !== 'number' || this.promptDeck.size > 0)) this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
       // Coalesce this paint's receipt, prompt, alert and caption mutations after their owners tick.
-      if (hudVisible) this.hud?.flushReceiptLane?.();
+      if (hudVisible) (this.hud?.flushReceiptLaneAfterLayout || this.hud?.flushReceiptLane)?.();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
@@ -2660,16 +2678,18 @@ function acquisitionTrackerFor(state) {
 function collectAcquisitionCandidates(state, player) {
   let n = 0;
   const rangeSq = SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
-  for (const e of indexedShipLikeScan(state)) {
-    if (!e || e.alive === false || e === player || !e.pos) continue;
+  // Hostility and distance come from the shared per-tick census (src/ui/contactCensus.js):
+  // the same contact set the halo and roster already scanned this tick. The legality
+  // predicates below stay per-call — they are presentation rules, not census data.
+  for (const row of contactCensus(state, player).rows) {
+    const e = row.e;
+    if (e === player) continue;
     if (e.type !== 'ship' && e.type !== 'drone') continue;
-    if (!isHostileToPlayer(e, player.team, state)) continue;
+    if (!row.hostile) continue;
     if (!presentationAllowsTargetLock(e, state)) continue;
     if (isPirateDisengaged(e)) continue;
     if (concealedFromPlayer(state, e)) continue;
-    const dx = e.pos.x - player.pos.x;
-    const dz = e.pos.z - player.pos.z;
-    if (dx * dx + dz * dz > rangeSq) continue;
+    if (row.distSq > rangeSq) continue;
     const rec = _acqPool[n] || (_acqPool[n] = { id: null, gen: 0, x: 0, z: 0, radius: 0 });
     rec.id = e.id; rec.gen = targetIdentityGeneration(e) || 0;
     rec.x = e.pos.x; rec.z = e.pos.z; rec.radius = Number.isFinite(e.radius) ? e.radius : 0;
