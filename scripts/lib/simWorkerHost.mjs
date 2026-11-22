@@ -364,9 +364,28 @@ function mawPresentationRadius(e) {
 
 export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = null) {
   const fields = {};
-  for (const k of VITAL_FIELDS) {
-    if (e[k] !== undefined) fields[k] = e[k];
-  }
+  if (e.hull !== undefined) fields.hull = e.hull;
+  if (e.hullMax !== undefined) fields.hullMax = e.hullMax;
+  if (e.shield !== undefined) fields.shield = e.shield;
+  if (e.shieldMax !== undefined) fields.shieldMax = e.shieldMax;
+  if (e.cap !== undefined) fields.cap = e.cap;
+  if (e.capMax !== undefined) fields.capMax = e.capMax;
+  if (e.fuel !== undefined) fields.fuel = e.fuel;
+  if (e.fuelMax !== undefined) fields.fuelMax = e.fuelMax;
+  if (e.heat !== undefined) fields.heat = e.heat;
+  if (e.heatMax !== undefined) fields.heatMax = e.heatMax;
+  if (e.rot !== undefined) fields.rot = e.rot;
+  if (e.bank !== undefined) fields.bank = e.bank;
+  if (e.pitch !== undefined) fields.pitch = e.pitch;
+  if (e.angVel !== undefined) fields.angVel = e.angVel;
+  if (e.radius !== undefined) fields.radius = e.radius;
+  if (e.mass !== undefined) fields.mass = e.mass;
+  if (e.team !== undefined) fields.team = e.team;
+  if (e.collides !== undefined) fields.collides = e.collides;
+  if (e.alive !== undefined) fields.alive = e.alive;
+  if (e.ttl !== undefined) fields.ttl = e.ttl;
+  if (e.isPlayer !== undefined) fields.isPlayer = e.isPlayer;
+  if (e.physicsSleeping !== undefined) fields.physicsSleeping = e.physicsSleeping;
   if (e.vel && typeof e.vel === 'object') {
     fields.vx = finite(e.vel.x);
     fields.vz = finite(e.vel.z);
@@ -375,96 +394,112 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     if (e.boost.energy !== undefined) fields.boostEnergy = e.boost.energy;
     if (e.boost.max !== undefined) fields.boostMax = e.boost.max;
   }
-  const machine = e.data && e.data.machine;
-  if (machine) {
-    fields.machineRepairing = Boolean(machine.repairing);
-    fields.machineWorking = Boolean(machine.working);
+  const type = e.type;
+  const data = e.data && typeof e.data === 'object' ? e.data : null;
+  if (data) {
+    const machine = data.machine;
+    if (machine) {
+      fields.machineRepairing = Boolean(machine.repairing);
+      fields.machineWorking = Boolean(machine.working);
+    }
+    const machineLife = type === 'machine' && machine ? machineVisualLife(e) : null;
+    if (machineLife != null) {
+      fields.machineVisualLife = machineLife;
+      fields.machineVisualInterrogating = machine.interrogating === true;
+      fields.machineVisualAwakened = machine.awakened === true;
+      fields.machineVisualAwake = machine.awake === true;
+      fields.machineVisualScanning = machineVisualScanning(machine);
+      fields.machineVisualCollecting = machine.collectId != null;
+    }
+    if (type === 'mine') fields.mineArmed = data.armed === true;
+    if (type === 'projectile' && data.kind === 'missile') {
+      fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+      fields.seekerTargetId = data.targetId ?? null;
+      fields.seekerTargetGeneration = data.targetGeneration ?? null;
+      fields.seekerTurnRate = Number.isFinite(data.turnRate) ? data.turnRate : 0;
+      fields.seekerDiverted = data.diverted === true;
+      fields.seekerGuidanceBroken = data.guidanceBroken === true;
+    }
+    const specialistFrame = (data.swarmSpecialist || data.lootTableId || data.enemyTypeId)
+      ? swarmSpecialistFrameValue(e) : VITAL_SHADOW_MISSING;
+    if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
+    const riderTell = (data.swarmAffix === 'rider' || data.swarmAffix2 === 'rider')
+      ? riderTellValue(e, state) : VITAL_SHADOW_MISSING;
+    if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
+    if (typeof data.scanLabel === 'string') fields.dataScanLabel = data.scanLabel;
+    // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
+    if (data.scanned !== undefined) fields.dataScanned = data.scanned === true;
+    if (type === 'beacon' && data.storyPropKind === 'claim_beacon' && Number.isFinite(data.expireAt)) {
+      fields.dataBeaconExpireAt = data.expireAt;
+    }
+    const ecology = data.ecology;
+    if (ecology) {
+      fields.ecologyName = data.name ?? null;
+      fields.ecologyScanLabel = data.scanLabel ?? null;
+      fields.ecologySignalKind = data.scannerSignalKind ?? null;
+      fields.ecologyDisguised = ecology.disguised === true;
+    }
+    const faunaLife = type === 'fauna' && ecology ? faunaVisualLife(e) : null;
+    if (faunaLife != null) {
+      fields.ecologyVisualLife = faunaLife;
+      fields.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
+      fields.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
+      fields.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
+      fields.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
+    }
+    if (data.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(data.livingHull);
+    const cm = data.cm;
+    if (cm) {
+      fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
+      fields.cmEffectKind = cm.effect?.cfg?.kind ?? null;
+      fields.cmEffectX = cm.effect?.originX ?? null;
+      fields.cmEffectZ = cm.effect?.originZ ?? null;
+      fields.cmEffectT = cm.effectT || 0;
+    }
+    const ai = data.ai;
+    if (ai && typeof ai === 'object') {
+      fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
+        ? ai.fsm
+        : (typeof ai.state === 'string' && ai.state ? ai.state : null);
+    }
+    if (type === 'ship' && data.activityActorSlotId === 'pallas_seam_miner' && hasPallasSeamWorkLight(e)) {
+      fields.pallasSeamCutting = data.minerShiftActive === true;
+      fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
+    }
+    if (type === 'ship' && (data.activityActorSlotId === 'helios_seam_miner' || data.activityActorSlotId === 'helios_starter_cutter')) {
+      fields.heliosCuttingActive = heliosCuttingValue(e);
+      fields.heliosCuttingLife = e.occupantGeneration ?? null;
+      fields.heliosCuttingJobId = data.jobId ?? null;
+      fields.heliosCuttingRecordId = data.worldRecordId ?? null;
+      fields.heliosCuttingSlotId = data.activityActorSlotId;
+    }
+    const ninthLife = type === 'payload' && data.ninthMouthRole ? ninthMouthLightLife(e) : null;
+    if (ninthLife != null) {
+      for (let k = 0; k < NINTH_MOUTH_LIGHT_VITAL_KEYS.length; k++) {
+        const key = NINTH_MOUTH_LIGHT_VITAL_KEYS[k];
+        fields[key] = ninthMouthLightVitalValue(e, key, ninthLife);
+      }
+    }
+    const wardLife = data.lanternWardId != null ? lanternWardPresentationLife(e) : null;
+    if (wardLife != null) {
+      for (let k = 0; k < LANTERN_WARD_VITAL_KEYS.length; k++) {
+        const key = LANTERN_WARD_VITAL_KEYS[k];
+        fields[key] = lanternWardVitalValue(e, key, wardLife);
+      }
+    }
+    for (let k = 0; k < AUTHORED_MOTION_FRAME_FIELDS.length; k++) {
+      const key = AUTHORED_MOTION_FRAME_FIELDS[k];
+      const value = authoredMotionFrameValue(e, key);
+      if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
+    }
+    const mawRadius = type === 'station' || data.mawWorksite != null || data.mawSlot != null
+      ? mawPresentationRadius(e) : VITAL_SHADOW_MISSING;
+    if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
+    const orchardPod = data.orchardKind === 'pod' ? orchardPodPublicValue(e) : VITAL_SHADOW_MISSING;
+    if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
+  } else if (type === 'mine') {
+    fields.mineArmed = false;
   }
-  const machineLife = machineVisualLife(e);
-  if (machineLife != null) {
-    fields.machineVisualLife = machineLife;
-    fields.machineVisualInterrogating = machine.interrogating === true;
-    fields.machineVisualAwakened = machine.awakened === true;
-    fields.machineVisualAwake = machine.awake === true;
-    fields.machineVisualScanning = machineVisualScanning(machine);
-    fields.machineVisualCollecting = machine.collectId != null;
-  }
-  if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
-  if (e.type === 'projectile' && e.data?.kind === 'missile') {
-    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
-    fields.seekerTargetId = e.data.targetId ?? null;
-    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
-    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
-    fields.seekerDiverted = e.data.diverted === true;
-    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
-  }
-  const specialistFrame = swarmSpecialistFrameValue(e);
-  if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
-  const riderTell = riderTellValue(e, state);
-  if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
-  if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
-  // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
-  if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
-  if (e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)) {
-    fields.dataBeaconExpireAt = e.data.expireAt;
-  }
-  const ecology = e.data && e.data.ecology;
-  if (ecology) {
-    fields.ecologyName = e.data.name ?? null;
-    fields.ecologyScanLabel = e.data.scanLabel ?? null;
-    fields.ecologySignalKind = e.data.scannerSignalKind ?? null;
-    fields.ecologyDisguised = ecology.disguised === true;
-  }
-  const faunaLife = faunaVisualLife(e);
-  if (faunaLife != null) {
-    fields.ecologyVisualLife = faunaLife;
-    fields.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
-    fields.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
-    fields.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
-    fields.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
-  }
-  if (e.data?.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(e.data.livingHull);
-  const cm = e.data && e.data.cm;
-  if (cm) {
-    fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
-    fields.cmEffectKind = cm.effect?.cfg?.kind ?? null;
-    fields.cmEffectX = cm.effect?.originX ?? null;
-    fields.cmEffectZ = cm.effect?.originZ ?? null;
-    fields.cmEffectT = cm.effectT || 0;
-  }
-  const ai = e.data && e.data.ai;
-  if (ai && typeof ai === 'object') {
-    fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
-      ? ai.fsm
-      : (typeof ai.state === 'string' && ai.state ? ai.state : null);
-  }
-  if (hasPallasSeamWorkLight(e)) {
-    fields.pallasSeamCutting = e.data.minerShiftActive === true;
-    fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
-  }
-  if (hasHeliosCuttingLight(e)) {
-    fields.heliosCuttingActive = heliosCuttingValue(e);
-    fields.heliosCuttingLife = e.occupantGeneration ?? null;
-    fields.heliosCuttingJobId = e.data.jobId ?? null;
-    fields.heliosCuttingRecordId = e.data.worldRecordId ?? null;
-    fields.heliosCuttingSlotId = e.data.activityActorSlotId;
-  }
-  const ninthLife = ninthMouthLightLife(e);
-  if (ninthLife != null) {
-    for (const key of NINTH_MOUTH_LIGHT_VITAL_KEYS) fields[key] = ninthMouthLightVitalValue(e, key, ninthLife);
-  }
-  const wardLife = lanternWardPresentationLife(e);
-  if (wardLife != null) {
-    for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
-  }
-  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
-    const value = authoredMotionFrameValue(e, key);
-    if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
-  }
-  const mawRadius = mawPresentationRadius(e);
-  if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
-  const orchardPod = orchardPodPublicValue(e);
-  if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
   if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   // R12 aim tag: posture and body mass ride the vitals diff with explicit clear values (false / 0), so a body
   // that turns dynamic again (the Orchard pod after release) stops reading ANCHOR on the main lane.
@@ -557,224 +592,280 @@ function krakenMotionFrame(state, e) {
       .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
 }
 
-function vitalShadowMatches(e, shadow, krakenFrame, state) {
-  if (!Array.isArray(shadow)) return false;
-  if (e.type === 'projectile' && e.data?.kind === 'missile') {
-    const data = e.data;
-    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
-      || shadow.seekerTargetId !== (data.targetId ?? null)
-      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
-      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
-      || shadow.seekerDiverted !== (data.diverted === true)
-      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
-  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
-  // Moving actors commonly change velocity or heading each publish. Check those same
-  // canonical scalar tokens first; unchanged actors still compare every field below.
-  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
-  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length]
-      || (vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length + 1]
-      || vitalShadowValue(e.rot) !== shadow[VITAL_ROT_INDEX]) return false;
-  const faunaLife = faunaVisualLife(e);
-  if (faunaLife != null) {
-    const ecology = e.data.ecology;
-    if (shadow.ecologyVisualLife !== faunaLife
-        || shadow.ecologyVisualSpeciesId !== (typeof ecology.speciesId === 'string' ? ecology.speciesId : null)
-        || shadow.ecologyVisualDriveState !== (typeof ecology.driveState === 'string' ? ecology.driveState : null)
-        || shadow.ecologyVisualNurseryMode !== (typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null)
-        || shadow.ecologyVisualMembers !== (Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null)) return false;
-  } else if (Object.hasOwn(shadow, 'ecologyVisualLife')) return false;
-  const machineLife = machineVisualLife(e);
-  if (machineLife != null) {
-    const machine = e.data.machine;
-    if (shadow.machineVisualLife !== machineLife
-        || shadow.machineVisualInterrogating !== (machine.interrogating === true)
-        || shadow.machineVisualAwakened !== (machine.awakened === true)
-        || shadow.machineVisualAwake !== (machine.awake === true)
-        || shadow.machineVisualScanning !== machineVisualScanning(machine)
-        || shadow.machineVisualCollecting !== (machine.collectId != null)) return false;
-  } else if (Object.hasOwn(shadow, 'machineVisualLife')) return false;
-  const ninthLife = ninthMouthLightLife(e);
-  if (shadow.ninthMouthLightLife !== ninthLife
-    || shadow.ninthMouthLightIdentity !== (ninthLife == null ? null : e.data.ninthMouthIdentity)
-    || shadow.ninthMouthLightOn !== (ninthLife == null ? null : e.data.ninthMouthLight)) return false;
-  let i = 0;
-  for (const key of VITAL_FIELDS) {
-    if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
+function syncVitalShadow(e, shadow, hasPrev, krakenFrame, state, metaMap, retired) {
+  let changed = !hasPrev;
+  retired.kraken = false;
+  retired.specialist = false;
+  retired.rider = false;
+  retired.maw = false;
+
+  const type = e.type;
+  const data = e.data && typeof e.data === 'object' ? e.data : null;
+  const faunaLife = type === 'fauna' && data && data.ecology ? faunaVisualLife(e) : null;
+  const machineLife = type === 'machine' && data && data.machine ? machineVisualLife(e) : null;
+  const isMissile = type === 'projectile' && data && data.kind === 'missile';
+  const ninthLife = type === 'payload' && data && data.ninthMouthRole ? ninthMouthLightLife(e) : null;
+
+  if (metaMap) {
+    let meta = metaMap.get(e.id) || null;
+    if (faunaLife != null || machineLife != null || isMissile || ninthLife != null) {
+      if (!meta) {
+        changed = true;
+        meta = {};
+        metaMap.set(e.id, meta);
+      }
+      if (isMissile) {
+        const sGen = e.occupantGeneration ?? null;
+        const sTgt = data.targetId ?? null;
+        const sTgtGen = data.targetGeneration ?? null;
+        const sTurn = Number.isFinite(data.turnRate) ? data.turnRate : 0;
+        const sDiv = data.diverted === true;
+        const sBrk = data.guidanceBroken === true;
+        if (meta.seekerSourceGeneration !== sGen || meta.seekerTargetId !== sTgt
+          || meta.seekerTargetGeneration !== sTgtGen || meta.seekerTurnRate !== sTurn
+          || meta.seekerDiverted !== sDiv || meta.seekerGuidanceBroken !== sBrk) {
+          changed = true;
+          meta.seekerSourceGeneration = sGen;
+          meta.seekerTargetId = sTgt;
+          meta.seekerTargetGeneration = sTgtGen;
+          meta.seekerTurnRate = sTurn;
+          meta.seekerDiverted = sDiv;
+          meta.seekerGuidanceBroken = sBrk;
+        }
+      } else if (meta.seekerSourceGeneration !== undefined) {
+        changed = true;
+        meta.seekerSourceGeneration = undefined;
+      }
+      if (faunaLife != null) {
+        const ecology = data.ecology;
+        const fSp = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
+        const fDr = typeof ecology.driveState === 'string' ? ecology.driveState : null;
+        const fNu = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
+        const fMb = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
+        if (meta.ecologyVisualLife !== faunaLife || meta.ecologyVisualSpeciesId !== fSp
+          || meta.ecologyVisualDriveState !== fDr || meta.ecologyVisualNurseryMode !== fNu
+          || meta.ecologyVisualMembers !== fMb) {
+          changed = true;
+          meta.ecologyVisualLife = faunaLife;
+          meta.ecologyVisualSpeciesId = fSp;
+          meta.ecologyVisualDriveState = fDr;
+          meta.ecologyVisualNurseryMode = fNu;
+          meta.ecologyVisualMembers = fMb;
+        }
+      } else if (meta.ecologyVisualLife !== undefined) {
+        changed = true;
+        meta.ecologyVisualLife = undefined;
+      }
+      if (machineLife != null) {
+        const machine = data.machine;
+        const mInt = machine.interrogating === true;
+        const mAwkD = machine.awakened === true;
+        const mAwk = machine.awake === true;
+        const mScn = machineVisualScanning(machine);
+        const mCol = machine.collectId != null;
+        if (meta.machineVisualLife !== machineLife || meta.machineVisualInterrogating !== mInt
+          || meta.machineVisualAwakened !== mAwkD || meta.machineVisualAwake !== mAwk
+          || meta.machineVisualScanning !== mScn || meta.machineVisualCollecting !== mCol) {
+          changed = true;
+          meta.machineVisualLife = machineLife;
+          meta.machineVisualInterrogating = mInt;
+          meta.machineVisualAwakened = mAwkD;
+          meta.machineVisualAwake = mAwk;
+          meta.machineVisualScanning = mScn;
+          meta.machineVisualCollecting = mCol;
+        }
+      } else if (meta.machineVisualLife !== undefined) {
+        changed = true;
+        meta.machineVisualLife = undefined;
+      }
+      const nId = ninthLife == null ? null : data.ninthMouthIdentity;
+      const nOn = ninthLife == null ? null : data.ninthMouthLight;
+      if ((ninthLife != null || meta.ninthMouthLightLife != null)
+        && (meta.ninthMouthLightLife !== ninthLife || meta.ninthMouthLightIdentity !== nId
+          || meta.ninthMouthLightOn !== nOn)) {
+        changed = true;
+      }
+      meta.ninthMouthLightLife = ninthLife;
+      meta.ninthMouthLightIdentity = nId;
+      meta.ninthMouthLightOn = nOn;
+    } else if (meta) {
+      if (meta.seekerSourceGeneration !== undefined || meta.ecologyVisualLife !== undefined
+        || meta.machineVisualLife !== undefined || meta.ninthMouthLightLife != null) {
+        changed = true;
+      }
+      metaMap.delete(e.id);
+    }
   }
-  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+
+  let i = 0;
+  let v;
+  v = vitalShadowValue(e.hull); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.hullMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.shield); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.shieldMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.cap); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.capMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.fuel); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.fuelMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.heat); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.heatMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.rot); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.bank); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.pitch); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.angVel); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.radius); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.mass); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.team); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.collides); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.alive); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.ttl); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.isPlayer); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.physicsSleeping); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  v = vel ? finite(vel.x) : VITAL_SHADOW_MISSING; if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vel ? finite(vel.z) : VITAL_SHADOW_MISSING; if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
   const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
-  if (vitalShadowValue(boost ? boost.energy : undefined) !== shadow[i++]) return false;
-  if (vitalShadowValue(boost ? boost.max : undefined) !== shadow[i++]) return false;
-  const machine = e.data && e.data.machine;
-  if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
-  if (riderTellValue(e, state) !== shadow[i++]) return false;
-  if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
-    ? e.data.expireAt : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const ecology = e.data && e.data.ecology;
-  if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const cm = e.data && e.data.cm;
-  if ((cm ? cm.effect || null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const ai = e.data && e.data.ai;
-  const aiFsm = (ai && typeof ai === 'object')
+  v = vitalShadowValue(boost ? boost.energy : undefined); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(boost ? boost.max : undefined); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+
+  if (!data) {
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    v = type === 'mine' ? false : VITAL_SHADOW_MISSING;
+    if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+    if (hasPrev && shadow[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING) retired.specialist = true;
+    if (hasPrev && shadow[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING) retired.rider = true;
+    for (let s = 0; s < 26; s++) {
+      if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; }
+      i++;
+    }
+    v = ropeFixedValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+    v = ropeBodyMassValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+    if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING) retired.maw = true;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && krakenFrame === VITAL_SHADOW_MISSING) {
+      retired.kraken = true;
+    }
+    if (shadow[i] !== krakenFrame) { shadow[i] = krakenFrame; changed = true; } i++;
+    shadow.length = i;
+    return changed;
+  }
+
+  const machine = data.machine;
+  v = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = type === 'mine' ? data.armed === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const specialistFrame = (data.swarmSpecialist || data.lootTableId || data.enemyTypeId)
+    ? swarmSpecialistFrameValue(e) : VITAL_SHADOW_MISSING;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && specialistFrame === VITAL_SHADOW_MISSING) {
+    retired.specialist = true;
+  }
+  if (shadow[i] !== specialistFrame) { shadow[i] = specialistFrame; changed = true; } i++;
+  const riderTell = (data.swarmAffix === 'rider' || data.swarmAffix2 === 'rider')
+    ? riderTellValue(e, state) : VITAL_SHADOW_MISSING;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && riderTell === VITAL_SHADOW_MISSING) {
+    retired.rider = true;
+  }
+  if (shadow[i] !== riderTell) { shadow[i] = riderTell; changed = true; } i++;
+  v = typeof data.scanLabel === 'string' ? data.scanLabel : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = data.scanned !== undefined ? data.scanned === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = type === 'beacon' && data.storyPropKind === 'claim_beacon' && Number.isFinite(data.expireAt)
+    ? data.expireAt : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const ecology = data.ecology;
+  v = ecology ? data.name ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ecology ? data.scanLabel ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ecology ? data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = data.nemesis ? livingHullWireRecord(data.livingHull) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const cm = data.cm;
+  v = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const ai = data.ai;
+  v = (ai && typeof ai === 'object')
     ? (typeof ai.fsm === 'string' && ai.fsm
       ? ai.fsm
       : (typeof ai.state === 'string' && ai.state ? ai.state : null))
     : VITAL_SHADOW_MISSING;
-  if (aiFsm !== shadow[i++]) return false;
-  const seam = hasPallasSeamWorkLight(e);
-  if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const helios = hasHeliosCuttingLight(e);
-  if ((helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.data.jobId ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.data.worldRecordId ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.data.activityActorSlotId : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const wardLife = lanternWardPresentationLife(e);
-  const wardShadow = shadow[i++];
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const seam = type === 'ship' && data.activityActorSlotId === 'pallas_seam_miner' ? hasPallasSeamWorkLight(e) : false;
+  v = seam ? data.minerShiftActive === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const helios = type === 'ship' && (data.activityActorSlotId === 'helios_seam_miner' || data.activityActorSlotId === 'helios_starter_cutter')
+    ? hasHeliosCuttingLight(e) : false;
+  v = helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? data.jobId ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? data.worldRecordId ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? data.activityActorSlotId : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const wardLife = data.lanternWardId != null ? lanternWardPresentationLife(e) : null;
   if (wardLife == null) {
-    if (wardShadow !== VITAL_SHADOW_MISSING) return false;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; }
+    i++;
   } else {
-    if (!Array.isArray(wardShadow)) return false;
+    let wardShadow = shadow[i];
+    if (!Array.isArray(wardShadow)) {
+      wardShadow = [];
+      shadow[i] = wardShadow;
+      changed = true;
+    }
+    i++;
     for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
-      if (lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife) !== wardShadow[j]) return false;
+      const wv = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
+      if (wardShadow[j] !== wv) { wardShadow[j] = wv; changed = true; }
     }
   }
-  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
-    if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
+  for (let k = 0; k < AUTHORED_MOTION_FRAME_FIELDS.length; k++) {
+    v = authoredMotionFrameValue(e, AUTHORED_MOTION_FRAME_FIELDS[k]);
+    if (shadow[i] !== v) { shadow[i] = v; changed = true; }
+    i++;
   }
-  // Rope posture / body mass sit BEFORE the tail slots: collectEntityVitals reads the tail by length-relative index.
-  if (ropeFixedValue(e) !== shadow[i++]) return false;
-  if (ropeBodyMassValue(e) !== shadow[i++]) return false;
-  if (mawPresentationRadius(e) !== shadow[i++]) return false;
-  if (orchardPodPublicValue(e) !== shadow[i++]) return false;
-  if (krakenFrame !== shadow[i++]) return false;
-  return true;
+  v = ropeFixedValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ropeBodyMassValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const mawRadius = type === 'station' || data.mawWorksite != null || data.mawSlot != null
+    ? mawPresentationRadius(e) : VITAL_SHADOW_MISSING;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && mawRadius === VITAL_SHADOW_MISSING) {
+    retired.maw = true;
+  }
+  if (shadow[i] !== mawRadius) { shadow[i] = mawRadius; changed = true; } i++;
+  const orchardPod = data.orchardKind === 'pod' ? orchardPodPublicValue(e) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== orchardPod) { shadow[i] = orchardPod; changed = true; } i++;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && krakenFrame === VITAL_SHADOW_MISSING) {
+    retired.kraken = true;
+  }
+  if (shadow[i] !== krakenFrame) { shadow[i] = krakenFrame; changed = true; } i++;
+  shadow.length = i;
+  return changed;
 }
 
-function writeVitalShadow(e, shadow, krakenFrame, state) {
-  // Named runtime-only slots preserve every existing positional/tail vital index.
-  const faunaLife = faunaVisualLife(e);
-  if (faunaLife != null) {
-    const ecology = e.data.ecology;
-    shadow.ecologyVisualLife = faunaLife;
-    shadow.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
-    shadow.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
-    shadow.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
-    shadow.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
-  } else if (Object.hasOwn(shadow, 'ecologyVisualLife')) {
-    delete shadow.ecologyVisualLife; delete shadow.ecologyVisualSpeciesId; delete shadow.ecologyVisualDriveState;
-    delete shadow.ecologyVisualNurseryMode; delete shadow.ecologyVisualMembers;
-  }
-  const machineLife = machineVisualLife(e);
-  if (machineLife != null) {
-    const machine = e.data.machine;
-    shadow.machineVisualLife = machineLife;
-    shadow.machineVisualInterrogating = machine.interrogating === true;
-    shadow.machineVisualAwakened = machine.awakened === true;
-    shadow.machineVisualAwake = machine.awake === true;
-    shadow.machineVisualScanning = machineVisualScanning(machine);
-    shadow.machineVisualCollecting = machine.collectId != null;
-  } else if (Object.hasOwn(shadow, 'machineVisualLife')) {
-    delete shadow.machineVisualLife; delete shadow.machineVisualInterrogating; delete shadow.machineVisualAwakened;
-    delete shadow.machineVisualAwake; delete shadow.machineVisualScanning; delete shadow.machineVisualCollecting;
-  }
-  if (e.type === 'projectile' && e.data?.kind === 'missile') {
-    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
-    shadow.seekerTargetId = e.data.targetId ?? null;
-    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
-    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
-    shadow.seekerDiverted = e.data.diverted === true;
-    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
-  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
-    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
-    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
-    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
-  }
-  const ninthLife = ninthMouthLightLife(e);
-  shadow.ninthMouthLightLife = ninthLife;
-  shadow.ninthMouthLightIdentity = ninthLife == null ? null : e.data.ninthMouthIdentity;
-  shadow.ninthMouthLightOn = ninthLife == null ? null : e.data.ninthMouthLight;
-  let i = 0;
-  for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
-  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
-  shadow[i++] = vel ? finite(vel.x) : VITAL_SHADOW_MISSING;
-  shadow[i++] = vel ? finite(vel.z) : VITAL_SHADOW_MISSING;
-  const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
-  shadow[i++] = vitalShadowValue(boost ? boost.energy : undefined);
-  shadow[i++] = vitalShadowValue(boost ? boost.max : undefined);
-  const machine = e.data && e.data.machine;
-  shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
-  shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = swarmSpecialistFrameValue(e);
-  shadow[i++] = riderTellValue(e, state);
-  shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
-    ? e.data.expireAt : VITAL_SHADOW_MISSING;
-  const ecology = e.data && e.data.ecology;
-  shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING;
-  const cm = e.data && e.data.cm;
-  shadow[i++] = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
-  const ai = e.data && e.data.ai;
-  shadow[i++] = (ai && typeof ai === 'object')
-    ? (typeof ai.fsm === 'string' && ai.fsm
-      ? ai.fsm
-      : (typeof ai.state === 'string' && ai.state ? ai.state : null))
-    : VITAL_SHADOW_MISSING;
-  const seam = hasPallasSeamWorkLight(e);
-  shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
-  const helios = hasHeliosCuttingLight(e);
-  shadow[i++] = helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.data.jobId ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.data.worldRecordId ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.data.activityActorSlotId : VITAL_SHADOW_MISSING;
-  const wardLife = lanternWardPresentationLife(e);
-  // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
-  if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
-  else {
-    const wardShadow = Array.isArray(shadow[i]) ? shadow[i] : [];
-    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
-      wardShadow[j] = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
-    }
-    shadow[i++] = wardShadow;
-  }
-  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
-    shadow[i++] = authoredMotionFrameValue(e, key);
-  }
-  shadow[i++] = ropeFixedValue(e);
-  shadow[i++] = ropeBodyMassValue(e);
-  shadow[i++] = mawPresentationRadius(e);
-  shadow[i++] = orchardPodPublicValue(e);
-  shadow[i++] = krakenFrame;
-  shadow.length = i;
-  return shadow;
-}
+const VITAL_RETIRED_SCRATCH = { kraken: false, specialist: false, rider: false, maw: false };
 
 function entityInfoBlock(state, entityId, host) {
   const e = resolveWorldPresentationEntity(state, entityId);
@@ -879,6 +970,7 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null, sepa
   const out = [];
   const seen = seenScratch || new Set();
   seen.clear();
+  const metaMap = vitalShadow._meta || (vitalShadow._meta = new Map());
   for (const e of state.entityList || []) {
     if (!e || !Number.isSafeInteger(e.id)) continue;
     // Meshless weapon trails never enter the journal. Their separate VFX lane
@@ -886,31 +978,26 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null, sepa
     if (separateWeaponVfx && e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)) continue;
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
+    const hasPrev = Array.isArray(previous);
+    const shadow = hasPrev ? previous : [];
     const krakenFrame = krakenMotionFrame(state, e);
-    if (!vitalShadowMatches(e, previous, krakenFrame, state)) {
-      const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
-      const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
-      const retiredRiderTell = riderTellValue(e, state) === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
-      const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
-      const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow, krakenFrame, state);
-      vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame, state);
-      if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
-      if (retiredRiderTell && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
+    if (syncVitalShadow(e, shadow, hasPrev, krakenFrame, state, metaMap, VITAL_RETIRED_SCRATCH)) {
+      if (!hasPrev) vitalShadow.set(e.id, shadow);
+      const fields = entityVitalsOf(e, VITAL_RETIRED_SCRATCH.kraken ? null : krakenFrame, state);
+      if (VITAL_RETIRED_SCRATCH.specialist) fields.swarmSpecialistFrame = null;
+      if (VITAL_RETIRED_SCRATCH.rider && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
         fields.swarmRideTell = -e.occupantGeneration;
       }
-      if (retiredMawRadius) fields.mawPresentationRadius = null;
+      if (VITAL_RETIRED_SCRATCH.maw) fields.mawPresentationRadius = null;
       out.push([e.id, fields]);
     }
   }
   if (vitalShadow.size > seen.size) {
     for (const id of vitalShadow.keys()) {
-      if (!seen.has(id)) vitalShadow.delete(id);
+      if (!seen.has(id)) {
+        vitalShadow.delete(id);
+        metaMap.delete(id);
+      }
     }
   }
   return out;
@@ -1973,7 +2060,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
         const owner = registry.get('asteroidSites');
         if (!owner) return { ok: false, reason: 'asteroid-sites-system-unavailable' };
         const arities = {
-          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3,
+          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3, packFill: 1,
           setExportFlag: 3, setPodTarget: 2, setPodDestination: 2, transferGoods: 5,
           tickWorkbench: 3,
           setReserveFloor: 3, setSiteLink: 4, removeSiteLink: 3,

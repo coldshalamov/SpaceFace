@@ -34,7 +34,7 @@ import {
   chargeQuoteText,
 } from './asteroidController.js';
 import {
-  createCursorLens, tileLensModel, machineLensModel, ghostLensModel, seamSplits,
+  createCursorLens, tileLensModel, machineLensModel, ghostLensModel, fillLensModel, seamSplits,
   placementReason, commodityName, formationLabel, sentenceCase,
 } from './inspector.js';
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
@@ -1373,12 +1373,13 @@ export const asteroidScreen = {
       const stores = canReadStores ? siteSys._fundingStoresFor(s, cur.col, cur.row) : null;
       for (const id of present) {
         const item = PALETTE_ITEMS.find((it) => it.id === id);
-        if (!item || item.kind !== 'machine' || !item.cost) continue;
+        if (!item || !item.cost || (item.kind !== 'machine' && item.kind !== 'fill')) continue;
         if (canReadStores) {
           const miss = siteSys._missingMaterials(s, item.cost, stores);
           if (Object.keys(miss).length) out[id] = miss;
           continue;
         }
+        if (item.kind !== 'machine') continue;
         const check = siteSys.canInstall({
           asteroidId: asteroidId(), defId: id, col: cur.col, row: cur.row,
         });
@@ -1404,8 +1405,8 @@ export const asteroidScreen = {
         if (item.kind === 'machine') {
           if (item.unique && s.machines.some((m) => m.defId === item.id)) continue;
           present.push(item.id);
-        } else if (item.kind === 'overlay') {
-          present.push(item.id); // cable + lane are meaningful the moment a Core can power them
+        } else if (item.kind === 'overlay' || item.kind === 'fill') {
+          present.push(item.id); // cable, lane and packed fill: claim work, from the first Core on
         } else if (s.machines.length) {
           present.push(item.id); // dismantle, once there is something to take apart
         }
@@ -1535,6 +1536,7 @@ export const asteroidScreen = {
         });
       }
       if (item.kind === 'remove') { commitRemoval(cursor); return; }
+      if (item.kind === 'fill') return commitFill(cursor, astId);
       if (!siteSys) return;
       armedSpill = null; // any non-overlay action disarms a pending spill confirmation
       const request = { asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row };
@@ -1573,6 +1575,40 @@ export const asteroidScreen = {
           return res;
         },
       );
+    }
+
+    // Pack one dug cell solid again. Same refuse-then-confirm arming as a machine that would
+    // close the way back: the block can be bored again, so it is a warning and never a refusal.
+    function commitFill(cursor, astId) {
+      if (!siteSys || typeof siteSys.packFill !== 'function') return;
+      armedSpill = null;
+      const request = { asteroidId: astId, col: cursor.col, row: cursor.row };
+      const quote = siteSys.canPackFill({ ...request, preview: true });
+      const seat = `fill:${tileIndex(cursor.col, cursor.row)}`;
+      if (quote?.ok && quote.sealsReturn && armedReturn !== seat) {
+        armedReturn = seat;
+        const warning = 'Seals the return tunnel. Press again to pack.';
+        showBanner('return-tunnel', warning);
+        announce(warning);
+        lensDirty = true;
+        return;
+      }
+      disarmReturn();
+      return settleSiteMutation(siteSys.packFill(request), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          const line = `Packed fill set at ${cursor.col},${cursor.row}.`;
+          announce(line);
+          pushLedgerLine('good', line);
+          refreshProjection();
+          syncPalette();
+        } else {
+          announce(placementReason(res));
+        }
+        lensDirty = true;
+        inspElapsed = 10;
+        return res;
+      });
     }
 
     function commitRemoval(cursor) {
@@ -2760,6 +2796,14 @@ export const asteroidScreen = {
       announce('Cave-in. The hall outgrew its roof.');
       projDirty = true;
     }));
+    // A cell packed solid again. The event crosses with the field that already holds the block,
+    // so the board re-reads that one cell.
+    unsubs.push(ctx.bus.on('drill:fill', (p) => {
+      if (!state.drill) return;
+      if (renderer3d) renderer3d.notify('fill', { col: p.col, row: p.row });
+      projDirty = true; // a new contact for the machines beside it
+      lensDirty = true;
+    }));
     unsubs.push(ctx.bus.on('drill:gasVent', (p) => {
       if (renderer3d) renderer3d.notify('gasVent', { col: p.col, row: p.row });
       pushLedgerLine('good', `Pocket vented open — a gas tap can still sip the seam.`);
@@ -3034,6 +3078,12 @@ export const asteroidScreen = {
         }) : null;
         return ghostLensModel(palette.selected.id, check);
       }
+      if (build && palette.selected && palette.selected.kind === 'fill' && siteSys
+        && typeof siteSys.canPackFill === 'function') {
+        return fillLensModel(siteSys.canPackFill({
+          asteroidId: asteroidId(), col: cursor.col, row: cursor.row, preview: true,
+        }));
+      }
 
       if (!d.field) return null;
       const tile = d.field[cursor.col] && d.field[cursor.col][cursor.row];
@@ -3103,6 +3153,11 @@ export const asteroidScreen = {
           }) : null;
           canOk = !!(check && check.ok);
           showMachineGhost = check?.reason !== 'occupied' && check?.reason !== 'rover-here';
+        } else if (buildKind === 'fill') {
+          const check = siteSys && typeof siteSys.canPackFill === 'function' ? siteSys.canPackFill({
+            asteroidId: asteroidId(), col: controller.state.cursor.col, row: controller.state.cursor.row,
+          }) : null;
+          canOk = !!(check && check.ok);
         }
       }
       return { mode, cursor, buildKind, buildDefId, canOk, showMachineGhost, guidedRun };

@@ -1,4 +1,4 @@
-import { COLS, ROWS, DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, RUBBLE_TILE, drillTierReqForOre, tileIndex, entryShaftIndex, normalizeClearedTiles, recoverClearedGeometry, applyClearedTiles, fractureTile, applyRubbleTiles, applyFlaggedTiles, seededDrillRng, stratumForDepth, generateFormations, generateDrillField, resolveBoreFamily } from './drillFieldModel.js';
+import { COLS, ROWS, DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, RUBBLE_TILE, drillTierReqForOre, tileIndex, entryShaftIndex, normalizeClearedTiles, recoverClearedGeometry, applyClearedTiles, fractureTile, applyRubbleTiles, applyFillMarks, applyFlaggedTiles, seededDrillRng, stratumForDepth, generateFormations, generateDrillField, resolveBoreFamily } from './drillFieldModel.js';
 export { DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, drillTierReqForOre, tileIndex, entryShaftIndex, normalizeClearedTiles, recoverClearedGeometry, applyClearedTiles, applyRubbleTiles, applyFlaggedTiles, stratumForDepth, generateFormations, generateDrillField } from './drillFieldModel.js';
 // Drill lens system (V2 §7 / cut-list #27). The deep-core extraction verb. When active, this owns a 2D
 // vein cross-section the player drills into with WASD / Arrow keys. Yields real ore into cargo
@@ -147,8 +147,8 @@ function recordClearedTile(data, col, row) {
   if (idx < 0 || idx >= COLS * ROWS) return;
   if (!d.drillCleared.includes(idx)) d.drillCleared.push(idx);
   // A re-cleared cell cannot still be rubble or a standing fault — the three lists are
-  // mutually exclusive and the empty tile needs no flags.
-  for (const key of ['drillRubble', 'drillFaults']) {
+  // mutually exclusive and the empty tile needs no flags. Packed fill is rubble with a mark.
+  for (const key of ['drillRubble', 'drillFaults', 'drillFill']) {
     if (Array.isArray(d[key])) d[key] = d[key].filter((i) => Math.trunc(Number(i)) !== idx);
   }
 }
@@ -181,6 +181,12 @@ function recordRubbleTile(data, col, row) {
 
 // Fallen ceiling material — soft fill the auger has to chew a second time. It is 'dirt' so the
 // extractor's silicate contact law applies unchanged; `rubble` marks it for the renderers.
+
+/** A cell the player packed solid again: a rubble record that also carries the placed mark. */
+export function recordPackedFill(data, col, row) {
+  recordRubbleTile(data, col, row);
+  flagTile(data, 'drillFill', col, row);
+}
 
 function writeVeinRemainder(data, col, row, yieldU, ore, hp = 0) {
   const d = ensureAsteroidDeepCore(data);
@@ -611,6 +617,7 @@ export function drillCellEvidence(field, col, row, nearCleared) {
       rich: !!tile.rich,
       cracked: !!tile.cracked,
       rubble: !!tile.rubble,
+      fill: !!tile.fill,
     };
   }
   const told = nearCleared
@@ -922,6 +929,7 @@ export const drill = {
     applyFlaggedTiles(field, data && data.drillVented, (t) => { if (t.type === 'empty') t.vented = true; });
     applyFlaggedTiles(field, data && data.drillScars, (t) => { if (t.type === 'empty') t.scar = true; });
     applyRubbleTiles(field, data && data.drillRubble);
+    applyFillMarks(field, data && data.drillFill);
     applyFlaggedTiles(field, data && data.drillFaults, (t) => { if (t.type !== 'empty') fractureTile(t); });
     // Apply the paid/rejected remainder after the rock's saved geometry and faults.
     applyVeinRemainders(field, data && data.drillVeinRemainders);

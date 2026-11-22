@@ -38,6 +38,15 @@ export const CONTACT_RULES = Object.freeze({
   braceBasaltContacts: 3,
 });
 
+// Packed fill (design/overhaul 05_ADVENTURE 3.3 "Backfill"). One cast block sets one dug cell
+// solid again: it counts as matrix for every machine beside it, so a contact wasted by careless
+// digging can be bought back. It is the only way a hollow cell in a claim ever closes on purpose.
+export const PACKED_FILL = Object.freeze({
+  id: 'fill',
+  name: 'Packed fill',
+  cost: Object.freeze({ cmdty_regocrete: 1 }),
+});
+
 // The six starter machines (brief §3). `power` < 0 draws from the network, > 0 generates.
 // `cost` is the §3 local + imported split: Regocrete is producible on-site later; the
 // Machine Control Unit is the imported part that gives ship hauling industrial meaning.

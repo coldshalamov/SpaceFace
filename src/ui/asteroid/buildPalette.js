@@ -19,7 +19,7 @@
 //     bolts one under every real object), and the hotkey numeral in the corner. The NAME is not on
 //     the glass — it lives in the hover tip, so the default drive view keeps its 15-word budget.
 //     Digits are free to the word counter; letters are not.
-import { SITE_MACHINES } from '../../data/sites.js';
+import { PACKED_FILL, SITE_MACHINES } from '../../data/sites.js';
 import { commodityName, sentenceCase } from './inspector.js';
 import { createIndustryPlanner } from './industryPlanner.js';
 
@@ -34,6 +34,8 @@ export const PALETTE_ITEMS = [
   })),
   { kind: 'overlay', id: 'power', name: 'Power Cable', verb: 'route', cost: null },
   { kind: 'overlay', id: 'lane', name: 'Material Lane', verb: 'route', cost: null },
+  // One cast block sets one dug cell solid again. It has a cost, so it can read as unaffordable.
+  { kind: 'fill', id: PACKED_FILL.id, name: PACKED_FILL.name, verb: 'pack', cost: PACKED_FILL.cost },
   { kind: 'remove', id: 'remove', name: 'Dismantle', verb: 'remove', cost: null },
 ];
 
@@ -185,6 +187,13 @@ export const PALETTE_GLYPHS = {
     '<rect x="2.6" y="5.6" width="18.8" height="2.8" rx="1.4"/>'
     + '<rect x="2.6" y="15.6" width="18.8" height="2.8" rx="1.4"/>'
     + '<path d="M8.8 9.1 16 12l-7.2 2.9z"/>',
+  ),
+  // A block lowered into the gap between two standing walls.
+  fill: svg(
+    '<rect x="2.4" y="6.4" width="4.4" height="15.2" rx="0.9"/>'
+    + '<rect x="17.2" y="6.4" width="4.4" height="15.2" rx="0.9"/>'
+    + '<rect x="8.4" y="10.6" width="7.2" height="11" rx="0.9"/>'
+    + '<path d="M12 8.6 8.9 4.9h2V1.9h2.2v3h2z"/>',
   ),
   remove: svg(
     '<path fill-rule="evenodd" d="M3.4 3.4h17.2v17.2H3.4z'

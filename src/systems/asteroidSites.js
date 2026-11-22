@@ -1,6 +1,6 @@
 import { builderMachineLock } from '../data/pilotWork.js';
 import { asteroidSiteReadMethods } from './asteroidSiteReadModel.js';
-export { getAsteroidSiteFromState, findAsteroidSiteFromState, projectAsteroidSiteFromState, canInstallAsteroidSiteFromState } from './asteroidSiteReadModel.js';
+export { getAsteroidSiteFromState, findAsteroidSiteFromState, projectAsteroidSiteFromState, canInstallAsteroidSiteFromState, canPackFillAsteroidSiteFromState } from './asteroidSiteReadModel.js';
 import { readOrchardSaveSection } from '../data/anvilOrchard.js';
 import { validateCeresWorkfleetOperation, ceresWorkfleetContactRetained, CERES_WORKFLEET_REQUEST_STREAM, CERES_WORKFLEET_JOB_ID } from './ceresWorkfleet.js';
 import { ceresPlayerWinchReceiverLine } from './ceresPlayerWinching.js';
@@ -26,8 +26,8 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // Excavation stays owned by systems/drill.js. This system reads the same field math
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
-import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
-import { resolveBoreFamily } from './drillFieldModel.js';
+import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, recordPackedFill, DRILL_CONST, EMPTY_TILE } from './drill.js';
+import { resolveBoreFamily, FILL_TILE } from './drillFieldModel.js';
 import { markFieldRockAtRest } from './spawnClearance.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { addCargo, removeCargo, sellableCargoQuantity, slotFitFor } from './cargo.js';
@@ -40,7 +40,7 @@ import {
   takeFromShipment,
 } from './cargoCustody.js';
 import {
-  SITE_MACHINES, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization,
+  PACKED_FILL, SITE_MACHINES, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization,
 } from '../data/sites.js';
 import {
   contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
@@ -283,7 +283,7 @@ function copyDrillSessionAccounting(site, data) {
   }
   // Layered bore flags and the ordnance rack live on the asteroid record too — and that
   // record is disposable (a respawned rock is stamped fresh), so the claim keeps copies.
-  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble']) {
+  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble', 'drillFill']) {
     if (Array.isArray(data[key])) site[key] = normalizeClearedTiles(data[key]);
   }
   if (data.chargeStock != null && Number.isFinite(Number(data.chargeStock))) {
@@ -311,7 +311,7 @@ function drillAccountingStamp(site) {
   if (site.lastDrillT != null && Number.isFinite(Number(site.lastDrillT))) {
     stamp.lastDrillT = Number(site.lastDrillT);
   }
-  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble']) {
+  for (const key of ['drillVented', 'drillScars', 'drillFaults', 'drillRubble', 'drillFill']) {
     const list = normalizeClearedTiles(site[key]);
     if (list.length) stamp[key] = list;
   }
@@ -1520,6 +1520,45 @@ export const asteroidSites = {
       }
       if (need > 0) removeCargo(this.state, goodId, need);
     }
+  },
+
+  /** Can this hollow cell be packed solid again? Pure read; see the read model. */
+  canPackFill: asteroidSiteReadMethods.canPackFill,
+  _previewCellSwap: asteroidSiteReadMethods._previewCellSwap,
+
+  /**
+   * Pack one hollow cell solid again (sites.js PACKED_FILL). The cell becomes soft matrix that
+   * every machine beside it reads as a contact; boring it out again pays nothing.
+   * The write is the shape of a cave-in's dropped cell: the live field tile, the rock's own record
+   * (drill:end rebuilds the claim's cleared list from it), then the claim's mirrors.
+   */
+  packFill({ asteroidId, col, row }) {
+    const check = this.canPackFill({ asteroidId, col, row });
+    if (!check.ok) return check;
+    const state = this.state;
+    const site = this.siteForAsteroid(asteroidId);
+    const d = state.drill;
+    const ent = state.entities.get(asteroidId);
+    this._consumeMaterials(site, PACKED_FILL.cost, this._fundingStoresFor(site, col, row));
+
+    d.field[col][row] = FILL_TILE();
+    const idx = tileIndex(col, row);
+    if (ent && ent.data) {
+      recordPackedFill(ent.data, col, row);
+      copyDrillSessionAccounting(site, ent.data);
+    } else {
+      // No resident rock record to copy from: keep the claim's own lists exact.
+      site.drillRubble = normalizeClearedTiles([...(site.drillRubble || []), idx]);
+      site.drillFill = normalizeClearedTiles([...(site.drillFill || []), idx]);
+      for (const key of ['drillVented', 'drillScars', 'drillFaults']) {
+        if (Array.isArray(site[key])) site[key] = site[key].filter((i) => i !== idx);
+      }
+    }
+    site.cleared = site.cleared.filter((i) => i !== idx);
+    this._markDirty(site.id, { field: true, net: true });
+    this._ledger(site, 'info', `Packed fill set at ${col},${row}. The cell is solid again.`);
+    this.bus.emit('drill:fill', { asteroidId, siteId: site.id, col, row });
+    return { ok: true, reason: null, col, row };
   },
 
   /**
@@ -3718,14 +3757,14 @@ export const asteroidSites = {
         if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
         // Same exclusivity as recordClearedTile: a re-opened cell is neither rubble nor a
         // standing fault — a softened slab chewed by the head is gone for good.
-        for (const key of ['drillRubble', 'drillFaults']) {
+        for (const key of ['drillRubble', 'drillFaults', 'drillFill']) {
           if (Array.isArray(ent.data[key])) {
             ent.data[key] = ent.data[key].filter((i) => Math.trunc(Number(i)) !== idx);
           }
         }
       }
       // The claim's mirrors move the same way — a re-cleared cell is never rubble or fault.
-      for (const key of ['drillRubble', 'drillFaults']) {
+      for (const key of ['drillRubble', 'drillFaults', 'drillFill']) {
         if (Array.isArray(site[key])) {
           site[key] = site[key].filter((i) => Math.trunc(Number(i)) !== idx);
         }

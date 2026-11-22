@@ -3,7 +3,7 @@ import { saveStoreSignature } from '../save/saveStoreGeneration.js';
 import { economyReadView } from '../systems/economy.js';
 import { claimsReadView } from '../systems/claimsReadModel.js';
 import { drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
-import { asteroidSiteReadMethods, createAsteroidSiteMirrorReadView, canInstallAsteroidSiteFromState, findAsteroidSiteFromState, getAsteroidSiteFromState, projectAsteroidSiteFromState } from '../systems/asteroidSiteReadModel.js';
+import { asteroidSiteReadMethods, createAsteroidSiteMirrorReadView, canInstallAsteroidSiteFromState, canPackFillAsteroidSiteFromState, findAsteroidSiteFromState, getAsteroidSiteFromState, projectAsteroidSiteFromState } from '../systems/asteroidSiteReadModel.js';
 import { careerLadders, listLadderDefinitions } from '../careers/ladders/careerLadders.js';
 import { getCareerOfferViewReadOnly, getCareerProgress } from '../careers/origins/careerOrigins.js';
 import { computeDiscoveredRoute, activeDriveForState, wormholeGateCheck, machineRouteStanding } from '../systems/routePlanner.js';
@@ -320,6 +320,7 @@ export function createLaneSystemFacade(ctx) {
           return row;
         };
         const canInstall = (request) => canInstallAsteroidSiteFromState(st, request || {});
+        const canPackFill = (request) => canPackFillAsteroidSiteFromState(st, request || {});
         return {
           name: 'asteroidSites',
           state: st,
@@ -328,6 +329,7 @@ export function createLaneSystemFacade(ctx) {
           siteForAsteroid,
           projection,
           canInstall,
+          canPackFill,
           machineAt: (site, col, row) => asteroidSiteReadMethods.machineAt(site, col, row),
           hasCore: (site) => asteroidSiteReadMethods.hasCore(site),
           previewBreak: (siteId, col, row) => {
@@ -363,6 +365,7 @@ export function createLaneSystemFacade(ctx) {
             return view && isolatedSite ? view._missingMaterials(isolatedSite, cost, stores) : {};
           },
           installMachine: (request) => call('installMachine', [request]),
+          packFill: (request) => call('packFill', [request]),
           removeMachine: (siteId, machineId, opts) => call('removeMachine', [siteId, machineId, opts]),
           setOverlay: (siteId, kind, col, row, on, opts) => call('setOverlay', [siteId, kind, col, row, on, opts]),
           setMachineMode: (siteId, machineId, mode) => call('setMachineMode', [siteId, machineId, mode]),

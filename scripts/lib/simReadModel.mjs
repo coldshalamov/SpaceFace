@@ -1410,7 +1410,7 @@ function projectDrillPresentation(source) {
   out.field = Array.isArray(source.field) ? source.field.slice(0, 28).map(column => Array.isArray(column)
     ? column.slice(0, 45).map(tile => {
       const shown = fields(tile, ['type','hp','maxHp','ore','yieldU','hazard','tierReq','hardness','risk',
-        'stratum','rich','cave','fault','cracked','rubble','vented','structure']);
+        'stratum','rich','cave','fault','cracked','rubble','fill','vented','structure']);
       if (shown && tile.structure && typeof tile.structure === 'object') shown.structure = fields(tile.structure, ['id','defId']);
       return shown;
     }) : null) : null;
@@ -1736,6 +1736,16 @@ const SIG_OPAQUE = '@@opaque';
 const SIG_CYCLE = '@@cycle';
 const NO_SIGNED_SCALAR = Symbol('no signed scalar');
 
+function isPlainAsciiJsonString(str) {
+  const len = str.length;
+  if (len > 128) return false;
+  for (let i = 0; i < len; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 32 || c > 126 || c === 34 || c === 92) return false;
+  }
+  return true;
+}
+
 export function writeDomainSignature(value, parts, seen) {
   if (value === null) {
     parts.push('null');
@@ -1743,14 +1753,12 @@ export function writeDomainSignature(value, parts, seen) {
   }
   const t = typeof value;
   if (t === 'number') {
-    parts.push('n:', Number.isNaN(value) ? 'NaN'
-      : Object.is(value, -0) ? '-0'
-        : Number.isFinite(value) ? String(value)
-          : String(value));
+    parts.push('n:', Object.is(value, -0) ? '-0' : String(value));
     return;
   }
   if (t === 'string') {
-    parts.push('s:', JSON.stringify(value));
+    if (isPlainAsciiJsonString(value)) parts.push('s:"', value, '"');
+    else parts.push('s:', JSON.stringify(value));
     return;
   }
   if (t === 'boolean') {
@@ -1834,14 +1842,58 @@ export function writeDomainSignature(value, parts, seen) {
     return;
   }
   seen.add(value);
-  const keys = Object.keys(value).sort();
+  const keys = Object.keys(value);
+  const n = keys.length;
+  if (n === 0) {
+    parts.push('o:{}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 1) {
+    const k = keys[0];
+    parts.push('o:{');
+    if (isPlainAsciiJsonString(k)) parts.push('"', k, '"=');
+    else parts.push(JSON.stringify(k), '=');
+    let field;
+    try { field = value[k]; } catch (_) { field = undefined; }
+    writeDomainSignature(field, parts, seen);
+    parts.push('}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 2) {
+    let k0 = keys[0], k1 = keys[1];
+    if (k0 > k1) { const tmp = k0; k0 = k1; k1 = tmp; }
+    parts.push('o:{');
+    if (isPlainAsciiJsonString(k0)) parts.push('"', k0, '"=');
+    else parts.push(JSON.stringify(k0), '=');
+    let f0;
+    try { f0 = value[k0]; } catch (_) { f0 = undefined; }
+    writeDomainSignature(f0, parts, seen);
+    parts.push(',');
+    if (isPlainAsciiJsonString(k1)) parts.push('"', k1, '"=');
+    else parts.push(JSON.stringify(k1), '=');
+    let f1;
+    try { f1 = value[k1]; } catch (_) { f1 = undefined; }
+    writeDomainSignature(f1, parts, seen);
+    parts.push('}');
+    seen.delete(value);
+    return;
+  }
+  let sorted = true;
+  for (let i = 1; i < n; i++) {
+    if (keys[i - 1] > keys[i]) { sorted = false; break; }
+  }
+  if (!sorted) keys.sort();
   parts.push('o:{');
-  for (let i = 0; i < keys.length; i++) {
+  for (let i = 0; i < n; i++) {
     if (i) parts.push(',');
-    parts.push(JSON.stringify(keys[i]), '=');
+    const k = keys[i];
+    if (isPlainAsciiJsonString(k)) parts.push('"', k, '"=');
+    else parts.push(JSON.stringify(k), '=');
     let field;
     try {
-      field = value[keys[i]];
+      field = value[k];
     } catch (_) {
       field = undefined; // throwing getter — opaque leaf
     }
@@ -1849,6 +1901,222 @@ export function writeDomainSignature(value, parts, seen) {
   }
   parts.push('}');
   seen.delete(value);
+}
+
+function createDomainHashScratch() {
+  return { h1: 0, h2: 0, h3: 0, len: 0, seen: new Set(), parts: [] };
+}
+
+function feedDomainHashStr(ctx, str) {
+  const n = str.length;
+  ctx.len += n;
+  let h1 = ctx.h1;
+  let h2 = ctx.h2;
+  let h3 = ctx.h3;
+  for (let i = 0; i < n; i++) {
+    const c = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193);
+    h2 = Math.imul(h2 ^ ((c << 7) | (c >>> 25)), 0x85ebca6b);
+    h3 = Math.imul((h3 + c + 1) | 0, 0xc2b2ae35);
+  }
+  ctx.h1 = h1;
+  ctx.h2 = h2;
+  ctx.h3 = h3;
+}
+
+function feedDomainKey(ctx, key) {
+  if (isPlainAsciiJsonString(key)) {
+    feedDomainHashStr(ctx, '"');
+    feedDomainHashStr(ctx, key);
+    feedDomainHashStr(ctx, '"=');
+  } else {
+    feedDomainHashStr(ctx, JSON.stringify(key));
+    feedDomainHashStr(ctx, '=');
+  }
+}
+
+function hashDomainWrite(value, ctx) {
+  if (value === null) {
+    feedDomainHashStr(ctx, 'null');
+    return;
+  }
+  const t = typeof value;
+  if (t === 'number') {
+    feedDomainHashStr(ctx, 'n:');
+    feedDomainHashStr(ctx, Object.is(value, -0) ? '-0' : String(value));
+    return;
+  }
+  if (t === 'string') {
+    if (isPlainAsciiJsonString(value)) {
+      feedDomainHashStr(ctx, 's:"');
+      feedDomainHashStr(ctx, value);
+      feedDomainHashStr(ctx, '"');
+    } else {
+      feedDomainHashStr(ctx, 's:');
+      feedDomainHashStr(ctx, JSON.stringify(value));
+    }
+    return;
+  }
+  if (t === 'boolean') {
+    feedDomainHashStr(ctx, value ? 'b:true' : 'b:false');
+    return;
+  }
+  if (t === 'bigint') {
+    feedDomainHashStr(ctx, 'g:');
+    feedDomainHashStr(ctx, String(value));
+    return;
+  }
+  if (t !== 'object') {
+    feedDomainHashStr(ctx, SIG_OPAQUE);
+    return;
+  }
+  const seen = ctx.seen;
+  if (seen.has(value)) {
+    feedDomainHashStr(ctx, SIG_CYCLE);
+    return;
+  }
+  if (Array.isArray(value)) {
+    seen.add(value);
+    feedDomainHashStr(ctx, 'a:[');
+    for (let i = 0; i < value.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      hashDomainWrite(value[i], ctx);
+    }
+    feedDomainHashStr(ctx, ']');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Map) {
+    seen.add(value);
+    const entries = [];
+    const keyParts = ctx.parts;
+    for (const [k, v] of value) {
+      keyParts.length = 0;
+      writeDomainSignature(k, keyParts, seen);
+      entries.push([keyParts.join(''), v]);
+    }
+    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    feedDomainHashStr(ctx, 'm:{');
+    for (let i = 0; i < entries.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      feedDomainHashStr(ctx, entries[i][0]);
+      feedDomainHashStr(ctx, '=>');
+      hashDomainWrite(entries[i][1], ctx);
+    }
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Set) {
+    seen.add(value);
+    const sigs = [];
+    const itemParts = ctx.parts;
+    for (const item of value) {
+      itemParts.length = 0;
+      writeDomainSignature(item, itemParts, seen);
+      sigs.push(itemParts.join(''));
+    }
+    sigs.sort();
+    feedDomainHashStr(ctx, 'e:{');
+    for (let i = 0; i < sigs.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      feedDomainHashStr(ctx, sigs[i]);
+    }
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Date) {
+    feedDomainHashStr(ctx, 'd:');
+    feedDomainHashStr(ctx, String(value.getTime()));
+    return;
+  }
+  if (value instanceof RegExp) {
+    feedDomainHashStr(ctx, 'r:');
+    feedDomainHashStr(ctx, value.source);
+    feedDomainHashStr(ctx, '/');
+    feedDomainHashStr(ctx, value.flags);
+    return;
+  }
+  if (ArrayBuffer.isView(value)) {
+    if (value instanceof DataView) {
+      feedDomainHashStr(ctx, 'y:DataView:[');
+      feedDomainHashStr(ctx, String(value.byteLength));
+      feedDomainHashStr(ctx, ']');
+      return;
+    }
+    feedDomainHashStr(ctx, 'y:');
+    feedDomainHashStr(ctx, value.constructor.name);
+    feedDomainHashStr(ctx, ':[');
+    for (let i = 0; i < value.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      hashDomainWrite(value[i], ctx);
+    }
+    feedDomainHashStr(ctx, ']');
+    return;
+  }
+  seen.add(value);
+  const keys = Object.keys(value);
+  const n = keys.length;
+  if (n === 0) {
+    feedDomainHashStr(ctx, 'o:{}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 1) {
+    const k = keys[0];
+    feedDomainHashStr(ctx, 'o:{');
+    feedDomainKey(ctx, k);
+    let field;
+    try { field = value[k]; } catch (_) { field = undefined; }
+    hashDomainWrite(field, ctx);
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 2) {
+    let k0 = keys[0], k1 = keys[1];
+    if (k0 > k1) { const tmp = k0; k0 = k1; k1 = tmp; }
+    feedDomainHashStr(ctx, 'o:{');
+    feedDomainKey(ctx, k0);
+    let f0;
+    try { f0 = value[k0]; } catch (_) { f0 = undefined; }
+    hashDomainWrite(f0, ctx);
+    feedDomainHashStr(ctx, ',');
+    feedDomainKey(ctx, k1);
+    let f1;
+    try { f1 = value[k1]; } catch (_) { f1 = undefined; }
+    hashDomainWrite(f1, ctx);
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  let sorted = true;
+  for (let i = 1; i < n; i++) {
+    if (keys[i - 1] > keys[i]) { sorted = false; break; }
+  }
+  if (!sorted) keys.sort();
+  feedDomainHashStr(ctx, 'o:{');
+  for (let i = 0; i < n; i++) {
+    if (i) feedDomainHashStr(ctx, ',');
+    const k = keys[i];
+    feedDomainKey(ctx, k);
+    let field;
+    try { field = value[k]; } catch (_) { field = undefined; }
+    hashDomainWrite(field, ctx);
+  }
+  feedDomainHashStr(ctx, '}');
+  seen.delete(value);
+}
+
+function hashDomainValue(value, scratch) {
+  scratch.h1 = 0x811c9dc5 | 0;
+  scratch.h2 = 0x9e3779b1 | 0;
+  scratch.h3 = 0x27d4eb2d | 0;
+  scratch.len = 0;
+  scratch.seen.clear();
+  hashDomainWrite(value, scratch);
+  return scratch;
 }
 
 // Canonical signature of a value. `scratch` is a caller-retained object the
@@ -2015,12 +2283,13 @@ export function deepAssignInPlace(target, source, touched) {
       || target instanceof ArrayBuffer) {
     return source; // container kind changed — replacement is the only merge
   }
-  const targetKeys = Object.keys(target);
-  for (const k of targetKeys) {
-    if (!Object.prototype.hasOwnProperty.call(source, k)) delete target[k];
+  for (const k in target) {
+    if (Object.hasOwn(target, k) && !Object.hasOwn(source, k)) delete target[k];
   }
-  for (const k of Object.keys(source)) {
-    target[k] = deepAssignInPlace(target[k], source[k], touched);
+  for (const k in source) {
+    if (Object.hasOwn(source, k)) {
+      target[k] = deepAssignInPlace(target[k], source[k], touched);
+    }
   }
   return target;
 }
@@ -2085,6 +2354,7 @@ export function createDomainDiffer(options = {}) {
   const rootNodes = new Array(DOMAIN_MIRROR_KEYS.length);
   const rootAliasSegs = new Array(DOMAIN_MIRROR_KEYS.length);
   const sigScratch = {};
+  const hashScratch = createDomainHashScratch();
   const cloneScratch = {};
   let nextSlot = 0;
   // Probe slot table: leaf paths interned to stable integer slots so the
@@ -2137,6 +2407,9 @@ export function createDomainDiffer(options = {}) {
       signature: null,
       signedScalar: NO_SIGNED_SCALAR,
       bytes: 0,
+      h1: 0,
+      h2: 0,
+      h3: 0,
       lastSign: -1,
       slot: nextSlot++,
       probeSlot: null,
@@ -2203,11 +2476,17 @@ export function createDomainDiffer(options = {}) {
           node.lastSign = -1;
           node.signature = null;
           node.digest = null;
+          node.h1 = 0;
+          node.h2 = 0;
+          node.h3 = 0;
         }
         if (segs[0] === 'run' && segs.length === 1) {
           // A reset/null run must enumerate the new identity on its first reply.
           node.lastSign = -1;
           node.digest = null;
+          node.h1 = 0;
+          node.h2 = 0;
+          node.h3 = 0;
         }
       }
       node.leaf = false;
@@ -2217,29 +2496,33 @@ export function createDomainDiffer(options = {}) {
       const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.kids === null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
-        const previousKids = node.kids;
-        const nextKids = new Map();
-        for (const c of Object.keys(v)) {
-          let child = previousKids && previousKids.get(c);
+        const kidsMap = node.kids || (node.kids = new Map());
+        const mark = (node._enumMark = ((node._enumMark || 0) + 1) | 0 || 1);
+        let seenCount = 0;
+        for (const c in v) {
+          if (!Object.hasOwn(v, c)) continue;
+          let child = kidsMap.get(c);
           let childSegs;
           if (child) {
             childSegs = domainWireChildSegs(segs, aliased, child, c);
           } else {
             childSegs = segs.concat(c);
             child = getOrCreateNode(`${path}.${c}`, childSegs);
+            kidsMap.set(c, child);
           }
-          nextKids.set(c, child);
+          child._enumSeen = mark;
+          seenCount++;
           walk(child, v[c], tick, updates, stats, npcJobsRevision, runContext, state, childSegs);
         }
-        if (previousKids) {
-          for (const [c, child] of previousKids) {
-            if (!nextKids.has(c)) {
+        if (kidsMap.size > seenCount) {
+          for (const [c, child] of kidsMap) {
+            if (child._enumSeen !== mark) {
               updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
               dropNode(child);
+              kidsMap.delete(c);
             }
           }
         }
-        node.kids = nextKids;
       } else {
         // Between enumerations walk the known set only: absent children delete
         // eagerly (a present-undefined child will be re-discovered next enum);
@@ -2270,6 +2553,9 @@ export function createDomainDiffer(options = {}) {
         // A previously shipped null still has to replace a newer expanded run.
         node.lastSign = -1;
         node.digest = null;
+        node.h1 = 0;
+        node.h2 = 0;
+        node.h3 = 0;
       }
     }
     node.leaf = true;
@@ -2378,21 +2664,34 @@ export function createDomainDiffer(options = {}) {
     }
     const pv = projectDomainLeaf(leafRule, v, state);
     // Mutable containers still need the complete canonical walk. Identical scalar values
-    // already have the exact wire text, including NaN and signed zero.
+    // already have the exact wire text, including NaN and signed zero; mutable objects
+    // use a streaming 96-bit hash + exact UTF-16 byte length to skip giant string joins
+    // whenever nothing changed.
     const type = typeof pv;
     const scalar = pv === null || (type !== 'object' && type !== 'function') ? pv : NO_SIGNED_SCALAR;
-    const sig = scalar !== NO_SIGNED_SCALAR && node.lastSign >= 0 && Object.is(scalar, node.signedScalar)
-      ? node.signature : canonicalSignature(pv, sigScratch);
-    // Production sends the canonical value, never its hash. Compare the retained
-    // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
-    // every due reply. The optional parity probe still gets the same digest,
-    // computed only when its source changes. This keeps complete payloads and
-    // freshness unchanged, and exact text equality cannot hide a hash collision.
-    const changed = node.lastSign < 0 || sig !== node.signature;
-    stats.signedBytes += sig.length;
+    let sigLen, h1, h2, h3, changed;
+    if (scalar !== NO_SIGNED_SCALAR && node.lastSign >= 0 && Object.is(scalar, node.signedScalar)) {
+      sigLen = node.bytes;
+      h1 = node.h1;
+      h2 = node.h2;
+      h3 = node.h3;
+      changed = false;
+    } else {
+      hashDomainValue(pv, hashScratch);
+      sigLen = hashScratch.len;
+      h1 = hashScratch.h1;
+      h2 = hashScratch.h2;
+      h3 = hashScratch.h3;
+      changed = node.lastSign < 0 || sigLen !== node.bytes
+        || h1 !== node.h1 || h2 !== node.h2 || h3 !== node.h3;
+    }
+    stats.signedBytes += sigLen;
     node.urgentSign = false;
     node.lastSign = tick;
-    node.bytes = sig.length;
+    node.bytes = sigLen;
+    node.h1 = h1;
+    node.h2 = h2;
+    node.h3 = h3;
     node.signedScalar = scalar;
     if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
     if (path === 'counterweightCircuitGhost') node.circuitGhostSource = v;
@@ -2411,16 +2710,19 @@ export function createDomainDiffer(options = {}) {
     const freshSlot = node.probeSlot == null;
     if (freshSlot) assignProbeSlot(node, path);
     if (changed) {
-      node.signature = sig;
-      node.digest = probeEnabled ? domainSigDigest(sig) : null;
+      node.signature = null;
+      node.digest = probeEnabled ? domainSigDigest(canonicalSignature(pv, sigScratch)) : null;
       node.probeChanged = true;
-      updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sig.length });
-      stats.shipBytes += sig.length;
+      updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sigLen });
+      stats.shipBytes += sigLen;
       stats.ships++;
-      if (sig.length > DOMAIN_SHIP_CAP_BYTES && stats.oversize.length < 32) {
-        stats.oversize.push({ path, bytes: sig.length, tick });
+      if (sigLen > DOMAIN_SHIP_CAP_BYTES && stats.oversize.length < 32) {
+        stats.oversize.push({ path, bytes: sigLen, tick });
       }
     } else if (freshSlot) {
+      if (probeEnabled && node.digest == null) {
+        node.digest = domainSigDigest(canonicalSignature(pv, sigScratch));
+      }
       node.probeChanged = true; // runner needs this digest for the new slot
     }
   }

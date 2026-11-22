@@ -302,8 +302,131 @@ const pickRock = (page) => page.evaluate((wantType) => {
 
 // One works contract, start to finish, the way a player does it: dock at Helios, take "First Cut"
 // off the board, undock, set the rover down on a rock, cut four iron by hand, and get paid.
-async function runJob(page) {
-  const shot = shooter(page, 'job');
+const JOB_FIRST_CUT = { shots: 'job', stationId: 'station_helios', stationName: 'Helios Station',
+  jobId: 'works_helios_first_cut', title: 'First Cut' };
+
+// --only=fill: take the building job that fronts a kit, stake a claim, waste a contact, pack it
+// solid again, then leave the rock and come back to see the block still there.
+const JOB_FILL = { shots: 'fill', sectorId: 'sector_ceres_belt', stationId: 'station_beltout', stationName: 'Belt Outpost',
+  jobId: 'works_beltout_first_claim', title: 'Stake Your First Claim',
+  // The kit covers a Core and an Extractor exactly; the blocks to pack with are bought at the desk.
+  afterAccept: async (page) => {
+    facts.fillBuy = await page.evaluate(async () => {
+      const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
+      if (!laneCommandSink()) return 'no-lane';
+      return laneRpc('economyTrade', { commodityId: 'cmdty_regocrete', side: 'buy', qty: 4, sourceStationId: 'station_beltout' });
+    }).catch((e) => String(e));
+  },
+  work: fillWork };
+
+async function fillWork(page, shot) {
+  const MID = 14;
+  const at = () => page.evaluate(() => { const d = window.SF.state.drill; return d ? { col: d.avatar.col, row: d.avatar.row } : null; });
+  const tile = (c, r) => page.evaluate(([col, row]) => {
+    const t = window.SF.state.drill?.field?.[col]?.[row];
+    return t ? { type: t.type, ore: t.ore || null, fill: !!t.fill, rubble: !!t.rubble, structure: !!t.structure } : null;
+  }, [c, r]);
+  const blocks = () => page.evaluate(() => window.SF.state.player?.cargo?.items?.cmdty_regocrete || 0);
+  const site = () => page.evaluate(() => {
+    const st = window.SF.state; const d = st.drill;
+    const s = d && Object.values(st.sites?.byId || {}).find((x) => x && x.asteroidId === d.asteroidId);
+    return s ? { id: s.id, anchored: !!s.anchored, machines: s.machines.map((m) => `${m.defId}@${m.col},${m.row}`),
+      fill: s.drillFill || [], rubble: s.drillRubble || [] } : null;
+  });
+  // One tap is one step or one bite: the rover never overshoots the cell asked for.
+  const tap = async (code) => { await page.keyboard.down(code); await page.waitForTimeout(90); await page.keyboard.up(code); await page.waitForTimeout(330); };
+  const go = async (code, done) => {
+    for (let i = 0; i < 70; i++) { const p = await at(); if (!p || done(p)) return p; await tap(code); }
+    return at();
+  };
+  const cellPoint = (c, r) => page.evaluate(([col, row]) => {
+    const canvas = document.querySelector('.ast-canvas');
+    const hook = canvas && canvas.__ast3d;
+    const q = hook && hook.projectCell ? hook.projectCell(col, row) : null;
+    if (!q || !q.length) return null;
+    const box = canvas.getBoundingClientRect();
+    return { x: box.left + q.reduce((s, p) => s + p.x, 0) / q.length, y: box.top + q.reduce((s, p) => s + p.y, 0) / q.length };
+  }, [c, r]);
+  const aim = async (c, r) => { const p = await cellPoint(c, r); if (p) { await page.mouse.move(p.x, p.y); await page.waitForTimeout(700); } return p; };
+  const clickCell = async (c, r) => { const p = await aim(c, r); if (p) { await page.mouse.click(p.x, p.y); await page.waitForTimeout(1100); } return p; };
+  const arm = (id) => page.evaluate((itemId) => {
+    const b = document.querySelector(`button.aw-build-key[data-item-id="${itemId}"]`);
+    if (!b) return null;
+    b.click();
+    return { state: b.dataset.keyState, label: b.getAttribute('aria-label'), tip: (b.querySelector('.aw-build-tip')?.textContent || '').trim() };
+  }, id);
+  const card = () => page.evaluate(() => {
+    const el = [...document.querySelectorAll('[class*="lens"]')].find((n) => n.getBoundingClientRect().width > 40 && (n.textContent || '').trim());
+    return el ? el.textContent.split(/[ \n\t]+/).join(' ').trim().slice(0, 200) : null;
+  });
+  const banners = () => page.evaluate(() => [...document.querySelectorAll('[data-screen="drill"] [class*="banner"]')]
+    .map((n) => (n.textContent || '').trim()).filter(Boolean).slice(0, 4));
+  const mode = () => page.evaluate(() => document.querySelector('.ast-screen')?.dataset.mode || null);
+  const build = async (on) => { if (((await mode()) === 'build') !== on) { await page.keyboard.press('KeyB'); await page.waitForTimeout(700); } };
+
+  const f = facts.fill = { blocksAtStart: await blocks() };
+  // A short tunnel under the entrance with a bay at each end.
+  await go('ArrowDown', (p) => p.row >= 2);
+  await go('ArrowLeft', (p) => p.col <= MID - 1);
+  await go('ArrowRight', (p) => p.col >= MID + 2);
+  f.parked = await go('ArrowLeft', (p) => p.col <= MID + 1);
+  await shot('05b-tunnel');
+  await build(true);
+  f.coreClick = await clickCell(MID + 2, 2);
+  f.afterCore = await site();
+  await shot('05c-core');
+  f.extractorKey = await arm('sm_extractor');
+  f.extractorClick = await clickCell(MID - 1, 2);
+  f.afterExtractor = await site();
+  await shot('05d-extractor');
+  // Strip-mine a cell the extractor was reading: one down from the middle of the tunnel.
+  await build(false);
+  await go('ArrowLeft', (p) => p.col <= MID);
+  f.wastedWas = await tile(MID, 3);
+  await go('ArrowDown', (p) => p.row >= 3);
+  f.back = await go('ArrowUp', (p) => p.row <= 2);
+  f.wastedNow = await tile(MID, 3);
+  await shot('05e-wasted');
+  await build(true);
+  f.fillKey = await arm('fill');
+  await aim(MID, 3);
+  f.quoteCard = await card();
+  await shot('05f-fill-quote');
+  f.blocksBefore = await blocks();
+  await clickCell(MID, 3);
+  f.blocksAfter = await blocks();
+  f.packed = await tile(MID, 3);
+  f.afterFill = await site();
+  await page.mouse.move(40, 40);
+  await page.waitForTimeout(500);
+  await shot('05g-fill-set');
+  await aim(MID, 3);
+  f.packedCard = await card();
+  // Packing the cell under the entrance would cut the way back: one press warns, and packs nothing.
+  await clickCell(MID, 1);
+  f.sealBanner = await banners();
+  f.sealCell = await tile(MID, 1);
+  await shot('05h-seal-warning');
+  // Leave the rock, come back, and look again.
+  await build(false);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !window.SF.state.drill, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  f.left = await page.evaluate(() => ({ drill: !!window.SF.state.drill }));
+  await page.keyboard.press('KeyB');
+  await page.waitForFunction(() => !!window.SF.state.drill, null, { timeout: 40000 }).catch(() => {});
+  await page.waitForFunction(() => {
+    const root = document.querySelector('[data-screen="drill"]');
+    return !!root && !/Docking the mining rig|Loading mining equipment/.test(root.textContent);
+  }, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  f.packedAfterReturn = await tile(MID, 3);
+  f.siteAfterReturn = await site();
+  await shot('05i-back-in-the-rock');
+}
+
+async function runJob(page, plan = JOB_FIRST_CUT) {
+  const shot = shooter(page, plan.shots);
   const clickText = async (pattern, opts = {}) => {
     const hit = await page.evaluate(({ source, flags, tags }) => {
       const re = new RegExp(source, flags);
@@ -321,14 +444,19 @@ async function runJob(page) {
     return hit;
   };
   try {
-    const station = await page.evaluate(() => {
+    if (plan.sectorId) {
+      await enterSector(page, plan.sectorId);
+      await page.waitForFunction((id) => window.SF.state.world?.currentSectorId === id, plan.sectorId, { timeout: 60000 }).catch(() => {});
+      await page.waitForTimeout(6000);
+    }
+    const station = await page.evaluate(({ stationId, stationName }) => {
       const st = window.SF.state;
       const e = st.entityList.find((x) => x && x.alive !== false && x.type === 'station'
-        && (x.data?.stationId === 'station_helios' || /helios station/i.test(x.name || '')));
+        && (x.data?.stationId === stationId || (x.name || '').toLowerCase() === stationName.toLowerCase()));
       return e ? { id: e.id, x: e.pos.x, z: e.pos.z, radius: e.radius || 40 } : null;
-    });
+    }, plan);
     facts.jobStation = station;
-    if (!station) throw new Error('Helios Station is not in the opening sector');
+    if (!station) throw new Error(`${plan.stationName} is not in this sector`);
     await relocate(page, { x: station.x - station.radius - 160, z: station.z, heading: 0 });
     await page.waitForTimeout(2000);
     // First the ordinary way: E hands the approach to the autopilot, E again in range docks.
@@ -362,27 +490,27 @@ async function runJob(page) {
     }
     facts.jobDockLog = dockLog;
     facts.jobDocked = await page.evaluate(() => ({ docked: !!window.SF.state.ui?.docked, station: window.SF.state.ui?.dockedStationId }));
-    if (!facts.jobDocked.docked) throw new Error('could not dock at Helios by pressing E');
+    if (!facts.jobDocked.docked) throw new Error(`could not dock at ${plan.stationName} by pressing E`);
     await page.waitForTimeout(3500);
     await shot('00-docked');
     // The arrival page numbers its doors; Jobs is 2.
     facts.jobDoor = await clickText(/^jobs$/i, { tags: '[data-screen="station"] *' });
     await page.waitForTimeout(1800);
     await shot('01-board');
-    facts.jobBoardText = await page.evaluate(() => {
+    facts.jobBoardText = await page.evaluate((title) => {
       const root = document.querySelector('[data-screen="station"]') || document.body;
       const text = root.textContent.split(/[ \n\t]+/).join(' ');
-      const at = text.indexOf('First Cut');
+      const at = text.indexOf(title);
       return { hasFirstCut: at >= 0, around: at >= 0 ? text.slice(Math.max(0, at - 80), at + 260) : text.slice(0, 500) };
-    });
+    }, plan.title);
     // The board lists more work than fits: pick the row itself, wherever it has scrolled to.
-    facts.jobRow = await page.evaluate(() => {
-      const row = document.querySelector('button.sx-ct-row[data-mid*="works_helios_first_cut"]');
+    facts.jobRow = await page.evaluate((jobId) => {
+      const row = document.querySelector(`button.sx-ct-row[data-mid*="${jobId}"]`);
       if (!row) return null;
       row.scrollIntoView({ block: 'center' });
       row.click();
       return { mid: row.dataset.mid, label: row.getAttribute('aria-label') };
-    });
+    }, plan.jobId);
     await page.waitForTimeout(1200);
     await shot('02-offer');
     // Accept is press-and-hold.
@@ -408,7 +536,8 @@ async function runJob(page) {
         credits: st.player?.credits, flags: st.story?.flags?.worksContracts || null };
     });
     facts.jobAfterAccept = await active();
-    if (!facts.jobAfterAccept.job) throw new Error('First Cut was not accepted through the board');
+    if (!facts.jobAfterAccept.job) throw new Error(`${plan.title} was not accepted through the board`);
+    if (plan.afterAccept) await plan.afterAccept(page);
     await clickText(/^undock/i) || await page.keyboard.press('Escape');
     await page.waitForFunction(() => !window.SF.state.ui?.docked, null, { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(3500);
@@ -453,7 +582,8 @@ async function runJob(page) {
       }
       return { col: d.avatar.col, row: d.avatar.row, iron, got: (d.yieldLog && d.yieldLog.cmdty_ore_iron) || 0 };
     });
-    for (let step = 0; step < 40; step++) {
+    if (plan.work) await plan.work(page, shot);
+    for (let step = 0; step < 40 && !plan.work; step++) {
       const w = await where();
       if (!w) break;
       const m = await active();
@@ -831,7 +961,7 @@ try {
       `--window-size=${VIEWPORT.width},${VIEWPORT.height}`, '--force-device-scale-factor=1'],
   } : { headless: true });
   if (ONLY.has('race')) await runRace();
-  if (ONLY.has('job') || ONLY.has('rover') || ONLY.has('field') || ONLY.has('planet')) {
+  if (ONLY.has('job') || ONLY.has('rover') || ONLY.has('field') || ONLY.has('planet') || ONLY.has('fill')) {
     const { page, issues } = await newPage();
     await startAdventure(page);
     await page.evaluate(() => {
@@ -843,6 +973,7 @@ try {
       }
     });
     if (ONLY.has('job')) await runJob(page);
+    if (ONLY.has('fill')) await runJob(page, JOB_FILL);
     if (ONLY.has('rover')) await runRover(page);
     if (ONLY.has('field')) await runField(page);
     if (ONLY.has('planet')) await runPlanet(page);

@@ -2513,6 +2513,7 @@ export const MINE_EVENT_CUE_MAP = Object.freeze({
   'drill:rockCreak': 'rockCreak',
   'drill:caveIn': 'caveIn',
   'drill:gasVent': 'ventRelief',
+  'drill:fill': 'machinePlaced',
   'heat:critical': 'heatCritical',
   'heat:vented': 'ventRelief',
   'site:machineInstalled': 'machinePlaced',
@@ -2544,6 +2545,8 @@ export const MINE_LAW_EVENT_ROWS = Object.freeze([
   Object.freeze({ row: 'Roof span cracking', heard: 'low stone groan, once', cue: 'rockCreak', source: 'drill:rockCreak' }),
   Object.freeze({ row: 'Cave-in', heard: 'roof drop, rubble landing', cue: 'caveIn', source: 'drill:caveIn' }),
   Object.freeze({ row: 'Pocket vented open', heard: 'relief hiss, no fire', cue: 'ventRelief', source: 'drill:gasVent' }),
+  // A block packed into a dug cell seats the way a machine does.
+  Object.freeze({ row: 'Packed fill set', heard: 'firm mechanical seat', cue: 'machinePlaced', source: 'drill:fill' }),
 ]);
 
 // Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
@@ -3492,6 +3495,7 @@ export const audio = {
     bus.on('drill:rockCreak', (p) => this._onMineCue('rockCreak', p));
     bus.on('drill:caveIn', (p) => this._onMineCue('caveIn', p));
     bus.on('drill:gasVent', (p) => this._onMineCue('ventRelief', p));
+    bus.on('drill:fill', (p) => this._onMineCue('machinePlaced', p));
     bus.on('drill:scanPulse', (p) => this._onMineCue('assayPing', p));
     bus.on('drill:warn', (p) => {
       const key = MINE_EVENT_CUE_MAP[`drill:warn/${(p && p.reason) || ''}`];

@@ -102,6 +102,17 @@ export function applyRubbleTiles(field, rubble) {
   }
 }
 
+/**
+ * Packed fill is a rubble cell the player set on purpose. It is solid through the rubble record
+ * alone; this list only marks which rubble cells were placed, for the board's words and look.
+ */
+export function applyFillMarks(field, fill) {
+  applyFlaggedTiles(field, fill, (tile) => { if (tile.rubble) tile.fill = true; });
+}
+
+/** The live tile a packed cell becomes: the same soft matrix a cave-in leaves, marked as placed. */
+export const FILL_TILE = () => ({ ...RUBBLE_TILE(), fill: true });
+
 export function applyFlaggedTiles(field, flagged, fn) {
   const list = normalizeClearedTiles(flagged);
   if (!field || !list.length || typeof fn !== 'function') return;

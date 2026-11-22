@@ -4436,6 +4436,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function cellTint(c, r, tile, bucket, out) {
     rockInstanceColor(c, r, bucket, out);
     if (tile && tile.cracked) { out.r = Math.min(1, out.r * 1.35 + 0.16); out.g *= 0.62; out.b *= 0.55; }
+    // Packed fill is cast stone: paler and flatter than the native rock it sits in, so a block the
+    // player set reads as made, not as a cave-in.
+    else if (tile && tile.fill) {
+      const grey = (out.r + out.g + out.b) / 3;
+      out.r = grey * 0.5 + 0.56; out.g = grey * 0.5 + 0.55; out.b = grey * 0.5 + 0.52;
+    }
     else if (tile && tile.rubble) { out.r *= 0.7; out.g *= 0.66; out.b *= 0.62; }
     else if (tile && tile.fault) { out.r *= 0.55; out.g *= 0.5; out.b *= 0.62; }
     else if (tile && tile.rich) { out.r = Math.min(1, out.r * 1.28 + 0.1); out.g *= 1.06; out.b *= 0.5; }
@@ -8169,6 +8175,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       // The refused verdict is the hairline frame's bone, and that is ALL it is: a bracket in the
       // same cell doubles the ink and starts reading as a filled box again.
+    } else if (ui.mode === 'build' && ui.buildKind === 'fill') {
+      // Packed fill has no machine to ghost. The frame carries the verdict, and the machines that
+      // would read the new block get the same contact brackets a machine ghost gives its faces.
+      if (ghost) ghost.group.visible = false;
+      frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xf2e8d5);
+      frameMat.opacity = 0.85;
+      if (ui.canOk) {
+        const site = getSite ? getSite() : null;
+        for (const m of (site && site.machines) || []) {
+          if (Math.abs(m.col - cursor.col) <= 1 && Math.abs(m.row - cursor.row) <= 1) markSeat(m.col, m.row, 'contact');
+        }
+      }
     } else {
       if (ghost) ghost.group.visible = false;
       frameMat.color.setHex(HOVER_INK);
@@ -8687,6 +8705,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       refreshCells(cells);
       seamsDirty = true;
+      return;
+    }
+    if (evt === 'fill') {
+      // A block tamped into a dug cell: the rock instance comes back (un-carve), the cell flashes
+      // the valid-work mint once and sheds a little cast dust. No camera kick: nothing fell.
+      refreshCells([{ col: p.col, row: p.row }]);
+      seamsDirty = true;
+      firePulseRing(p.col, p.row, 0x7cd9a2, 0.5);
+      const { x, y } = centerPx(p.col, p.row);
+      burst({ x, y, count: motionReduce ? 3 : 9, color: '#cfc9bd', life: 0.5, size: 2.6, speed: 40, kind: 'dust', cone: Math.PI * 2 });
+      mark('fill', p.col, p.row);
       return;
     }
     if (evt === 'gasVent') {
