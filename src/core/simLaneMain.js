@@ -1445,6 +1445,13 @@ export function createSimLaneRuntime({
       // NO-FREEZE step 3: the reliable stream applies in order under a per-frame time budget.
       replyQueue.push(msg);
       msg.__laneArrivedAtMs = nowMs();
+      // While frames are arriving the frame applies replies (frameOwnsReplyApply): this task
+      // only enqueues, so a reply never lands as a second block right behind a heavy frame.
+      if (frameOwnsReplyApply()) {
+        replyDeferredToFrame++;
+        armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS);
+        return;
+      }
       drainClockReplies();
       return;
     }
@@ -1667,12 +1674,56 @@ export function createSimLaneRuntime({
       parkedReply = applyClockReply(msg, null, replySliceBudgetMs(null), replyMirrorBudgetMs(null));
       replyBudgetSpentMs += Math.max(0.01, nowMs() - started);
     }
-    if (replyQueue.length || parkedReply) armReplyDrainTimer();
+    if (frameBoundary && state && state.render) state.render.replyApplySpentMs = replyBudgetSpentMs;
+    if (replyQueue.length || parkedReply) armReplyDrainTimer(frameOwnsReplyApply() ? REPLY_FRAME_FALLBACK_MS : 16);
   }
-  function armReplyDrainTimer() {
+  // Replies apply from the frame (frame engineer, 2026-11-22). The referee's most common long
+  // frame was the frame callback followed, in the same frame, by a worker message task applying a
+  // reply; and under load timers go unserved for seconds while frames and messages take every
+  // turn. So in live flight, while frame boundaries keep arriving, the frame boundary is the only
+  // place a reply is applied (one budget, at least one reply a frame); the message task enqueues
+  // and the timer is only the fallback for when frames stop. ?rfx=-replyOnFrame restores
+  // apply-on-arrival.
+  const REPLY_FRAME_OWNS_WITHIN_MS = 350;
+  const REPLY_FRAME_FALLBACK_MS = 120;
+  const REPLY_FRAME_QUEUE_ESCAPE = 24;
+  let animationFrameAtMs = -Infinity;
+  let replyDeferredToFrame = 0;
+  let replyFallbackDrains = 0;
+  function frameOwnsReplyApply() {
+    if (laneClosed || !ready || !state || state.mode !== 'flight') return false;
+    // Only a real animation-frame loop owns the queue (presentationRunner stamps each callback): a
+    // headless run or a test that calls advance() by hand still applies a reply as it arrives.
+    if (nowMs() - animationFrameAtMs > REPLY_FRAME_OWNS_WITHIN_MS) return false;
+    // A queue this deep means the frames are not keeping up at all: let any task help.
+    if (replyQueue.length > REPLY_FRAME_QUEUE_ESCAPE) return false;
+    return frameCostFixOn('replyOnFrame');
+  }
+  function armReplyDrainTimer(delayMs = 16) {
     if (replyDrainTimer !== null || laneClosed) return;
     // Not presenting (no rAF)? A timer turn is a frame boundary too.
-    replyDrainTimer = setTimeout(() => { replyDrainTimer = null; drainClockReplies(true); }, 16);
+    replyDrainTimer = setTimeout(() => {
+      replyDrainTimer = null;
+      if (laneClosed) return;
+      if (frameOwnsReplyApply()) {
+        // Frames are still arriving: they do the applying. Stay armed only while work waits.
+        if (replyQueue.length || parkedReply) armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS);
+        return;
+      }
+      if (replyQueue.length || parkedReply) replyFallbackDrains++;
+      drainClockReplies(true);
+    }, delayMs);
+  }
+  // Called at every frame boundary: stamps the frame pump and serves the lane's wall-clock
+  // sampler from the frame, because its timer can starve for seconds in a busy fight.
+  let freezeSampledAtMs = -Infinity;
+  function serviceFrameBoundary() {
+    const now = nowMs();
+    replyFramePumpAtMs = now;
+    if (ready && !laneClosed && now - freezeSampledAtMs >= FREEZE_SAMPLE_MS) {
+      freezeSampledAtMs = now;
+      try { freezeSample(); } catch (_) { /* recorder only */ }
+    }
   }
 
   function releaseFlight(msg, flight) {
@@ -2776,7 +2827,11 @@ export function createSimLaneRuntime({
     if (freezeSampler !== null || laneClosed) return;
     freezeSampler = setTimeout(() => {
       freezeSampler = null;
-      freezeSample();
+      const now = nowMs();
+      if (now - freezeSampledAtMs >= FREEZE_SAMPLE_MS * 0.5) {
+        freezeSampledAtMs = now;
+        freezeSample();
+      }
       scheduleFreezeSample();
     }, FREEZE_SAMPLE_MS);
   }
@@ -3343,13 +3398,15 @@ export function createSimLaneRuntime({
       advanceResult.stepCap = effectiveStepCap;
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
-      replyFramePumpAtMs = nowMs();
+      serviceFrameBoundary();
       drainClockReplies(true);
       sampleLaneUiFold();
       flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
       readPoseFeed();
       return advanceResult;
     },
+    /** presentationRunner: one call per animation-frame callback, presented or not. */
+    noteAnimationFrame() { animationFrameAtMs = nowMs(); },
     heartbeat() {
       if (workerClockMode !== 'worker-local' || laneClosed || !ready) return;
       const episode = openFreeze;
@@ -3386,7 +3443,7 @@ export function createSimLaneRuntime({
       // Worker-local presentation frames do not call advance(), but they still
       // own the main→worker UI boundary. Keep modal depth and screen-stack
       // admission in sync before flushing the frame's cursor/clock command.
-      replyFramePumpAtMs = nowMs();
+      serviceFrameBoundary();
       drainClockReplies(true);
       sampleLaneUiFold();
       flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
@@ -3609,6 +3666,7 @@ export function createSimLaneRuntime({
           } catch (_) { return null; }
         })(),
         replyQueue: { pending: replyQueue.length, max: replyQueueMax, cosmeticShed: replyCosmeticShed },
+        replyOnFrame: { deferredToFrame: replyDeferredToFrame, fallbackDrains: replyFallbackDrains },
         replySlices: { parked: replySlicesParked, resumed: replySlicesResumed, open: parkedReply != null, maxOpenMs: replySliceMaxParkedMs },
         msSinceLastAppliedReply: lastAppliedAtMs >= 0
           ? Math.max(0, nowMs() - lastAppliedAtMs) : null,

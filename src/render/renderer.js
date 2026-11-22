@@ -33632,7 +33632,10 @@ export const render = {
           && performance.now() - (this._residencyServiceAtMs || 0) >= 33)) {
         tasks.request('residency-service');
       }
-      tasks.run(FRAME_TASK_BUDGET_MS);
+      // One deferred-work budget a frame, shared with the lane: what this frame boundary already
+      // spent applying worker replies (past 4 ms) comes out of the frame tasks' 2 ms.
+      const replySpentMs = Number(this.state.render && this.state.render.replyApplySpentMs) || 0;
+      tasks.run(Math.max(0.5, FRAME_TASK_BUDGET_MS - Math.max(0, replySpentMs - 4)));
     } else if (this.state && this.state.mode !== 'flight' && !this._openingFirstPicturePrepared) {
       // Loading may replace the entity table while retaining IDs and a saved tick. Classification
       // is a flight authority; publishing it here would turn optional restored actors into false

@@ -26,7 +26,9 @@
 // cue events, src/core/simLaneMain.js), ribbonBatch (every NPC wake ribbon writes one vertex
 // slice of a shared geometry+program — one draw call for the whole cohort — via
 // createRibbonTrailBatch in src/render/engineTrailSurfaces.js, minted through
-// _mintNpcRibbonTrail in src/render/vfx.js).
+// _mintNpcRibbonTrail in src/render/vfx.js), replyOnFrame (while animation frames arrive, worker
+// replies are applied at the frame boundary only; the message task just enqueues,
+// src/core/simLaneMain.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).
