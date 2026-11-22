@@ -708,7 +708,10 @@ try {
           const pos = { x: (p ? p.pos.x : 0) + 4000, y: 0, z: (p ? p.pos.z : 0) + 4000 };
           window.SF.bus.emit('ui:setCourse', { pos, label: 'LANEPROBE', reason: 'laneFwdCheck' });
         });
-        await page.waitForTimeout(900);
+        // The receipt bridges back in about 70 ms on a quiet machine; under load (five agents, a busy
+        // GPU) it has taken longer than a fixed 900 ms. Wait for it, up to 6 s, then go on either way.
+        await page.waitForFunction(() => window.__laneFwdReceipts.probe > 0, null, { timeout: T(6000) }).catch(() => {});
+        await page.waitForTimeout(300);
         const fwd = await page.evaluate(() => {
           const st = window.SF.state;
           const wp = st.nav && st.nav.waypoint;

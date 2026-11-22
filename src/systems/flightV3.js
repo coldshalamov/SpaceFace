@@ -1794,9 +1794,14 @@ function resolveMovingRendezvous(host, entity, input, state, profile, target, au
 
 function hasManualFlightInput(input) {
   if (!input) return false;
+  // A turn the input system derived from where the cursor (or aim stick) sits is not a hand on the
+  // helm: under the nose-follows-cursor scheme it is non-zero whenever the autopilot turns the ship
+  // away from a parked mouse, and counting it made every route and berth approach cancel itself
+  // ("interrupted: manual") a moment after it began. Keys, strafe, thrust, boost and brake cancel.
+  const turnIsHand = input.turnIntentFromAim !== true;
   return Math.abs(finite(input.moveX ?? input.strafe, 0)) > 0.08 ||
     Math.abs(finite(input.moveZ ?? input.throttle, 0)) > 0.08 ||
-    Math.abs(finite(input.turnIntent ?? input.turn, 0)) > 0.08 ||
+    (turnIsHand && Math.abs(finite(input.turnIntent ?? input.turn, 0)) > 0.08) ||
     !!input.boost ||
     !!input.brake;
 }
