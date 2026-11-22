@@ -22,6 +22,22 @@ export const CONTACT_YIELD = {
   ventedGasFraction: 0.4,  // a vented seam pays this fraction of a sealed pocket
 };
 
+// What a cell does for the machine beside it besides paying out material (design/overhaul
+// 05_ADVENTURE 3.3). Each is a reason to leave a cell in the rock: dig it out and the effect is
+// gone for good.
+//   Ice cools:      a processing machine with water ice in its ring runs faster.
+//   Veins conduct:  a 4-connected run of solid crystal or copper vein carries power between the
+//                   machines at its ends, with no cable laid. Dig one cell and the run is cut.
+//   Basalt braces:  a heavy machine with basalt on three sides is seated in bedrock and does not
+//                   shake a roof down.
+export const CONTACT_RULES = Object.freeze({
+  coolantOre: 'cmdty_ice_water',
+  coolMultByContacts: Object.freeze([1, 1.5, 2]),   // 0, 1, 2 or more ice contacts
+  cooledMachines: Object.freeze(['sm_refinery', 'sm_fabricator', 'sm_deep_synthesizer', 'sm_charge_press']),
+  conductorOres: Object.freeze(['cmdty_crystal_silica', 'cmdty_crystal_lumin', 'cmdty_ore_copper']),
+  braceBasaltContacts: 3,
+});
+
 // The six starter machines (brief §3). `power` < 0 draws from the network, > 0 generates.
 // `cost` is the §3 local + imported split: Regocrete is producible on-site later; the
 // Machine Control Unit is the imported part that gives ship hauling industrial meaning.

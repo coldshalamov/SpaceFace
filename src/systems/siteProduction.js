@@ -7,7 +7,7 @@
 // machine for a contact the player drilled away. Q = base * geology * min(power, input, export).
 import { ORES } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
-import { CONTACT_YIELD, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../data/sites.js';
+import { CONTACT_RULES, CONTACT_YIELD, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../data/sites.js';
 
 const ORE_TIER_BY_ID = new Map(ORES.map((o) => [o.id, o.tier]));
 const ORE_VALUE_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.basePrice]));
@@ -111,8 +111,26 @@ export function machineCapability(def, profile, mode) {
     cap.processMultiplier = 1 + Math.min(SITE_BALANCE.maxProcessBonus,
       cap.processContacts * SITE_BALANCE.processBonusPerContact);
   }
+  // Ice cools. Water ice left in the ring of a processing machine carries its heat away, so the
+  // machine runs half again as fast beside one ice cell and twice as fast beside two or more.
+  // It multiplies the matched-face bonus above: an ice body is the best refinery rock there is.
+  if (profile && CONTACT_RULES.cooledMachines.includes(def.id)) {
+    cap.iceContacts = (profile.ores && profile.ores[CONTACT_RULES.coolantOre]) || 0;
+    const table = CONTACT_RULES.coolMultByContacts;
+    cap.coolMultiplier = table[Math.min(table.length - 1, cap.iceContacts)];
+    if (cap.coolMultiplier > 1) cap.processMultiplier = round3(cap.processMultiplier * cap.coolMultiplier);
+  }
+  // Basalt braces. A heavy machine seated against bedrock on three sides does not shake a roof
+  // down (siteStructuralModel reads the same rule off the field).
+  cap.braced = !!profile && machineIsHeavy(def) && profile.basalt >= CONTACT_RULES.braceBasaltContacts;
   return cap;
 }
+
+/** A machine heavy enough to load a roof span: it draws at least what a refinery does. */
+export function machineIsHeavy(def) {
+  return !!def && typeof def.power === 'number' && def.power <= -8;
+}
+
 
 /**
  * Advance one continuous recipe (refinery modes) by dtMin minutes against a shared store.

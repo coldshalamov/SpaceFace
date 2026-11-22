@@ -14,7 +14,7 @@
 //   - chip text comes ONLY from LENS_CHIPS. The UI never invents a chip word.
 //   - no tutorial copy. It prints once elsewhere (the announcer), never here.
 //   - the card is pointer-transparent, so it can never steal the hover that created it.
-import { SITE_MACHINE_BY_ID } from '../../data/sites.js';
+import { CONTACT_RULES, SITE_MACHINE_BY_ID } from '../../data/sites.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { arcGauge } from '../orrery/instruments.js';
@@ -388,6 +388,11 @@ export function tileLensModel({
     const rate = oreContactRate(ore);
     body = rate >= 0.1 ? `Preserve: up to ${Number(rate.toFixed(2))} units per minute per extractor`
       : 'Rare harvest now · preserve for steady supply';
+    // What this cell does for a machine beside it, beyond paying out ore.
+    if (ore === CONTACT_RULES.coolantOre) body = 'Preserve: cools a refinery or fabricator beside it';
+    else if (CONTACT_RULES.conductorOres.includes(ore)) body = 'Preserve: carries power through the rock, no cable';
+  } else if (type === 'rock') {
+    body = 'Preserve: three beside a heavy machine brace its roof';
   }
   if (anomaly && anomaly.status !== 'breached') {
     body = sentenceCase(`${anomaly.name} · tap for aura or breach`);
@@ -445,6 +450,16 @@ const SUPPORT_GHOST_HINT = {
   sm_harmonic_resonator: 'Amplifies adjacent extractor yield +30%',
 };
 
+/** What the cells around a machine are doing for it, in a stranger's words. Empty when nothing. */
+export function contactGiftLine(cap) {
+  if (!cap) return '';
+  const bits = [];
+  if (cap.coolMultiplier >= 2) bits.push('Ice beside it: runs twice as fast');
+  else if (cap.coolMultiplier > 1) bits.push('Ice beside it: runs half again as fast');
+  if (cap.braced) bits.push('Basalt on three sides: braced');
+  return bits.join(' · ');
+}
+
 export function machineLensModel(pm) {
   if (!pm) return null;
   const def = SITE_MACHINE_BY_ID.get(pm.defId);
@@ -474,7 +489,8 @@ export function machineLensModel(pm) {
     numerals: numerals.join(' · '),
     hp: null,
     chips: [],
-    body: status.body,
+    // A fault speaks first. A machine with nothing wrong says what the rock is doing for it.
+    body: status.body || contactGiftLine(cap),
     ring: (pm.geo && (def?.usesGeology || cap?.processContacts > 0)) ? pm.geo.cells : null,
   };
 }
@@ -494,7 +510,7 @@ export function ghostLensModel(defId, check) {
   const output = rates.map(([id, n]) => `${n.toFixed(1)} ${sentenceCase(commodityName(id))}/min`).join(' · ');
   const power = capability && (capability.powerGen || capability.powerDraw);
   const missing = Object.entries(check?.missing || {}).map(([id, n]) => `${n} ${sentenceCase(commodityName(id))}`).join(' + ');
-  const body = ok ? (output || (capability?.processMultiplier > 1
+  const body = ok ? (output || contactGiftLine(capability) || (capability?.processMultiplier > 1
     ? `Preserved faces: +${Math.round((capability.processMultiplier - 1) * 100)}% process speed`
     : (def?.usesGeology && !capability?.geologyLive ? 'No productive material contacts' : (SUPPORT_GHOST_HINT[defId] || ''))))
     : (check?.reason === 'materials' && missing ? `Need ${missing}` : (GHOST_BLOCK[check && check.reason] || 'Placement blocked'));

@@ -18,7 +18,7 @@
 // bore. The caller paints that body. This module does not write heat, cargo,
 // credits, or machine stats, and it does not roll state.rng.
 
-import { SITE_MACHINE_BY_ID } from '../data/sites.js';
+import { CONTACT_RULES, SITE_MACHINE_BY_ID } from '../data/sites.js';
 
 export const STRUCTURE_MODEL_VERSION = 1;
 
@@ -227,16 +227,28 @@ export function stepSiteStructure(snapshot) {
       braces.push({ col, row, radius: def?.braceRadius || 2 });
     }
     if (!isHeavy(def) || !(ratio > 0)) continue;
+    // Seated in bedrock: basalt in three or more of the eight cells around it.
+    let basalt = 0;
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        if (dc === 0 && dr === 0) continue;
+        const tile = inBounds(col + dc, row + dr, cols, rows) ? tileAt(snap.field, col + dc, row + dr) : null;
+        if (tile && tile.type === 'rock') basalt++;
+      }
+    }
     running.push({
       id,
       col,
       row,
       name: def && typeof def.name === 'string' ? def.name : '',
+      bedrock: basalt >= CONTACT_RULES.braceBasaltContacts,
     });
   }
   running.sort((a, b) => (machinePosKey(a) < machinePosKey(b) ? -1 : machinePosKey(a) > machinePosKey(b) ? 1 : 0));
 
   const spanBraced = (a, b) => {
+    // A machine seated in basalt carries its own load: the span it shares is not shaken.
+    if (a.bedrock || b.bedrock) return true;
     for (const br of braces) {
       const da = Math.max(Math.abs(br.col - a.col), Math.abs(br.row - a.row));
       const db = Math.max(Math.abs(br.col - b.col), Math.abs(br.row - b.row));

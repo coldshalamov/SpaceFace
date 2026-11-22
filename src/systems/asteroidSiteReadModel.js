@@ -6,7 +6,7 @@ import { COLS, ROWS, generateDrillField, resolveBoreFamily, applyClearedTiles, a
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization } from '../data/sites.js';
 import { contactProfile, machineCapability, clamp01, round3 } from './siteProduction.js';
-import { buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent, stagedCourierLoad } from './siteLogistics.js';
+import { buildComponents, buildPowerComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent, stagedCourierLoad } from './siteLogistics.js';
 import { paintStructuralFalls } from './siteStructuralModel.js';
 import { validateSurveyTarget } from './siteSurvey.js';
 import { solveRadiatorThermal, radiatorSignature } from './siteRadiatorReadModel.js';
@@ -202,11 +202,15 @@ export const asteroidSiteReadMethods = {
       applyFlaggedTiles(rt.field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
       rt.fieldDirty = false;
       rt.geoDirty = true;
+      // Power runs through crystal and copper left in the rock, so a changed field can join or
+      // split the power networks.
+      rt.netDirty = true;
     }
     if (rt.netDirty) {
       const machineCells = new Map();
       for (const m of site.machines) machineCells.set(tileIndex(m.col, m.row), m.id);
-      rt.powerComps = buildComponents(new Set(site.overlays.power), machineCells, COLS);
+      // Veins conduct: crystal and copper left in the rock carry power like a laid cable.
+      rt.powerComps = buildPowerComponents(rt.field, site.overlays.power, machineCells, COLS, ROWS);
       rt.laneComps = buildComponents(new Set(site.overlays.lane), machineCells, COLS);
       // Re-home persisted lane stock onto the new topology, then persist the mapping back.
       const merged = reconcileStores(site.laneStores, rt.laneComps);
@@ -526,6 +530,8 @@ export const asteroidSiteReadMethods = {
         key: comp.key,
         cells: comp.cells,
         overlayCells: comp.overlayCells,
+        // crystal and copper left in the rock that this network runs through, no cable laid
+        conductorCells: comp.conductorCells || [],
         machineIds: comp.machineIds,
         gen: round3(gen),
         draw: round3(draw),

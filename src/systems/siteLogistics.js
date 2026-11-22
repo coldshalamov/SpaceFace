@@ -5,7 +5,7 @@
 // per-cell overlays; networks are CONNECTED COMPONENTS with aggregated flow (shared inventory +
 // a network throughput cap) — belts look alive, the economy never simulates individual chunks.
 // Machines conduct both overlays (bolted-together machines share networks without extra track).
-import { SITE_BALANCE } from '../data/sites.js';
+import { CONTACT_RULES, SITE_BALANCE } from '../data/sites.js';
 
 /** 4-bit connectivity mask (N=1,E=2,S=4,W=8) for auto-tiling. `has` = (col,row)=>bool. */
 export function connectivityMask(has, col, row) {
@@ -65,6 +65,41 @@ export function buildComponents(overlayCells, machineCells, cols) {
     });
   }
   return components;
+}
+
+/** True when this tile is a solid vein that carries power through the rock (sites.js CONTACT_RULES). */
+export function conductsPower(tile) {
+  return !!tile && tile.type === 'vein' && CONTACT_RULES.conductorOres.includes(tile.ore);
+}
+
+/**
+ * Power networks over laid cable, machines, and the crystal and copper left in the rock. A solid
+ * conductor vein cell carries power exactly as a cable cell does, so a run of them joins the
+ * machines at its ends with nothing laid, and digging one cell out cuts the run there.
+ * A run that reaches no machine and no cable is not a network and is dropped. A network's
+ * `overlayCells` stay its cable; the vein cells it runs through are listed as `conductorCells`.
+ * @param {Array<Array<object>>} field - field[col][row] tiles
+ * @param {Iterable<number>} cableCells - cell indices carrying the power overlay
+ * @param {Map<number,string>} machineCells - cell index -> machineId
+ */
+export function buildPowerComponents(field, cableCells, machineCells, cols, rows) {
+  const cable = new Set(cableCells);
+  const all = new Set(cable);
+  if (field) {
+    for (let c = 0; c < cols; c++) {
+      const column = field[c];
+      if (!column) continue;
+      for (let r = 0; r < rows; r++) if (conductsPower(column[r])) all.add(r * cols + c);
+    }
+  }
+  return buildComponents(all, machineCells, cols)
+    .filter((comp) => comp.machineIds.length > 0 || comp.overlayCells.some((idx) => cable.has(idx)))
+    .map((comp) => {
+      const veins = comp.overlayCells.filter((idx) => !cable.has(idx));
+      return veins.length
+        ? { ...comp, overlayCells: comp.overlayCells.filter((idx) => cable.has(idx)), conductorCells: veins }
+        : comp;
+    });
 }
 
 /** Storage capacity of one lane network: the track IS the buffer, ports add depots. */
