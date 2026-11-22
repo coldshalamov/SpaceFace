@@ -175,6 +175,24 @@ test('a re-grafted view root keeps the bead on the live root', () => {
   layer.dispose();
 });
 
+test('despawned beacon lamp materials recycle instead of disposing and evicting the shader program', () => {
+  const layer = new BeaconLampLayer();
+  const makeRoot = () => ({ children: [], add(c) { this.children.push(c); }, remove(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); } });
+  const a = buoy({ id: 'b-rec-1', view: { root: makeRoot() } });
+  const b = buoy({ id: 'b-rec-2', view: { root: makeRoot() } });
+  layer.update([a], NOW, false);
+  const firstMat = layer.slots.get('b-rec-1').material;
+  let disposed = 0;
+  const origDispose = firstMat.dispose.bind(firstMat);
+  firstMat.dispose = () => { disposed++; origDispose(); };
+  layer.update([], NOW + 0.1, false);
+  assert.equal(disposed, 0, 'despawning a beacon must recycle rather than dispose its material');
+  layer.update([b], NOW + 0.2, false);
+  assert.equal(layer.slots.get('b-rec-2').material, firstMat, 'next beacon reuses the pooled material instance');
+  layer.dispose();
+  assert.equal(disposed, 1, 'layer.dispose() releases pooled and active materials');
+});
+
 test('the tracked set is bounded', () => {
   assert.ok(BEACON_LAMP_CAP >= 2, 'claim beacons cap at 2 active by sim design');
   assert.ok(BEACON_LAMP_CAP <= 24, 'the lamp set never becomes an unbounded crowd');

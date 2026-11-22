@@ -383,6 +383,7 @@ import {
   resetPostRenderTargetSampleCounter,
 } from './postTelemetry.js';
 import {
+  createLateCombatPipelineWarmupGroup,
   invalidatePrecompileState,
   ensureOpeningGeneratedScenarioPropPackage,
   syncVisiblePointLightBudget,
@@ -9935,6 +9936,7 @@ export const render = {
       powerPreference: glFlags.powerPreference,
       preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
     });
+    if (renderer.shadowMap) renderer.shadowMap.autoUpdate = false;
     // Error-only identity capture for the exact Three VBO resize error. The vendor throw attaches
     // the failing attribute only when this query/init-script flag is enabled; there is no draw-path
     // history or success-path allocation. The outer render wrapper catches WebGLObjects.update
@@ -11217,6 +11219,9 @@ export const render = {
     this._postNativeFallbackReason = null;
     this._postFrameOptions = { time: 0 };
     try {
+      const bootGpuTier = state.render?.gpu?.tier;
+      const bootIntegrated = bootGpuTier === 'integrated' || bootGpuTier === 'software';
+      const bootPreset = state.settings?.video?.qualityPreset;
       this.bloom = createBloom(renderer, drawSize.x, drawSize.y, {
         getPerf: () => state.perfRuntime,
         getGpuTimers: () => this._gpuTimers,
@@ -11225,6 +11230,7 @@ export const render = {
         // context + quality preset), capability clamped/proved inside bloom. `_syncPostOptions`
         // re-publishes it on quality-preset switches.
         sceneSamples: this._resolvePostSceneSamples(),
+        packedHdr: bootIntegrated && bootPreset !== 'high' ? 'all' : 'off',
       });
       // Seed the CAS gate at boot — a below-res first frame must not wait for a resize.
       const disp = displayPixelFootprint();
@@ -16918,10 +16924,13 @@ export const render = {
               // dedupes by material/geometry so thousands of count-0 pool chunks sharing a
               // program family compile as one unit, sliced so the seal cannot monopolize a
               // frame. (Iterating the returned object itself throws — it is not a list.)
-              const skipReadySealMaterial = (material) => {
+              const sealLinearTarget = sealRoute === POST_PROCESS_ROUTE.BLOOM || sealRoute === POST_PROCESS_ROUTE.GRAPH;
+              const skipReadySealMaterial = (material, object) => {
                 try {
                   return materialHasCompiledProgram(material,
-                    (entry) => renderer.properties.get(entry));
+                    (entry) => renderer.properties.get(entry),
+                    object,
+                    { linearTarget: sealLinearTarget });
                 } catch (_) { return false; }
               };
               const sealSeenMaterials = new Set();
@@ -19077,9 +19086,15 @@ export const render = {
         // compileOne at issue time, so a material that linked in between still skips
         // the compile while one that lost its program (properties purge/dispose)
         // still issues instead of linking inside the first live draw.
-        const materialAlreadyLinked = (material) => {
+        const cookLinearTarget = route === POST_PROCESS_ROUTE.BLOOM || route === POST_PROCESS_ROUTE.GRAPH;
+        const materialAlreadyLinked = (material, object) => {
           try {
-            return materialHasCompiledProgram(material, (entry) => renderer.properties.get(entry));
+            return materialHasCompiledProgram(
+              material,
+              (entry) => renderer.properties.get(entry),
+              object,
+              { linearTarget: cookLinearTarget },
+            );
           } catch (_) { return false; }
         };
         // Dedupe paces on the same union clock in subject-run chunks — the shared
@@ -19159,7 +19174,7 @@ export const render = {
                 // linked programs skips the issue entirely, and one that lost a
                 // program since the census compiles here behind the shell.
                 for (const material of materialList(subject)) {
-                  if (!materialAlreadyLinked(material)) {
+                  if (!materialAlreadyLinked(material, subject)) {
                     await stampSubjectEnvAsync(subject);
                     return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
                   }
@@ -20164,15 +20179,18 @@ export const render = {
         }
         return { subjects: out };
       };
-      const skipReadyLateMaterial = (material) => {
-        try {
-          return materialHasCompiledProgram(material,
-            (entry) => renderer.properties.get(entry));
-        } catch (_) { return false; }
-      };
-      // Dedupe chunks share the seen sets, so a paced run's units equal one
-      // monolithic uniqueAdmissionUnits call on the same list.
-      const dedupeLateSubjects = async (subjects) => {
+      const dedupeLateSubjects = async (subjects, postRoute = null) => {
+        const linearTarget = postRoute === POST_PROCESS_ROUTE.BLOOM || postRoute === POST_PROCESS_ROUTE.GRAPH;
+        const skipReady = (material, object) => {
+          try {
+            return materialHasCompiledProgram(
+              material,
+              (entry) => renderer.properties.get(entry),
+              object,
+              { linearTarget },
+            );
+          } catch (_) { return false; }
+        };
         const seenMaterials = new Set();
         const seenGeometries = new Set();
         const programSubjects = [];
@@ -20182,7 +20200,7 @@ export const render = {
             start: i, end: i + 1024,
             seenMaterials,
             seenGeometries,
-            skipReadyMaterial: skipReadyLateMaterial,
+            skipReadyMaterial: skipReady,
           });
           if (part.programSubjects.length > 0) programSubjects.push(...part.programSubjects);
           if (part.geometrySubjects.length > 0) geometrySubjects.push(...part.geometrySubjects);
@@ -20262,7 +20280,7 @@ export const render = {
         try {
           const route = this._selectPostRoute();
           let lateTouchSession = null;
-          const units = await dedupeLateSubjects(lateSubjectSet.subjects);
+          const units = await dedupeLateSubjects(lateSubjectSet.subjects, route);
           colorPrepareMs = Math.round(postNow() - colorPrepareStarted);
           lateColor = await admitOpeningUnitsAcrossSlices({
             // The cook's issue pass already linked most of this cohort — ready materials drop
@@ -20496,9 +20514,9 @@ export const render = {
         // `.length` gate never admitted anything.
         const rescanSubjectSet = await subjectsForCompileRoots(rescanDelta, rescanCensus.subjects);
         if (rescanSubjectSet.superseded === true) return postSupersededResult();
-        const rescanUnits = await dedupeLateSubjects(rescanSubjectSet.subjects);
+        const rescanRoute = this._selectPostRoute();
+        const rescanUnits = await dedupeLateSubjects(rescanSubjectSet.subjects, rescanRoute);
         if (rescanUnits.programSubjects.length > 0) try {
-          const rescanRoute = this._selectPostRoute();
           let rescanTouchSession = null;
           await admitOpeningUnitsAcrossSlices({
             units: rescanUnits,
@@ -23910,6 +23928,9 @@ export const render = {
         buildLastDebitAt = buildSliceAt;
       };
       try {
+        const lateCombatWarm = createLateCombatPipelineWarmupGroup();
+        lateCombatWarm.visible = false;
+        root.add(lateCombatWarm);
         // Procedural spawnables: pickups (gem / credit chip / custody-pod canister), mines and
         // vector mines — the same exemplar spec table the dormant roster path used. Wreck
         // exemplars ride along too: every kill mints a wreck entity and its procedural shell
@@ -23922,6 +23943,12 @@ export const render = {
             if (!mesh) continue;
             mesh.visible = false;
             root.add(mesh);
+            if (spec.type === 'pickup' && spec.data && spec.data.kind === 'credit_chip'
+                && this._creditChipBatch) {
+              try { this._creditChipBatch.warm(mesh); } catch (error) {
+                stormWarn('credit-chip-batch-warm-failed', '[render] credit chip batch warm failed', error);
+              }
+            }
             // Packaged bodies (the custody pod's capsule) attach through the boundary hook once a
             // renderer exists; calling it here mounts the authored body inside the warm root, and
             // finish() awaits the attach ahead of the compile batch.
@@ -25240,9 +25267,11 @@ export const render = {
       // races live draws and the first PBR rock pays a draw-time depth link (Asteroid_367).
       // Holding the batch until it lands lets the reskin .then rebind + recompile under the
       // shell ahead of the depth pass.
+      const finishExtras = [this.rockSurfaceLibraryReady];
+      if (this._foundrySet && this._foundrySet.ready) finishExtras.push(this._foundrySet.ready);
       await Promise.race([
         Promise.allSettled(
-          warm.decodes.concat(warm.pendingAttachments, [this.rockSurfaceLibraryReady]),
+          warm.decodes.concat(warm.pendingAttachments, finishExtras),
         ),
         new Promise((resolve) => setTimeout(resolve, decodeWaitMs)),
       ]);
@@ -27087,7 +27116,12 @@ export const render = {
     const norm = this._applySectorPost(this._normalizePostVideo(effectiveVideo));
     const sceneSamples = this._resolvePostSceneSamples();
     const compactBloom = !!this._foundrySet && vd.qualityPreset === 'low';
-    const sig = this._postOptionsSignature(norm, vd, sceneSamples) + (compactBloom ? '|compact-bloom' : '');
+    const gpuTier = this.state?.render?.gpu?.tier;
+    const integratedTier = gpuTier === 'integrated' || gpuTier === 'software';
+    const packedHdr = integratedTier && vd.qualityPreset !== 'high' ? 'all' : 'off';
+    const sig = this._postOptionsSignature(norm, vd, sceneSamples)
+      + (compactBloom ? '|compact-bloom' : '')
+      + `|hdr-${packedHdr}`;
     if (!force && this._postOptionsSig === sig) return;
     this._postOptionsSig = sig;
     this._nocturne?.setExposureBase(norm.exposure);
@@ -27101,6 +27135,7 @@ export const render = {
       acesToneMapping: norm.acesToneMapping,
       bloomLevels: norm.bloomLevels,
       compactBloom,
+      packedHdr,
       sharpen: norm.sharpen === true,
       grade: norm.grade,
       vignette: norm.vignette,
@@ -31644,13 +31679,18 @@ export const render = {
     const active = isFoundrySetEntry(event, run?.arenaId);
     if (active === !!this._foundrySet) return false;
     if (active) {
-      const set = createFoundrySet(this.scene, { renderer: this.renderer, nocturne: this._nocturne });
+      const set = createFoundrySet(this.scene, { renderer: this.renderer, nocturne: this._nocturne, gpu: this.state?.render?.gpu || null });
       this._foundrySet = set;
       const pos = this.state.entities.get(this.state.playerId)?.pos;
       if (pos) { set.center.x = pos.x; set.center.z = pos.z; }
       set.frame(0, this._frameMembrane);
       set.ready.then(() => {
-        if (this._foundrySet === set) this._markShadowReceiversDirty();
+        if (this._foundrySet === set) {
+          this._markShadowReceiversDirty();
+          if (this.state?.render && typeof this.state.render.compileObjectPipelines === 'function') {
+            void this.state.render.compileObjectPipelines(set.root, { debugBy: 'foundry-set-ready' });
+          }
+        }
       }).catch(error => stormWarn('foundry-set-assets', '[render] Foundry scenery asset admission failed', error));
     } else {
       this._foundrySet.dispose();
@@ -33834,7 +33874,7 @@ export const render = {
         this.renderer, this._keyLight, Math.max(1, this._shadowReceiverCount),
       ), this._activeShadowCamera);
     }
-    if (!this._shadowSettingOn && this._nocturne?.shadowLight) {
+    if (!this._shadowSettingOn && this._nocturne?.shadowLight && this._nocturne?.shadowsEnabled === true) {
       this._activeShadowCamera = tryPresentedCall(this, 'local-shadow-camera',
         () => this._prepareNocturneShadowCamera(), null);
     }
@@ -36038,6 +36078,7 @@ export const render = {
     // PCFShadowMap is the soft sampler in r184 — the soft-PCF enum is deprecated upstream and
     // falls back here anyway (it warns on every assignment). Do not reintroduce it.
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.autoUpdate = false;
     const foundry = !!this._foundrySet;
     const tier = this.state.render?.gpu?.tier;
     const mapSize = foundry && (tier === 'integrated' || tier === 'software') ? 1024 : SHADOW_MAP_SIZE;

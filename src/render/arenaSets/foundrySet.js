@@ -106,7 +106,6 @@ function buildDeckPlateGeometry() {
   for (let i = 1; i < ring.length - 1; i++) {
     const a = ring[0], b = ring[i], d = ring[i + 1];
     pushTri(a[0], h, a[1], d[0], h, d[1], b[0], h, b[1], 0, 1, 0);
-    pushTri(a[0], -h, a[1], b[0], -h, b[1], d[0], -h, d[1], 0, -1, 0);
   }
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i], b = ring[(i + 1) % ring.length];
@@ -459,13 +458,45 @@ function mergeStaticChunkGeometries(chunks, bakeVertexColors) {
   return merged;
 }
 
-function coalesceMaterialBuckets(chunks, own, keepSingleInFallback = false) {
+function demoteStaticMaterialForIntegrated(material, own) {
+  if (!material || !material.isMeshStandardMaterial || material.transparent || material.alphaTest > 0
+      || material.userData?.spacefaceLampBusChannel || material.userData?.lampBus) {
+    return material;
+  }
+  const next = own(new THREE.MeshLambertMaterial({
+    color: material.color ? material.color.clone() : new THREE.Color(0xffffff),
+    map: material.map || null,
+    emissive: material.emissive ? material.emissive.clone() : new THREE.Color(0x000000),
+    emissiveMap: material.emissiveMap || null,
+    emissiveIntensity: Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 1,
+    vertexColors: !!material.vertexColors,
+    side: material.side,
+    flatShading: !!material.flatShading,
+    fog: material.fog !== false,
+    dithering: !!material.dithering,
+    name: material.name || '',
+  }));
+  if (material.userData) next.userData = { ...material.userData };
+  return next;
+}
+
+function coalesceMaterialBuckets(chunks, own, keepSingleInFallback = false, integratedTier = false) {
   const buckets = new Map();
   const fallback = [];
+  const demoted = integratedTier ? new Map() : null;
+  const demote = (material) => {
+    if (!integratedTier || !material) return material;
+    let cached = demoted.get(material);
+    if (!cached) {
+      cached = demoteStaticMaterialForIntegrated(material, own);
+      demoted.set(material, cached);
+    }
+    return cached;
+  };
   for (const chunk of chunks) {
     const key = staticMaterialKey(chunk.material);
     if (!key || !chunk.geometry?.isBufferGeometry) {
-      fallback.push(chunk);
+      fallback.push(integratedTier ? { ...chunk, material: demote(chunk.material) } : chunk);
       continue;
     }
     let bucket = buckets.get(key);
@@ -480,12 +511,13 @@ function coalesceMaterialBuckets(chunks, own, keepSingleInFallback = false) {
     const hasAnyVertexColors = bucket.some((c) => !!c.geometry.getAttribute('color'));
     const bakeVertexColors = hasDistinctColors || hasAnyVertexColors;
     if (keepSingleInFallback && bucket.length === 1 && !bakeVertexColors) {
-      fallback.push(bucket[0]);
+      const single = bucket[0];
+      fallback.push(integratedTier ? { ...single, material: demote(single.material) } : single);
       continue;
     }
     const mergedGeometry = mergeStaticChunkGeometries(bucket, bakeVertexColors);
     if (!mergedGeometry) {
-      for (const item of bucket) fallback.push(item);
+      for (const item of bucket) fallback.push(integratedTier ? { ...item, material: demote(item.material) } : item);
       continue;
     }
     own(mergedGeometry);
@@ -496,13 +528,14 @@ function coalesceMaterialBuckets(chunks, own, keepSingleInFallback = false) {
       material.vertexColors = true;
       material.needsUpdate = true;
     }
+    material = demote(material);
     merged.push({ name: bucket[0].name, geometry: mergedGeometry, material });
   }
   return { merged, fallback };
 }
 
-function mountStaticChunksMerged(root, chunks, own) {
-  const { merged, fallback } = coalesceMaterialBuckets(chunks, own, false);
+function mountStaticChunksMerged(root, chunks, own, integratedTier = false) {
+  const { merged, fallback } = coalesceMaterialBuckets(chunks, own, false, integratedTier);
   for (const item of merged) {
     const mesh = new THREE.Mesh(item.geometry, item.material);
     mesh.name = 'Foundry static props';
@@ -522,7 +555,7 @@ function mountStaticChunksMerged(root, chunks, own) {
   }
 }
 
-function mountPart(root, record, placements, name, batches, own, staticChunks = null, preferredLod = STATIC_PROP_LOD) {
+function mountPart(root, record, placements, name, batches, own, staticChunks = null, preferredLod = STATIC_PROP_LOD, integratedTier = false) {
   const model = new THREE.Group();
   model.name = name;
   const mountedRecord = frameCostFixOn('setLod') ? recordAtPreferredLod(record, preferredLod) : record;
@@ -567,7 +600,7 @@ function mountPart(root, record, placements, name, batches, own, staticChunks = 
       matrix: mesh.matrix.clone(),
     };
   });
-  const { merged, fallback } = coalesceMaterialBuckets(localChunks, own, true);
+  const { merged, fallback } = coalesceMaterialBuckets(localChunks, own, true, integratedTier);
   const entries = [
     ...merged.map((item) => ({ ...item, primitive: null })),
     ...fallback.map((item) => ({ ...item, primitive: item.matrix })),
@@ -590,15 +623,21 @@ function mountPart(root, record, placements, name, batches, own, staticChunks = 
   }
 }
 
-export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAuthoredPart } = {}) {
+export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAuthoredPart, gpu = null } = {}) {
   const root = new THREE.Group();
   root.name = 'Foundry industrial deck';
+  const integratedTier = gpu?.tier === 'integrated' || gpu?.tier === 'software';
+  const cheapMat = integratedTier && frameCostFixOn('foundryCheapMat');
   const center = { x: 0, z: 0 };
   const local = { x: 0, z: 0 };
   const resources = new Set();
   const own = resource => { resources.add(resource); return resource; };
-  const steel = own(new THREE.MeshStandardMaterial({ roughness: 0.76, metalness: 0.22, color: 0xffffff }));
-  const floor = own(new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x252322, shininess: 19 }));
+  const steel = own(cheapMat
+    ? new THREE.MeshLambertMaterial({ color: 0xffffff })
+    : new THREE.MeshStandardMaterial({ roughness: 0.76, metalness: 0.22, color: 0xffffff }));
+  const floor = own(cheapMat
+    ? new THREE.MeshLambertMaterial({ color: 0xffffff })
+    : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x252322, shininess: 19 }));
   const grout = own(new THREE.MeshLambertMaterial({ color: 0x252729 }));
   useDeckShadowFilter(floor);
   useDeckShadowFilter(grout);
@@ -618,10 +657,11 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
   for (const object of root.children) if (object.isInstancedMesh) own(object);
 
   const blank = [0, 0, 0, 1, 1, 1, 0xffffff];
+  const blankUncolored = [0, 0, 0, 1, 1, 1];
   const walls = own(blocks(root, 'Foundry bank foundations', box, steel,
     Array(BANK_CAPACITY * 9).fill(blank), true, true));
   const bankLenses = own(blocks(root, 'Foundry bank marker lenses', simpleBox, fixtures.lamp,
-    Array(BANK_CAPACITY * 2).fill(blank), false, false));
+    Array(BANK_CAPACITY * 2).fill(blankUncolored), false, false));
   walls.count = bankLenses.count = 0;
   const pose = new THREE.Object3D();
   const color = new THREE.Color();
@@ -664,10 +704,10 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
     const staticChunks = [];
     for (const { record, placements, name, preferredLod } of loaded) {
       if (record?.primitives?.length) {
-        mountPart(root, record, placements, name, cargo, own, staticChunks, preferredLod);
+        mountPart(root, record, placements, name, cargo, own, staticChunks, preferredLod, cheapMat);
       }
     }
-    if (staticChunks.length > 0) mountStaticChunksMerged(root, staticChunks, own);
+    if (staticChunks.length > 0) mountStaticChunksMerged(root, staticChunks, own, cheapMat);
   }) : Promise.resolve();
 
   function setBankBlock(batch, index, bank, x, y, z, width, height, depth, hex) {

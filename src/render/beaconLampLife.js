@@ -161,6 +161,30 @@ export function isLampBeacon(entity) {
   return !!(entity && entity.type === 'beacon' && entity.alive !== false && entity.id != null && entity.pos);
 }
 
+function createBeaconLampMaterial() {
+  return new THREE.MeshBasicMaterial({
+    transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  });
+}
+
+/**
+ * Tiny warmup mesh with the exact MeshBasicMaterial signature used by BeaconLampLayer so
+ * precompile.js compiles and pins its WebGLProgram behind the loading veil.
+ */
+export function createBeaconLampPrecompileMesh() {
+  const geometry = new THREE.OctahedronGeometry(1, 0);
+  geometry.scale(1, 1.4, 1);
+  const material = createBeaconLampMaterial();
+  material.opacity = 1;
+  material.name = 'SF_Precompile_BeaconLamp';
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'SF_Precompile_BeaconLamp';
+  mesh.renderOrder = 6;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
 export class BeaconLampLayer {
   constructor() {
     this.slots = new Map();
@@ -169,6 +193,10 @@ export class BeaconLampLayer {
     this.geometry.scale(1, 1.4, 1);
     this._color = new THREE.Color();
     this._lastColor = new WeakMap();
+    // Recycle materials across beacon despawns instead of calling material.dispose(), which
+    // drops WebGLPrograms.usedTimes to 0 and triggers mid-flight shader recompilation on the
+    // next beacon admission.
+    this._freeMaterials = [];
   }
 
   /**
@@ -189,10 +217,10 @@ export class BeaconLampLayer {
       const root = entity.view && entity.view.root;
       if (!root || typeof root.add !== 'function') continue;
       if (!slot) {
-        const material = new THREE.MeshBasicMaterial({
-          transparent: true, opacity: 0, depthWrite: false,
-          blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
-        });
+        const material = this._freeMaterials.length > 0
+          ? this._freeMaterials.pop()
+          : createBeaconLampMaterial();
+        material.opacity = 0;
         const bead = new THREE.Mesh(this.geometry, material);
         bead.name = `sf-beacon-lamp-${entity.id}`;
         bead.renderOrder = 6;
@@ -217,7 +245,9 @@ export class BeaconLampLayer {
     for (const [id, slot] of this.slots) {
       if (slot.seen === epoch) continue;
       slot.root.remove(slot.bead);
-      slot.material.dispose();
+      slot.material.opacity = 0;
+      if (this._freeMaterials.length < BEACON_LAMP_CAP) this._freeMaterials.push(slot.material);
+      else slot.material.dispose();
       this.slots.delete(id);
     }
     return admitted;
@@ -226,13 +256,21 @@ export class BeaconLampLayer {
   clear() {
     for (const slot of this.slots.values()) {
       slot.root.remove(slot.bead);
-      slot.material.dispose();
+      slot.material.opacity = 0;
+      if (this._freeMaterials.length < BEACON_LAMP_CAP) this._freeMaterials.push(slot.material);
+      else slot.material.dispose();
     }
     this.slots.clear();
   }
 
   dispose() {
-    this.clear();
+    for (const slot of this.slots.values()) {
+      slot.root.remove(slot.bead);
+      slot.material.dispose();
+    }
+    this.slots.clear();
+    for (const mat of this._freeMaterials) mat.dispose();
+    this._freeMaterials.length = 0;
     this.geometry.dispose();
   }
 }

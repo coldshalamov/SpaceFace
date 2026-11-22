@@ -358,13 +358,27 @@ export function uiStageResident() {
  * Only an explicit screen request opens the stage. A freeze caused by a mid-cook sector shell or by
  * the loading route is protecting a canvas that must not be drawn over, so those keep their hold.
  */
+let _continueFadeDoc = null;
+let _continueFadeNodes = null;
+function hasContinueFade() {
+  if (typeof document === 'undefined' || !document) return false;
+  if (typeof document.getElementsByClassName === 'function') {
+    if (_continueFadeDoc !== document) {
+      _continueFadeDoc = document;
+      _continueFadeNodes = document.getElementsByClassName('sf-continue-fade');
+    }
+    return _continueFadeNodes.length > 0;
+  }
+  return !!document.querySelector?.('.sf-continue-fade');
+}
+
 export function uiStageRequestFor(state) {
   if (!state || !state.ui) return null;
   if (canvasIsProtectedDuringFreeze(state)) return null;
   // The opaque Continue veil owns the whole window while a restore runs underneath it — the
   // title's stage scene draws behind it for nothing. When the veil is up there is no stage
   // request; if the load fails, the menu re-requests through syncVisibility as usual.
-  if (typeof document !== 'undefined' && document.querySelector('.sf-continue-fade')) return null;
+  if (hasContinueFade()) return null;
   const request = state.ui.theater?.request || state.ui.stageRequest;
   if (!request || typeof request !== 'object') return null;
   const scene = typeof request.scene === 'string' ? request.scene : null;

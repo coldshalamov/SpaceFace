@@ -601,14 +601,46 @@ function* describeObservedOpeningAdmissionDeltaSteps(before, observation, plan, 
   };
 }
 
-export function materialHasCompiledProgram(material, getProperties) {
+export function materialHasCompiledProgram(material, getProperties, object = null, target = null) {
   if (!material || typeof getProperties !== 'function') return false;
   try {
     const rec = getProperties(material);
-    return !!(rec && rec.currentProgram);
+    if (!rec || !rec.currentProgram) return false;
+    if (typeof rec.instancing === 'boolean') {
+      if (rec.__version !== undefined && rec.__version !== material.version) return false;
+      if (object) {
+        const wantInst = object.isInstancedMesh === true;
+        const wantColor = wantInst && object.instanceColor !== null;
+        const wantMorph = wantInst && object.morphTexture !== null;
+        if (rec.instancing !== wantInst
+            || rec.instancingColor !== wantColor
+            || rec.instancingMorph !== wantMorph) {
+          return false;
+        }
+      }
+      if (target && target.linearTarget === true) {
+        if (typeof rec.outputColorSpace === 'string' && rec.outputColorSpace !== 'srgb-linear') return false;
+        if (Number.isFinite(Number(rec.toneMapping)) && Number(rec.toneMapping) !== 0) return false;
+      }
+    }
+    return true;
   } catch {
     return false;
   }
+}
+
+const seenMaterialVariantsBySet = new WeakMap();
+
+function admissionDrawVariantBit(object) {
+  if (!object || typeof object !== 'object') return 1;
+  if (object.isInstancedMesh === true) {
+    const ic = object.instanceColor != null ? 1 : 0;
+    const im = object.morphTexture != null ? 2 : 0;
+    return 1 << (1 + ic + im);
+  }
+  if (object.isSkinnedMesh === true) return 1 << 5;
+  if (object.isBatchedMesh === true) return object._colorsTexture != null ? (1 << 7) : (1 << 6);
+  return 1;
 }
 
 export function uniqueAdmissionUnits(subjects, options = {}) {
@@ -618,6 +650,11 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   // the sets carry the cross-chunk seen state, so chunked accumulation produces
   // the same dedupe as one monolithic call.
   const seenMaterials = options.seenMaterials instanceof Set ? options.seenMaterials : new Set();
+  let seenVariants = seenMaterialVariantsBySet.get(seenMaterials);
+  if (!seenVariants) {
+    seenVariants = new Map();
+    seenMaterialVariantsBySet.set(seenMaterials, seenVariants);
+  }
   const seenGeometries = options.seenGeometries instanceof Set ? options.seenGeometries : new Set();
   const skipReady = typeof options.skipReadyMaterial === 'function'
     ? options.skipReadyMaterial
@@ -630,14 +667,16 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   for (let listIndex = listStart; listIndex < listEnd; listIndex++) {
     const object = list[listIndex];
     if (!object) continue;
+    const variantBit = admissionDrawVariantBit(object);
     let addedProgram = false;
     for (const material of materialList(object)) {
-      // Dedupe before the readiness probe: a material shared across subjects
-      // would pay the properties.get + currentProgram walk once per owner, and
-      // the probe is a pure read so a shared ready material can join the set too.
-      if (seenMaterials.has(material)) continue;
+      // Dedupe per (material, draw-variant) so Mesh + InstancedMesh + colored-InstancedMesh
+      // sharing one Material each retain a compile subject while duplicates still collapse.
+      const prevMask = seenVariants.get(material) || 0;
+      if ((prevMask & variantBit) !== 0) continue;
+      seenVariants.set(material, prevMask | variantBit);
       seenMaterials.add(material);
-      if (skipReady && skipReady(material)) continue;
+      if (skipReady && skipReady(material, object)) continue;
       if (!addedProgram) {
         programSubjects.push(object);
         addedProgram = true;

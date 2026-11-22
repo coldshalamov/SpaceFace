@@ -79,6 +79,10 @@ test('bank foundations use the existing contact footprint and follow the render 
   assert.ok(Math.abs(foundation.min.y - FOUNDRY_DECK_Y) < 1e-5);
   assert.ok(Math.abs(matrix.elements[12] + at.x - banks[0].pos.x) < 1e-4);
   assert.ok(Math.abs(matrix.elements[14] + at.z - banks[0].pos.z) < 1e-4);
+  const workLenses = set.root.getObjectByName('Foundry work-lamp lenses');
+  const bankLenses = set.root.getObjectByName('Foundry bank marker lenses');
+  assert.equal(workLenses.instanceColor, null);
+  assert.equal(bankLenses.instanceColor, null, 'bank marker lenses omit unused instanceColor to share program');
   set.dispose();
   assert.equal(scene.children.length, 0);
 });

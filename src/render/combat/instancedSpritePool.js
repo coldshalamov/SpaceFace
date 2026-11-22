@@ -193,12 +193,14 @@ export function writeInstancedSpriteFields(
 
 export function commitInstancedSpriteBuckets(buckets) {
   if (!buckets) return;
-  commitBucket(buckets.glow);
-  commitBucket(buckets.ring);
+  const glowVis = buckets.glow.writeCount > 0 || (buckets.lo?.glow?.writeCount || 0) > 0;
+  const ringVis = buckets.ring.writeCount > 0 || (buckets.lo?.ring?.writeCount || 0) > 0;
+  commitBucket(buckets.glow, glowVis);
+  commitBucket(buckets.ring, ringVis);
   commitBucket(buckets.smoke);
   commitBucket(buckets.combustion);
   for (const b of flipBucketList(buckets)) commitBucket(b);
-  if (buckets.lo) { commitBucket(buckets.lo.glow); commitBucket(buckets.lo.ring); }
+  if (buckets.lo) { commitBucket(buckets.lo.glow, glowVis); commitBucket(buckets.lo.ring, ringVis); }
 }
 
 function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, flipFamily = null, geoOpts = null, sharedMaterial = null) {
@@ -277,14 +279,15 @@ function dynamicAttribute(length, itemSize) {
   return attribute;
 }
 
-function commitBucket(bucket) {
+function commitBucket(bucket, materialVisible = null) {
+  const visible = materialVisible !== null ? materialVisible : bucket.writeCount > 0;
   if (bucket.dynamicBufferOwner) {
     commitDynamicBufferOwner(bucket.dynamicBufferOwner, bucket.writeCount);
-    bucket.mesh.material.visible = bucket.writeCount > 0;
+    bucket.mesh.material.visible = visible;
     return;
   }
   bucket.mesh.count = bucket.writeCount;
-  bucket.mesh.material.visible = bucket.writeCount > 0;
+  bucket.mesh.material.visible = visible;
   bucket.position.needsUpdate = true;
   bucket.scale.needsUpdate = true;
   bucket.roll.needsUpdate = true;

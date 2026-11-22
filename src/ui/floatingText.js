@@ -349,7 +349,8 @@ export function createFloatingText(ctx) {
     padStatics.phoneDeck = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     padStatics.stale = false;
   };
-  const markPadStaticsStale = () => { padStatics.stale = true; };
+  const padDimCache = new Map();
+  const markPadStaticsStale = () => { padStatics.stale = true; padDimCache.clear(); };
   const padStaticsWin = document.defaultView;
   padStaticsWin?.addEventListener?.('resize', markPadStaticsStale);
   const padStaticsObserver = typeof MutationObserver !== 'undefined' && document.documentElement
@@ -506,7 +507,21 @@ export function createFloatingText(ctx) {
     if (padStatics.stale) refreshPadStatics();
     const padW = padStatics.w;
     for (const node of visiblePads) {
-      if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
+      if (!node.far && !node.w) {
+        const dimKey = `${node.el.className}|${node.lastText || ''}|${node.lastFit || ''}|${node.lastHint || ''}`;
+        const hit = padDimCache.get(dimKey);
+        if (hit) {
+          node.w = hit.w;
+          node.h = hit.h;
+        } else {
+          node.w = node.el.offsetWidth || 0;
+          node.h = node.el.offsetHeight || 0;
+          if (node.w > 0 && node.h > 0) {
+            if (padDimCache.size >= 128) padDimCache.clear();
+            padDimCache.set(dimKey, { w: node.w, h: node.h });
+          }
+        }
+      }
     }
     collectPadHudObstacles();
     const phoneDeck = padStatics.phoneDeck;

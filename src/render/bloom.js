@@ -2341,8 +2341,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let grade = defaultPresentation.grade;
   let toe = defaultPresentation.toe;
   // Requested mode survives context loss; packedHdrMode is the capability-gated mode actually
-  // allocated for the current GL context. The default deliberately stays HalfFloat/off.
-  let packedHdrRequestedMode = PACKED_HDR_MODE.OFF;
+  // allocated for the current GL context. The default deliberately stays HalfFloat/off unless
+  // explicitly requested in instrumentation.
+  let packedHdrRequestedMode = normalizePackedHdrMode(
+    instrumentation && (instrumentation.packedHdr !== undefined ? instrumentation.packedHdr : instrumentation.packedHdrMode),
+  );
   let packedHdrMode = PACKED_HDR_MODE.OFF;
   let packedHdrCapability = packedHdrProbeFailure('disabled');
   // The contrast LUT is a separate opt-in shader variant. Keeping the default material free of
@@ -2468,6 +2471,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return packedHdrMode;
   }
 
+  selectPackedHdrMode();
   applyPackedHdrTargetOptions();
 
   function levelCountForSize(w, h) {
@@ -3567,6 +3571,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   function setPackedHdrMode(value) {
     const requested = normalizePackedHdrMode(value);
+    if (requested === packedHdrRequestedMode) return diagnostics();
     packedHdrRequestedMode = requested;
     rebuild();
     return diagnostics();

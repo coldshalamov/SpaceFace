@@ -33,6 +33,9 @@ import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { compileScenePipelinesForRenderTarget } from './bloom.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 import { beginRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
+import { nocturneForScene } from './nocturne/bridge.js';
+import { createBeaconLampPrecompileMesh } from './beaconLampLife.js';
+import { arenaMaterials } from './arenaFinish.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -188,7 +191,10 @@ export function releaseVisiblePointLightBudget(scene) {
 
 export function syncVisiblePointLightBudget(scene, video) {
   releaseVisiblePointLightBudget(scene);
-  const target = visiblePointLightBudget(video);
+  const nocturne = nocturneForScene(scene);
+  const target = nocturne && Array.isArray(nocturne.pointLights)
+    ? nocturne.pointLights.length
+    : visiblePointLightBudget(video);
   const visible = countVisiblePointLights(scene);
   if (!scene || visible >= target) return null;
   const lightStaging = new THREE.Group();
@@ -248,7 +254,10 @@ export function* syncVisiblePointLightBudgetSteps(scene, video, nodesPerSlice = 
     if (typeof staging.clear === 'function') staging.clear();
     noteShadowCensusLightMutation();
   }
-  const target = visiblePointLightBudget(video);
+  const nocturne = nocturneForScene(scene);
+  const target = nocturne && Array.isArray(nocturne.pointLights)
+    ? nocturne.pointLights.length
+    : visiblePointLightBudget(video);
   if (!scene || visible >= target) return null;
   const lightStaging = new THREE.Group();
   lightStaging.name = POINT_LIGHT_BUDGET_STAGING_NAME;
@@ -1285,6 +1294,99 @@ function addAuthoredOpaquePipelineWarmup(root) {
   }
 }
 
+/**
+ * Tiny retained group for recurring mid-fight procedural shader families (beacons, Swarm threat
+ * marks, Brood remains, Foundry instanced lenses/deck, arena three-value/lamps, Counterweight).
+ * Both title-dwell precompile and live HDR warmups (SF_CrucibleBoundedWarm) mount this group so
+ * their programs compile against the exact presented target and remain pinned for the run.
+ */
+export function createLateCombatPipelineWarmupGroup() {
+  const group = new THREE.Group();
+  group.name = 'SF_Precompile_LateCombat_KeepAlive';
+  group.add(createBeaconLampPrecompileMesh());
+  const tinyPlane = new THREE.PlaneGeometry(1, 1);
+  const tinyBox = new THREE.BoxGeometry(1, 1, 1);
+  const tinyMat4 = new THREE.Matrix4();
+  const tinyColor = new THREE.Color(0xffffff);
+  const addRetainedMesh = (
+    name,
+    geometry,
+    material,
+    { borrowed = false, instanced = false, instanceColor = false, castShadow = false, receiveShadow = false } = {},
+  ) => {
+    const mesh = instanced
+      ? new THREE.InstancedMesh(geometry, material, 1)
+      : new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    mesh.frustumCulled = false;
+    mesh.castShadow = castShadow;
+    mesh.receiveShadow = receiveShadow;
+    if (borrowed) {
+      mesh.userData.precompileBorrowedResources = true;
+      mesh.userData.borrowedGeometryMaterial = true;
+    }
+    if (instanced) {
+      mesh.count = 1;
+      mesh.setMatrixAt(0, tinyMat4);
+      if (instanceColor) mesh.setColorAt(0, tinyColor);
+    }
+    group.add(mesh);
+    return mesh;
+  };
+  // Swarm threat plates (DoubleSide) and armed nose lamp (FrontSide).
+  addRetainedMesh('SF_Precompile_SwarmThreatPlate', tinyPlane.clone(),
+    new THREE.MeshBasicMaterial({
+      color: 0xff1a3a, side: THREE.DoubleSide, depthWrite: false, depthTest: false, fog: false, toneMapped: true,
+    }));
+  addRetainedMesh('SF_Precompile_SwarmThreatLamp', tinyPlane.clone(),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe4ea, depthWrite: false, depthTest: false, fog: false, toneMapped: true,
+    }));
+  // Brood remains (flat-shaded opaque shell, smooth emissive glow, flat-shaded translucent glass).
+  addRetainedMesh('SF_Precompile_BroodRemainShell', tinyBox.clone(),
+    new THREE.MeshStandardMaterial({
+      color: 0x6b614d, emissive: 0x111111, emissiveIntensity: 0.55, roughness: 0.74, metalness: 0.12, flatShading: true,
+    }));
+  addRetainedMesh('SF_Precompile_BroodRemainGlow', tinyBox.clone(),
+    new THREE.MeshStandardMaterial({
+      color: 0x1c3a1c, emissive: 0x4d994d, emissiveIntensity: 1.15, roughness: 0.5, metalness: 0.05,
+    }));
+  addRetainedMesh('SF_Precompile_BroodRemainGlass', tinyBox.clone(),
+    new THREE.MeshStandardMaterial({
+      color: 0x8c9e94, emissive: 0x334d42, emissiveIntensity: 0.6, roughness: 0.14, metalness: 0.05,
+      transparent: true, opacity: 0.5, flatShading: true,
+    }));
+  // Foundry instanced basic lenses (no instanceColor) & instanced Lambert/Standard deck blocks.
+  addRetainedMesh('SF_Precompile_FoundryLensInstanced', tinyBox.clone(),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    { instanced: true, instanceColor: false, castShadow: false, receiveShadow: false });
+  addRetainedMesh('SF_Precompile_FoundryLambertInstanced', tinyBox.clone(),
+    new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    { instanced: true, instanceColor: true, castShadow: true, receiveShadow: true });
+  addRetainedMesh('SF_Precompile_FoundryStandardInstanced', tinyBox.clone(),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.76, metalness: 0.22 }),
+    { instanced: true, instanceColor: true, castShadow: true, receiveShadow: true });
+  // Arena three-value (vertexColors, no uv) and arena work-lamp standard materials (borrowed singletons).
+  const arenaMats = arenaMaterials();
+  const vcGeo = tinyBox.clone();
+  if (vcGeo.getAttribute('uv')) vcGeo.deleteAttribute('uv');
+  vcGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(vcGeo.attributes.position.count * 3).fill(1), 3));
+  addRetainedMesh('SF_Precompile_ArenaThreeValue', vcGeo, arenaMats.threeValue,
+    { borrowed: true, castShadow: true, receiveShadow: true });
+  addRetainedMesh('SF_Precompile_ArenaLamp', tinyBox.clone(), arenaMats.lamp, { borrowed: true });
+  // Counterweight circuit transparent line marks.
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)]);
+  const cwLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+    color: 0xd7be83, transparent: true, opacity: 0.85, depthWrite: false,
+  }));
+  cwLine.name = 'SF_Precompile_CounterweightLine';
+  cwLine.frustumCulled = false;
+  group.add(cwLine);
+  tinyPlane.dispose();
+  tinyBox.dispose();
+  return group;
+}
+
 function addLateWorldPipelineWarmup(root) {
   // These exact procedural owners can first appear well after the opening flight route: the rare
   // deep-field wormhole and the 47-A evidence spindle. Retain their tiny materials beside the
@@ -1304,6 +1406,7 @@ function addLateWorldPipelineWarmup(root) {
     spindle.name = 'SF_Precompile_47A_Evidence_Spindle';
     root.add(spindle);
   }
+  root.add(createLateCombatPipelineWarmupGroup());
 }
 
 function retainVfxPipelineWarmups(vfxWarmup, retainedRoot) {
