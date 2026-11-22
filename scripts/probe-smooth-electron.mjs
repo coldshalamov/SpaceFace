@@ -248,6 +248,17 @@ try {
     }, 50);
   });
 
+  // ---- how fast is this thread right now? A fixed arithmetic loop, timed on the main thread at the
+  // menu (machine nearly idle) and again in the fight. A fight figure well under the menu figure
+  // means the game's own threads and the GPU are pulling the processor's clock down (a 15 W chip
+  // shares one power budget), or the thread is being descheduled: either way every function in the
+  // frame is slower by that ratio, and no per-function fix explains it.
+  const cpuSpeed = async () => {
+    const r = await cdp.send('Runtime.evaluate', { returnByValue: true, expression: `(() => { let best = 0; for (let rep = 0; rep < 5; rep++) { const a = performance.now(); let x = 0; let n = 0; while (performance.now() - a < 6) { for (let i = 0; i < 2000; i++) x += Math.sqrt(x + i); n++; } best = Math.max(best, n / (performance.now() - a)); } return Math.round(best * 100) / 100; })()` }).catch(() => null);
+    return r && r.result ? r.result.value : null;
+  };
+  report.cpuSpeed = { menu: await cpuSpeed() };
+
   // ---- start the route on the game's own launch seam (Electron forbids query strings) ----
   const launchRoute = async () => {
     if (ROUTE === 'swarm') {
@@ -455,6 +466,9 @@ try {
 
   // ---- tail window: GPU time per pass (timer queries are OFF in his build, so never in the judged window) ----
   hand.down('KeyW'); hand.trigger(true);
+  report.cpuSpeed.fight = await cpuSpeed();
+  report.cpuSpeed.ratio = report.cpuSpeed.menu > 0 && report.cpuSpeed.fight > 0 ? +(report.cpuSpeed.fight / report.cpuSpeed.menu).toFixed(2) : null;
+  console.log('cpu speed', JSON.stringify(report.cpuSpeed));
   // A picture of the live fight with its HUD (end.png is often a level-up card): taken here, after
   // the judged window, so the capture's own stall is never measured.
   for (let i = 0; i < 12 && !(await isLive()); i++) { await page.evaluate(PRESS_THROUGH_SCREENS).catch(() => {}); await sleep(500); }
