@@ -146,6 +146,22 @@ async function runOnce(chromium, variant, rep) {
       if (Date.now() - t0 > 400000) throw new Error(`no flight (mode ${st.mode})`);
       await sleep(1000);
     }
+    // Early Swarm rounds open the armory over flight: the scene draws nothing until the round is
+    // launched. Keep pressing the launch button until frames actually draw (or give up after 90 s).
+    if (ROUTE === 'swarm') {
+      const drawT0 = Date.now();
+      for (;;) {
+        const calls = await page.evaluate(() => { const d = window.__THREE_GAME_DIAGNOSTICS__; return d && d.info ? d.info.calls : 0; }).catch(() => 0);
+        if (calls > 0) break;
+        await page.evaluate(() => {
+          const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+          const b = [...document.querySelectorAll('#screens button, button')].find((x) => x.offsetParent && !x.disabled && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start round|Begin|Fight)/i.test(n(x.textContent)));
+          if (b) b.click();
+        }).catch(() => {});
+        if (Date.now() - drawT0 > 90000) { result.errors.push('no draws after launch'); break; }
+        await sleep(1000);
+      }
+    }
     result.loadS = +((Date.now() - t0) / 1000).toFixed(1);
     await page.mouse.move(1000, 380);
     result.setup = await page.evaluate((cap) => {

@@ -105,6 +105,21 @@ try {
     if (Date.now() - t0 > FLIGHT_TIMEOUT) throw new Error(`no flight after ${FLIGHT_TIMEOUT / 1000}s (mode ${st.mode})`);
     await sleep(1000);
   }
+  // Early Swarm rounds open the armory over flight: press its launch button until frames draw.
+  if (ROUTE === 'swarm') {
+    const drawT0 = Date.now();
+    for (;;) {
+      const calls = await page.evaluate(() => { const d = window.__THREE_GAME_DIAGNOSTICS__; return d && d.info ? d.info.calls : 0; }).catch(() => 0);
+      if (calls > 0) break;
+      await page.evaluate(() => {
+        const n = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+        const b = [...document.querySelectorAll('#screens button, button')].find((x) => x.offsetParent && !x.disabled && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start round|Begin|Fight)/i.test(n(x.textContent)));
+        if (b) b.click();
+      }).catch(() => {});
+      if (Date.now() - drawT0 > 90000) { report.errors.push('no draws after launch'); break; }
+      await sleep(1000);
+    }
+  }
   report.loadS = +((Date.now() - t0) / 1000).toFixed(1);
   await page.mouse.move(1000, 380);
   report.setup = await page.evaluate(({ cap, dynres }) => {
@@ -266,10 +281,72 @@ try {
   })();
 
   // Timed windows: off, on, off, on ...
+  // The picture of each side is taken inside the fight (windows 2 and 3), not after the timed
+  // windows: a round-6 run can be over by then and the shot would be the results screen.
+  report.shots = [];
   for (let w = 0; w < WINDOWS; w++) {
     await page.evaluate((on) => window.__ft.set(on), w % 2 === 1);
-    await sleep(WIN * 1000);
+    if (SHOTS && (w === 2 || w === 3)) {
+      await sleep(WIN * 600);
+      const file = `${TAG}-${w % 2 === 1 ? 'on' : 'off'}.png`;
+      await page.screenshot({ path: path.join(OUT, file) }).catch(() => {});
+      report.shots.push(file);
+      await sleep(WIN * 400);
+    } else {
+      await sleep(WIN * 1000);
+    }
   }
+  // Read straight after the timed windows, while the fight is still live: budgeted frame-task
+  // stats, the reply-apply record, and which vertex buffers are re-uploaded every frame.
+  report.frameTasks = await page.evaluate(() => (typeof window.__SF_FRAME_TASKS__ === 'function' ? window.__SF_FRAME_TASKS__() : null)).catch(() => null);
+  report.lane = await page.evaluate(() => {
+    const d = window.SF.simLaneDiag ? window.SF.simLaneDiag() : null;
+    if (!d) return null;
+    return { replyCount: d.replyCount, applyMaxMs: d.workerApplyMaxMs, applyOver100: d.workerApplyOver100, applyMaxWork: d.workerApplyMaxWork,
+      replyQueue: d.replyQueue, replySlices: d.replySlices || null, slowApplies: (d.workerSlowApplies || []).map((a) => ({ ms: Math.round(a.applyMs), mode: a.mode, n: a.eventCount, types: a.eventTypes })),
+      slowEvents: (d.workerSlowEvents || []).map((e) => ({ t: e.t, ms: +e.ms.toFixed(1) })) };
+  }).catch((e) => ({ err: String(e) }));
+  report.uploadCensus = await page.evaluate(async () => {
+    const scene = window.SF.state.render.scene;
+    const seen = new Map();
+    const FRAMES = 24;
+    for (let frame = 0; frame < FRAMES; frame++) {
+      scene.traverseVisible((o) => {
+        const g = o.geometry;
+        if (!g || !(o.isMesh || o.isPoints || o.isLine)) return;
+        if (o.isInstancedMesh && o.count === 0) return;
+        const note = (label, attr) => {
+          const data = attr && (attr.isInterleavedBufferAttribute ? attr.data : attr);
+          if (!data || typeof data.version !== 'number') return;
+          let row = seen.get(data);
+          if (!row) {
+            let root = o; while (root.parent && root.parent !== scene) root = root.parent;
+            // bytes is the whole array: an upper bound, a ranged upload sends less.
+            row = { root: String(root.name || root.type).replace(/_d+$/, '').slice(0, 40), mesh: String(o.name || o.type).slice(0, 40), attr: label, bytes: data.array ? data.array.byteLength : 0, v: data.version, changes: 0 };
+            seen.set(data, row);
+          } else if (row.frame !== frame && data.version !== row.v) { row.changes++; row.v = data.version; }
+          row.frame = frame;
+        };
+        for (const name in g.attributes) note(name, g.attributes[name]);
+        if (g.index) note('index', g.index);
+        if (o.instanceMatrix) note('instanceMatrix', o.instanceMatrix);
+        if (o.instanceColor) note('instanceColor', o.instanceColor);
+      });
+      await new Promise((res) => requestAnimationFrame(() => res()));
+    }
+    const rows = [...seen.values()].filter((r) => r.changes > 0);
+    const groups = new Map();
+    for (const r of rows) {
+      const key = r.root + ' / ' + r.mesh + ' / ' + r.attr;
+      const g = groups.get(key) || { key, buffers: 0, uploadsPerFrame: 0, bytesPerFrame: 0 };
+      g.buffers++; g.uploadsPerFrame += r.changes / (FRAMES - 1); g.bytesPerFrame += r.bytes * r.changes / (FRAMES - 1);
+      groups.set(key, g);
+    }
+    const top = [...groups.values()].sort((a, b) => b.uploadsPerFrame - a.uploadsPerFrame).slice(0, 40)
+      .map((g) => ({ key: g.key, buffers: g.buffers, uploadsPerFrame: +g.uploadsPerFrame.toFixed(1), kbPerFrame: +(g.bytesPerFrame / 1024).toFixed(1) }));
+    return { buffersSeen: seen.size, changing: rows.length, uploadsPerFrame: +rows.reduce((n, r) => n + r.changes / (FRAMES - 1), 0).toFixed(1),
+      kbPerFrame: +(rows.reduce((n, r) => n + r.bytes * r.changes / (FRAMES - 1), 0) / 1024).toFixed(1), top };
+  }).catch((e) => ({ err: String(e) }));
   if (PROFILE !== 'none') {
     await page.evaluate((v) => window.__ft.set(v), PROFILE === 'on');
     await sleep(800);
@@ -298,7 +375,18 @@ try {
       const fn = gl[n];
       if (typeof fn !== 'function') continue;
       orig[n] = Object.prototype.hasOwnProperty.call(gl, n) ? fn : null;
-      gl[n] = function () { const c = window.__ft.gl.counts; c[n] = (c[n] || 0) + 1; return fn.apply(this, arguments); };
+      gl[n] = function () {
+        const c = window.__ft.gl.counts; c[n] = (c[n] || 0) + 1;
+        // Who uploads buffers every frame: the first two game frames on the stack of each call.
+        if (n === 'bufferSubData' || n === 'bufferData') {
+          const src = window.__ft.uploadSources || (window.__ft.uploadSources = {});
+          const lines = String(new Error().stack || '').split(String.fromCharCode(10)).filter((l) => /\/src\//.test(l)).slice(0, 2)
+            .map((l) => l.replace(/^.*\/src\//, '').replace(/\)$/, '').replace(/:\d+$/, '')).join(' < ');
+          const key = n + ' ' + (lines || '(three internal)');
+          src[key] = (src[key] || 0) + 1;
+        }
+        return fn.apply(this, arguments);
+      };
     }
   });
   for (let w = 0; w < 4; w++) {
@@ -345,16 +433,7 @@ try {
     }).catch((e) => ({ err: String(e) }));
   }
   // Picture: one shot per side, then a CPU profile of the requested side.
-  if (SHOTS) {
-    report.shots = [];
-    for (const on of [false, true]) {
-      await page.evaluate((v) => window.__ft.set(v), on);
-      await sleep(600);
-      const file = `${TAG}-${on ? 'on' : 'off'}.png`;
-      await page.screenshot({ path: path.join(OUT, file) }).catch(() => {});
-      report.shots.push(file);
-    }
-  }
+
   // Program churn + material sharing diagnostics over ~40 presented frames.
   report.materialDiag = await page.evaluate(async () => {
     const S = window.SF.state;
@@ -457,6 +536,7 @@ try {
     return { frames: window.__ft.frames, glDone: window.__ft.glDone, newPrograms: window.__ft.newPrograms, gpu };
   });
   report.newPrograms = data.newPrograms;
+  report.uploadSources = await page.evaluate(() => Object.entries(window.__ft.uploadSources || {}).sort((a, b) => b[1] - a[1]).slice(0, 25)).catch(() => null);
   report.gpu = data.gpu;
   // Timed frames: drop the first 400 ms after each flip (the switch's own settle) and anything not in flight.
   // A frame that drew nothing (run over, results screen) is not a measurement of the scene.
@@ -475,7 +555,10 @@ try {
       frames: fr.length,
       fps: span > 0 ? +(fr.length / (span / 1000)).toFixed(1) : null,
       dtP50: pct(fr.map((f) => f.dt), 0.5), dtP95: pct(fr.map((f) => f.dt), 0.95),
-      cbP50: pct(fr.map((f) => f.cb), 0.5), cbMean: mean(fr.map((f) => f.cb)),
+      cbP50: pct(fr.map((f) => f.cb), 0.5), cbP95: pct(fr.map((f) => f.cb), 0.95), cbMean: mean(fr.map((f) => f.cb)),
+      // The HUD is another owner's cost: the scene's share of the callback is callback minus UI.
+      cbNoUiP50: pct(fr.map((f) => f.cb - (f.ui || 0)), 0.5), cbNoUiP95: pct(fr.map((f) => f.cb - (f.ui || 0)), 0.95),
+      vfxP50: pct(fr.map((f) => f.vfx), 0.5),
       renderP50: pct(fr.map((f) => f.render), 0.5), renderMean: mean(fr.map((f) => f.render)),
       gpuSceneP50: pct(fr.map((f) => f.gpu), 0.5), gpuAllP50: pct(fr.map((f) => f.gpuAll), 0.5),
       presP50: pct(fr.map((f) => f.pres), 0.5), uiP50: pct(fr.map((f) => f.ui), 0.5),
@@ -492,14 +575,14 @@ try {
   const windowsList = [];
   let cur = null;
   for (const f of timed) {
-    if (!cur || cur.side !== f.side) { cur = { side: f.side, cb: [], render: [], gpu: [] }; windowsList.push(cur); }
-    cur.cb.push(f.cb); cur.render.push(f.render); cur.gpu.push(f.gpu);
+    if (!cur || cur.side !== f.side) { cur = { side: f.side, cb: [], render: [], gpu: [], noUi: [] }; windowsList.push(cur); }
+    cur.cb.push(f.cb); cur.render.push(f.render); cur.gpu.push(f.gpu); cur.noUi.push(f.cb - (f.ui || 0));
   }
   report.pairs = [];
   for (let i = 1; i < windowsList.length; i++) {
     if (windowsList[i].side === 'on' && windowsList[i - 1].side === 'off') {
       const a = windowsList[i - 1], b = windowsList[i];
-      report.pairs.push({ cbRatio: +(pct(b.cb, 0.5) / pct(a.cb, 0.5)).toFixed(3), renderRatio: +(pct(b.render, 0.5) / pct(a.render, 0.5)).toFixed(3), offCb: pct(a.cb, 0.5), onCb: pct(b.cb, 0.5),
+      report.pairs.push({ noUiRatio: +(pct(b.noUi, 0.5) / pct(a.noUi, 0.5)).toFixed(3), offNoUi: pct(a.noUi, 0.5), onNoUi: pct(b.noUi, 0.5), frames: [a.cb.length, b.cb.length], cbRatio: +(pct(b.cb, 0.5) / pct(a.cb, 0.5)).toFixed(3), renderRatio: +(pct(b.render, 0.5) / pct(a.render, 0.5)).toFixed(3), offCb: pct(a.cb, 0.5), onCb: pct(b.cb, 0.5),
         offGpu: pct(a.gpu, 0.5), onGpu: pct(b.gpu, 0.5), gpuRatio: pct(a.gpu, 0.5) ? +(pct(b.gpu, 0.5) / pct(a.gpu, 0.5)).toFixed(3) : null });
     }
   }
@@ -526,5 +609,5 @@ try {
   try { server.kill(); } catch {}
 }
 writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 1));
-console.log(JSON.stringify({ tag: TAG, setup: report.setup, sides: report.sides && Object.fromEntries(Object.entries(report.sides).map(([k, v]) => [k, { ...v, glPerFrame: undefined }])), pairs: report.pairs, modes: report.modes, errors: report.errors }, null, 1));
+console.log(JSON.stringify({ tag: TAG, setup: report.setup, sides: report.sides && Object.fromEntries(Object.entries(report.sides).map(([k, v]) => [k, { ...v, glPerFrame: undefined }])), pairs: report.pairs, frameTasks: report.frameTasks, lane: report.lane, uploads: report.uploadCensus, modes: report.modes, errors: report.errors }, null, 1));
 process.exit(ok ? 0 : 1);
