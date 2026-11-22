@@ -163,6 +163,28 @@ async function runOnce(chromium, variant, rep) {
       }
     }
     result.loadS = +((Date.now() - t0) / 1000).toFixed(1);
+    // What state is this? A round that is still in its armory, paused on a pick, or between waves is
+    // flight mode with the clock stopped and nothing drawn: its 1.5 ms 'frame' is not a fight.
+    const fightState = () => page.evaluate(() => {
+      const S = window.SF.state; const d = window.__THREE_GAME_DIAGNOSTICS__;
+      let ships = 0; try { for (const e of S.entities.values()) if (e && e.type === 'ship' && e.id !== S.playerId && e.alive !== false) ships++; } catch {}
+      return { mode: S.mode, timeScale: S.timeScale, screens: (S.ui && S.ui.screenStack ? S.ui.screenStack.map((x) => (x && x.id) || String(x)) : []), docked: !!(S.ui && S.ui.docked),
+        veil: !!(S.render && S.render.flightVeilHoldsSim), drawCalls: d && d.info ? d.info.calls : null, ships, wave: S.run ? S.run.wave : null, arena: S.run ? S.run.arenaId : null, simTime: S.simTime };
+    }).catch((e) => ({ err: String(e) }));
+    const liveFight = (s) => s && s.mode === 'flight' && s.timeScale > 0 && s.drawCalls > 0 && !s.veil && (ROUTE !== 'swarm' || s.ships > 0);
+    result.stateAtStart = await fightState();
+    for (let i = 0; i < 60 && !liveFight(result.stateAtStart); i++) {
+      await page.evaluate(() => {
+        const n = (s) => String(s || '').replace(/s+/g, ' ').trim();
+        const all = [...document.querySelectorAll('#screens button, #screens [role="button"]')].filter((x) => x.offsetParent && !x.disabled);
+        const b = all.find((x) => /TAKE$/i.test(n(x.textContent))) || all.find((x) => /^(Launch round d+|Launch|Keep current loadout|Continue|Resume|Start round|Begin|Fight)/i.test(n(x.textContent)));
+        if (b) b.click();
+      }).catch(() => {});
+      await sleep(1000);
+      result.stateAtStart = await fightState();
+    }
+    console.log(`[frame-cost] ${label} state at start: ${JSON.stringify(result.stateAtStart)}`);
+    if (!liveFight(result.stateAtStart)) throw new Error(`not a live fight, nothing measured: ${JSON.stringify(result.stateAtStart)}`);
     await page.mouse.move(1000, 380);
     result.setup = await page.evaluate((cap) => {
       const S = window.SF.state;
@@ -331,6 +353,7 @@ async function runOnce(chromium, variant, rep) {
       try { out.dynRes = dr ? JSON.parse(JSON.stringify(dr, (k, v) => (typeof v === 'object' && v && v.isObject3D ? undefined : v))) : null; } catch { out.dynRes = 'unserializable'; }
       return out;
     }).catch((e) => ({ err: String(e) }));
+    result.stateAtEnd = await fightState();
     const frames = await page.evaluate(() => { window.__fc.on = false; return { frames: window.__fc.frames, profFrom: window.__fc.profFrom, profTo: window.__fc.profTo, glFrom: window.__fc.glFrom }; });
     const timed = frames.frames.slice(0, frames.glFrom ?? frames.frames.length).slice(10);
     const clean = timed.filter((f, i) => !(frames.profFrom != null && i + 10 >= frames.profFrom && i + 10 < frames.profTo));

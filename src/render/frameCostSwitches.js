@@ -12,7 +12,21 @@
 // setLod (Foundry set pieces mount their authored LOD1 bodies), frameTasks (activity publish and
 // mesh residency service run as budgeted frame tasks, src/core/frameTaskScheduler.js),
 // replyCoalesce (one worker reply replays only the newest stats/cargo/slots notification per ship),
-// replySlice (a reply's events replay under a per-frame budget, src/core/simLaneMain.js).
+// replySlice (a reply's events replay under a per-frame budget, src/core/simLaneMain.js),
+// cosmeticCadence (idle/settled craft micro-motion and damage-cosmetic state stagger to every
+// third frame by slot; transform sync and combat-live channels stay per-frame,
+// src/render/shipMicroMotion.js + syncEntityViews), socketPoseCache (trail/RCS socket world poses
+// memoized on the view until a pose application or composed-matrix change, src/render/vfx.js),
+// shadowCadence (asteroid instance uploads arm the shadow depth refresh on a bounded cadence
+// instead of every frame, src/render/renderer.js), mirrorStep (a reply's mirror phase applies
+// in budgeted stages before its events, src/core/simLaneMain.js), rosterSplit (entityList
+// refills on roster change only, the weapon-VFX list on its own version, src/core/simLaneMain.js),
+// drainCap (the reply-drain wall-clock budget is a hard cap under backlog,
+// src/core/simLaneMain.js), shedCosmetics (stale replies drop fire-and-forget VFX/audio/HUD
+// cue events, src/core/simLaneMain.js), ribbonBatch (every NPC wake ribbon writes one vertex
+// slice of a shared geometry+program — one draw call for the whole cohort — via
+// createRibbonTrailBatch in src/render/engineTrailSurfaces.js, minted through
+// _mintNpcRibbonTrail in src/render/vfx.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).
