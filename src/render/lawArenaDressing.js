@@ -57,6 +57,7 @@ import {
 } from '../systems/stormLatticeArena.js';
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 import { addHazardBand, addWorkLamp, arenaMaterials, machinedBoxGeometry } from './arenaFinish.js';
+import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 
 const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID]);
 const BOSS_DRESSING_KINDS = new Set([
@@ -104,7 +105,27 @@ function placeInRenderFrame(root, origin) {
   if (!root || !origin) return;
   const x = Number.isFinite(origin.x) ? -origin.x : 0;
   const z = Number.isFinite(origin.z) ? -origin.z : 0;
-  if (root.position.x !== x || root.position.z !== z) root.position.set(x, 0, z);
+  if (root.position.x !== x || root.position.z !== z) {
+    root.position.set(x, 0, z);
+    // R4 companion — the freeze pins children's LOCAL matrices; the vendored per-frame walk
+    // force-propagates a moved root either way, but an EXPLICIT world read under the stock
+    // engine (node-side tests and probes resolve three to r186, whose updateWorldMatrix
+    // gates on matrixWorldNeedsUpdate) would hand a frozen child the pre-rebase world.
+    // Rebase rewrites are rare, so dirtying the whole subtree costs nothing.
+    root.traverse((node) => { node.matrixWorldNeedsUpdate = true; });
+  }
+}
+
+// R4 — every mover/tick/drum below writes transforms on its captured nodes each frame; every
+// OTHER node a builder composes is posed once and never touched again. markAnimated stamps the
+// freeze tool's own exclusion flag (shouldFreezeStaticChild reads userData.animated), so the
+// per-install freeze pass can pin every static child's local matrix without pinning a part a
+// mover still drives. Builders tag at the mover/tick/drum definition — the one place the full
+// write set is named.
+function markAnimated(...nodes) {
+  for (const node of nodes) {
+    if (node) (node.userData || (node.userData = {})).animated = true;
+  }
 }
 
 function sharedAssets() {
@@ -217,6 +238,7 @@ function buildFieldAnchor(field, sink) {
   vane.scale.set(46, 2.4, 4);
   vane.position.y = 46;
   collar.add(vane);
+  markAnimated(collar, ring); // mover spins the collar stack and the seam ring
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse) {
@@ -263,6 +285,7 @@ function buildShutterBar(toy, sink) {
   cutter.scale.set(10, 7.5, 9.5);
   cutter.position.y = 5;
   root.add(cutter);
+  markAnimated(cutter); // mover sweeps the cutter along the beam
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash) {
@@ -326,6 +349,7 @@ function buildCrusherPress(toy, sink) {
     jaw.add(ram);
   }
   root.add(jaw);
+  markAnimated(jaw); // mover slams the jaw along the stroke (face/seam/rams ride inside)
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash) {
@@ -385,6 +409,7 @@ function buildCurrentMouth(toy, isCinder, sink) {
   roller.scale.set(4.5, 26, 4.5);
   roller.position.set(-14, 9.5, 0);
   root.add(roller);
+  markAnimated(roller); // mover drives the throat roller
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash) {
@@ -457,6 +482,7 @@ function buildGrindMouth(field, sink) {
   throat.position.set(-16, 6, 0);
   root.add(throat);
   const grindStrength = Math.abs(field.strength) / MILL_GRIND_STRENGTH;
+  markAnimated(...wheels); // mover counter-turns the two grind wheels (discs/teeth ride inside)
   return {
     root,
     mover(_elapsed, dt, reduced, calmFlash, pulse) {
@@ -525,6 +551,7 @@ function buildHiveHeart(field, sink) {
   vein.scale.setScalar(20 * scale);
   vein.position.y = 1.5 * scale;
   root.add(vein);
+  markAnimated(collar, ...pods); // mover orbits the collar and swells the pods
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
@@ -571,6 +598,7 @@ function buildCryoProp(pos, isHeat, sink) {
     glow.scale.set(2, 26, 2);
     glow.position.y = 15;
     root.add(glow);
+    markAnimated(stack); // mover turns the fin stack
     return {
       root,
       mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
@@ -597,6 +625,7 @@ function buildCryoProp(pos, isHeat, sink) {
   collar.scale.setScalar(13);
   collar.position.set(0, 13, 0);
   root.add(collar);
+  markAnimated(collar); // mover turns the vent collar
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse) {
@@ -781,6 +810,7 @@ function buildStormPylon(node, index, sink) {
   crown.position.y = 50;
   root.add(crown);
   const phase = index * 0.7;
+  markAnimated(coil); // mover spins the conductor coil
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
@@ -820,6 +850,9 @@ function buildStormRelay(at, index, sink) {
   spark.position.y = 27;
   root.add(spark);
   const basePhase = (index / STORM_RELAY_COUNT) * Math.PI * 2;
+  // The mover re-poses the ROOT itself along the orbit (mirroring orbitNodePose) and spins
+  // the coil — both stay out of the freeze.
+  markAnimated(root, coil);
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse, simNow) {
@@ -905,6 +938,7 @@ function buildTidalVanes(radiusWu, sink) {
   seam.position.set(radiusWu * 0.06, radiusWu * 0.1, 0);
   seam.scale.setScalar(radiusWu * 0.42);
   group.add(seam);
+  markAnimated(...drums.map((d) => d.drum)); // driveBossDrums turns both vane drums
   return { group, drums, seamMat };
 }
 
@@ -943,6 +977,7 @@ function buildChainTug(radiusWu, sink) {
   seam.scale.set(radiusWu * 0.05, radiusWu * 0.03, radiusWu * 0.6);
   seam.position.set(radiusWu * -0.34, radiusWu * 0.49, 0);
   group.add(seam);
+  markAnimated(hook, ...drums.map((d) => d.drum)); // updateBossDressing swings the hook; drums winch
   return { group, drums, seamMesh: seam, seamMat, hook };
 }
 
@@ -992,6 +1027,7 @@ function buildManifoldWarden(radiusWu, sink) {
   seam.scale.setScalar(radiusWu * 0.34);
   group.add(seam);
   const drums = [{ drum: collar, dir: 1 }];
+  markAnimated(collar, ...arms.map((a) => a.arm)); // drums roll the collar; tick gimbals the arms
   return {
     group, drums, seamMat: coldSeam,
     tick(rec, simTime, dt, reduced, calmFlash) {
@@ -1049,6 +1085,7 @@ function buildGridTyrant(radiusWu, sink) {
     drones.push({ holder, drone, phase: a });
   }
   const drums = [{ drum: ringGroup, dir: 1 }];
+  markAnimated(ringGroup, ...drones.map((d) => d.drone)); // drums roll the ring; tick tumbles the drones
   return {
     group, drums, seamMat,
     tick(rec, simTime, dt, reduced) {
@@ -1121,6 +1158,7 @@ function buildSeamCrusher(radiusWu, sink) {
   seam.position.set(radiusWu * -0.3, radiusWu * 0.12, 0);
   seam.scale.setScalar(radiusWu * 0.32);
   group.add(seam);
+  markAnimated(...drums.map((d) => d.drum), ...ore.map((o) => o.lump)); // wheels grind; lumps march
   return {
     group, drums, seamMat,
     tick(rec, simTime, dt, reduced) {
@@ -1202,6 +1240,9 @@ function buildQueenWarden(radiusWu, sink) {
   seam.position.set(radiusWu * -0.34, radiusWu * 0.12, 0);
   seam.scale.setScalar(radiusWu * 0.36);
   group.add(seam);
+  markAnimated(
+    ringGroup, ...sacs.map((s) => s.sac), ...attendants.map((a) => a.pod),
+  ); // drums roll the ring; tick swells sacs and bobs attendants
   return {
     group, drums, seamMat,
     tick(rec, simTime, dt, reduced, calmFlash) {
@@ -1326,6 +1367,7 @@ function buildAffixSplitter(r, sink) {
     pod.add(tip);
     pods.push({ pod, side, baseY: pod.position.y });
   }
+  markAnimated(...pods.map((p) => p.pod)); // tick strains the twin pods on their berths
   return {
     group,
     tick(mark, simTime, dt, reduced) {
@@ -1355,6 +1397,7 @@ function buildAffixVolatile(r, sink) {
   tip.scale.set(r * 0.045, r * 0.06, r * 0.045);
   tip.position.y = r * 0.15;
   group.add(tip);
+  markAnimated(drum); // tick shivers the charge drum
   return {
     group,
     tick(mark, simTime, dt, reduced) {
@@ -1392,6 +1435,7 @@ function buildAffixMagnetic(r, sink) {
     prong.add(tip);
     prongs.push({ prong, side });
   }
+  markAnimated(...prongs.map((p) => p.prong)); // tick pinches the claw
   return {
     group,
     tick(mark, simTime, dt, reduced) {
@@ -1445,6 +1489,7 @@ function buildAffixHasted(r, sink) {
     fin.add(tip);
     fins.push({ fin, side });
   }
+  markAnimated(...fins.map((f) => f.fin)); // tick flutters the swept fins
   return {
     group,
     tick(mark, simTime, dt, reduced) {
@@ -1485,6 +1530,7 @@ function buildAffixRider(r, sink) {
     current.add(rail);
   }
   group.add(current);
+  markAnimated(needle); // tick swings the reading needle (current toggles visibility only)
   return {
     group,
     tick(mark, simTime, dt, reduced, active) {
@@ -1516,6 +1562,7 @@ function buildAffixCover(r, sink) {
   lip.scale.set(r * 0.095, r * 0.012, r * 0.03);
   lip.position.set(0, 0, r * 0.5); // the lit edge a muzzle peeks past
   plate.add(lip);
+  markAnimated(plate); // tick leans the hug-plate (lip toggles visibility only)
   return {
     group,
     tick(mark, simTime, dt, reduced, active) {
@@ -1549,6 +1596,7 @@ function buildAffixDiver(r, sink) {
   nose.scale.set(r * 0.035, r * 0.014, r * 0.06);
   nose.position.z = r * 0.36; // the lit point the well bends
   group.add(nose);
+  markAnimated(vane); // tick trims the dive vane (nose toggles visibility only)
   return {
     group,
     tick(mark, simTime, dt, reduced, active) {
@@ -1806,6 +1854,7 @@ export function createLawArenaDressing() {
         const shared = sharedAssets();
         const beam = mesh(shared.boxGeo, cloneEmissive(shared.amberMat, clones), 'storm_relay_feed');
         beam.position.y = 30;
+        markAnimated(beam); // updateRoom re-aims each feed beam at the nearest node every frame
         root.add(beam);
         room.relayWires.push({ relay: part, beam });
       }
@@ -1817,6 +1866,12 @@ export function createLawArenaDressing() {
     room.arenaId = arenaId;
     placeInRenderFrame(root, frameOrigin);
     scene.add(root);
+    // R4 — the room is fully posed at install; every child the movers do not drive (tagged
+    // animated at build) gets its local matrix pinned, so updateMatrixWorld stops recomposing
+    // the dressing every frame. The room root itself keeps posing via placeInRenderFrame —
+    // the freeze only ever pins children. A later graft under a frozen subtree re-marks
+    // through add()/attach() and walks normally until a re-freeze.
+    freezeStaticChildMatrices(root);
     return parts.length;
   }
 
@@ -1934,6 +1989,10 @@ export function createLawArenaDressing() {
       band.position.y = r * 0.28;
       rec.group.add(band);
     }
+    // R4 — freeze after the last positioning write (the anchors above, the band): the mark
+    // groups and band are posed once per rebuild; the ticks' nodes are tagged animated. The
+    // record root itself stays live — updateAffixMarks scales it in and flings it out.
+    freezeStaticChildMatrices(rec.group);
   }
 
   /**
@@ -1969,6 +2028,9 @@ export function createLawArenaDressing() {
       const parent = (mesh_.userData && mesh_.userData.hull) || mesh_;
       parent.add(rec.group);
       recordMountedRootForUnreadyScan(rec.group);
+      // R4 — same re-freeze as the boss bind: the pass re-composes and re-dirties every
+      // frozen child, so an explicit world read right after the re-seat reads fresh.
+      freezeStaticChildMatrices(rec.group);
       rec.boundMesh = mesh_;
       const displaced = affixBoundIndex.get(mesh_);
       // A mesh re-seat steals the index entry — clear the displaced owner's bound field.
@@ -2075,6 +2137,11 @@ export function createLawArenaDressing() {
       }
       parent.add(rec.group);
       recordMountedRootForUnreadyScan(rec.group);
+      // R4 — pin the assembly's static children (drums/tick nodes are tagged animated). Runs
+      // on re-seat too, where its real value is the re-compose/re-dirty: every frozen child's
+      // matrixWorldNeedsUpdate is set again, so an explicit world read right after the
+      // re-seat reads fresh.
+      freezeStaticChildMatrices(rec.group);
       rec.boundMesh = mesh_;
       const displaced = boundIndex.get(mesh_);
       // A mesh re-seat steals the index entry — clear the displaced owner's
