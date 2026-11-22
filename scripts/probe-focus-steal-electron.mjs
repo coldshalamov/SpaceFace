@@ -8,6 +8,15 @@
 //                     key work again without being re-pressed (the OS only sends repeats for it).
 // It hands foreground focus back to whatever had it before the run.
 //
+// THREE VERDICTS (2026-11-22). Windows refuses to hand the foreground to a background process while
+// someone is using the machine, so a steal can silently not happen. The probe records operating-system
+// ground truth at every step (the shell's own win.isFocused() and its native blur/focus events) and says:
+//   pass          the game was in the foreground, lost it, paused with its plate, and resumed cleanly
+//   FAIL          the game really lost the foreground and did not pause (or paused silently, or jumped)
+//   inconclusive  the game never got the foreground, or never lost it: nothing was tested
+// The steal comes from inside the game's own process (a second window it focuses itself, then
+// win.blur() as a second way): the process that owns the foreground is always allowed to give it away.
+//
 //   node scripts/fleet/game-lock.mjs run -- node scripts/probe-focus-steal-electron.mjs [--out=<dir>]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -45,6 +54,39 @@ try {
   const focusGame = () => app.evaluate(({ BrowserWindow }) => {
     const w = BrowserWindow.getAllWindows()[0]; if (w) { w.show(); w.focus(); } return !!w;
   });
+  await app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows()[0];
+    globalThis.__sfFocusTruth = { blur: 0, focus: 0 };
+    w.on('blur', () => { globalThis.__sfFocusTruth.blur++; });
+    w.on('focus', () => { globalThis.__sfFocusTruth.focus++; });
+  });
+  // Operating-system ground truth, read from the shell process (document.hasFocus() stays true through a blur).
+  const truth = () => app.evaluate(({ BrowserWindow }) => {
+    const all = BrowserWindow.getAllWindows(); const game = all[all.length - 1];
+    const g = all.find((w) => w.getTitle() !== 'focus thief') || game;
+    return { gameFocused: g.isFocused(), gameVisible: g.isVisible(), minimized: g.isMinimized(), windows: all.length, ...globalThis.__sfFocusTruth };
+  }).catch(() => null);
+  // Put the game in the foreground, three ways, checking after each.
+  const takeForeground = async () => {
+    const tried = [];
+    const game = () => app.evaluate(({ BrowserWindow }, how) => {
+      const w = BrowserWindow.getAllWindows().find((x) => x.getTitle() !== 'focus thief');
+      if (!w) return false;
+      if (how === 'focus') { w.show(); w.focus(); }
+      if (how === 'top') { w.setAlwaysOnTop(true); w.show(); w.focus(); w.setAlwaysOnTop(false); }
+      if (how === 'restore') { w.minimize(); w.restore(); w.focus(); }
+      return true;
+    }, how);
+    let how;
+    for (how of ['focus', 'top', 'restore']) {
+      await game();
+      await sleep(500);
+      const now = await truth();
+      tried.push({ how, focused: !!(now && now.gameFocused) });
+      if (now && now.gameFocused) return { ok: true, tried };
+    }
+    return { ok: false, tried };
+  };
   await focusGame();
   // Swarm (round 2): the Adventure opening neutralises flight input, so W could not be measured there.
   // The hold is kept short (2 s before, 2.5 s after) so the ship cannot reach the arena rim.
@@ -79,8 +121,10 @@ try {
     if (Date.now() - t0 > 240000) throw new Error('no flight');
     await sleep(1000);
   }
-  await focusGame();
-  await sleep(2500);
+  report.truth = {};
+  report.truth.foreground = await takeForeground();
+  report.truth.beforeSteal = await truth();
+  await sleep(2000);
   // In-page sampler (20 Hz).
   await page.evaluate(async () => {
     const { createTimeEffects } = await import('/src/core/timeEffects.js');
@@ -122,18 +166,37 @@ try {
   //    events from the OS, so the repeats stop reaching the game while the finger stays down.
   await phase('stolen');
   repeating = false;
-  thief = await pw.chromium.launch({ headless: false, args: ['--new-window', '--window-size=900,600'] });
-  const tp = await thief.newPage();
-  await tp.goto('about:blank').catch(() => {});
-  await tp.bringToFront().catch(() => {});
-  await sleep(4000);
+  // Way one: the game's own process opens a second window and focuses it (always allowed: the
+  // foreground owner may hand the foreground to its own window). Way two, if the game still holds
+  // the foreground half a second later: win.blur().
+  const stealWays = [];
+  await app.evaluate(({ BrowserWindow }) => {
+    const t2 = new BrowserWindow({ width: 760, height: 520, title: 'focus thief', show: true, backgroundColor: '#202830' });
+    t2.loadURL('about:blank').catch(() => {});
+    t2.focus();
+    globalThis.__sfThief = t2;
+  }).catch((e) => stealWays.push({ how: 'second window', error: String(e).slice(0, 120) }));
+  await sleep(600);
+  let during = await truth();
+  stealWays.push({ how: 'second window in the game process', gameLostFocus: !!(during && during.gameFocused === false) });
+  if (!(during && during.gameFocused === false)) {
+    await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows().find((x) => x.getTitle() !== 'focus thief'); if (w) w.blur(); }).catch(() => {});
+    await sleep(600);
+    during = await truth();
+    stealWays.push({ how: 'win.blur()', gameLostFocus: !!(during && during.gameFocused === false) });
+  }
+  report.truth.stealWays = stealWays;
+  report.truth.duringSteal = during;
+  await sleep(3400);
+  report.truth.endOfSteal = await truth();
   await page.screenshot({ path: join(OUT, 'during-steal.png') }).catch(() => {});
-  await thief.close(); thief = null;
+  await app.evaluate(() => { try { if (globalThis.__sfThief && !globalThis.__sfThief.isDestroyed()) globalThis.__sfThief.destroy(); } catch (_) {} globalThis.__sfThief = null; }).catch(() => {});
   // 3. The owner comes back to the game window; the key is still held, so the OS resumes repeats.
   await phase('returned');
-  await focusGame();
+  report.truth.returnForeground = await takeForeground();
   repeating = true;
   await sleep(2500);
+  report.truth.afterReturn = await truth();
   await page.screenshot({ path: join(OUT, 'after-return.png') }).catch(() => {});
   repeating = false; clearInterval(repeater); await key('keyUp');
   const samples = await page.evaluate(() => { clearInterval(window.__fs.timer); return window.__fs.samples; });
@@ -167,7 +230,15 @@ try {
   };
   const s = report.summary;
   const why = [];
-  if (!settled.length) why.push('the focus steal never paused the world (no scale-0 samples)');
+  // Did the steal happen at all? Operating-system truth, not the page's opinion.
+  const T = report.truth;
+  const inconclusive = [];
+  if (!(T.beforeSteal && T.beforeSteal.gameFocused === true)) inconclusive.push(`the game never got the foreground before the steal (tried: ${T.foreground.tried.map((x) => x.how + (x.focused ? ' ok' : ' refused')).join(', ')}): Windows refuses while someone is using the machine`);
+  else if (!(T.duringSteal && T.duringSteal.gameFocused === false)) inconclusive.push(`the game never lost the foreground (tried: ${T.stealWays.map((x) => x.how + (x.gameLostFocus ? ' ok' : ' no')).join(', ')})`);
+  else if (!(T.afterReturn && T.afterReturn.gameFocused === true)) inconclusive.push('the game did not get the foreground back, so the return was not tested');
+  s.stolen.focusLost = !!(T.duringSteal && T.duringSteal.gameFocused === false);
+  s.stolen.nativeBlurEvents = T.endOfSteal ? T.endOfSteal.blur : null;
+  if (!settled.length) why.push('the game lost the foreground and did not pause (no scale-0 samples)');
   if (settled.length && !s.stolen.platePresent) why.push('the world was held with no pause plate');
   // Ruling: the pause may take up to 0.2 s to settle.
   if (s.stolen.simAdvancedAfterBlur > 0.2) why.push(`the world kept moving off screen (+${s.stolen.simAdvancedAfterBlur} s)`);
@@ -177,8 +248,11 @@ try {
   if (speedAtSteal != null && s.returned.speedEnd != null && speedAtSteal > 20 && s.returned.speedEnd < speedAtSteal * 0.5) {
     why.push(`the still-held W did nothing after focus returned (speed ${speedAtSteal.toFixed(0)} -> ${s.returned.speedEnd.toFixed(0)})`);
   }
-  report.verdict = why.length ? 'FAIL' : 'pass';
-  report.why = why.join('; ');
+  // The pause part is judged whenever the steal really happened; anything short of that is not a result.
+  const stealHappened = T.beforeSteal && T.beforeSteal.gameFocused === true && T.duringSteal && T.duringSteal.gameFocused === false;
+  report.verdict = !stealHappened ? 'inconclusive' : why.length ? 'FAIL' : inconclusive.length ? 'inconclusive' : 'pass';
+  report.why = (report.verdict === 'FAIL' ? why : report.verdict === 'inconclusive' ? inconclusive : []).join('; ');
+  console.log('focus-steal truth', JSON.stringify(report.truth));
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(samples));
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log('focus-steal probe', report.verdict, report.why, JSON.stringify(report.summary));
@@ -187,6 +261,7 @@ try {
   process.exitCode = 2;
 } finally {
   try { if (thief) await thief.close(); } catch { /* gone */ }
+  if (report.verdict !== 'pass' && !process.exitCode) process.exitCode = report.verdict === 'inconclusive' ? 3 : 1;
   try { if (app) await app.close(); } catch { /* gone */ }
   try { launch.cleanup({ runtimeClosed: true }); } catch { /* best effort */ }
   try { if (ownerForeground) restoreForegroundWindow(ownerForeground); } catch { /* best effort */ }

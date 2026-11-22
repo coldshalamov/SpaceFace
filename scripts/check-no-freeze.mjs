@@ -43,6 +43,7 @@ const rows = [];
 // Each gate run keeps its own evidence (two runs in a row must not overwrite each other).
 const RUN_STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 let failed = false;
+let focusNotJudged = null;
 for (const routeName of ROUTES) {
   const route = routeName === 'swarm-pad' ? 'swarm' : routeName;
   const out = join(ROOT, '.devshots', 'no-freeze', `gate-${RUN_STAMP}-${routeName}${LEGACY ? '-legacy' : ''}`);
@@ -93,9 +94,13 @@ if (FOCUS_STEAL) {
   let report = null;
   try { report = JSON.parse(readFileSync(join(out, 'report.json'), 'utf8')); } catch (_) { /* below */ }
   const ok = report && report.verdict === 'pass';
-  rows.push({ route: 'adventure', phase: 'focus steal + held W across blur', verdict: ok ? 'pass' : 'FAIL',
+  // "The steal did not happen" (Windows kept the foreground where it was) is not "the game did not
+  // pause": it is reported as NOT JUDGED, never as a pass and never as a failure of the game.
+  const notJudged = !!report && report.verdict === 'inconclusive';
+  if (notJudged) focusNotJudged = report.why || 'the steal did not happen';
+  rows.push({ route: 'swarm', phase: 'focus steal + held W across blur', verdict: ok ? 'pass' : notJudged ? 'NOT JUDGED' : 'FAIL',
     why: ok ? `paused with plate; resume ahead of wall ${report.summary.returned.simAheadOfWallS} s; speed ${Math.round(report.summary.returned.speedAtSteal)} -> ${Math.round(report.summary.returned.speedEnd)}` : (report?.why || 'no report') });
-  if (!ok) failed = true;
+  if (!ok && !notJudged) failed = true;
 }
 
 const pad = (v, n) => String(v ?? '-').padEnd(n);
@@ -110,5 +115,7 @@ for (const r of rows) {
     ? g.attribution.owner + (g.attribution.simSystem ? `:${g.attribution.simSystem}` : '') : 'unattributed'})`);
   console.log(`  frame gaps >100 ms in ${r.route} / ${r.phase}: ${list.join(', ')}`);
 }
-console.log(failed ? '\nNO-FREEZE GATE: FAIL' : '\nNO-FREEZE GATE: PASS');
+console.log(failed ? '\nNO-FREEZE GATE: FAIL' : focusNotJudged
+  ? `\nNO-FREEZE GATE: PASS on everything it could judge. FOCUS STEAL NOT JUDGED: ${focusNotJudged}`
+  : '\nNO-FREEZE GATE: PASS');
 process.exitCode = failed ? 1 : 0;
