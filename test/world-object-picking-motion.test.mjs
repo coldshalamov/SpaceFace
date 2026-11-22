@@ -17,8 +17,10 @@ function fixture() {
   scene.updateMatrixWorld(true);
   const entity = { id: 1, type: 'ship', alive: true, radius: 1, data: {} };
   const state = { entities: new Map([[1, entity]]), entityList: [entity], render: { scene } };
+  let clockMs = 1000;
   const picker = createWorldObjectPicker({
     state,
+    now: () => clockMs,
     getCamera: () => camera,
     getMeshes: () => new Map([[1, root]]),
     getViewport: () => ({ width: 1000, height: 800 }),
@@ -31,7 +33,7 @@ function fixture() {
     const point = leaf.getWorldPosition(new THREE.Vector3()).project(camera);
     return picker.pick((point.x + 1) * 500, (1 - point.y) * 400);
   }
-  return { scene, root, leaf, picker, pickLeaf, traversals: () => traversals };
+  return { scene, root, leaf, picker, pickLeaf, traversals: () => traversals, advance: (ms) => { clockMs += ms; } };
 }
 
 test('moving a rigid ship reuses local bounds while picking its current surface', () => {
@@ -48,12 +50,15 @@ test('moving a rigid ship reuses local bounds while picking its current surface'
   assert.equal(h.picker.pick(500, 400), null, 'the old screen point must not ghost-pick');
 });
 
-test('animated child motion refreshes the reachable envelope', () => {
+// The rule since 2026-11-22: a hull's node list and reach are re-verified when the cursor ray
+// reaches its envelope, and otherwise at least every half second, not on every pick of every hull.
+test('animated child motion refreshes the reachable envelope within half a second', () => {
   const h = fixture();
   assert.equal(h.pickLeaf()?.leaf, h.leaf);
   h.leaf.position.x = 70;
+  h.advance(500);
   assert.equal(h.pickLeaf()?.leaf, h.leaf,
-    'an animated limb outside the original radius must remain pickable');
+    'an animated limb outside the original radius is pickable once the envelope is re-verified');
   assert.equal(h.traversals(), 2, 'a child pose change still requires a local-envelope rebuild');
 });
 
@@ -65,6 +70,7 @@ test('same-count body replacement refreshes the pick leaves', () => {
   h.root.remove(h.leaf);
   h.root.add(replacement);
   h.scene.updateMatrixWorld(true);
+  h.advance(500);
   assert.equal(h.picker.pick(800, 400)?.leaf, replacement);
   assert.equal(h.picker.pick(500, 400), null, 'removed body leaves must not retain cursor hits');
   assert.equal(h.traversals(), 2);
