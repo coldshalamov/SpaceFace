@@ -2554,8 +2554,15 @@ function initialShipProjectionCurrent(sample, state) {
         || state.render.viewport.height !== sample.height))) return false;
   const view = camera.matrixWorldInverse?.elements, projection = camera.projectionMatrix?.elements;
   if (!view || !projection || sample.view?.length !== 16 || sample.projection?.length !== 16) return false;
+  // The sample is retaken every presented frame and must be under 250 ms old (the callers check).
+  // It used to be refused unless the camera's matrices still equalled the sampled ones to the last
+  // bit. A fight's camera moves every frame, so in a fight that never held: every enemy was
+  // admitted at full detail and then asked to load, compose and compile a cheaper sibling of
+  // itself in live play (measured in the Foundry: six wasps 50 px long on screen, each on its
+  // 24-draw, 24,900-triangle body). The projection must still be the same lens; where the camera
+  // stands may have moved by one frame, and the publish-time recheck reads the newest sample.
   for (let i = 0; i < 16; i++) {
-    if (view[i] !== sample.view[i] || projection[i] !== sample.projection[i]) return false;
+    if (projection[i] !== sample.projection[i]) return false;
   }
   return true;
 }

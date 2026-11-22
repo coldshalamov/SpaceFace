@@ -262,10 +262,27 @@ export function formatSmoothTrace(t, { title = '' } = {}) {
 }
 
 // ---- --trace=deep: which DOM nodes had style, layout or paint invalidated, and why ----
-export function summarizeSmoothInvalidations({ events, frames }) {
+export function summarizeSmoothInvalidations({ events, frames, syncTs, syncPageMs, ticks, liveAt, frameList }) {
   const kinds = new Map();
+  // Count only invalidations made in a live judged tick (cards, the shop and the results screen
+  // rewrite whole screens and would drown the flight HUD's own writes).
+  let live = null;
+  if (Number.isFinite(syncTs) && Number.isFinite(syncPageMs) && ticks && liveAt && frameList) {
+    const off = syncTs / 1000 - syncPageMs; const { tn, flags } = ticks; const T = tn.length;
+    const inFrame = new Uint8Array(T);
+    for (const f of frameList) { if (!Number.isInteger(f.i0)) continue; for (let k = f.i0 + 1; k <= f.i1 && k < T; k++) inFrame[k] = 1; }
+    live = (ts) => {
+      const pageMs = ts / 1000 - off;
+      if (!(pageMs >= tn[0]) || pageMs >= tn[T - 1]) return false;
+      let lo = 1; let hi = T - 1;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (tn[mid] > pageMs) hi = mid; else lo = mid + 1; }
+      const seg = (flags[lo] >> 1) & 3;
+      return !!(inFrame[lo] && liveAt[lo] && liveAt[lo - 1] && (seg === 1 || seg === 2));
+    };
+  }
   for (const e of events) {
     if (!/InvalidationTracking$/.test(e.name || '')) continue;
+    if (live && !live(e.ts)) continue;
     const d = (e.args && e.args.data) || {};
     const why = d.reason || d.changedAttribute || d.changedClass || d.changedId || d.changedPseudo || d.selectorPart || (d.invalidationSet ? 'invalidation set' : '') || d.extraData || '';
     const st = d.stackTrace && d.stackTrace[0];
@@ -281,7 +298,7 @@ export function summarizeSmoothInvalidations({ events, frames }) {
 
 export function formatSmoothInvalidations(v) {
   if (!v || !v.kinds.length) return '\nINVALIDATIONS: none recorded\n';
-  const L = ['', `DOM INVALIDATIONS per presented frame (whole trace, ${v.frames} judged frames; node :: reason @ script site)`];
+  const L = ['', `DOM INVALIDATIONS per presented frame (live world only, ${v.frames} judged frames; node :: reason @ script site)`];
   for (const k of v.kinds) {
     L.push(''); L.push(`${k.name}: ${(k.total / v.frames).toFixed(1)} per frame`);
     for (const r of k.top) L.push(`${String(r.perFrame.toFixed(2)).padStart(8)}  ${r.key}`);

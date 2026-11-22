@@ -367,7 +367,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { presentedLodWidthPx, resolvePresentedLodLevel, projectedShipDiameterPx, createShipLodState } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel, projectedShipDiameterPx, createShipLodState, shipLodSphereRadius } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -31103,7 +31103,7 @@ export const render = {
         const sampledShip = typeName === 'ship' && !!entity && !isPlayer
           && posed && isOrdinaryLodShip(entity);
         const projectedPx = shipFamily && !posed ? Infinity : (shipFamily || sampledShip) ? projectedShipDiameterPx(
-          mesh.position, Math.max(lodRadius, (Number(entity?.radius) || 0) * 2), this.cam && this.cam.obj, this.viewport,
+          mesh.position, shipLodSphereRadius(entity?.radius, lodRadius), this.cam && this.cam.obj, this.viewport,
         ) : presentedLodWidthPx(
           userData,
           mesh.position,

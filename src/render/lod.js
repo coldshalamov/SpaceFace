@@ -92,6 +92,21 @@ export function projectedShipDiameterPx(pos, radius, camera, viewport) {
   return r * height * Math.max(vertical, horizontal) / (depth * (depth - r));
 }
 
+// The sphere the ship tier selector projects. The bands above are written in on-screen pixels of
+// the hull ("under ~240 px the sibling swap is sub-perceptible; under ~110 px the bare hull is the
+// same speck"), but the selector used to be fed the ship's cull envelope, or twice its radius,
+// whichever was larger. Measured in the Foundry at fight distance (2026-11-22, referee census, the
+// drawn meshes' boxes projected through the live camera): a wasp 53 x 27 px on screen was reported
+// as 159 px and held its 21-draw, 9,900-triangle body; bastions 208-241 px across were reported as
+// 505-571 px. The reading was 2.4 to 3 times the hull, so no band engaged where its own reasoning
+// said it should. The hull's real half-length is its radius times this overhang: 1.0 for a wasp,
+// 1.6 for a bastion (measured); 1.6 keeps the reading on the generous side for every hull.
+export const SHIP_LOD_HULL_OVERHANG = 1.6;
+export function shipLodSphereRadius(entityRadius, fallbackRadius) {
+  const r = Number(entityRadius);
+  return r > 0 ? r * SHIP_LOD_HULL_OVERHANG : Number(fallbackRadius) || 0;
+}
+
 // Kept on the stable boundary rather than individual sibling roots.
 export function createShipLodState(initialLevel = 'lod0') {
   let level = initialLevel === 'lod1' || initialLevel === 'lod2' ? initialLevel : 'lod0';

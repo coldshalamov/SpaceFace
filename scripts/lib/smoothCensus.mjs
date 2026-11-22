@@ -186,6 +186,46 @@ export function collectSmoothCensus() {
       .sort((a, b) => b.visibleNodes - a.visibleNodes).slice(0, 25);
   }
   out.scene = c;
+  // Every ship on the glass: the size the detail-tier selector was given against the size it really
+  // has on screen (its drawn meshes' boxes projected through the same camera), its tier and its cost.
+  out.ships = [];
+  try {
+    let cam = null;
+    for (const v of Object.values(S.render)) { if (v && v.isPerspectiveCamera) cam = v; else if (v && v.obj && v.obj.isPerspectiveCamera) cam = v.obj; }
+    const W = window.innerWidth; const H = window.innerHeight;
+    const mul = (m, x, y, z) => { const e = m.elements; const w = e[3] * x + e[7] * y + e[11] * z + e[15]; return [(e[0] * x + e[4] * y + e[8] * z + e[12]), (e[1] * x + e[5] * y + e[9] * z + e[13]), (e[2] * x + e[6] * y + e[10] * z + e[14]), w]; };
+    const lastFrame = C.draws.length ? C.draws[C.draws.length - 1].f : 0;
+    for (const root of scene ? scene.children : []) {
+      const ud = root.userData || {};
+      const isShip = /^ship_/.test(root.name || '') || ud.initialShipLodSample || ud.wholeShipLodFamilyInstalled;
+      if (!isShip || !root.visible) continue;
+      if (!cam && ud.initialShipLodSample) cam = ud.initialShipLodSample.camera;
+      if (!cam) continue;
+      let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity; let meshes = 0; let tris = 0;
+      root.traverseVisible((o) => {
+        if (!o.isMesh || !o.geometry) return;
+        const g = o.geometry; const bb = g.boundingBox; const bs = g.boundingSphere;
+        const corners = [];
+        if (bb) { for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) corners.push([x, y, z]); }
+        else if (bs) { const r = bs.radius; const c0 = bs.center; for (const dx of [-r, r]) for (const dy of [-r, r]) for (const dz of [-r, r]) corners.push([c0.x + dx, c0.y + dy, c0.z + dz]); }
+        else return;
+        meshes++; tris += Math.round((g.index ? g.index.count : (g.attributes.position ? g.attributes.position.count : 0)) / 3);
+        for (const [x, y, z] of corners) {
+          const w = mul(o.matrixWorld, x, y, z); const v = mul(cam.matrixWorldInverse, w[0], w[1], w[2]); const p = mul(cam.projectionMatrix, v[0], v[1], v[2]);
+          if (!(p[3] > 0)) continue;
+          const sx = (p[0] / p[3] * 0.5 + 0.5) * W; const sy = (1 - (p[1] / p[3] * 0.5 + 0.5)) * H;
+          if (sx < minX) minX = sx; if (sx > maxX) maxX = sx; if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
+        }
+      });
+      const sample = ud.initialShipLodSample || null;
+      const ent = sample && sample.entity;
+      out.ships.push({ name: String(root.name || '').replace(/_DirectAuthoredAdmission_AuthoredAssetBoundary$/, ''), hull: (ent && ent.data && (ent.data.defId || ent.data.shipId)) || '',
+        tier: ud.wholeShipLodActiveLevel || (ud.lod && ud.lod.level) || '?', family: ud.wholeShipLodFamilyInstalled === true, selectorPx: sample && Number.isFinite(sample.px) ? Math.round(sample.px) : null,
+        entityRadius: ent ? +Number(ent.radius).toFixed(1) : null, onScreenPx: Number.isFinite(minX) ? [Math.round(maxX - minX), Math.round(maxY - minY)] : null,
+        onGlass: Number.isFinite(minX) && maxX > 0 && minX < W && maxY > 0 && minY < H, meshes, tris,
+        draws: C.draws.filter((d) => d.rootId === root.id && d.f === lastFrame).length });
+    }
+  } catch (e) { out.shipsError = String(e).slice(0, 200); }
   const info = C.rRef.info;
   out.three = info ? { programs: info.programs ? info.programs.length : null, geometries: info.memory.geometries, textures: info.memory.textures } : null;
   window.__smCensus = null;
@@ -212,6 +252,12 @@ export function formatSmoothCensus(c, { title = '' } = {}) {
   };
   L.push(''); L.push('VERTEX DATA UPLOADS PER FRAME, by owner (kB, uploads, who :: attribute [size of the whole buffer])');
   for (const u of c.uploads || []) L.push(`${String(u.kbPerFrame).padStart(9)}${String(u.uploadsPerFrame).padStart(7)}  ${u.who}`);
+  if (c.ships && c.ships.length) {
+    L.push(''); L.push('SHIPS: the size the detail-tier selector was given, against the size on screen (CSS px; selector thresholds: lower tier under 240, lowest under 110)');
+    L.push(`${'selector'.padStart(9)}${'on screen'.padStart(12)}${'radius'.padStart(8)}${'tier'.padStart(7)}${'draws'.padStart(7)}${'meshes'.padStart(8)}${'tris'.padStart(8)}  ship`);
+    for (const x of c.ships) L.push(`${String(x.selectorPx ?? '-').padStart(9)}${String(x.onScreenPx ? x.onScreenPx.join('x') : '-').padStart(12)}${String(x.entityRadius ?? '-').padStart(8)}${String(x.tier).padStart(7)}${String(x.draws).padStart(7)}${String(x.meshes).padStart(8)}${String(x.tris).padStart(8)}  ${x.name} ${x.hull}${x.family ? ' (tier family installed)' : ' (no tier family)'}${x.onGlass ? '' : ' (off screen)'}`);
+  }
+  if (c.shipsError) L.push(`ships census failed: ${c.shipsError}`);
   table('BY RENDER TARGET / SCENE', c.byTarget);
   table('BY TOP-LEVEL SCENE CHILD', c.byRoot);
   table('BY OWNER', c.byOwner);

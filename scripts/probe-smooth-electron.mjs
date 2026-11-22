@@ -480,6 +480,13 @@ try {
   }
   await setSeg(0, ownerCap);
   await playing;
+  // A picture of the fight with enemies on the field, straight after the judged window (never inside it).
+  {
+    const enemies = () => page.evaluate(() => { const S = window.SF.state; let n = 0; try { for (const e of S.entities.values()) if (e && e.type === 'ship' && e.id !== S.playerId && e.alive !== false) n++; } catch (_) {} return S.mode === 'flight' && S.timeScale > 0 ? n : -1; }).catch(() => -1);
+    hand.down('KeyW'); hand.trigger(true);
+    for (let i = 0; i < 16 && (await enemies()) < 3; i++) await sleep(500);
+    if ((await enemies()) >= 1) await page.screenshot({ path: join(OUT, 'fight.png') }).catch(() => {});
+  }
   if (SCHEDULING === 'both') {
     // The same fight for a few seconds more, scheduled as the unfocused window this really is.
     report.scheduling.unfocusedApplied = await schedule(false);
@@ -542,6 +549,13 @@ try {
   }).catch((e) => ({ status: String(e).slice(0, 120) }));
   if (CENSUS) {
     try {
+      // Count a fight, not an empty room: wait (up to 25 s) until the world is live with enemies on the field.
+      for (let i = 0; i < 50; i++) {
+        const busy = await page.evaluate(() => { const S = window.SF.state; let n = 0; try { for (const e of S.entities.values()) if (e && e.type === 'ship' && e.id !== S.playerId && e.alive !== false) n++; } catch (_) {} return S.mode === 'flight' && S.timeScale > 0 ? n : -1; }).catch(() => -1);
+        if (busy >= 4) break;
+        if (busy < 0) await page.evaluate(PRESS_THROUGH_SCREENS).catch(() => {});
+        await sleep(500);
+      }
       await page.evaluate(installSmoothCensus);
       await sleep(3500);
       const census = await page.evaluate(collectSmoothCensus);
@@ -773,7 +787,7 @@ try {
       const sync = ev.find((e) => e.name === '__smTraceSync' && Number.isFinite(e.ts));
       const tb = summarizeSmoothTrace({ events: ev, syncTs: sync ? sync.ts : NaN, syncPageMs: report.__traceSyncPageMs, ticks: { tn: raw.tn, flags }, liveAt, frames });
       writeFileSync(join(OUT, 'trace-breakdown.txt'), formatSmoothTrace(tb, { title: `${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}, ${SECONDS} s` })
-        + (TRACE_DEEP ? formatSmoothInvalidations(summarizeSmoothInvalidations({ events: ev, frames: frames.length })) : ''));
+        + (TRACE_DEEP ? formatSmoothInvalidations(summarizeSmoothInvalidations({ events: ev, frames: frames.length, syncTs: sync ? sync.ts : NaN, syncPageMs: report.__traceSyncPageMs, ticks: { tn: raw.tn, flags }, liveAt, frameList: frames })) : ''));
       report.traceBreakdown = tb.ok ? { ok: true, file: 'trace-breakdown.txt', threads: tb.threads.map((t) => ({ thread: t.thread, busyMsPerFrame: t.busyMsPerFrame, self: t.self.slice(0, 12) })) } : { ok: false, why: tb.why };
       console.log(tb.ok ? `smooth probe trace breakdown in ${join(OUT, 'trace-breakdown.txt')}` : `smooth probe trace breakdown NOT MADE: ${tb.why}`);
     } catch (e) { report.notes.push(`trace breakdown failed: ${String(e).slice(0, 160)}`); }
