@@ -7406,7 +7406,7 @@ export function createHud(ctx, alerts) {
   // callers run every frame, so convergence needs no timer — the next call after the
   // floor republishes. Geometry-moving invalidations (receipt lane, edge plates) also
   // raise flightTextObstacleGeomStale so an unchanged member set still re-measures.
-  const FLIGHT_TEXT_OBSTACLE_MIN_MS = 500;
+  const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
   let flightTextObstacleSnapshotAt = -Infinity;
   let flightTextObstaclesStale = true;
   let flightTextObstacleGeomStale = true;
