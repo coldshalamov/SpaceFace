@@ -22,6 +22,14 @@ import { injectOrrery } from '../orrery/tokens.js';
 import { MATERIALS, ORE_TINTS } from './asteroidRenderer2d.js';
 import { drillTierReqForOre } from '../../systems/drill.js';
 import { machineCapability, oreContactRate } from '../../systems/siteProduction.js';
+import { machineSeating, seatingGrade } from '../../systems/siteReport.js';
+
+// "Seat B": how close this seat is to a perfect one for this machine (the rock's dig grade is the
+// average of these). Null for a machine that reads no rock.
+function seatWord(defId, mode, profile) {
+  const grade = seatingGrade(machineSeating({ defId, mode }, profile));
+  return grade ? `Seat ${grade}` : null;
+}
 import { counted } from '../numberFormat.js';
 
 
@@ -492,8 +500,10 @@ export function machineLensModel(pm) {
   // A cause line forces the head onto one row, and the NAME is the identity — it never shrinks.
   // So a machine that has something to say gives up its second numeral rather than its name.
   const numeralBudget = status.body ? 1 : 2;
-  if (numerals.length < numeralBudget && pm.geo && def && def.usesGeology) {
-    numerals.push(`${contactCount(pm.geo)} contacts`);
+  if (numerals.length < numeralBudget && pm.geo && def) {
+    const seat = seatWord(pm.defId, pm.mode, pm.geo);
+    if (seat) numerals.push(seat);
+    else if (def.usesGeology) numerals.push(`${contactCount(pm.geo)} contacts`);
   }
   return {
     kind: 'machine',
@@ -533,8 +543,9 @@ export function ghostLensModel(defId, check) {
     swatch: null,
     lamp: ok ? 'mint' : 'coral',
     name: sentenceCase(def ? def.name : defId),
+    // The seat grade leads: it is the answer to "is this a good cell for this machine".
     numerals: profile
-      ? `${contactCount(profile)} contacts${power ? ` · ${capability.powerGen > 0 ? '+' : '−'}${power} MW` : ''}${capability?.processMultiplier > 1 ? ` · +${Math.round((capability.processMultiplier - 1) * 100)}%` : ''}`
+      ? `${seatWord(defId, def?.modes?.[0], profile) ? `${seatWord(defId, def?.modes?.[0], profile)} · ` : ''}${contactCount(profile)} contacts${power ? ` · ${capability.powerGen > 0 ? '+' : '−'}${power} MW` : ''}${capability?.processMultiplier > 1 ? ` · +${Math.round((capability.processMultiplier - 1) * 100)}%` : ''}`
       : '',
     hp: null,
     chips: [lensChip(ok ? (check.sealsReturn ? 'seal' : 'seat') : 'blocked')],

@@ -15,6 +15,7 @@ import { raidWorstGuardedRock } from '../src/systems/beltEmpireSystem.js';
 import { stepContinuousRecipe, processSpeedParts } from '../src/systems/siteProduction.js';
 import { rockReportLines, claimedRockLine } from '../src/ui/asteroid/rockReport.js';
 import { rockName } from '../src/ui/asteroid/rockNames.js';
+import { ghostLensModel, machineLensModel } from '../src/ui/asteroid/inspector.js';
 import { registerWorldBeats } from '../src/ui/worldNewsBeats.js';
 import { attentionAdmits } from '../src/ui/attentionGlass.js';
 
@@ -328,4 +329,15 @@ test('forty names a side: twenty rocks in a belt rarely share one', () => {
     if (names.size < 6) clashes++;
   }
   assert.ok(clashes <= 6, `${clashes} of 200 six-claim belts had two claims with one name`);
+});
+
+test('the board says how good a seat is before the machine goes in, and after', () => {
+  const ring = (ores, matrix) => ({ solid: matrix + Object.values(ores).reduce((a, b) => a + b, 0), matrix, basalt: 0, gas: 0, empty: 8 - matrix, ores, cells: [] });
+  const poor = ghostLensModel('sm_extractor', { ok: true, profile: ring({}, 6) });
+  assert.match(poor.numerals, /^Seat D · 6 contacts/);
+  const good = ghostLensModel('sm_extractor', { ok: true, profile: ring({ cmdty_ore_iron: 4 }, 2) });
+  assert.match(good.numerals, /^Seat A · 6 contacts/);
+  assert.doesNotMatch(ghostLensModel('sm_massline_core', { ok: true, profile: ring({}, 6) }).numerals, /Seat/, 'a Core reads no rock');
+  const placed = machineLensModel({ defId: 'sm_extractor', mode: null, geo: ring({ cmdty_ore_iron: 3 }, 3), capability: null, status: { state: 'running', ratePerMin: {} } });
+  assert.match(placed.numerals, /Seat B/);
 });
