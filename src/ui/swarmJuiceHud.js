@@ -117,6 +117,13 @@ function makeNode(doc, tag, cls, parent, text) {
 // its own last-written value so a settled bar (a static boss meter between hits, the chain window
 // decaying to 0) skips both the `toFixed` string and the CSS re-parse. Same rounding (thousandths,
 // clamped to 0..1) as hud.js's setScaleX, so the picture is unchanged.
+// `hidden` is a presentation attribute: assigning it marks the element for a style recalculation
+// even when the value is the one it already has. The update below runs every frame and used to
+// assign about ten of them unchanged; write only on a change.
+function setHidden(el, value) {
+  if (el && el.hidden !== value) el.hidden = value;
+}
+
 function setScaleX(el, value) {
   if (!el) return;
   const raw = Number.isFinite(value) ? value : 0;
@@ -232,7 +239,7 @@ export const swarmJuiceHud = {
     // --- the chain hero -----------------------------------------------------------
     // HUD-2 Item 9: the chain readout (and Overdrive mark) now live inside the Swarm round card
     // in survivalHud.js. Keep the top-center hero retired so the center column stays uncluttered.
-    dom.hero.hidden = true;
+    setHidden(dom.hero, true);
 
     // --- the announcer ------------------------------------------------------------
     const activeCall = this._calls[0];
@@ -269,21 +276,21 @@ export const swarmJuiceHud = {
     else if (this._boardOn) beat = 'board';
     this._beat = beat;
 
-    dom.calls.hidden = beat !== 'call';
+    setHidden(dom.calls, beat !== 'call');
 
     const slam = this._slam;
-    dom.slam.hidden = beat !== 'slam';
+    setHidden(dom.slam, beat !== 'slam');
     if (beat === 'slam') {
       if (slam) {
         this._text(dom.slamTitle, slam.title);
         this._text(dom.slamSub, slam.sub);
-        dom.slamSub.hidden = !slam.sub;
+        setHidden(dom.slamSub, !slam.sub);
       } else {
         this._text(dom.slamTitle, this._fightWord);
-        dom.slamSub.hidden = true;
+        setHidden(dom.slamSub, true);
       }
     }
-    dom.bossDown.hidden = beat !== 'bossDown';
+    setHidden(dom.bossDown, beat !== 'bossDown');
 
     // --- the clear tally ------------------------------------------------------------
     if (beat === 'clear') {
@@ -292,30 +299,30 @@ export const swarmJuiceHud = {
       const hold = Math.min(1.5, this._clear.rows.length * TALLY_ROW_STAGGER_S + TALLY_HOLD_S);
       if (age > hold) {
         this._clear = null;
-        dom.tally.hidden = true;
+        setHidden(dom.tally, true);
       } else {
-        dom.tally.hidden = false;
+        setHidden(dom.tally, false);
         this._text(dom.tallyTitle, `ROUND ${this._clear.wave} CLEAR`);
         this._clear.rows.forEach((row, i) => {
           const node = dom.tallyRows[i];
           if (!node) return;
           const on = age >= i * TALLY_ROW_STAGGER_S;
-          node.hidden = !on;
+          setHidden(node, !on);
           if (on) this._text(node, `${row.label}  ${row.value}`);
         });
       }
     } else if (beat === 'board') {
       // S5: Tab holds the scoreboard — the live round's honest numbers on the tally card.
-      dom.tally.hidden = false;
+      setHidden(dom.tally, false);
       this._text(dom.tallyTitle, `ROUND ${run.wave || 1}`);
       const rows = [`WAVE ${run.wave || 1}`];
       if (this._chainBest > 0) rows.push(`BEST CHAIN ×${this._chainBest}`);
       dom.tallyRows.forEach((node, i) => {
-        node.hidden = i >= rows.length;
+        setHidden(node, i >= rows.length);
         if (rows[i]) this._text(node, rows[i]);
       });
     } else {
-      dom.tally.hidden = true;
+      setHidden(dom.tally, true);
     }
     void step; void reduced;
 
@@ -323,36 +330,36 @@ export const swarmJuiceHud = {
     if (beat === 'card') {
       const live = this._card;
       if (live.shownAt == null) { live.shownAt = simNow; live.until = simNow + CARD_TTL_S; }
-      dom.card.hidden = false;
+      setHidden(dom.card, false);
       this._text(dom.cardTitle, live.title);
       this._text(dom.cardLine, live.line || '');
-      dom.cardLine.hidden = !live.line;
+      setHidden(dom.cardLine, !live.line);
     } else {
-      dom.card.hidden = true;
+      setHidden(dom.card, true);
       if (this._card && this._card.shownAt != null && simNow >= this._card.until) this._card = null;
     }
     if (this._bossHp && simNow >= this._bossDownUntil) {
-      dom.boss.hidden = false;
+      setHidden(dom.boss, false);
       dom.col.classList?.add?.('is-boss');
       const move = this._bossMove && (!this._bossMoveUntil || simNow < this._bossMoveUntil) ? this._bossMove : '';
       this._text(dom.bossName, move ? `${this._bossHp.name} · ${move}` : this._bossHp.name);
       const instruction = move ? this._bossInstruction : '';
       this._text(dom.bossInstruction, instruction);
-      dom.bossInstruction.hidden = !instruction;
+      setHidden(dom.bossInstruction, !instruction);
       setScaleX(dom.bossFill, this._bossHp.frac);
       this._text(dom.bossCount, this._bossHp.total > 1
         ? `${this._bossHp.alive}/${this._bossHp.total}` : '');
     } else {
-      dom.boss.hidden = true;
+      setHidden(dom.boss, true);
       dom.col.classList?.remove?.('is-boss');
     }
 
     // --- the shatter ------------------------------------------------------------------
     if (beat === 'shatter' && this._shatter && simNow < this._shatter.until) {
-      dom.shatter.hidden = false;
+      setHidden(dom.shatter, false);
       this._text(dom.shatter, this._shatter.text);
     } else {
-      dom.shatter.hidden = true;
+      setHidden(dom.shatter, true);
     }
 
     // --- the popups ---------------------------------------------------------------------
