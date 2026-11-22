@@ -75,11 +75,51 @@ export function visibleRects(list) {
 
 const DEFAULT_TTL_MS = 800;
 const defaultQuery = AVOID_SELECTORS.join(',');
-const hudQuery = HUD_AVOID_SELECTORS.join(',');
+// The Swarm centre column's live children change with every callout; the column itself is stable,
+// so the children are walked by hand and only the stable panels go through one cached query.
+const SJ_COLUMN_SELECTOR = '.sf-sj__col';
+const hudQuery = HUD_AVOID_SELECTORS.filter((selector) => !selector.startsWith(SJ_COLUMN_SELECTOR)).join(',');
+// The mounted HUD panels are structural: they are found once and kept, re-found only after this
+// long or on a viewport resize. Re-running a 17-selector query over the whole HUD subtree on every
+// read was 28 ms of every second of a round-6 Swarm fight.
+const STRUCTURE_TTL_MS = 3000;
 const touchQuery = TOUCH_AVOID_SELECTORS.join(',');
 
 function byDocumentOrder(a, b) {
   return a.compareDocumentPosition(b) & 4 ? -1 : 1;
+}
+
+const structureCache = new WeakMap();
+function cachedDocEl(doc, entry, prop, id) {
+  let el = entry[prop];
+  if (!el || el.isConnected === false) el = entry[prop] = doc.getElementById(id) || null;
+  return el;
+}
+function hudStructure(doc, hud, t) {
+  let entry = structureCache.get(hud);
+  if (entry && t - entry.at < STRUCTURE_TTL_MS && !entry.stale) {
+    let colsDead = entry.columns.length === 0;
+    if (!colsDead) {
+      for (let i = 0; i < entry.columns.length; i++) {
+        if (entry.columns[i].isConnected === false) { colsDead = true; break; }
+      }
+    }
+    if (colsDead) entry.columns = Array.from(hud.querySelectorAll(SJ_COLUMN_SELECTOR));
+    return entry;
+  }
+  if (!entry) {
+    entry = {
+      at: -Infinity, stale: true, panels: [], columns: [],
+      stage: null, alerts: null, toasts: null, touchOverlay: null, sectorLaw: null,
+    };
+    structureCache.set(hud, entry);
+    doc?.defaultView?.addEventListener?.('resize', () => { entry.stale = true; }, { passive: true });
+  }
+  entry.panels = Array.from(hud.querySelectorAll(hudQuery));
+  entry.columns = Array.from(hud.querySelectorAll(SJ_COLUMN_SELECTOR));
+  entry.at = t;
+  entry.stale = false;
+  return entry;
 }
 
 function defaultAvoidElements(doc) {
@@ -91,33 +131,81 @@ function defaultAvoidElements(doc) {
 
   // World labels refresh during HUD churn. Keep obstacle discovery inside the mounted HUD
   // and its overlay owners, away from the screens and other unchanging document subtrees.
-  const elements = new Set(hud.querySelectorAll(hudQuery));
+  const structure = hudStructure(doc, hud, doc.defaultView?.performance?.now?.() ?? globalThis.performance?.now?.() ?? Date.now());
+  const elements = new Set();
+  for (const column of structure.columns) {
+    const kids = column.children;
+    if (kids) for (let i = 0; i < kids.length; i += 1) { if (!kids[i].hidden) elements.add(kids[i]); }
+  }
+  for (const el of structure.panels) {
+    if (el && el.isConnected !== false) elements.add(el);
+  }
   const add = (root, selector) => {
-    if (root) for (const el of root.querySelectorAll(selector)) elements.add(el);
+    if (!root) return;
+    const childCount = root.childElementCount ?? root.children?.length;
+    if (childCount === 0) return;
+    for (const el of root.querySelectorAll(selector)) elements.add(el);
   };
-  const stage = doc.getElementById('sf-stage-banner');
-  const alerts = doc.getElementById('alerts');
+  const stage = cachedDocEl(doc, structure, 'stage', 'sf-stage-banner');
+  const alerts = cachedDocEl(doc, structure, 'alerts', 'alerts');
   add(stage, STAGE_SELECTOR);
   add(alerts, stage?.contains(alerts) ? `:scope > *,${ALERT_SELECTOR}` : ALERT_SELECTOR);
-  add(doc.getElementById('toasts'), TOAST_SELECTOR);
+  add(cachedDocEl(doc, structure, 'toasts', 'toasts'), TOAST_SELECTOR);
   add(uiRoot, `:scope > ${FIELD_BUILD_SELECTOR}`);
-  add(doc.getElementById('sf-touch-overlay'), touchQuery);
+  add(cachedDocEl(doc, structure, 'touchOverlay', 'sf-touch-overlay'), touchQuery);
   // Sector law moves out of the HUD and into #ui-root in the mobile layout.
-  const sectorLaw = doc.getElementById('sf-sector-law');
+  const sectorLaw = cachedDocEl(doc, structure, 'sectorLaw', 'sf-sector-law');
   if (sectorLaw) elements.add(sectorLaw);
   return Array.from(elements).sort(byDocumentOrder);
 }
 
-function readRectRows(doc, query, exclude) {
+function hasHiddenAncestor(el) {
+  if (!el) return false;
+  if (el.parentElement === undefined && typeof el.closest === 'function') {
+    return !!el.closest('[hidden]');
+  }
+  for (let p = el; p; p = p.parentElement) {
+    if (p.hidden || (typeof p.hasAttribute === 'function' && p.hasAttribute('hidden'))) return true;
+  }
+  return false;
+}
+
+// A selector list run over the whole document is the expensive part of an ad-hoc reader (every
+// screen is mounted under it). The panels such a list names are mounted once, so the found nodes
+// are kept for this long while they all stay connected; their rectangles are still read fresh.
+const SELECTOR_NODES_KEEP_MS = 3000;
+function selectorNodes(doc, query, keep) {
+  if (keep && keep.els) {
+    const t = doc?.defaultView?.performance?.now?.() ?? Date.now();
+    let live = t - keep.at < SELECTOR_NODES_KEEP_MS;
+    for (let i = 0; live && i < keep.els.length; i += 1) if (keep.els[i].isConnected === false) live = false;
+    if (live) return keep.els;
+  }
+  const els = doc?.querySelectorAll?.(query) || [];
+  if (keep) {
+    keep.els = Array.from(els);
+    keep.at = doc?.defaultView?.performance?.now?.() ?? Date.now();
+    return keep.els;
+  }
+  return els;
+}
+
+function readRectRows(doc, query, exclude, keep = null, rectMemo = null) {
   let elements;
   try {
-    elements = query === defaultQuery ? defaultAvoidElements(doc) : doc?.querySelectorAll?.(query) || [];
+    elements = query === defaultQuery ? defaultAvoidElements(doc) : selectorNodes(doc, query, keep);
   }
   catch (_) { elements = []; }
   const rows = [];
   for (const el of elements) {
-    if (exclude?.(el) || el.hidden || el.closest?.('[hidden]')) continue;
-    const rect = visibleRect(el.getBoundingClientRect?.());
+    if (exclude?.(el) || el.hidden || hasHiddenAncestor(el)) continue;
+    let rect;
+    if (rectMemo && rectMemo.has(el)) {
+      rect = rectMemo.get(el);
+    } else {
+      rect = visibleRect(el.getBoundingClientRect?.());
+      if (rectMemo) rectMemo.set(el, rect);
+    }
     if (rect) rows.push({ el, rect });
   }
   return rows;
@@ -131,25 +219,117 @@ const docSnapshots = new WeakMap();
 // sweep on the next frame — the Swarm round-20 profile showed ~86 ms of forced layout per second.
 // An invalidation now re-reads on the next get() only once this long has passed since the last
 // read: at most ~7 reads a second, while a quiet HUD still follows a real change within a frame.
-export const AVOID_RECT_INVALIDATE_COALESCE_MS = 150;
+export const AVOID_RECT_INVALIDATE_COALESCE_MS = 500;
 // ?rfx=-hudRects (or a live probe flip) restores the old every-invalidation / every-frame reads so
 // the saving can be measured against its absence in one page.
 const hudRectCacheOn = () => frameCostFixOn('hudRects');
 
-function createRectSnapshot(doc, query, ttl, exclude, perFrameWhenOff = false) {
+// Reading a rectangle straight after the frame's HUD writes makes the browser lay the whole page
+// out on the spot (5-118 ms a time in a round-6 Swarm fight). The browser lays the page out once per
+// frame anyway, after the frame callbacks, and a ResizeObserver callback runs right after that pass:
+// rectangles read there are already computed and cost nothing. afterLayout(doc, fn) runs fn in that
+// slot of the current frame (a hidden one-pixel sentinel is nudged so the observer fires). Hosts
+// without a ResizeObserver or a body (tests, partial DOMs) get `false` back and read directly.
+const layoutPhases = new WeakMap();
+export function afterLayout(doc, fn) {
+  const view = doc && doc.defaultView;
+  const Observer = view && view.ResizeObserver;
+  if (typeof Observer !== 'function' || !doc.body || typeof doc.createElement !== 'function'
+    || typeof doc.body.appendChild !== 'function') return false;
+  let phase = layoutPhases.get(doc);
+  if (!phase) {
+    const sentinel = doc.createElement('div');
+    if (!sentinel || !sentinel.style) return false;
+    sentinel.setAttribute?.('aria-hidden', 'true');
+    sentinel.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;visibility:hidden;pointer-events:none;contain:strict;';
+    phase = { sentinel, pending: new Set(), tall: false, observer: null, running: false, nudgeQueued: false, nudgedAt: -Infinity };
+    try {
+      phase.observer = new Observer(() => {
+        if (!phase.pending.size) return;
+        const run = Array.from(phase.pending);
+        phase.pending.clear();
+        phase.running = true;
+        try {
+          for (const job of run) { try { job(); } catch (_) { /* one reader never blocks the rest */ } }
+        } finally { phase.running = false; }
+      });
+      doc.body.appendChild(sentinel);
+      phase.observer.observe(sentinel);
+    } catch (_) { return false; }
+    layoutPhases.set(doc, phase);
+  }
+  if (phase.sentinel.isConnected === false) { try { doc.body.appendChild(phase.sentinel); } catch (_) { return false; } }
+  const first = phase.pending.size === 0;
+  phase.pending.add(fn);
+  const clock = () => (view.performance && typeof view.performance.now === 'function' ? view.performance.now() : Date.now());
+  const nudge = () => {
+    phase.nudgeQueued = false;
+    if (!phase.pending.size) return;
+    phase.tall = !phase.tall;
+    phase.sentinel.style.height = phase.tall ? '2px' : '1px';
+    phase.nudgedAt = clock();
+  };
+  if (phase.running) {
+    // Asked from inside the post-layout slot itself: nudging the sentinel now would make the
+    // observer loop on its own element, so the job takes the next frame's slot.
+    if (!phase.nudgeQueued && typeof view.requestAnimationFrame === 'function') {
+      phase.nudgeQueued = true;
+      view.requestAnimationFrame(nudge);
+    } else if (!phase.nudgeQueued) { phase.pending.delete(fn); return false; }
+  } else if (first || (!phase.nudgeQueued && clock() - phase.nudgedAt > 200)) {
+    // A second nudge in one frame would put the sentinel back to its old size and cancel the
+    // first; jobs left over from a frame that never rendered get a fresh nudge after a while.
+    nudge();
+  }
+  return true;
+}
+// A read asked for after layout that has not arrived this long later (hidden window, an observer
+// that never fires) is taken directly instead.
+const AFTER_LAYOUT_PATIENCE_MS = 400;
+
+function createRectSnapshot(doc, query, ttl, exclude, perFrameWhenOff = false, customNow = false) {
   let rows = [];
   let at = -Infinity;
+  let lastReadAt = -Infinity;
   let dirty = false;
+  let askedAt = -Infinity;
+  let asked = false;
   const invalidate = () => { dirty = true; };
   // A viewport resize moves every panel at once: re-read on the very next get().
-  const invalidateNow = () => { at = -Infinity; };
+  const invalidateNow = () => { at = -Infinity; keptNodes.els = null; };
   doc?.defaultView?.addEventListener?.('resize', invalidateNow, { passive: true });
+  const keptNodes = { els: null, at: -Infinity };
+  const readAfterLayout = () => {
+    asked = false;
+    rows = readRectRows(doc, query, exclude, keptNodes);
+    dirty = false;
+  };
   const snapshot = {
-    get(t) {
+    get(t, proactive = false, rectMemo = null) {
+      if (proactive === true) {
+        if (at !== -Infinity && (lastReadAt === -Infinity || t - lastReadAt > 1500)) {
+          return rows;
+        }
+      } else {
+        lastReadAt = t;
+      }
       const cacheOn = hudRectCacheOn();
+      const effectiveTtl = cacheOn
+        ? (!customNow && ttl >= 200 ? Math.max(ttl, 1000) : ttl)
+        : (perFrameWhenOff ? 0 : ttl);
       const coalesceMs = cacheOn ? AVOID_RECT_INVALIDATE_COALESCE_MS : 0;
-      if (t - at >= (cacheOn || !perFrameWhenOff ? ttl : 0) || (dirty && t - at >= coalesceMs)) {
-        rows = readRectRows(doc, query, exclude);
+      if (t - at >= effectiveTtl || (dirty && t - at >= coalesceMs)) {
+        // The first read, a custom clock (tests) and the measurable old path read on the spot;
+        // every later refresh waits for this frame's own layout pass.
+        if (asked && t - askedAt < AFTER_LAYOUT_PATIENCE_MS) return rows;
+        if (cacheOn && !customNow && at !== -Infinity && !asked && afterLayout(doc, readAfterLayout)) {
+          asked = true;
+          askedAt = t;
+          at = t;
+          return rows;
+        }
+        asked = false;
+        rows = readRectRows(doc, query, exclude, keptNodes, rectMemo);
         at = t;
         dirty = false;
       }
@@ -178,7 +358,9 @@ const dueSnapshots = new WeakMap();
  */
 export function refreshDueAvoidRects(doc, t = (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now())) {
   const due = doc && dueSnapshots.get(doc);
-  if (due) for (const snapshot of due) snapshot.get(t);
+  if (!due) return;
+  const rectMemo = new Map();
+  for (const snapshot of due) snapshot.get(t, true, rectMemo);
 }
 
 /**
@@ -198,11 +380,12 @@ export function invalidateAvoidRects(doc) {
  */
 export function createAvoidRects(doc, opts = {}) {
   const ttl = opts.ttlMs ?? DEFAULT_TTL_MS;
+  const customNow = typeof opts.now === 'function';
   const now = opts.now || (() => (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now()));
   const extraQuery = opts.extraSelectors?.join(',');
-  // Share the expensive default query and geometry reads. The faster touch reader and any
-  // custom queries keep their own refresh schedule and apply exclusions before layout reads.
-  const shared = doc && !opts.selectors && !opts.now && ttl === DEFAULT_TTL_MS;
+  // Share the expensive default query and geometry reads across compatible TTLs (>= 200ms).
+  // Short-interval test/custom readers keep their own refresh schedule.
+  const shared = doc && !opts.selectors && !customNow && ttl >= 200;
   let snapshot;
   if (shared) {
     snapshot = sharedHudSnapshots.get(doc);
@@ -212,7 +395,7 @@ export function createAvoidRects(doc, opts = {}) {
     }
   } else {
     const query = [opts.selectors?.join(',') ?? defaultQuery, extraQuery].filter(Boolean).join(',');
-    snapshot = createRectSnapshot(doc, query, ttl, opts.exclude);
+    snapshot = createRectSnapshot(doc, query, ttl, opts.exclude, false, customNow);
   }
 
   let source;
@@ -244,9 +427,26 @@ export function createAvoidRects(doc, opts = {}) {
  * @param {string} selectors comma list
  * @param {{ ttlMs?: number, exclude?: (el: Element) => boolean, now?: () => number }} [opts]
  */
+const sharedSelectorSnapshots = new WeakMap();
+
 export function createSelectorRects(doc, selectors, opts = {}) {
+  const customNow = typeof opts.now === 'function';
   const now = opts.now || (() => (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now()));
-  const snapshot = createRectSnapshot(doc, selectors, opts.ttlMs ?? 250, opts.exclude, true);
+  const ttlMs = opts.ttlMs ?? 250;
+  const canShare = !!(doc && !customNow);
+  let snapshot;
+  if (canShare) {
+    let byKey = sharedSelectorSnapshots.get(doc);
+    if (!byKey) sharedSelectorSnapshots.set(doc, byKey = new Map());
+    const key = `${selectors}|${Math.max(ttlMs, 1000)}`;
+    snapshot = byKey.get(key);
+    if (!snapshot) {
+      snapshot = createRectSnapshot(doc, selectors, ttlMs, undefined, true, false);
+      byKey.set(key, snapshot);
+    }
+  } else {
+    snapshot = createRectSnapshot(doc, selectors, ttlMs, opts.exclude, true, customNow);
+  }
   let source;
   let cache = [];
   return {
@@ -254,7 +454,8 @@ export function createSelectorRects(doc, selectors, opts = {}) {
       const rows = snapshot.get(now());
       if (rows !== source) {
         source = rows;
-        cache = rows.map(({ rect }) => rect);
+        const found = canShare && opts.exclude ? rows.filter(({ el }) => !opts.exclude(el)) : rows;
+        cache = found.map(({ rect }) => rect);
       }
       return cache;
     },
