@@ -71,7 +71,8 @@ export function rockReportLines(report, { nameOf = () => 'a rock', raidPressure 
 
   const limit = report.limit;
   if (limit) {
-    const why = limit.kind === 'power' ? 'Short of power'
+    const why = limit.dark ? 'A machine has no power, so it makes nothing. Run a cable from the Core to it'
+      : limit.kind === 'power' ? 'Short of power'
       : limit.kind === 'input' ? `Waiting on ${goodName(limit.goodId)}`
         : limit.kind === 'export' ? 'Its stores are full'
           : limit.kind === 'lane' ? 'A machine has no cargo lane' : null;

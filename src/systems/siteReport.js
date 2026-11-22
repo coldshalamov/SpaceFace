@@ -154,6 +154,8 @@ export function buildRockReport({ specialization, seating, lift, matrixRow, mach
       limit = { kind, goodId: String(l).startsWith('input:') ? String(l).slice(6) : null };
     }
   }
+  // A working machine with no power makes nothing: say so before anything else.
+  if (matrixRow && matrixRow.darkMachines > 0) limit = { kind: 'power', goodId: null, dark: true };
   return {
     role: specialization || null,
     seating: seating || { share: null, grade: null, counted: 0, machines: [] },

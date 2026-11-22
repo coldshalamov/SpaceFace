@@ -451,6 +451,7 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
       const consumes = new Set();
       const prodByGood = {};
       const consByGood = {};
+      let dark = 0;
 
       // Add orbital power and regocrete barge passive production
       for (const d of site.defenses || []) {
@@ -477,6 +478,27 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
         produces.add('cmdty_ore_iron');
       }
 
+      let shareByNet = null;
+      const networkShare = (key) => {
+        if (!shareByNet) {
+          shareByNet = {};
+          for (const comp of rt?.powerComps || []) {
+            let gen = 0;
+            let draw = 0;
+            for (const mid of comp.machineIds) {
+              const pm = (site.machines || []).find((x) => x.id === mid);
+              const pdef = pm && SITE_MACHINE_BY_ID.get(pm.defId);
+              if (!pdef) continue;
+              const pcap = machineCapability(pdef, rt?.geo?.[pm.id] || null, pm.mode);
+              gen += pcap.powerGen || 0;
+              draw += (pcap.powerDraw || 0) * (1 - (mods.powerDrawDiscount || 0));
+            }
+            shareByNet[comp.key] = draw > 0 ? Math.max(0, Math.min(1, gen / draw)) : 1;
+          }
+        }
+        return shareByNet[key] ?? 1;
+      };
+
       // Machines inside the asteroid
       for (const m of site.machines || []) {
         const def = SITE_MACHINE_BY_ID.get(m.defId);
@@ -486,13 +508,19 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
         const cap = machineCapability(def, geo, m.mode);
         const pk = rt?.powerCompByMachine?.[m.id];
         const status = rt?.status?.[m.id];
+        // The tick keeps each power network's served share; a read view has never ticked, so it
+        // works the share out from the network's own machines (generation over draw).
         const ratio = status && Number.isFinite(status.powerRatio)
           ? status.powerRatio
-          : (pk != null ? (rt?.compRatio?.[pk] ?? 1) : 1);
+          : (pk != null ? (rt?.compRatio?.[pk] ?? networkShare(pk)) : 1);
         siteGenMw += cap.powerGen || 0;
         siteDrawMw += (cap.powerDraw || 0) * (1 - (mods.powerDrawDiscount || 0));
 
         const rec = m.mode ? SITE_RECIPE_BY_ID.get(m.mode) : null;
+        // A machine with no power makes nothing. Its rated output is not production: counting
+        // it told the player a rock made 6 a minute while its stores stayed empty.
+        const makesGoods = !!rec || Object.keys(cap.outputsPerMin || {}).length > 0;
+        if (makesGoods && (cap.powerDraw || 0) > 0 && ratio <= 0) dark += 1;
         if (rec) {
           const procMult = Math.max(0.25, cap.processMultiplier || 1);
           const inputSum = Math.max(1, Object.values(rec.inputs || {}).reduce((s, q) => s + q, 0));
@@ -569,6 +597,7 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
         consByGood,
         stock: siteStock,
         defenseRating: defStats.totalDefenseRating,
+        darkMachines: dark,
         exportedU: Number(site.stats?.exportedU) || 0,
       });
     }

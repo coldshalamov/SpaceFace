@@ -12,6 +12,7 @@ import { NEIGHBOUR_RULES, RAID_RULES, SITE_BALANCE, classifySiteSpecialization }
 import { COMMODITIES } from '../src/data/commodities.js';
 import { machineSeating, seatingGrade, siteSeating, neighbourLift, buildRockReport } from '../src/systems/siteReport.js';
 import { raidWorstGuardedRock } from '../src/systems/beltEmpireSystem.js';
+import { asteroidSiteReadMethods } from '../src/systems/asteroidSiteReadModel.js';
 import { stepContinuousRecipe, processSpeedParts } from '../src/systems/siteProduction.js';
 import { rockReportLines, claimedRockLine } from '../src/ui/asteroid/rockReport.js';
 import { rockName } from '../src/ui/asteroid/rockNames.js';
@@ -340,4 +341,40 @@ test('the board says how good a seat is before the machine goes in, and after', 
   assert.doesNotMatch(ghostLensModel('sm_massline_core', { ok: true, profile: ring({}, 6) }).numerals, /Seat/, 'a Core reads no rock');
   const placed = machineLensModel({ defId: 'sm_extractor', mode: null, geo: ring({ cmdty_ore_iron: 3 }, 3), capability: null, status: { state: 'running', ratePerMin: {} } });
   assert.match(placed.numerals, /Seat B/);
+});
+
+test('a machine with no power makes nothing, and the card says so instead of its rated output', () => {
+  const h = makeHarness();
+  const mine = claim(h, 7001, 'extractor', { x: 0, z: 0 });
+  claim(h, 7002, 'refinery', { x: 300, z: 0 });
+  const report = (sys) => sys.sectorNetworkProjection('sec_core_alpha').sites.find((s) => s.siteId === mine.id).report;
+  step(h, 5);
+  assert.ok(report(h.sys).makes.length >= 1, 'cabled to its Core the mine makes something');
+  assert.equal(report(h.sys).limit, null);
+  // Pull the cable and stand the extractor off on its own: nothing feeds it now.
+  mine.overlays.power = [];
+  mine.overlays.lane = [];
+  const ext = mine.machines.find((m) => m.defId === 'sm_extractor');
+  ext.col -= 3;
+  mine.cleared.push(ext.row * 28 + ext.col);
+  h.sys._markDirty(mine.id, { field: true, net: true });
+  step(h, 2);
+  const before = stockOf(h, mine);
+  step(h, 60);
+  assert.equal(stockOf(h, mine), before, 'the tick makes nothing for a dark machine');
+  const cut = report(h.sys);
+  assert.deepEqual(cut.makes, [], 'rated output is not production');
+  assert.equal(cut.limit.kind, 'power');
+  const lines = rockReportLines(cut);
+  assert.equal(lines.find((l) => l.id === 'makes').value, 'Nothing yet');
+  assert.match(lines.find((l) => l.id === 'limit').value, /has no power, so it makes nothing/);
+  // The screen reads through a view that has never ticked: it must reach the same answer.
+  const view = Object.create(asteroidSiteReadMethods);
+  view.state = JSON.parse(JSON.stringify({ sites: h.state.sites, world: h.state.world, simTime: h.state.simTime }));
+  view.state.entities = new Map();
+  view._rt = new Map();
+  view._surveyByAsteroid = new Map();
+  view.siteForAsteroid = () => null;
+  assert.deepEqual(report(view).makes, [], 'a fresh read view agrees');
+  assert.equal(report(view).limit.kind, 'power');
 });

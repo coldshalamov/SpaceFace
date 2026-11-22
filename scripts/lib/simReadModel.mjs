@@ -949,7 +949,10 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'automation.meta', 'automation.traders', 'automation.fleet', 'automation.outposts',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
-  'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
+  // sites.empire is the belt-wide record (raid pressure and the last raid, doctrines unlocked,
+  // charters held, belt weather). Without it the belt view read a fresh blank one every frame:
+  // raids always at zero, a bought doctrine shown as never bought.
+  'sites.byId', 'sites.order', 'sites.empire', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
   'drill',
   'save.slots', 'save.currentSlot',
   // Stage-E facade coverage: the claims facade's read view needs the whole root
