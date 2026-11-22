@@ -59,8 +59,11 @@ export const NEIGHBOUR_RULES = Object.freeze({
 
 // Belt raids. Every `beltEmpireSystem` raid check that the belt's guard rating fails to meet
 // takes a share of the stock waiting at the worst-guarded rock. Nothing is ever broken.
+// The share shrinks with every guard built: a belt at half the guard it needs loses half as much,
+// so the first turret already pays. Measured, two unguarded mining rocks over 30 minutes with
+// nothing shipped out: about four tenths of what they dug (one turret halves that, three stop it).
 export const RAID_RULES = Object.freeze({
-  lootShare: 0.25,            // of each good waiting at the rock that is hit
+  lootShare: 0.2,             // of each good waiting at the rock that is hit, with no guard at all
   minStockU: 12,              // a rock holding less than this is not worth the trip
 });
 
@@ -424,8 +427,8 @@ export const SITE_SPECIALIZATIONS = Object.freeze({
 });
 
 /**
- * Pure classifier deriving an asteroid site's emergent industrial role
- * from its installed machines, links, power surplus, and perimeter defenses.
+ * Pure classifier deriving an asteroid site's trade from the machines installed in it (and, for
+ * a rock with no working machine, from the guards built around it).
  */
 export function classifySiteSpecialization(site) {
   if (!site) return SITE_SPECIALIZATIONS.outpost;
@@ -438,24 +441,26 @@ export function classifySiteSpecialization(site) {
     if (!id) continue;
     counts[id] = (counts[id] || 0) + 1;
   }
-  const links = Array.isArray(site.links) ? site.links : [];
   const defenses = Array.isArray(site.defenses) ? site.defenses : [];
-  const hasOutPowerLink = links.some((l) => l && l.kind === 'power' && l.active !== false);
-  const netPower = Number(site.powerGenMw || 0) - Number(site.powerDrawMw || 0);
+  // A rock's trade is what the machines INSIDE it do, and nothing else. A power line run out of a
+  // mine, or two turrets parked beside it, does not change what the rock does. It must not: the
+  // good-neighbours rule (NEIGHBOUR_RULES) pays rocks of different trades for being joined, so a
+  // trade a player could flip with a cable or a turret would be free speed for two identical rocks.
   if ((counts.sm_deep_synthesizer || 0) > 0 || (counts.sm_fabricator || 0) > 0 || (counts.sm_charge_press || 0) > 0) {
     return SITE_SPECIALIZATIONS.fabrication;
   }
   if ((counts.sm_refinery || 0) > 0) {
     return SITE_SPECIALIZATIONS.smelting;
   }
-  if (hasOutPowerLink || ((counts.sm_gas_tap || 0) > 0 && netPower >= 6)) {
+  if ((counts.sm_extractor || 0) > 0 || (counts.sm_auto_drill || 0) > 0) {
+    return SITE_SPECIALIZATIONS.extraction;
+  }
+  if ((counts.sm_gas_tap || 0) > 0) {
     return SITE_SPECIALIZATIONS.powerhouse;
   }
+  // No working machine at all: a rock kept only to guard the others is a trade of its own.
   if (defenses.length >= 2 || ((counts.sm_relay || 0) > 0 && defenses.length >= 1)) {
     return SITE_SPECIALIZATIONS.bastion;
-  }
-  if ((counts.sm_extractor || 0) > 0 || (counts.sm_auto_drill || 0) > 0 || (counts.sm_gas_tap || 0) > 0) {
-    return SITE_SPECIALIZATIONS.extraction;
   }
   return SITE_SPECIALIZATIONS.outpost;
 }

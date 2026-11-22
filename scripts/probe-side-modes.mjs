@@ -513,7 +513,9 @@ async function fillWork(page, shot) {
     await page.mouse.click(second.x, second.y);
     await page.waitForTimeout(900);
     b.freeCard = (await cardText()).slice(0, 300);
-    await page.keyboard.press('Digit1');
+    // A smelter rock: another trade than the mine, so a line between them should lift both.
+    b.smelterButton = await tab('claim with a smelter');
+    if (!b.smelterButton) await page.keyboard.press('Digit1');
     await page.waitForTimeout(1800);
   }
   b.afterSecondClaim = await claims();

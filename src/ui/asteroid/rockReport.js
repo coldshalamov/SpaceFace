@@ -34,7 +34,7 @@ const MAX_LIFT = pct(NEIGHBOUR_RULES.liftPerTrade);
  * @param opts.nameOf  (asteroidId) => the rock's name
  * @returns Array<{ id, label, value, tone }>
  */
-export function rockReportLines(report, { nameOf = () => 'a rock' } = {}) {
+export function rockReportLines(report, { nameOf = () => 'a rock', raidPressure = 0 } = {}) {
   if (!report) return [];
   const lines = [];
   const add = (id, label, value, tone = '') => lines.push({ id, label, value, tone });
@@ -59,6 +59,14 @@ export function rockReportLines(report, { nameOf = () => 'a rock' } = {}) {
     add('neighbours', 'Neighbours', `Its lines join rocks of its own trade. Another trade adds up to ${MAX_LIFT}`, 'muted');
   } else {
     add('neighbours', 'Neighbours', `No line to another rock. One of another trade adds up to ${MAX_LIFT}`, 'muted');
+  }
+
+  // Guard matters once raiders test the belt (a second claim brings them).
+  if (raidPressure > 0) {
+    const guard = Math.round(Number(report.defended) || 0);
+    add('guard', 'Guard', guard > 0
+      ? `${guard} of the ${Math.round(raidPressure)} this belt needs between all its rocks`
+      : 'None. Raiders go for the worst-guarded rock first', guard > 0 ? '' : 'warn');
   }
 
   const limit = report.limit;

@@ -682,7 +682,8 @@ export function stepBeltEmpireSector(sitesSys, state, dtS) {
         empire.raidStatus.lastMessage = `Raiders looked this belt over and left. ${guard}`;
       } else {
         empire.raidStatus.losses = (empire.raidStatus.losses || 0) + 1;
-        hit = raidWorstGuardedRock(sitesSys, sectorId, matrix);
+        const shortfall = 1 - (matrix.totalDefenseRating / Math.max(1, empire.raidStatus.pressure));
+        hit = raidWorstGuardedRock(sitesSys, sectorId, matrix, shortfall);
         empire.raidStatus.lastMessage = hit
           ? `Raiders took ${hit.units} units from your worst-guarded rock. ${guard}`
           : `Raiders came through and found nothing worth taking. ${guard}`;
@@ -695,12 +696,15 @@ export function stepBeltEmpireSector(sitesSys, state, dtS) {
 
 /**
  * A raid the belt's guard rating failed to turn away. Raiders go for the rock that is guarded
- * worst (ties: the one holding most), and carry off RAID_RULES.lootShare of each good waiting
- * there, from the dock stage first and then the lane stores. Whole units only. Machines, cables
+ * worst (ties: the one holding most), and carry off up to RAID_RULES.lootShare of each good
+ * waiting there (less, the closer the belt's guard came to what was needed), from the dock stage
+ * first and then the lane stores. Whole units only. Machines, cables
  * and the rock itself are never touched: a raid costs stock, and a turret or a patrol drone on
  * that rock is how a player answers it. Deterministic: no roll, no clock.
  */
-export function raidWorstGuardedRock(sitesSys, sectorId, matrix) {
+export function raidWorstGuardedRock(sitesSys, sectorId, matrix, shortfall = 1) {
+  // How far short the belt's guard fell (0..1): part of a guard keeps part of the stock.
+  const share = RAID_RULES.lootShare * Math.max(0, Math.min(1, Number.isFinite(shortfall) ? shortfall : 1));
   const byId = sitesSys?.state?.sites?.byId;
   if (!byId || !matrix || !Array.isArray(matrix.sites)) return null;
   let target = null;
@@ -721,7 +725,7 @@ export function raidWorstGuardedRock(sitesSys, sectorId, matrix) {
   let units = 0;
   for (const store of target.stores) {
     for (const goodId of Object.keys(store).sort()) {
-      const loot = Math.floor((Number(store[goodId]) || 0) * RAID_RULES.lootShare);
+      const loot = Math.floor((Number(store[goodId]) || 0) * share);
       if (loot <= 0) continue;
       store[goodId] = (Number(store[goodId]) || 0) - loot;
       if (store[goodId] <= 1e-9) delete store[goodId];

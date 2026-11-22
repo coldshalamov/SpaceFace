@@ -6,11 +6,17 @@
 const FIRST = [
   'Grey', 'Iron', 'Hollow', 'Quiet', 'Sour', 'Old', 'Cold', 'Broken', 'Lucky', 'Red',
   'Pale', 'Bitter', 'Dry', 'Blind', 'Salt', 'Dull', 'Hard', 'Slow', 'Dead', 'Low',
+  // Forty by forty: claims are now told apart by name in the belt view, and with twenty words a
+  // side two rocks in one belt shared a name about one belt in three.
+  'Black', 'Long', 'Bent', 'Thin', 'Deaf', 'Rust', 'Ash', 'Brass', 'Tin', 'Bone',
+  'Flint', 'Soot', 'Lean', 'Sharp', 'Late', 'Mean', 'Plain', 'Wry', 'Stone', 'Copper',
 ];
 
 const SECOND = [
   'Molar', 'Anvil', 'Widow', 'Crown', 'Debt', 'Tooth', 'Bell', 'Anchor', 'Spine', 'Knuckle',
   'Ledge', 'Prayer', 'Coffin', 'Hearth', 'Shard', 'Mule', 'Bishop', 'Lantern', 'Drum', 'Fist',
+  'Kettle', 'Saddle', 'Ladder', 'Hammer', 'Chapel', 'Barrel', 'Shovel', 'Candle', 'Wagon', 'Needle',
+  'Hinge', 'Gate', 'Pocket', 'Wheel', 'Collar', 'Thumb', 'Boot', 'Oven', 'Ferry', 'Purse',
 ];
 
 function fnv1a(str) {

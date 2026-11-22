@@ -689,7 +689,7 @@ export function createFieldBuildMode(ctx) {
     if (code === 'KeyG') {
       const sys = currentSiteSys();
       if (sys?.autoLinkSectorCluster) {
-        runSiteOp(sys.autoLinkSectorCluster(state?.world?.currentSectorId), 'Sector power and material supply network balanced.');
+        runSiteOp(sys.autoLinkSectorCluster(state?.world?.currentSectorId), 'Lines run between your claims.');
       }
       return true;
     }
@@ -703,7 +703,8 @@ export function createFieldBuildMode(ctx) {
 
   function renderCrest(vm) {
     const totals = vm.network.totals;
-    const sig = `${totals.siteCount}|${totals.totalPowerGenMw}|${totals.totalPowerDrawMw}|${totals.activeLinkCount}|${totals.totalDefenseRating || totals.defenseCount}`;
+    const raidPressure = Math.round(Number(vm.empire?.raidStatus?.pressure) || 0);
+    const sig = `${totals.siteCount}|${totals.totalPowerGenMw}|${totals.totalPowerDrawMw}|${totals.activeLinkCount}|${totals.totalDefenseRating || totals.defenseCount}|${raidPressure}`;
     if (sig === crestSig) return;
     crestSig = sig;
     statSites.textContent = 'Claims';
@@ -713,7 +714,8 @@ export function createFieldBuildMode(ctx) {
     statLinks.textContent = 'Links';
     statLinks.appendChild(el('strong', '', String(totals.activeLinkCount)));
     statDefs.textContent = 'Guard';
-    statDefs.appendChild(el('strong', '', String(totals.totalDefenseRating ?? totals.defenseCount)));
+    // Against what raiders test, once there is something for them to test.
+    statDefs.appendChild(el('strong', '', `${totals.totalDefenseRating ?? totals.defenseCount}${raidPressure > 0 ? ` of ${raidPressure}` : ''}`));
   }
 
   function renderInspector() {

@@ -286,7 +286,8 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   if (site.report) {
     const repSec = el('div', 'fb-section fb-rock-report');
     repSec.appendChild(el('h4', 'fb-sec-title', 'What this rock is now'));
-    for (const line of rockReportLines(site.report, { nameOf: rockName })) {
+    const raidPressure = Number(vm.empire?.raidStatus?.pressure) || 0;
+    for (const line of rockReportLines(site.report, { nameOf: rockName, raidPressure })) {
       const row = el('div', `fb-kv-row fb-report-row${line.tone ? ` is-${line.tone}` : ''}`);
       row.append(el('span', '', line.label), el('span', 'fb-kv-val', line.value));
       repSec.appendChild(row);
@@ -749,7 +750,7 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   rRow.append(el('span', '', 'Guard, of what raiders test'), el('span', 'fb-kv-val', `${rating} of ${pressure}`));
   raidSec.appendChild(rRow);
   raidSec.appendChild(el('div', 'fb-tool-sub', pressure > 0
-    ? 'Every three minutes raiders test this belt. If the guard falls short they take a quarter of the stock at the worst-guarded rock. Turrets and patrol drones raise the guard.'
+    ? 'Every three minutes raiders test this belt. If the guard falls short they take up to a fifth of the stock at the worst-guarded rock, and less for every turret or patrol drone you add.'
     : 'One claim draws no raiders. A second one does.'));
   if (empire.raidStatus?.lastMessage) {
     raidSec.appendChild(el('div', 'fb-tool-sub', empire.raidStatus.lastMessage));
@@ -792,7 +793,7 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   logEvents.sort((a, b) => b.t - a.t);
   if (logEvents.length) {
     const feedSec = el('div', 'fb-section');
-    feedSec.appendChild(el('h4', 'fb-sec-title', 'Sector Industrial Telemetry'));
+    feedSec.appendChild(el('h4', 'fb-sec-title', 'What happened lately'));
     const feedList = el('div', 'fb-list');
     for (const ev of logEvents.slice(0, 6)) {
       const row = el('div', 'fb-item-row');
@@ -807,7 +808,7 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   }
 
   const availSec = el('div', 'fb-section');
-  availSec.appendChild(el('h4', 'fb-sec-title', 'Available Industrial Charters'));
+  availSec.appendChild(el('h4', 'fb-sec-title', 'Charters on offer'));
   const availList = el('div', 'fb-list');
   for (const tpl of BELT_CHARTER_TEMPLATES) {
     const done = empire.completedCharters?.includes(tpl.id);

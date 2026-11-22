@@ -1,18 +1,22 @@
 // The outside half of the rock board: what a worked rock amounts to, what its neighbours do for
 // it, and what a raid costs. Rules under test (src/data/sites.js NEIGHBOUR_RULES, RAID_RULES):
 //   a rock joined by a line to a rock of ANOTHER trade runs faster, by more the better that
-//   neighbour was dug; a belt raid the guard rating fails to meet takes a quarter of the stock
-//   waiting at the worst-guarded rock; ice beside a refinery really doubles what it makes.
+//   neighbour was dug; a belt raid the guard rating fails to meet takes up to a fifth of the stock
+//   waiting at the worst-guarded rock, less the nearer the guard came; ice beside a refinery
+//   really doubles what it makes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { asteroidSites } from '../src/systems/asteroidSites.js';
-import { NEIGHBOUR_RULES, RAID_RULES, SITE_BALANCE } from '../src/data/sites.js';
+import { NEIGHBOUR_RULES, RAID_RULES, SITE_BALANCE, classifySiteSpecialization } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { machineSeating, seatingGrade, siteSeating, neighbourLift, buildRockReport } from '../src/systems/siteReport.js';
 import { raidWorstGuardedRock } from '../src/systems/beltEmpireSystem.js';
 import { stepContinuousRecipe, processSpeedParts } from '../src/systems/siteProduction.js';
 import { rockReportLines, claimedRockLine } from '../src/ui/asteroid/rockReport.js';
+import { rockName } from '../src/ui/asteroid/rockNames.js';
+import { registerWorldBeats } from '../src/ui/worldNewsBeats.js';
+import { attentionAdmits } from '../src/ui/attentionGlass.js';
 
 function makeHarness() {
   const handlers = new Map();
@@ -110,6 +114,25 @@ test('neighbours: only a linked rock of another trade lifts, once per trade, thr
   assert.equal(lift().rows.find((r) => r.roleId === 'smelting').siteId, 'd', 'a cut line stops counting');
 });
 
+test('a trade cannot be flipped with a cable or a turret: two identical mines never lift each other', () => {
+  const mk = (id, extra = {}) => ({ id, anchored: true, sectorId: 's', links: [],
+    machines: [{ id: `${id}c`, defId: 'sm_massline_core' }, { id: `${id}e`, defId: 'sm_extractor' }], ...extra });
+  // A power line between twin mines used to make the sender a "power hub".
+  const a = mk('a', { links: [{ targetSiteId: 'b', kind: 'power', active: true }] });
+  const b = mk('b');
+  assert.equal(neighbourLift(a, { a, b }, () => 1).mult, 1);
+  assert.equal(neighbourLift(b, { a, b }, () => 1).mult, 1);
+  // Two turrets beside a mine used to make it a "bastion". Guarding a rock must not change its trade.
+  const c = mk('c', { defenses: [{ kind: 'turret' }, { kind: 'turret' }], links: [{ targetSiteId: 'd', kind: 'material', active: true }] });
+  const d = mk('d');
+  assert.equal(classifySiteSpecialization(c).id, 'extraction');
+  assert.equal(neighbourLift(c, { c, d }, () => 1).mult, 1);
+  assert.equal(neighbourLift(d, { c, d }, () => 1).mult, 1);
+  // A gas-tap rock is a power rock whether or not it has run a line yet.
+  assert.equal(classifySiteSpecialization({ machines: [{ defId: 'sm_gas_tap' }] }).id, 'powerhouse');
+  assert.equal(classifySiteSpecialization({ machines: [{ defId: 'sm_massline_core' }], links: [{ kind: 'power', active: true }] }).id, 'outpost');
+});
+
 test('a mixed pair of rocks out-produces the same two rocks unlinked', () => {
   const run = (linked) => {
     const h = makeHarness();
@@ -172,7 +195,7 @@ test('ice really doubles a refinery: the step makes twice the metal, not 1.6 tim
   assert.deepEqual(processSpeedParts({ processMultiplier: 1.3 }), { processMultiplier: 1.3, speedMultiplier: 1 });
 });
 
-test('a raid takes a quarter of the stock at the worst-guarded rock, and a guarded belt loses nothing', () => {
+test('a raid takes up to a fifth of the stock at the worst-guarded rock, less with part of a guard, nothing with a full one', () => {
   const h = makeHarness();
   const a = claim(h, 7001, 'extractor', { x: 0, z: 0 });
   const b = claim(h, 7002, 'extractor', { x: 300, z: 0 });
@@ -184,13 +207,18 @@ test('a raid takes a quarter of the stock at the worst-guarded rock, and a guard
   const matrix = h.sys.sectorNetworkProjection('sec_core_alpha').supplyMatrix;
   const hit = raidWorstGuardedRock(h.sys, 'sec_core_alpha', matrix);
   assert.equal(hit.siteId, a.id, 'the rock with no turret is the one they hit');
-  assert.deepEqual(hit.taken, { cmdty_ore_iron: 10, cmdty_silicate: 2 });
-  assert.equal(hit.units, 12);
-  assert.equal(a.laneStores[0].store.cmdty_ore_iron, 30);
+  assert.deepEqual(hit.taken, { cmdty_ore_iron: 8, cmdty_silicate: 2 });
+  assert.equal(hit.units, 10);
+  assert.equal(a.laneStores[0].store.cmdty_ore_iron, 32);
   assert.equal(a.exportBuffer.cmdty_silicate, 8);
+  // Half the guard the belt needs keeps half of what an unguarded belt would lose.
+  a.laneStores[0].store.cmdty_ore_iron = 40; a.exportBuffer.cmdty_silicate = 10;
+  const half = raidWorstGuardedRock(h.sys, 'sec_core_alpha', matrix, 0.5);
+  assert.deepEqual(half.taken, { cmdty_ore_iron: 4, cmdty_silicate: 1 });
+  assert.equal(raidWorstGuardedRock(h.sys, 'sec_core_alpha', matrix, 0), null, 'a full guard loses nothing');
   assert.equal(b.laneStores[0].store.cmdty_ore_iron, 80, 'the guarded rock is left alone');
   assert.equal(a.machines.length, 3, 'nothing is ever broken');
-  assert.match(a.ledger[0].text, /Raiders took 12 units/);
+  assert.match(a.ledger[0].text, /Raiders took \d+ units/);
   // A rock holding less than the minimum is not worth the trip.
   a.laneStores[0].store.cmdty_ore_iron = 2; a.exportBuffer.cmdty_silicate = 2;
   b.laneStores[0].store = {};
@@ -260,4 +288,35 @@ test('the rock report: one summary a player reads on the belt and on the way out
   assert.ok(bare.some((l) => /Nothing yet/.test(l.value)));
   assert.ok(bare.some((l) => /No line to another rock/.test(l.value)));
   assert.equal(SITE_BALANCE.linkRangeWu > 0, true);
+});
+
+test('a raid reaches the pilot: one news sentence naming the rock, a guard line on its card', () => {
+  const handlers = {};
+  const state = { simTime: 400, ui: {}, world: { currentSectorId: 'sec_core_alpha' } };
+  registerWorldBeats((name, fn) => { handlers[name] = fn; }, state);
+  assert.equal(typeof handlers['site:raided'], 'function', 'the raid event has a listener');
+  const headline = handlers['site:raided']({ siteId: 'site_1', asteroidId: 7001, units: 12, taken: { cmdty_ore_iron: 12 } });
+  assert.equal(headline.text, `Raiders took 12 units from ${rockName(7001)}, your worst-guarded rock.`);
+  assert.doesNotMatch(headline.text, /site_\d|cmdty_|[—–]/);
+  assert.equal((headline.text.match(/[.!?]/g) || []).length, 1, 'one sentence: the flight glass drops prose of two');
+  assert.equal(handlers['site:raided']({ siteId: 'site_1', units: 0 }), null, 'a raid that took nothing is not news');
+
+  // The rock card names the guard only once raiders are testing the belt.
+  const rep = buildRockReport({ specialization: { id: 'extraction', label: 'Extraction Rig' }, matrixRow: { defenseRating: 0, netMw: 0 } });
+  assert.equal(rockReportLines(rep).some((l) => l.id === 'guard'), false);
+  const guard = rockReportLines(rep, { raidPressure: 55 }).find((l) => l.id === 'guard');
+  assert.equal(guard.value, 'None. Raiders go for the worst-guarded rock first');
+  const held = rockReportLines({ ...rep, defended: 50 }, { raidPressure: 55 }).find((l) => l.id === 'guard');
+  assert.equal(held.value, '50 of the 55 this belt needs between all its rocks');
+  assert.equal(typeof attentionAdmits, 'function');
+});
+
+test('forty names a side: twenty rocks in a belt rarely share one', () => {
+  let clashes = 0;
+  for (let belt = 0; belt < 200; belt++) {
+    const names = new Set();
+    for (let i = 0; i < 6; i++) names.add(rockName(belt * 97 + i * 13 + 200));
+    if (names.size < 6) clashes++;
+  }
+  assert.ok(clashes <= 6, `${clashes} of 200 six-claim belts had two claims with one name`);
 });

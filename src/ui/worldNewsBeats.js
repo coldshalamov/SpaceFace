@@ -296,7 +296,7 @@ export function registerWorldBeats(on, state) {
     if (!units) return null;
     const rock = payload.asteroidId != null ? rockName(payload.asteroidId) : 'your claim';
     return publish(cite(
-      `Raiders hit ${rock}: ${units} units gone. It needs a turret or a patrol drone.`,
+      `Raiders took ${units} units from ${rock}, your worst-guarded rock.`,
       'claim_raided',
       `site:raided:${payload.siteId || 'site'}:${units}:${Math.round(Number(state && state.simTime) || 0)}`,
     ));
