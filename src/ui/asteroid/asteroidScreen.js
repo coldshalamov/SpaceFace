@@ -22,7 +22,7 @@ import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
 import { rockName } from './rockNames.js';
-import { rockReportSentence } from './rockReport.js';
+import { rockReportSentence, rockReportLines } from './rockReport.js';
 import { rockAssayLine } from './rockAssay.js';
 import { ROCK_GEOLOGY, resolveBoreFamily } from '../../systems/drillFieldModel.js';
 import { worksObjectiveLine } from '../../data/worksContractWords.js';
@@ -3391,13 +3391,17 @@ export const asteroidScreen = {
       // A claimed rock says what it amounts to as the rover lifts out: its trade, how well it
       // was dug and what it makes. The same summary heads its card in the belt view.
       let parting = null;
+      let partingCard = null;
       try {
         const site = currentSiteId && siteSys && typeof siteSys.getSite === 'function' ? siteSys.getSite(currentSiteId) : null;
         if (site && site.anchored && typeof siteSys.sectorNetworkProjection === 'function') {
           const node = (siteSys.sectorNetworkProjection(site.sectorId).sites || []).find((s) => s.siteId === site.id);
-          if (node && node.report) parting = `${rockName(site.asteroidId)}. ${rockReportSentence(node.report)}`;
+          if (node && node.report) {
+            parting = `${rockName(site.asteroidId)}. ${rockReportSentence(node.report)}`;
+            partingCard = { name: rockName(site.asteroidId), lines: rockReportLines(node.report, { nameOf: rockName }) };
+          }
         }
-      } catch (_) { parting = null; }
+      } catch (_) { parting = null; partingCard = null; }
       const fade = document.getElementById('sf-dock-overlay');
       if (fade) {
         fade.hidden = false;
@@ -3415,7 +3419,7 @@ export const asteroidScreen = {
         // since the pilot last read it: the work done inside is summed up at the door.
         const seen = state.ui ? (state.ui.rockPartings || (state.ui.rockPartings = {})) : {};
         const changed = !!parting && seen[currentSiteId] !== parting;
-        if (total > 0 || changed) showSummary(yields, parting);
+        if (total > 0 || changed) showSummary(yields, partingCard);
         if (parting && currentSiteId) seen[currentSiteId] = parting;
         if (state.ui) state.ui.lastRockParting = parting;
         setTimeout(() => {
@@ -3433,9 +3437,11 @@ export const asteroidScreen = {
       }, 400);
     }
 
-    function showSummary(yields, parting = null) {
+    function showSummary(yields, claim = null) {
       const root = document.getElementById('ui-root');
       if (!root) return;
+      // One card at a time: a second trip out of a rock replaces the first card, never stacks on it.
+      for (const old of root.querySelectorAll('.ast-summary-modal')) old.remove();
       const modal = document.createElement('div');
       modal.className = 'ast-summary-modal';
       modal.setAttribute('role', 'dialog');
@@ -3446,7 +3452,7 @@ export const asteroidScreen = {
       const t = document.createElement('div');
       t.className = 'title';
       const hauled = Object.values(yields || {}).some((q) => q > 0);
-      t.textContent = hauled ? 'Extraction report' : 'Your claim';
+      t.textContent = hauled ? 'Extraction report' : `Your claim: ${claim ? claim.name : 'this rock'}`;
       box.appendChild(t);
       for (const [goodId, qty] of Object.entries(yields).filter(([, q]) => q > 0)) {
         const row = document.createElement('div');
@@ -3459,14 +3465,33 @@ export const asteroidScreen = {
         row.append(name, val);
         box.appendChild(row);
       }
-      if (parting) {
-        const claim = document.createElement('div');
-        claim.className = 'row ast-summary-claim';
-        claim.style.display = 'block';
-        claim.style.marginTop = '0.6rem';
-        claim.style.lineHeight = '1.4';
-        claim.textContent = parting;
-        box.appendChild(claim);
+      // What the rock amounts to now: the same lines its card shows in the belt view.
+      if (claim) {
+        if (hauled) {
+          const head = document.createElement('div');
+          head.className = 'row ast-summary-claim';
+          head.style.marginTop = '0.6rem';
+          head.textContent = `Your claim: ${claim.name}`;
+          box.appendChild(head);
+        }
+        for (const line of claim.lines) {
+          const row = document.createElement('div');
+          row.className = 'row ast-summary-claim';
+          row.style.alignItems = 'baseline';
+          row.style.gap = '0.75rem';
+          const name = document.createElement('span');
+          name.textContent = line.label;
+          name.style.flex = '0 0 5.5rem';
+          name.style.opacity = '0.7';
+          const val = document.createElement('span');
+          val.className = 'val';
+          val.style.flex = '1 1 auto';
+          val.style.textAlign = 'left';
+          val.style.whiteSpace = 'normal';
+          val.textContent = line.value;
+          row.append(name, val);
+          box.appendChild(row);
+        }
       }
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
@@ -3477,10 +3502,21 @@ export const asteroidScreen = {
       closeBtn.setAttribute('aria-label', hauled ? 'Close extraction report' : 'Close and return to the ship');
       closeBtn.style.alignSelf = 'center';
       closeBtn.style.minWidth = '10rem';
+      let lapse = 0;
+      // The card's own keys (Tab, Enter, Space, Escape) work it; any other key is the pilot moving on.
+      const onAnyKey = (e) => { if (!['Tab', 'Enter', ' ', 'Escape', 'Shift', 'Control', 'Alt'].includes(e.key)) close(); };
       const close = () => {
+        clearTimeout(lapse);
+        window.removeEventListener('keydown', onAnyKey, true);
         modal.classList.remove('active');
         setTimeout(() => modal.remove(), 250);
       };
+      // A card with nothing hauled is a note, not a gate: it goes when the pilot does anything
+      // else (a key that is not aimed at the card), and on its own after a few seconds.
+      if (!hauled) {
+        lapse = setTimeout(close, 9000);
+        setTimeout(() => window.addEventListener('keydown', onAnyKey, true), 600);
+      }
       closeBtn.addEventListener('click', close);
       modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
       modal.addEventListener('keydown', (e) => {
