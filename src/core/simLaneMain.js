@@ -1403,6 +1403,13 @@ export function createSimLaneRuntime({
   }
 
   channel.onMessage((msg) => { onChannelMessage(msg); });
+  const channelHoldsEvents = typeof channel.setDeferral === 'function' && typeof channel.drainDeferred === 'function';
+  if (channelHoldsEvents) {
+    channel.setDeferral(
+      () => frameOwnsReplyApply(),
+      () => armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS),
+    );
+  }
   if (typeof channel.onError === 'function') {
     channel.onError((error) => {
       failLane(`sim worker error: ${(error && error.message) || error || 'unknown'}`);
@@ -1687,6 +1694,7 @@ export function createSimLaneRuntime({
   const REPLY_FRAME_OWNS_WITHIN_MS = 350;
   const REPLY_FRAME_FALLBACK_MS = 120;
   const REPLY_FRAME_QUEUE_ESCAPE = 24;
+  const REPLY_DECODE_BUDGET_MS = 4;
   let animationFrameAtMs = -Infinity;
   let replyDeferredToFrame = 0;
   let replyFallbackDrains = 0;
@@ -1705,12 +1713,14 @@ export function createSimLaneRuntime({
     replyDrainTimer = setTimeout(() => {
       replyDrainTimer = null;
       if (laneClosed) return;
+      const held = channelHoldsEvents ? channel.deferredStats().held : 0;
       if (frameOwnsReplyApply()) {
         // Frames are still arriving: they do the applying. Stay armed only while work waits.
-        if (replyQueue.length || parkedReply) armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS);
+        if (replyQueue.length || parkedReply || held) armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS);
         return;
       }
-      if (replyQueue.length || parkedReply) replyFallbackDrains++;
+      if (replyQueue.length || parkedReply || held) replyFallbackDrains++;
+      if (held) channel.drainDeferred();
       drainClockReplies(true);
     }, delayMs);
   }
@@ -1720,6 +1730,9 @@ export function createSimLaneRuntime({
   function serviceFrameBoundary() {
     const now = nowMs();
     replyFramePumpAtMs = now;
+    // Messages held undecoded since the last boundary are decoded and dispatched here (replies
+    // only join the queue; the budgeted drain that follows applies them).
+    if (channelHoldsEvents && !laneClosed) channel.drainDeferred(REPLY_DECODE_BUDGET_MS);
     if (ready && !laneClosed && now - freezeSampledAtMs >= FREEZE_SAMPLE_MS) {
       freezeSampledAtMs = now;
       try { freezeSample(); } catch (_) { /* recorder only */ }
@@ -3666,7 +3679,8 @@ export function createSimLaneRuntime({
           } catch (_) { return null; }
         })(),
         replyQueue: { pending: replyQueue.length, max: replyQueueMax, cosmeticShed: replyCosmeticShed },
-        replyOnFrame: { deferredToFrame: replyDeferredToFrame, fallbackDrains: replyFallbackDrains },
+        replyOnFrame: { deferredToFrame: replyDeferredToFrame, fallbackDrains: replyFallbackDrains,
+          heldEvents: channelHoldsEvents ? channel.deferredStats() : null },
         replySlices: { parked: replySlicesParked, resumed: replySlicesResumed, open: parkedReply != null, maxOpenMs: replySliceMaxParkedMs },
         msSinceLastAppliedReply: lastAppliedAtMs >= 0
           ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
@@ -3909,7 +3923,46 @@ function createBrowserChannel() {
   const preBootMessages = [];
   let workerBooted = false;
   let workerTerminated = false;
+  // Frame-owned delivery. A message event's payload is only decoded (structured-clone
+  // deserialised) when .data is first read, and a large reply costs milliseconds to decode. While
+  // the lane says the frame owns reply apply, the message task keeps the event undecoded and
+  // returns; the frame boundary decodes and dispatches the held events in arrival order.
+  let deferGate = null;
+  let onDeferred = null;
+  const deferredEvents = [];
+  let deferredHead = 0;
+  let deferredTotal = 0;
+  const drainDeferred = (budgetMs = Infinity) => {
+    if (deferredHead >= deferredEvents.length) return 0;
+    const started = performance.now();
+    let ran = 0;
+    while (deferredHead < deferredEvents.length) {
+      const event = deferredEvents[deferredHead];
+      deferredEvents[deferredHead++] = null;
+      ran++;
+      dispatchWorkerEvent(event);
+      // At least one a call; a deep queue ignores the budget so held messages cannot pile up.
+      if (performance.now() - started >= budgetMs && deferredEvents.length - deferredHead <= 8) break;
+    }
+    if (deferredHead >= deferredEvents.length) { deferredEvents.length = 0; deferredHead = 0; }
+    return ran;
+  };
   worker.onmessage = (event) => {
+    if (workerBooted && deferGate) {
+      let hold = false;
+      try { hold = deferGate() === true; } catch (_) { hold = false; }
+      if (hold) {
+        deferredEvents.push(event);
+        deferredTotal++;
+        if (onDeferred) { try { onDeferred(); } catch (_) { /* wake is best-effort */ } }
+        return;
+      }
+      // The frame no longer owns delivery: everything held goes first, in order.
+      if (deferredHead < deferredEvents.length) drainDeferred();
+    }
+    dispatchWorkerEvent(event);
+  };
+  function dispatchWorkerEvent(event) {
     const msg = event && event.data;
     // The worker posts `boot` only after its onmessage handler is installed.
     // Hold the first init (and a possible close-before-ready shutdown) until
@@ -3931,7 +3984,7 @@ function createBrowserChannel() {
     for (const h of messageHandlers) {
       try { h(msg); } catch (_) { /* handler faults are caller bugs */ }
     }
-  };
+  }
   worker.onerror = (event) => {
     const error = (event && (event.error || event.message)) || 'worker error';
     for (const h of errorHandlers) {
@@ -3959,6 +4012,13 @@ function createBrowserChannel() {
     },
     onMessage(cb) { messageHandlers.push(cb); },
     onError(cb) { errorHandlers.push(cb); },
+    /** gate(): true while the frame owns delivery. wake(): called when an event is held. */
+    setDeferral(gate, wake) {
+      deferGate = typeof gate === 'function' ? gate : null;
+      onDeferred = typeof wake === 'function' ? wake : null;
+    },
+    drainDeferred,
+    deferredStats() { return { held: deferredEvents.length - deferredHead, total: deferredTotal }; },
     terminate() {
       workerTerminated = true;
       preBootMessages.length = 0;
