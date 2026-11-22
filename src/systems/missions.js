@@ -415,6 +415,62 @@ import {
 } from './missionShared.js';
 import { counted } from '../core/numberFormat.js';
 
+// R6-partial — per-step coalescing of this system's own mission:updated publications.
+// The step's drives and the mixed-in ops can publish the same mission several times in
+// one tick (progress, nav, twist, retry), and every publication fans out at once to the
+// sim-side observers (contractClauses' board sync, furnaceIntake's receiving-lane sync,
+// the scanner work-mark) before replaying to main where the UI listeners re-run per emit.
+// The façade below keeps every emitter's `this.bus.emit(...)` call shape and only changes
+// delivery cadence while update() runs: repeat publishes of one mission merge into that
+// mission's first slot (payloads union, last write wins per field) and the ordered batch
+// flushes when the step returns — listeners see the same information, once per mission
+// per tick. Payload fields are advisory, not a diff: a merged payload unions every publish's
+// fields with last-write-wins per field, so a listener must read them as hints about what
+// changed, never reconstruct an event sequence from them.
+// Deliberately unchanged: board-level publishes (missionId == null —
+// contractClauses answers those with board writes whose timing and rng interleaving is
+// not this system's to move), every emit outside the step window (accept/refresh flows
+// publish immediately, as before), and 'toast' (eventBus's STEP_DEFERRED_EVENTS ruling
+// keeps it synchronous — twoShipsOneMistakeRuntime counts its lines same-tick).
+function createMissionStepBus(bus) {
+  let armed = false;
+  let order = [];
+  const byMission = new Map();
+  return {
+    on(event, fn, opts) { return bus.on(event, fn, opts); },
+    off(event, fn) { return bus.off(event, fn); },
+    emit(event, payload) {
+      if (!armed || event !== 'mission:updated'
+        || !payload || typeof payload !== 'object' || payload.missionId == null) {
+        return bus.emit(event, payload);
+      }
+      let slot = byMission.get(payload.missionId);
+      if (!slot) {
+        slot = { payload: Object.assign({}, payload) };
+        byMission.set(payload.missionId, slot);
+        order.push(slot);
+      } else {
+        Object.assign(slot.payload, payload);
+      }
+    },
+    armMissionStep() {
+      armed = true;
+      order = [];
+      byMission.clear();
+    },
+    // Disarm before the first emit: a listener that calls back into this system mid-flush
+    // publishes inline (the pre-façade behaviour) instead of chaining another round.
+    flushMissionStep() {
+      if (!armed) return;
+      armed = false;
+      const batch = order;
+      order = [];
+      byMission.clear();
+      for (const slot of batch) bus.emit('mission:updated', slot.payload);
+    },
+  };
+}
+
 export * from './missionShared.js';
 
 
@@ -590,7 +646,10 @@ export const missions = {
     this._racingOpponents = null;
     if (this.state) resetRacingGhostSession(this.state);
     this.state = ctx.state;
-    this.bus = ctx.bus;
+    // R6-partial — publish mission:updated through the per-step coalescing façade (see
+    // createMissionStepBus): every mixed-in ops module and mission runtime reaches the bus
+    // through this reference, so no emit site anywhere in the family changes shape.
+    this.bus = createMissionStepBus(ctx.bus);
     this.helpers = ctx.helpers;
     this.registry = ctx.registry || null;
     const state = this.state, bus = this.bus;
@@ -1024,7 +1083,23 @@ export const missions = {
   // =========================================================================================
   // PER-TICK: TTL decrement, expiry, story-gate checks, stale-target GC.
   // =========================================================================================
+  // R6-partial — update() is only the arm/flush collar around _updateStep: the per-step
+  // mission:updated coalescer (createMissionStepBus) collects everything the step
+  // publishes and delivers it once per mission when the step returns. The collar wraps
+  // the dock-frozen early return too, and try/finally keeps a mid-step fault from
+  // swallowing publications the step already made.
   update(dt, state) {
+    const stepBus = this.bus;
+    if (!stepBus || typeof stepBus.armMissionStep !== 'function') return this._updateStep(dt, state);
+    stepBus.armMissionStep();
+    try {
+      this._updateStep(dt, state);
+    } finally {
+      stepBus.flushMissionStep();
+    }
+  },
+
+  _updateStep(dt, state) {
     this._dropSettledGhosts();
     this._releaseCampaignNavForSwarm(state);
     this._racingOpponents?.reconcile(state.missions?.active || []);
