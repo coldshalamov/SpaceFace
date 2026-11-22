@@ -96,6 +96,15 @@ const hideEvidenceWindow = launchConfig.isolatedEvidence === true
 const inactiveEvidenceWindow = launchConfig.isolatedEvidence === true
   && process.env.SPACEFACE_EVIDENCE_SHOW_INACTIVE === '1';
 const backgroundThrottling = !allowEvidenceBackgroundExecution;
+// The player's game is fullscreen; an isolated probe window is a framed 1480x920 that the work
+// area clamps smaller. SPACEFACE_EVIDENCE_CONTENT_SIZE=1536x864 (isolated evidence only) opens a
+// frameless window whose CONTENT is exactly that many CSS pixels at the display's top-left, so a
+// probe draws the same number of pixels the player's fullscreen does. Never applies to a player launch.
+const evidenceContentSize = (() => {
+  if (launchConfig.isolatedEvidence !== true) return null;
+  const m = /^(\d{3,5})x(\d{3,5})$/.exec(String(process.env.SPACEFACE_EVIDENCE_CONTENT_SIZE || '').trim());
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
+})();
 if (allowEvidenceBackgroundExecution) {
   // The window may be unfocused or occluded; keep Chromium from backgrounding it.
   app.commandLine.appendSwitch('disable-renderer-backgrounding');
@@ -1336,10 +1345,11 @@ async function createWindow() {
     ? sanitizeWindowState(readWindowStateFile(windowStatePath), collectDisplayAreas())
     : null;
   const win = new BrowserWindow({
-    width: rememberedWindow ? rememberedWindow.width : 1480,
-    height: rememberedWindow ? rememberedWindow.height : 920,
-    x: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
-    y: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
+    width: evidenceContentSize ? evidenceContentSize.width : rememberedWindow ? rememberedWindow.width : 1480,
+    height: evidenceContentSize ? evidenceContentSize.height : rememberedWindow ? rememberedWindow.height : 920,
+    x: evidenceContentSize ? 0 : rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
+    y: evidenceContentSize ? 0 : rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
+    ...(evidenceContentSize ? { useContentSize: true, frame: false, resizable: false } : {}),
     minWidth: 1024, minHeight: 640,
     backgroundColor: '#05070d', title: 'SpaceFace', show: false, icon: APP_ICON,
     fullscreen: rememberedWindow
@@ -1652,8 +1662,32 @@ async function createWindow() {
     note: 'freeze recorder armed: world-motion holds and sim-lane freeze episodes land here with connected input devices',
   });
   let motionHoldReceipts = 0;
+  // Ordinary frame rate (src/core/frameRateLog.js): one line per ten live seconds. It goes to the
+  // launch log and to its own file, never to the freeze log (it would fill that in an hour) and
+  // never against the eight-row hold cap. About 360 lines an hour; capped at four hours a session.
+  const frameRateLogPath = path.join(app.getPath('userData'), 'frame-rate-log.jsonl');
+  let frameRateLines = 0;
+  function appendFrameRate(message) {
+    if (frameRateLines >= 1440) return;
+    let row = null;
+    try { row = JSON.parse(message.slice('[frame-rate] '.length)); } catch (_) { return; }
+    if (!row || typeof row !== 'object') return;
+    delete row.schema; // the launch receipt keeps its own schema field
+    frameRateLines++;
+    receipt('frame-rate', row);
+    try {
+      if (frameRateLines === 1) {
+        if (fs.existsSync(frameRateLogPath) && fs.statSync(frameRateLogPath).size > 1024 * 1024) {
+          try { fs.renameSync(frameRateLogPath, `${frameRateLogPath}.1`); } catch (_) { /* keep appending */ }
+        }
+        fs.appendFileSync(frameRateLogPath, `${JSON.stringify({ at: new Date().toISOString(), kind: 'session-start', version: recordedVersion })}\n`, 'utf8');
+      }
+      fs.appendFileSync(frameRateLogPath, `${JSON.stringify({ at: new Date().toISOString(), ...row })}\n`, 'utf8');
+    } catch (_) { /* the recorder must never disturb the game */ }
+  }
   win.webContents.on('console-message', (details) => {
     const message = details && details.message;
+    if (typeof message === 'string' && message.startsWith('[frame-rate] ')) { appendFrameRate(message); return; }
     if (typeof message === 'string' && message.startsWith('[world-motion-hold] ')
       && motionHoldReceipts < 8) {
       motionHoldReceipts++;

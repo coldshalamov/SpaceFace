@@ -90,59 +90,8 @@ function readPlayerProfilePairs() {
 const report = { route: ROUTE, seconds: SECONDS, forced: FORCED, legacy: LEGACY, pad: PAD, realProfile: REAL_PROFILE, visible: VISIBLE, errors: [], phases: [], rows: [] };
 let app = null;
 
-// ---- the hand: CDP input ---------------------------------------------------------------------
-const KEYS = {
-  KeyW: { key: 'w', vk: 87 }, KeyA: { key: 'a', vk: 65 }, KeyS: { key: 's', vk: 83 }, KeyD: { key: 'd', vk: 68 },
-  Digit1: { key: '1', vk: 49 }, Digit2: { key: '2', vk: 50 }, Digit3: { key: '3', vk: 51 },
-  Digit4: { key: '4', vk: 52 }, Digit5: { key: '5', vk: 53 }, ShiftLeft: { key: 'Shift', vk: 16 },
-  Space: { key: ' ', vk: 32 },
-};
-function createHand(cdp, viewport) {
-  const held = new Set();
-  let mouseDown = false;
-  let mx = viewport.w / 2; let my = viewport.h / 2;
-  let timer = null; let repeatTimer = null; let t0 = Date.now();
-  let moves = 0; let repeats = 0;
-  const fire = (method, params) => { cdp.send(method, params).catch(() => {}); };
-  const keyEvent = (type, code, autoRepeat = false) => {
-    const k = KEYS[code];
-    fire('Input.dispatchKeyEvent', {
-      type, code, key: k.key, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk, autoRepeat,
-      ...(type === 'keyDown' && k.key.length === 1 ? { text: k.key } : {}),
-    });
-  };
-  return {
-    start() {
-      t0 = Date.now();
-      // ~125 Hz continuous mouse: a loose circle around the screen centre with a little jitter,
-      // so the default nose-to-cursor scheme flies loops instead of into a wall.
-      timer = setInterval(() => {
-        const a = (Date.now() - t0) / 1000 * 1.7;
-        mx = viewport.w / 2 + Math.cos(a) * viewport.w * 0.22 + Math.sin(a * 7.3) * 6;
-        my = viewport.h / 2 + Math.sin(a) * viewport.h * 0.22 + Math.cos(a * 5.1) * 6;
-        fire('Input.dispatchMouseEvent', { type: 'mouseMoved', x: mx, y: my, buttons: mouseDown ? 1 : 0,
-          ...(mouseDown ? { button: 'left' } : {}) });
-        moves++;
-      }, 8);
-      // OS key repeat: the most recently pressed held key repeats ~30 times a second.
-      repeatTimer = setInterval(() => {
-        const last = [...held].at(-1);
-        if (last) { keyEvent('keyDown', last, true); repeats++; }
-      }, 33);
-    },
-    stop() { clearInterval(timer); clearInterval(repeatTimer); },
-    down(code) { if (!held.has(code)) { held.add(code); keyEvent('keyDown', code); } },
-    up(code) { if (held.delete(code)) keyEvent('keyUp', code); },
-    releaseAll() { for (const c of [...held]) this.up(c); this.trigger(false); },
-    tap(code) { keyEvent('keyDown', code); setTimeout(() => keyEvent('keyUp', code), 60); },
-    trigger(on) {
-      if (on === mouseDown) return;
-      mouseDown = on;
-      fire('Input.dispatchMouseEvent', { type: on ? 'mousePressed' : 'mouseReleased', x: mx, y: my, button: 'left', clickCount: 1, buttons: on ? 1 : 0 });
-    },
-    counts: () => ({ moves, repeats }),
-  };
-}
+// ---- the hand: CDP input (shared with the smoothness probe) ----
+const { createHand } = await import('./lib/playHand.mjs');
 
 try {
   app = await electron.launch(launch.options);
