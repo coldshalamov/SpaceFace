@@ -827,6 +827,22 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
         cluster.update(model);
       }
     },
+    // HUD-FRAME-BREADTH: the scheduler job calls exactly the reads the old `slow` flag armed —
+    // ring legend, hull, ordnance scan and the speed ceiling — so update(false) can run every
+    // frame without doing them twice.
+    updateSlow(liveState, p) {
+      if (typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
+      if (typeof cluster.setHull === 'function') syncHull(liveState, p);
+      if (!p) return;
+      const held = heldPower(liveState);
+      const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now();
+      const claimedDigits = getPromptDeck()?.claimedDigits ?? null;
+      ordnance = readOrdnanceModel(liveState, tracker, undefined,
+        { denial: lastDenial, firingUntil, held, nowWall, claimedDigits });
+      lastClaimedDigits = claimedDigits;
+      ceiling = readSpeedCeiling(liveState, p);
+    },
     dispose() {
       if (captionTimer) { clearTimeout(captionTimer); captionTimer = null; }
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }

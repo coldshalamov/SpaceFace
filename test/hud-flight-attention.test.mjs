@@ -49,7 +49,7 @@ const ARBITER_SRC = readFileSync(new URL('../src/ui/voiceArbiter.js', import.met
 // Isolated nested-owner checks share the real receipt geometry helpers, just as createHud's
 // closure does. No cross-call cache is active here; the dedicated receipt test drives flushes.
 const receiptHelperNames = new Set(['queryReceiptGeometry', 'readReceiptRect', 'setReceiptStyle',
-  'prepareReceiptLaneSize', 'prepareReceiptCaptionSize']);
+  'prepareReceiptLaneSize', 'prepareReceiptCaptionSize', 'staleKeptQueries']);
 const receiptHelperOwners = [];
 function collectReceiptHelpers(node) {
   if (!node || typeof node !== 'object') return;
@@ -66,6 +66,8 @@ collectReceiptHelpers(parse(HUD_SRC, { sourceType: 'module' }));
 assert.equal(receiptHelperOwners.length, receiptHelperNames.size);
 function runInNewContext(code, context) {
   return runOwnerInNewContext(`var receiptPlacementMode = 'shared'; var receiptGeometryRects = null;
+    var keptQueryScopes = new Map();
+    var frameCostFixOn = typeof frameCostFixOn !== 'undefined' ? frameCostFixOn : () => false;
     ${receiptHelperOwners.join('\n')};\n${code}`, context);
 }
 
@@ -224,9 +226,11 @@ test('one destination line already carries distance and ETA', () => {
     }),
     'Follow the marked route · 420 WU · ETA 12s · ↗',
   );
+  // HUD-FRAME-BREADTH: the 10Hz numeric block is three scheduler jobs; the tracker paint lives
+  // in runMissionTrackerTick now, still the only owner of this surface.
   const paint = HUD_SRC.slice(
-    HUD_SRC.indexOf('// --- mission tracker @10Hz ---'),
-    HUD_SRC.indexOf('// --- credits / cargo / objectives'),
+    HUD_SRC.indexOf('function runMissionTrackerTick'),
+    HUD_SRC.indexOf('function runContextRowTick'),
   );
   assert.match(paint, /flightDestinationSurface\(state, command, temporaryCircuit\)/);
   assert.match(paint, /setText\(mtTitle,\s*actLine\)/);

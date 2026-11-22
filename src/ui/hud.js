@@ -2227,6 +2227,7 @@ export function createHud(ctx, alerts) {
     // set must re-measure on the next snapshot refresh.
     flightTextObstacleGeomStale = true;
     invalidateAvoidRects(document);
+    staleKeptQueries();
     if (clearGeometry) {
       receiptGeometryReusable = false;
       receiptGeometryKeep = false;
@@ -2973,9 +2974,17 @@ export function createHud(ctx, alerts) {
     }
     root.classList.remove('sf-hud--glitch');
     if (glitchOverlay) glitchOverlay.classList.remove('active');
-    void root.offsetWidth; // force animation restart
-    root.classList.add('sf-hud--glitch');
-    if (glitchOverlay) glitchOverlay.classList.add('active');
+    // Restart the glitch animation by re-adding the class on the next animation frame
+    // (a `void offsetWidth` read here forced a synchronous layout of the whole HUD).
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        root.classList.add('sf-hud--glitch');
+        if (glitchOverlay) glitchOverlay.classList.add('active');
+      });
+    } else {
+      root.classList.add('sf-hud--glitch');
+      if (glitchOverlay) glitchOverlay.classList.add('active');
+    }
     if (disruptionTimeout) clearTimeout(disruptionTimeout);
     disruptionTimeout = setTimeout(() => {
       root.classList.remove('sf-hud--glitch');
@@ -3329,8 +3338,9 @@ export function createHud(ctx, alerts) {
     clearTimeout(deathHideTimer);
     deathBanner.hidden = false;
     deathBanner.removeAttribute('aria-hidden');
-    deathBanner.classList.remove('show'); void deathBanner.offsetWidth; // restart animation
-    deathBanner.classList.add('show');
+    deathBanner.classList.remove('show');
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => deathBanner.classList.add('show'));
+    else deathBanner.classList.add('show');
     document.body.classList.add('sf-deathflash');
     setTimeout(() => document.body.classList.remove('sf-deathflash'), 700);
     deathHideTimer = setTimeout(() => {
@@ -5456,6 +5466,100 @@ export function createHud(ctx, alerts) {
     hideContactMarks(used);
   }
 
+  // HUD-FRAME-BREADTH: which contacts earn a mark is decided by the 'contact-marks' scheduler
+  // job at 15 Hz into the spec pool below; the transforms are still written every frame so
+  // the marks track presented hulls at the render rate. The census scan and classification
+  // never run more than 15 times a second.
+  const contactMarkSpecs = [];
+  for (let i = 0; i < CONTACT_MARK_POOL; i++) contactMarkSpecs.push({ e: null, cls: null });
+  let contactMarkSpecCount = 0;
+
+  function solveContactMarks() {
+    contactMarkSpecCount = 0;
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!p || !p.pos || !helpers.worldToScreen) return;
+    const selectedId = projectTargetTruth(state, targetTruth).selectedId;
+    let n = 0;
+    for (const row of contactCensus(state, p).rows) {
+      const e = row.e;
+      const d2 = row.distSq;
+      if (d2 > CONTACT_MARK_RANGE_SQ) continue;
+      let at = n < CONTACT_MARK_POOL ? n : CONTACT_MARK_POOL - 1;
+      if (n >= CONTACT_MARK_POOL && d2 >= contactMarkNear[at].d2) continue;
+      if (n < CONTACT_MARK_POOL) n += 1;
+      while (at > 0 && contactMarkNear[at - 1].d2 > d2) {
+        contactMarkNear[at].e = contactMarkNear[at - 1].e;
+        contactMarkNear[at].d2 = contactMarkNear[at - 1].d2;
+        at -= 1;
+      }
+      contactMarkNear[at].e = e;
+      contactMarkNear[at].d2 = d2;
+    }
+    for (let i = 0; i < n && contactMarkSpecCount < CONTACT_MARK_POOL; i++) {
+      const e = contactMarkNear[i].e;
+      classifyContact(state, e, contactMarkClass, { selectedId });
+      if (!contactMarkClass.living || !contactMarkClass.observed || contactMarkClass.selected) continue;
+      const spec = contactMarkSpecs[contactMarkSpecCount++];
+      spec.e = e;
+      spec.cls = Object.assign(spec.cls || (spec.cls = {}), contactMarkClass);
+    }
+  }
+
+  function paintContactMarks(p, selectedId, effectiveId) {
+    if (!p || !p.pos || !helpers.worldToScreen || !contactMarkSpecCount) { hideContactMarks(0); return; }
+    const panelObstacles = objectiveEdgeObstacles();
+    const markClipRects = [];
+    if (panelObstacles.left) markClipRects.push(panelObstacles.left);
+    if (panelObstacles.right) markClipRects.push(panelObstacles.right);
+    if (panelObstacles.orrery) markClipRects.push(panelObstacles.orrery);
+    if (panelObstacles.rail && panelObstacles.rail !== panelObstacles.orrery) markClipRects.push(panelObstacles.rail);
+    const utilRect = utilityRow && utilityRow.style.display !== 'none' ? cachedMarkClipBox(markClipCache.util, utilityRow) : null;
+    if (utilRect) markClipRects.push(utilRect);
+    if (markClipCache.deckEl === undefined || (markClipCache.deckEl && !markClipCache.deckEl.isConnected)) {
+      markClipCache.deckEl = typeof document !== 'undefined' ? document.getElementById('sf-prompt-deck') : null;
+    }
+    const deckEl = markClipCache.deckEl;
+    const deckRect = deckEl && !deckEl.hidden ? cachedMarkClipBox(markClipCache.deck, deckEl) : null;
+    if (deckRect) markClipRects.push(deckRect);
+    const crunEl = contactCrunElement();
+    const crunRect = crunEl && !crunEl.hidden && crunEl.style?.display !== 'none'
+      ? cachedMarkClipBox(markClipCache.crun, crunEl) : null;
+    if (crunRect) markClipRects.push(crunRect);
+
+    let used = 0;
+    for (let i = 0; i < contactMarkSpecCount && used < CONTACT_MARK_POOL; i++) {
+      const spec = contactMarkSpecs[i];
+      const e = spec.e;
+      // The pip target and a fresh selection are re-judged every frame: a mark must not
+      // linger the ~66 ms between solves on the hull the guns already address.
+      if (!e || (effectiveId != null && e.id === effectiveId) || e.id === selectedId) continue;
+      const anchor = presentedEntityAnchor(e);
+      if (!anchor) continue;
+      contactMarkWorld.x = anchor.x; contactMarkWorld.y = 0; contactMarkWorld.z = anchor.z;
+      const c = helpers.worldToScreen(contactMarkWorld, contactMarkScreen);
+      if (!c.onScreen) continue;
+      contactMarkEdgeWorld.x = anchor.x + (Number(e.radius) || 8); contactMarkEdgeWorld.y = 0; contactMarkEdgeWorld.z = anchor.z;
+      const edge = helpers.worldToScreen(contactMarkEdgeWorld, contactMarkEdgeScreen);
+      const px = edge.onScreen ? Math.max(1, Math.abs(edge.x - c.x)) : 0;
+      const markX = c.x;
+      const markY = c.y - px - 11;
+      if (pointInHudPanels(markX, markY, markClipRects, 14) || pointInHudPanels(c.x, c.y, markClipRects, 8)) continue;
+      const mark = contactMark(spec.cls, px);
+      if (!mark) continue;
+      const el = contactMarkEls[used++];
+      const markPath = CONTACT_MARK_PATH[mark.shape] || CONTACT_MARK_PATH.square;
+      setAttr(el._sfShapePath, 'd', markPath);
+      setAttr(el._sfBackPath, 'd', markPath);
+      setAttr(el, 'data-shape', mark.shape);
+      setAttr(el, 'data-variant', mark.variant);
+      setAttr(el, 'data-relation', mark.relation);
+      setClass(el, 'visible', true);
+      setHudScreenTransform(el, markX, markY);
+    }
+    hideContactMarks(used);
+  }
+
   function updateCombatHud(p, slow, overlayTick) {
     if (!p) {
       setClass(lockRing, 'active', false);
@@ -5705,8 +5809,11 @@ export function createHud(ctx, alerts) {
     // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
     if (overlayTick) {
       threatHalo.update(p, state, helpers.worldToScreen);
-      updateContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
+      if (!hudBreadthArmed) updateContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
     }
+    // Under breadth the marks solve on the 'contact-marks' job; their transforms still
+    // track the presented hulls every frame.
+    if (hudBreadthArmed) paintContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
   }
 
   // ---------------------------------------------------------------------------
@@ -6701,6 +6808,192 @@ export function createHud(ctx, alerts) {
   let overlayPassElapsed = 0;
   const slowPassTask = hudTasks.register('hud-slow-pass', () => { slowPassArmed = true; }, { hz: 10 });
   const overlayPassTask = hudTasks.register('hud-overlay-pass', () => { overlayPassArmed = true; }, { hz: 30 });
+  // HUD-FRAME-BREADTH (?rfx=-hudBreadth restores the single slow-flag path): the 10 Hz
+  // numeric block splits into three small jobs — readouts, mission tracker, context row —
+  // so each pays only its own cost inside the shared frame-task budget. Contact marks solve
+  // at 15 Hz while their transforms keep being written every frame.
+  let hudBreadthArmed = false;
+  const readoutsTask = hudTasks.register('hud-readouts', (elapsedS) => {
+    if (frameCostFixOn('hudBreadth')) runSlowReadouts(elapsedS);
+  }, { hz: 10 });
+  const missionTrackerTask = hudTasks.register('mission-tracker', () => {
+    if (frameCostFixOn('hudBreadth')) runMissionTrackerTick();
+  }, { hz: 10 });
+  const contextRowTask = hudTasks.register('context-row', () => {
+    if (frameCostFixOn('hudBreadth')) runContextRowTick();
+  }, { hz: 10 });
+  const contactMarksTask = hudTasks.register('contact-marks', () => {
+    if (frameCostFixOn('hudBreadth')) solveContactMarks();
+  }, { hz: 15 });
+
+  // The bodies below are the exact statements the `slow` gate used to run inline; the jobs
+  // call them so the same writes land on the scheduler's cadence inside its budget.
+  function runSlowReadouts(dtS) {
+    updateFlightCargoBar();
+    forkInstrument.update(state);
+    ionStormHud.update();
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (orreryCluster && typeof orreryCluster.updateSlow === 'function') {
+      orreryCluster.updateSlow(state, p);
+    }
+    if (!p) return;
+    runSlowTetherBlock(p, dtS);
+  }
+
+  function runSlowTetherBlock(p, dtS) {
+    // Tether readout: status + target while latched. Control chips paint separately so the
+    // instrument value never becomes a rebind encyclopedia that overflows the deck.
+    const localTether = state.player && state.player.tether;
+    const remoteTether = state.player && state.player.remoteMassline;
+    const tether = localTether && localTether.active ? localTether : remoteTether;
+    const ml = masslineInstrumentReadout(tether);
+    const latching = masslineInstrumentVisible(tether);
+    if (Number.isFinite(p.hull)) {
+      if (lastObservedPlayerHull !== null && p.hull < lastObservedPlayerHull && Number.isFinite(state.simTime)) {
+        lastPlayerHullHitAt = state.simTime;
+      }
+      lastObservedPlayerHull = p.hull;
+    }
+    const hudAttention = resolveHudAttention(state, { lastPlayerHullHitAt });
+    setAttr(root, 'data-hud-attention', hudAttention);
+    if (document.body && document.body.dataset) {
+      setAttr(document.body, 'data-hud-attention', hudAttention);
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
+      const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
+      setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
+    }
+    // Arcade fights and temporary circuits carry their own flight context.
+    {
+      const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
+      const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
+      if (commsTape.style.display !== want) commsTape.style.display = want;
+      if (utilityRow.style.display !== want) utilityRow.style.display = want;
+      // HUD-2 item 15: adoption walks six document lookups; chips mount once per session, so
+      // once a second is soon enough to pick up a late one (it was every 10 Hz tick).
+      if (!swarmRadioOff && !temporaryCircuit && (++adoptCommsTicks % 10 === 1)) adoptCommsChrome();
+    }
+    updateTetherFeedback(tether, latching, ml);
+    const auto = !!(state.input && state.input.autoFire);
+    if (elReticle) setClass(elReticle, 'autofire', auto);
+    // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
+    // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
+    _recoilBloom = Math.max(0, _recoilBloom - dtS * 2.2);
+    if (elReticle) {
+      const inner = elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild);
+      if (inner) {
+        const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
+        const bloomScale = (bloomQ / 1000).toFixed(3);
+        setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
+          suffix: ` scale(${bloomScale})`,
+          plain: `scale(${bloomScale})`,
+        });
+      }
+    }
+  }
+
+  function runMissionTrackerTick() {
+    speakPlottedRouteTeach(state, ctx.bus);
+    // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
+    const navWaypoint = state.nav && state.nav.waypoint;
+    const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
+    const onboardingVerb = navWaypoint && navWaypoint.reason;
+    const command = resolveFlightObjectiveCommand(state, wp);
+    const dest = flightDestinationSurface(state, command, temporaryCircuit);
+    if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
+      // Recall can be pinned or dismissed while a course runs; it must not resurrect that
+      // course after the public attempt has ended or the pilot has left it.
+      objectiveRecall.text = dest.line || '';
+      objectiveRecall.snapshot = dest.line || '';
+    }
+    lastFlightObjectiveOwner = command?.owner || null;
+    // the dial's needle takes the nearest way round to the objective's bearing
+    const bearingDeg = command?.owner === 'counterweight-course'
+      ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
+    if (bearingDeg != null && mtNeedle) {
+      let next = bearingDeg;
+      if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
+      if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
+        mtNeedleDeg = next;
+        mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
+      }
+    }
+    setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
+    // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
+    // flipped its inline display none -> block on every tick while a caption was up.
+    if (dest.line) rememberObjective(objectiveRecall, dest.line);
+    const showObjective = objectiveVisible(objectiveRecall, dest.show);
+    // W1 Journey: the act is its own line above the objective, not a prefix buried in the
+    // action string (which prefers the beat-specific reason). The line also survives a
+    // dock-modal because the persistent `act:<n>` receipt is separate.
+    const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
+    setText(mtTitle, actLine);
+    // The 290px nowrap field shows the short act title; the full canon heading stays on the
+    // node's tooltip and accessible name so nothing is lost to the ellipsis.
+    const actFull = actLine ? journeyActTrackerFullLine(state) : '';
+    // Every other write here goes through a compared writer; these three did not, so an
+    // unchanged act line re-wrote the tooltip and the accessible name 10×/s (and cleared the
+    // label whenever the line went empty). setTitle/setAttr/clearAttr all keep their own cache.
+    setTitle(mtTitle, actFull);
+    if (actFull) setAttr(mtTitle, 'aria-label', actFull);
+    else clearAttr(mtTitle, 'aria-label');
+    setDisplay(mtTitle, !!actLine);
+    // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
+    // the objective's verb, distance and recall state above are untouched.
+    const showCaption = paintTutorialTrackerCaption(mtTime, temporaryCircuit ? null : state);
+    if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
+    if (!showObjective && !showCaption) {
+      if (!mtDetails.hidden) setMissionDetails(false);
+      setDisplay(missionTracker, false);
+    } else {
+      // A caption may be the only reason the tracker is up; never leave a stale objective
+      // line sitting above it.
+      const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
+      setText(mtObj, objective);
+      const [action, ...readings] = objective.split('\n');
+      const station = command?.waypoint?.stationId && resolveHudNavStation(state, command.waypoint.stationId);
+      const destination = station?.data?.name || command?.waypoint?.label || '';
+      const marker = destination && ` to ${destination}. `;
+      const split = marker && /^Deliver\s/i.test(action) ? action.indexOf(marker) : -1;
+      const delivery = split > 0 && document.documentElement.dataset.sfMobileFlight !== '1';
+      setClass(missionTracker, 'sf-mt--delivery', delivery);
+      setClass(missionTracker, 'sf-mt--has-caption', showCaption);
+      setClass(missionTracker, 'sf-mt--caption-only', showCaption && !objective);
+      setHidden(mtDelivery, !delivery);
+      if (delivery) {
+        setText(mtDeliveryTitle, action.slice(0, split).replace(/^(Deliver\s+[\d,.]+)u\b/i, '$1'));
+        setText(mtDeliveryPlace, destination);
+        setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
+      }
+      setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
+      setText(mtReadings, readings.join('\n'));
+      setText(mtDetailsText, [actFull, objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
+      setDisplay(missionTracker, true);
+    }
+  }
+
+  function runContextRowTick() {
+    // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
+    // through the explicit invalidations (layout/settings/resize events), so re-placing on every
+    // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
+    // receipt-lane content is live.
+    const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
+      || (alertsEl && alertsEl.childElementCount > 0)
+      || externalFlightCaptions.size > 0
+      || (caption && !caption.hidden && caption.classList.contains('show'));
+    receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
+    if (laneBusy) {
+      // Busy lane: keep the cadence but re-place from the last measured geometry. Real content
+      // and layout owners still invalidate; this tick is a safety net, not a re-measure.
+      refreshReceiptLanePlacement();
+    } else if (receiptIdleSlowTicks >= 5) {
+      receiptIdleSlowTicks = 0;
+      invalidateReceiptLane();
+    }
+    updateAdventureDecisionLine();
+    refreshLeftContextClasses();
+  }
 
   function frame(dt, deferReceiptPlacement = false) {
     // Read dirty obstacle geometry before this frame's HUD writes.
@@ -6711,6 +7004,10 @@ export function createHud(ctx, alerts) {
     // on their own clocks: at 8 frames a second every 10/20/30 Hz clock fires on every frame, so
     // the clocks saved nothing exactly when it mattered. A bare frame(dt) keeps the clocks.
     const budgeted = deferReceiptPlacement === true && frameCostFixOn('hudTasks');
+    // Breadth: the 10 Hz families below are carried by their own scheduler jobs instead of
+    // this flag, so the inline copies skip (a family must never run twice in one frame).
+    const breadth = budgeted && frameCostFixOn('hudBreadth');
+    hudBreadthArmed = breadth;
     const numericDt = budgeted ? 0 : consumeHudClock(numericClock, frameDt);
     const targetDt = budgeted ? 0 : consumeHudClock(targetClock, frameDt);
     const overlayDt = budgeted ? 0 : consumeHudClock(overlayClock, frameDt);
@@ -6736,7 +7033,7 @@ export function createHud(ctx, alerts) {
     resolveReticle();
     const swarmTells = isSwarmGlass(state);
     if (!swarmTells) updateDoctrineTells(frameDt, false);
-    if (slow) updateFlightCargoBar();
+    if (slow && !breadth) updateFlightCargoBar();
 
     // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -6806,11 +7103,11 @@ export function createHud(ctx, alerts) {
 
     // ORRERY Cluster: ordnance on the slow clock, speed/drift every frame; its own change detection
     // means a settled frame writes nothing.
-    if (orreryCluster) orreryCluster.update(state, p, slow);
+    if (orreryCluster) orreryCluster.update(state, p, breadth ? false : slow);
     // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
     // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
-    if (slow) forkInstrument.update(state);
-    if (slow) ionStormHud.update();
+    if (slow && !breadth) forkInstrument.update(state);
+    if (slow && !breadth) ionStormHud.update();
     travelVectorHud.update(p);
 
     // Safety alerts stay live independently of the visual instrument owner.
@@ -6860,138 +7157,10 @@ export function createHud(ctx, alerts) {
 
     updateTravelTape(p, frameDt, slow);
 
-    if (slow && p) {
-      // Tether readout: status + target while latched. Control chips paint separately so the
-      // instrument value never becomes a rebind encyclopedia that overflows the deck.
-      const localTether = state.player && state.player.tether;
-      const remoteTether = state.player && state.player.remoteMassline;
-      const tether = localTether && localTether.active ? localTether : remoteTether;
-      const ml = masslineInstrumentReadout(tether);
-      const latching = masslineInstrumentVisible(tether);
-      if (Number.isFinite(p.hull)) {
-        if (lastObservedPlayerHull !== null && p.hull < lastObservedPlayerHull && Number.isFinite(state.simTime)) {
-          lastPlayerHullHitAt = state.simTime;
-        }
-        lastObservedPlayerHull = p.hull;
-      }
-      const hudAttention = resolveHudAttention(state, { lastPlayerHullHitAt });
-      setAttr(root, 'data-hud-attention', hudAttention);
-      if (document.body && document.body.dataset) {
-        setAttr(document.body, 'data-hud-attention', hudAttention);
-        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
-        const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
-        const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
-        setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
-      }
-      // Arcade fights and temporary circuits carry their own flight context.
-      {
-        const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
-        const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
-        if (commsTape.style.display !== want) commsTape.style.display = want;
-        if (utilityRow.style.display !== want) utilityRow.style.display = want;
-        // HUD-2 item 15: adoption walks six document lookups; chips mount once per session, so
-        // once a second is soon enough to pick up a late one (it was every 10 Hz tick).
-        if (slow && !swarmRadioOff && !temporaryCircuit && (++adoptCommsTicks % 10 === 1)) adoptCommsChrome();
-      }
-      updateTetherFeedback(tether, latching, ml);
-      const auto = !!(state.input && state.input.autoFire);
-      if (elReticle) setClass(elReticle, 'autofire', auto);
-      // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
-      // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
-      _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);
-      if (elReticle) {
-        const inner = elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild);
-        if (inner) {
-          const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
-          const bloomScale = (bloomQ / 1000).toFixed(3);
-          setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
-            suffix: ` scale(${bloomScale})`,
-            plain: `scale(${bloomScale})`,
-          });
-        }
-      }
-    }
+    if (slow && p && !breadth) runSlowTetherBlock(p, frameDt);
 
     // --- mission tracker @10Hz ---
-    if (slow) {
-      speakPlottedRouteTeach(state, ctx.bus);
-      // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
-      const navWaypoint = state.nav && state.nav.waypoint;
-      const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
-      const onboardingVerb = navWaypoint && navWaypoint.reason;
-      const command = resolveFlightObjectiveCommand(state, wp);
-      const dest = flightDestinationSurface(state, command, temporaryCircuit);
-      if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
-        // Recall can be pinned or dismissed while a course runs; it must not resurrect that
-        // course after the public attempt has ended or the pilot has left it.
-        objectiveRecall.text = dest.line || '';
-        objectiveRecall.snapshot = dest.line || '';
-      }
-      lastFlightObjectiveOwner = command?.owner || null;
-      // the dial's needle takes the nearest way round to the objective's bearing
-      const bearingDeg = command?.owner === 'counterweight-course'
-        ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
-      if (bearingDeg != null && mtNeedle) {
-        let next = bearingDeg;
-        if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
-        if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
-          mtNeedleDeg = next;
-          mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
-        }
-      }
-      setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
-      // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
-      // flipped its inline display none -> block on every tick while a caption was up.
-      if (dest.line) rememberObjective(objectiveRecall, dest.line);
-      const showObjective = objectiveVisible(objectiveRecall, dest.show);
-      // W1 Journey: the act is its own line above the objective, not a prefix buried in the
-      // action string (which prefers the beat-specific reason). The line also survives a
-      // dock-modal because the persistent `act:<n>` receipt is separate.
-      const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
-      setText(mtTitle, actLine);
-      // The 290px nowrap field shows the short act title; the full canon heading stays on the
-      // node's tooltip and accessible name so nothing is lost to the ellipsis.
-      const actFull = actLine ? journeyActTrackerFullLine(state) : '';
-      // Every other write here goes through a compared writer; these three did not, so an
-      // unchanged act line re-wrote the tooltip and the accessible name 10×/s (and cleared the
-      // label whenever the line went empty). setTitle/setAttr/clearAttr all keep their own cache.
-      setTitle(mtTitle, actFull);
-      if (actFull) setAttr(mtTitle, 'aria-label', actFull);
-      else clearAttr(mtTitle, 'aria-label');
-      setDisplay(mtTitle, !!actLine);
-      // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
-      // the objective's verb, distance and recall state above are untouched.
-      const showCaption = paintTutorialTrackerCaption(mtTime, temporaryCircuit ? null : state);
-      if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
-      if (!showObjective && !showCaption) {
-        if (!mtDetails.hidden) setMissionDetails(false);
-        setDisplay(missionTracker, false);
-      } else {
-        // A caption may be the only reason the tracker is up; never leave a stale objective
-        // line sitting above it.
-        const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
-        setText(mtObj, objective);
-        const [action, ...readings] = objective.split('\n');
-        const station = command?.waypoint?.stationId && resolveHudNavStation(state, command.waypoint.stationId);
-        const destination = station?.data?.name || command?.waypoint?.label || '';
-        const marker = destination && ` to ${destination}. `;
-        const split = marker && /^Deliver\s/i.test(action) ? action.indexOf(marker) : -1;
-        const delivery = split > 0 && document.documentElement.dataset.sfMobileFlight !== '1';
-        setClass(missionTracker, 'sf-mt--delivery', delivery);
-        setClass(missionTracker, 'sf-mt--has-caption', showCaption);
-        setClass(missionTracker, 'sf-mt--caption-only', showCaption && !objective);
-        setHidden(mtDelivery, !delivery);
-        if (delivery) {
-          setText(mtDeliveryTitle, action.slice(0, split).replace(/^(Deliver\s+[\d,.]+)u\b/i, '$1'));
-          setText(mtDeliveryPlace, destination);
-          setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
-        }
-        setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
-        setText(mtReadings, readings.join('\n'));
-        setText(mtDetailsText, [actFull, objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
-        setDisplay(missionTracker, true);
-      }
-    }
+    if (slow && !breadth) runMissionTrackerTick();
 
     if (objDirty) refreshObjectives();
 
@@ -7035,27 +7204,7 @@ export function createHud(ctx, alerts) {
     if (overlayTick || slow) updateFirstUseHint(p);
     if (overlayTick && trackedDockCue) placeFlightReadouts(window.innerWidth, window.innerHeight, trackedDockCue);
     if (overlayTick) flightHelm.frame(overlayPassDt || frameDt, window.innerWidth, window.innerHeight);
-    if (slow) {
-      // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
-      // through the explicit invalidations (layout/settings/resize events), so re-placing on every
-      // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
-      // receipt-lane content is live.
-      const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
-        || (alertsEl && alertsEl.childElementCount > 0)
-        || externalFlightCaptions.size > 0
-        || (caption && !caption.hidden && caption.classList.contains('show'));
-      receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
-      if (laneBusy) {
-        // Busy lane: keep the cadence but re-place from the last measured geometry. Real content
-        // and layout owners still invalidate; this tick is a safety net, not a re-measure.
-        refreshReceiptLanePlacement();
-      } else if (receiptIdleSlowTicks >= 5) {
-        receiptIdleSlowTicks = 0;
-        invalidateReceiptLane();
-      }
-    }
-    if (slow) updateAdventureDecisionLine();
-    if (slow) refreshLeftContextClasses();
+    if (slow && !breadth) runContextRowTick();
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
@@ -7335,6 +7484,7 @@ export function createHud(ctx, alerts) {
     if (typeof responsiveOverlayObstacles === 'function') {
       responsiveOverlayObstacles._cache = null;
     }
+    staleKeptQueries();
     invalidateAvoidRects(document);
   }
   function invalidateTransientOverlayGeometry() {
@@ -7470,24 +7620,24 @@ export function createHud(ctx, alerts) {
     consider('caption', caption);
     // Toasts have a single mount. The placement flush already has its current membership;
     // a doctrine tell outside that flush still reads the mounted lane directly.
-    const cards = receiptCards ?? (toastsLaneEl || document.getElementById('toasts'))
-      ?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') ?? [];
+    const cards = receiptCards ?? (frameCostFixOn('hudBreadth') ? liveToastEls()
+      : (toastsLaneEl || document.getElementById('toasts'))?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') ?? []);
     for (const el of cards) consider('receipt', el);
     const snapAlertsHost = (typeof alertsEl !== 'undefined' && alertsEl) || document.getElementById?.('alerts') || null;
     if (typeof alertsEl !== 'undefined' && !alertsEl && snapAlertsHost) alertsEl = snapAlertsHost;
     const snapHasAlerts = !snapAlertsHost || (snapAlertsHost.childElementCount ?? snapAlertsHost.children?.length ?? 1) > 0;
     if (snapHasAlerts) {
-      const alertEls = snapAlertsHost?.querySelectorAll
-        ? queryReceiptGeometry(snapAlertsHost, '.sf-alert:not([hidden])')
-        : queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])');
+      const alertEls = frameCostFixOn('hudBreadth') ? liveAlertEls(snapAlertsHost)
+        : (snapAlertsHost?.querySelectorAll
+          ? queryReceiptGeometry(snapAlertsHost, '.sf-alert:not([hidden])')
+          : queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])'));
       for (const el of alertEls) consider('alert', el);
     }
     for (const el of cachedSnap.stunt) consider('stunt', el);
     if (state.run?.ruleset === 'swarm') {
       // Reuse the band solver's owner query. Children can turn over or move inside the same
       // column without replacing its element; take their current visibility and geometry.
-      const callouts = receiptCards === null ? document.querySelectorAll('.sf-crun, .sf-sj__col')
-        : queryReceiptGeometry(document, '.sf-crun, .sf-sj__col');
+      const callouts = queryReceiptGeometry(document, '.sf-crun, .sf-sj__col');
       for (const el of callouts) {
         if (el.matches('.sf-sj__col')) {
           for (const child of el.children) if (!child.hidden) consider('swarm-callout', child);
@@ -7593,7 +7743,8 @@ export function createHud(ctx, alerts) {
     const elements = [
       ...queryReceiptGeometry(root, '#race-tape'),
       ...queryReceiptGeometry(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
-      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || [],
+      ...(frameCostFixOn('hudBreadth') ? touchOverlayAvoidEls(touch)
+        : touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || []),
     ];
     const elementSet = new Set(elements);
     for (const el of responsiveOverlayElements) {
@@ -7625,6 +7776,7 @@ export function createHud(ctx, alerts) {
   hudUnsubscribers.push(cleanupAlertLanePlacement);
   function overlaySafeSlot(layout, w, h) {
     const safe = layout && layout.centerSafe;
+    const breadth = frameCostFixOn('hudBreadth');
     const measured = objectiveEdgeObstacles();
     const rail = measured.rail;
     const dock = measured.right;
@@ -7636,13 +7788,17 @@ export function createHud(ctx, alerts) {
       // text column; a full-width band makes that key and the radar block every row.
       const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
       if (!mobileFlight && document.body?.classList?.contains('sf-swarm-flight')) {
-        const centre = plateBox(root.querySelector('.sf-sj__col'));
-        const moment = plateBox(document.querySelector('#sf-stage-banner .sf-discovery-plate__frame')?.parentElement);
+        const centre = plateBox(breadth ? swarmColumnElement() : root.querySelector('.sf-sj__col'));
+        const moment = plateBox((breadth
+          ? keptEl(keptEl(document, '#sf-stage-banner'), '.sf-discovery-plate__frame')
+          : document.querySelector('#sf-stage-banner .sf-discovery-plate__frame'))?.parentElement);
         const left = Math.max(w * .68, (centre?.right || 0) + 12, (moment?.right || 0) + 12);
         const right = layout.safe.right - 12;
         if (right - left >= 200) return { x: left, width: right - left, wide: false };
       }
-      const cameraKey = mobileFlight ? plateBox(root.querySelector('#race-tape .race-tape-options-trigger')) : null;
+      const cameraKey = mobileFlight ? plateBox(breadth
+        ? keptEl(keptEl(document, '#race-tape'), '.race-tape-options-trigger')
+        : root.querySelector('#race-tape .race-tape-options-trigger')) : null;
       if (cameraKey && cameraKey.top < h / 3 && dockVisible) {
         const left = Math.max(layout.safe.left + 12, cameraKey.right + 8, railVisible ? rail.right + 12 : 0);
         const right = Math.min(layout.safe.right - 12, dock.left - 8);
@@ -7663,7 +7819,7 @@ export function createHud(ctx, alerts) {
     // and the receipts. A boss line wraps inside this lane instead of running under the panel.
     if (w > 760 && h > 500 && layout?.safe && document.body?.classList?.contains('sf-run-flight')
       && document.documentElement?.getAttribute?.('data-sf-mobile-flight') !== '1') {
-      const panel = plateBox(root.querySelector('.sf-crun'));
+      const panel = plateBox(breadth ? contactCrunElement() : root.querySelector('.sf-crun'));
       const left = Math.max(layout.safe.left + 12, panel ? panel.right + 12 : 0);
       const right = Math.min(layout.safe.right - 12, dockVisible ? dock.left - 12 : Infinity);
       if (right - left >= 240) return { x: left, width: Math.min(right - left, 640), wide: false };
@@ -7686,7 +7842,9 @@ export function createHud(ctx, alerts) {
     const x = (layout?.safe?.left || 0) + 12;
     const width = Math.max(160, (layout?.safe?.width || w) - 24);
     const slot = { x, width: Math.min(width, w - x - 12), wide: false };
-    const thumb = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
+    const thumb = plateBox(breadth
+      ? keptEl(document.getElementById('sf-touch-overlay'), '.mf-buttons')
+      : document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
     if (w <= 760 && h > w && thumb) {
       // Use the lane opposite the actual thumb cluster, including left-handed layouts.
       // Full-width bands cannot fit a discovery between the portrait radar and touch keys.
@@ -7701,11 +7859,157 @@ export function createHud(ctx, alerts) {
   let receiptPlacementMode = 'shared';
   let receiptGeometryRects = null;
   function queryReceiptGeometry(scope, selector) {
-    if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+    const breadth = frameCostFixOn('hudBreadth');
+    if (!receiptGeometryRects) {
+      return breadth ? keptGeometryQuery(scope, selector)
+        : (scope?.querySelectorAll?.(selector) || []);
+    }
     const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
     let hit = queries.get(selector);
-    if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+    if (!hit) {
+      queries.set(selector, hit = breadth
+        ? Array.from(keptGeometryQuery(scope, selector))
+        : Array.from(scope?.querySelectorAll?.(selector) || []));
+    }
     return hit;
+  }
+
+  // Pattern 2 (HUD-FRAME-BREADTH; ?rfx=-hudBreadth restores live queries): a mounted panel is
+  // found once and kept while every member stays connected — the placement flush re-measures
+  // element geometry anyway, so only identity has to stay fresh. Membership changes arrive
+  // through the same invalidations geometry already obeys (staleKeptQueries below rides them);
+  // a list that found nothing re-asks within a few hundred ms so a late mount still lands.
+  const KEPT_REFIND_MS = 400;
+  const KEPT_EMPTY = Object.freeze([]);
+  const keptQueryScopes = new Map(); // scope (document/element) -> Map<selector, {els, stale, at}>
+  function staleKeptQueries() {
+    for (const bySel of keptQueryScopes.values()) {
+      for (const entry of bySel.values()) entry.stale = true;
+    }
+  }
+  function keptQueryList(scope, selector) {
+    if (!scope || typeof scope.querySelectorAll !== 'function') return KEPT_EMPTY;
+    let bySel = keptQueryScopes.get(scope);
+    if (!bySel) keptQueryScopes.set(scope, bySel = new Map());
+    const entry = bySel.get(selector);
+    const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? performance.now() : Date.now();
+    if (entry && !entry.stale) {
+      let refresh = entry.els.length === 0 && nowMs - entry.at > KEPT_REFIND_MS;
+      if (!refresh) {
+        for (let i = 0; i < entry.els.length; i++) {
+          if (entry.els[i].isConnected === false) { refresh = true; break; }
+        }
+      }
+      if (!refresh) return entry.els;
+    }
+    const els = Array.from(scope.querySelectorAll(selector));
+    bySel.set(selector, { els, stale: false, at: nowMs });
+    return els;
+  }
+  function keptEl(scope, selector) { return keptQueryList(scope, selector)[0] || null; }
+
+  // Lane children are walked live rather than kept: membership changes every placement pass
+  // and the walk itself is the cheap part (no selector matching).
+  function liveLaneChildren(host, cls, rejectCls) {
+    const out = [];
+    const kids = host && host.children;
+    if (kids) {
+      for (let i = 0; i < kids.length; i++) {
+        const el = kids[i];
+        if (el.classList && el.classList.contains(cls)
+            && !(rejectCls && el.classList.contains(rejectCls))) out.push(el);
+      }
+    }
+    return out;
+  }
+  function liveToastEls(host) {
+    host = host || toastsLaneEl || (typeof document !== 'undefined' ? document.getElementById?.('toasts') : null);
+    return liveLaneChildren(host, 'sf-toast', 'sf-toast--out');
+  }
+  function liveAlertEls(host) {
+    host = host || (typeof alertsEl !== 'undefined' && alertsEl)
+      || (typeof document !== 'undefined' ? document.getElementById?.('alerts') : null);
+    return liveLaneChildren(host, 'sf-alert').filter((el) => !el.hidden);
+  }
+  // The Swarm callout column mounts and unmounts with rounds: keep it while connected and
+  // re-ask at most every 250 ms while absent, the same contract as contactCrunElement.
+  let swarmColumnEl = null;
+  let swarmColQueriedAt = -Infinity;
+  function swarmColumnElement() {
+    if (typeof document === 'undefined') return null;
+    if (swarmColumnEl && swarmColumnEl.isConnected) return swarmColumnEl;
+    const now = performance.now();
+    if (now - swarmColQueriedAt < 250) return null;
+    swarmColQueriedAt = now;
+    swarmColumnEl = document.querySelector?.('.sf-sj__col') || null;
+    return swarmColumnEl;
+  }
+  // Touch-overlay instruments: the mf-* selectors are all structural, so the kept lists filter
+  // by the live hidden flag instead of re-matching :not([hidden]) every pass.
+  function touchOverlayAvoidEls(touch) {
+    if (!touch || typeof touch.querySelectorAll !== 'function') return KEPT_EMPTY;
+    const out = [];
+    for (const el of keptQueryList(touch, '.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock')) out.push(el);
+    for (const el of keptQueryList(touch, '.mf-ghost')) {
+      if (el.hidden) continue;
+      if (!el._sfAvoidKids) {
+        el._sfAvoidKids = [el.querySelector('svg'), el.querySelector('.mf-ghost-label')].filter(Boolean);
+      }
+      for (const kid of el._sfAvoidKids) out.push(kid);
+    }
+    for (const el of keptQueryList(touch, '.mf-stick')) {
+      if (el.hidden) continue;
+      if (el._sfAvoidReadout === undefined) el._sfAvoidReadout = el.querySelector('.mf-readout');
+      if (el._sfAvoidReadout) out.push(el._sfAvoidReadout);
+    }
+    for (const el of keptQueryList(touch, '.mf-caption')) if (!el.hidden) out.push(el);
+    return out;
+  }
+  // Selector -> kept-list translation. State-bearing selectors (.is-on, .show, :not([hidden]))
+  // become a kept structural list filtered by the live class/attribute at use time; lane child
+  // lists are walked; the two lone panels keep their shared find-once handles.
+  function keptGeometryQuery(scope, selector) {
+    switch (selector) {
+      case '.sf-vtape--on, .sf-tell.is-on':
+        return keptQueryList(scope, '.sf-vtape, .sf-tell')
+          .filter((el) => el.classList.contains('sf-vtape--on') || el.classList.contains('is-on'));
+      case '.sf-vtape--on':
+        return keptQueryList(scope, '.sf-vtape').filter((el) => el.classList.contains('sf-vtape--on'));
+      case '.sf-stuntcall:not([hidden])':
+        return keptQueryList(scope, '.sf-stuntcall').filter((el) => !el.hidden);
+      case '.sf-caption.show':
+        return keptQueryList(scope, '.sf-caption').filter((el) => el.classList.contains('show'));
+      case '.sf-caption.show, .sf-toast:not(.sf-toast--out)':
+        return keptQueryList(scope, '.sf-caption')
+          .filter((el) => el.classList.contains('show')).concat(liveToastEls());
+      case '.sf-toast:not(.sf-toast--out)':
+        return liveToastEls(scope === document ? null : scope);
+      case '.sf-alert:not([hidden])':
+      case '#alerts .sf-alert:not([hidden])':
+        return liveAlertEls(selector.startsWith('#alerts') ? null : scope);
+      case '.sf-crun, .sf-sj__col':
+        return [contactCrunElement(), swarmColumnElement()].filter(Boolean);
+      case '.sf-mt-details:not([hidden])':
+        return keptQueryList(scope, '.sf-mt-details').filter((el) => !el.hidden);
+      case '.sf-radar-wrap--expanded':
+        return keptQueryList(scope, '.sf-radar-wrap')
+          .filter((el) => el.classList.contains('sf-radar-wrap--expanded'));
+      case '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded': {
+        const out = keptQueryList(scope, '.race-tape-actions')
+          .filter((el) => el.closest('#race-tape')?.dataset?.optionsOpen === 'true');
+        for (const el of keptQueryList(scope, '.sf-mt-details')) if (!el.hidden) out.push(el);
+        for (const el of keptQueryList(scope, '.sf-radar-wrap')) {
+          if (el.classList.contains('sf-radar-wrap--expanded')) out.push(el);
+        }
+        return out;
+      }
+      case '.sf-command-deck, .sf-prail, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card':
+        return keptQueryList(scope, '.sf-command-deck, .sf-prail, .sf-dock-prompt, #sf-prompt-deck, #sf-tutorial-flight-card')
+          .concat(keptQueryList(scope, '.sf-tell').filter((el) => el.classList.contains('is-on')));
+      default:
+        return keptQueryList(scope, selector);
+    }
   }
   function setReceiptPlacementMode(mode) {
     if (mode !== 'shared' && mode !== 'original') throw new RangeError('Unknown receipt placement mode: ' + mode);
@@ -7799,13 +8103,17 @@ export function createHud(ctx, alerts) {
         staticEls = cachedStatic.els;
         hasOrrCluster = cachedStatic.hasCluster;
       } else {
-        staticEls = Array.from(root?.querySelectorAll?.(staticSelector) || []);
-        hasOrrCluster = !!root?.querySelector?.('.orr-hud-cluster .orr-cluster');
+        const breadth = frameCostFixOn('hudBreadth');
+        staticEls = breadth ? Array.from(keptQueryList(root, staticSelector))
+          : Array.from(root?.querySelectorAll?.(staticSelector) || []);
+        hasOrrCluster = !!(breadth ? keptEl(root, '.orr-hud-cluster .orr-cluster')
+          : root?.querySelector?.('.orr-hud-cluster .orr-cluster'));
         freeOverlayBands._staticCache = { root, at: staticNowMs, els: staticEls, hasCluster: hasOrrCluster };
       }
     } else {
       staticEls = queryReceiptGeometry(root, staticSelector);
-      hasOrrCluster = !!root?.querySelector?.('.orr-hud-cluster .orr-cluster');
+      hasOrrCluster = !!(frameCostFixOn('hudBreadth') ? keptEl(root, '.orr-hud-cluster .orr-cluster')
+        : root?.querySelector?.('.orr-hud-cluster .orr-cluster'));
     }
     let vtapeTellEls;
     let stuntEls;
@@ -7821,9 +8129,10 @@ export function createHud(ctx, alerts) {
     const alertsHost = (typeof alertsEl !== 'undefined' && alertsEl) || document.getElementById?.('alerts') || null;
     if (typeof alertsEl !== 'undefined' && !alertsEl && alertsHost) alertsEl = alertsHost;
     const hasAlerts = !alertsHost || (alertsHost.childElementCount ?? alertsHost.children?.length ?? 1) > 0;
-    const alertEls = !hasAlerts ? [] : (alertsHost?.querySelectorAll
-      ? queryReceiptGeometry(alertsHost, '.sf-alert:not([hidden])')
-      : queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])'));
+    const alertEls = !hasAlerts ? [] : (frameCostFixOn('hudBreadth') ? liveAlertEls(alertsHost)
+      : (alertsHost?.querySelectorAll
+        ? queryReceiptGeometry(alertsHost, '.sf-alert:not([hidden])')
+        : queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])')));
     const candidates = [
       ...staticEls,
       ...vtapeTellEls,
@@ -7832,7 +8141,9 @@ export function createHud(ctx, alerts) {
       ...(hasTouchControls ? queryReceiptGeometry(root, '.sf-leftcontext') : []),
       ...alertEls,
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
-      ...(radarYielded ? queryReceiptGeometry(root, '.sf-rightdock > *') : []),
+      ...(radarYielded ? (frameCostFixOn('hudBreadth')
+        ? Array.from(rightDock?.children || [])
+        : queryReceiptGeometry(root, '.sf-rightdock > *')) : []),
     ];
     if (includeLiveCaptionsAndToasts) {
       if (canCacheBands && freeOverlayBands._liveCache && freeOverlayBands._liveCache.root === root
@@ -7955,7 +8266,9 @@ export function createHud(ctx, alerts) {
       restoreAlertLanePlacement(lane);
       return;
     }
-    const alertCards = [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
+    const alertCards = frameCostFixOn('hudBreadth')
+      ? liveLaneChildren(lane, 'sf-alert').filter((el) => !el.hidden)
+      : [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
     const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
       ? performance.now() : Date.now();
     const quickSig = `${w}x${h}|${mobileFlight ? 1 : 0}|${shortSwarm ? 1 : 0}|${runFlight ? 1 : 0}|${alertCards.length}|${alertCards[0]?.getAttribute?.('class') ?? alertCards[0]?.className ?? ''}|${alertCards[0]?.hidden ? 1 : 0}`;
@@ -8093,10 +8406,16 @@ export function createHud(ctx, alerts) {
         // Yield only informational visuals, in priority order. Input controls remain
         // blockers, and their owners/state continue running while visually covered.
         const tiers = [
-          [...root.querySelectorAll('.sf-caption.show, .sf-toast:not(.sf-toast--out)'),
+          [...(frameCostFixOn('hudBreadth')
+            ? keptGeometryQuery(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)')
+            : root.querySelectorAll('.sf-caption.show, .sf-toast:not(.sf-toast--out)')),
             ...Array.from(externalFlightCaptions).filter(other => other !== el && other.dataset?.flightCritical !== 'true')],
-          [...root.querySelectorAll('.sf-leftcontext, .sf-mt-obj')],
-          [...root.querySelectorAll('.sf-radar-wrap')],
+          [...(frameCostFixOn('hudBreadth')
+            ? keptQueryList(root, '.sf-leftcontext, .sf-mt-obj')
+            : root.querySelectorAll('.sf-leftcontext, .sf-mt-obj'))],
+          [...(frameCostFixOn('hudBreadth')
+            ? keptQueryList(root, '.sf-radar-wrap')
+            : root.querySelectorAll('.sf-radar-wrap'))],
         ];
         for (const tier of tiers) {
           for (const visual of tier) yieldFlightVisual(visual);
@@ -8364,7 +8683,8 @@ export function createHud(ctx, alerts) {
     if (swarmColumnObserver && state.run?.ruleset === 'swarm' && !observedSwarmColumn?.isConnected
       && performance.now() - swarmColumnQueriedAt >= 250) {
       swarmColumnQueriedAt = performance.now();
-      observedSwarmColumn = document.querySelector('.sf-sj__col');
+      observedSwarmColumn = frameCostFixOn('hudBreadth') ? swarmColumnElement()
+        : document.querySelector('.sf-sj__col');
       swarmColumnObserver.disconnect();
       if (observedSwarmColumn) swarmColumnObserver.observe(observedSwarmColumn);
     }
@@ -8378,7 +8698,9 @@ export function createHud(ctx, alerts) {
       return;
     }
     const lane = layout.receipt;
-    const receiptCards = Array.from(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []);
+    const receiptCards = frameCostFixOn('hudBreadth')
+      ? liveLaneChildren(laneRoot, 'sf-toast', 'sf-toast--out')
+      : Array.from(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []);
     const activeReceipt = receiptCards[0] || null;
     const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
     if (activeReceipt !== lastReceiptObstacle || captionVisible !== lastCaptionObstacleVisible) {

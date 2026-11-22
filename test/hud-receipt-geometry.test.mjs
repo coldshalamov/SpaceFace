@@ -17,6 +17,7 @@ const extraNames = new Set(['placeExternalFlightCaptions', 'restoreYieldedFlight
   'yieldFlightVisual', 'registerExternalFlightCaption', 'refreshExternalFlightCaption',
   'releaseExternalFlightCaption', 'clearExternalFlightCaptionPlacement',
   'refreshFlightTextObstacleSnapshot', 'plateBox', 'objectiveEdgeObstacles', 'membersUnchanged',
+  'staleKeptQueries',
   'invalidateObjectiveEdgeBoxes', 'invalidateTransientOverlayGeometry', 'invalidateAndPlaceHudOverlays']);
 const extraOwners = new Map();
 let overlayResizeOwner;
@@ -98,6 +99,8 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
   const pendingTimers = [];
   const context = {
     Set,
+    // HUD-FRAME-BREADTH switches are off in the fixture: the live querySelectorAll stubs answer.
+    frameCostFixOn: () => false,
     // placeReceiptLane re-points the Swarm column observer from state.run (ac5fde80c2).
     state: { run: null },
     performance: { now: () => performanceNow },
@@ -130,6 +133,7 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
       'invalidateAndPlaceHudOverlays'].includes(name)).map(([, code]) => code).join('\n') : '';
   const api = runInNewContext(`let receiptPlacementMode = ${JSON.stringify(mode)};
     let receiptGeometryRects = new Map();
+    let keptQueryScopes = new Map();
     let receiptGeometryReusable = false;
     let receiptGeometryKeep = false;
     let flightTextObstacleSnapshotAt = -Infinity;
@@ -452,9 +456,12 @@ test('transient invalidation preserves structural boxes; resize batches objectiv
     receiptLanePlacementDirty: false,
     invalidateReceiptLane() { context.receiptLanePlacementDirty = true; },
     invalidateAvoidRects() {},
+    // HUD-FRAME-BREADTH: the invalidation owners also mark the kept element lists stale.
+    keptQueryScopes: new Map(),
   };
   const api = runInNewContext([...extraOwners].filter(([name]) =>
     ['plateBox', 'objectiveEdgeObstacles', 'invalidateObjectiveEdgeBoxes',
+      'staleKeptQueries',
       'invalidateTransientOverlayGeometry', 'invalidateAndPlaceHudOverlays'].includes(name))
     .map(([, code]) => code).join('\n') +
     '; ({ objectiveEdgeObstacles, invalidateTransientOverlayGeometry, invalidateAndPlaceHudOverlays })', context);

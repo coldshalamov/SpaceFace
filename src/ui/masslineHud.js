@@ -23,6 +23,7 @@
 // nothing but its own DOM. Runs late in UPDATE_ORDER; every update exits immediately when the
 // master flag is off or the DOM is absent (headless-safe by construction).
 import { createSelectorRects } from './hudAvoidRects.js';
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   clearHudSignature,
@@ -1556,7 +1557,7 @@ export const masslineHud = {
       // A ready billboard follows the presented camera even when the sim receipt is quiet.
       if (layoutChanged || dom.previewEl.classList.contains('ml2-ready-detonator')
         || dom.previewEl.classList.contains('ml2-visor-latch')) {
-        this._updateAcquisitionPreview(dom, state, player, w2s, hud);
+        this._queueAcquisitionPreview(dom, state, player, w2s, hud);
       }
       return;
     }
@@ -1567,7 +1568,7 @@ export const masslineHud = {
     const reducedFlash = !!(state.settings && state.settings.accessibility
       && state.settings.accessibility.flashReduce);
     setClass(dom.root, 'ml2-reduced-flash', reducedFlash);
-    this._updateAcquisitionPreview(dom, state, player, w2s, hud);
+    this._queueAcquisitionPreview(dom, state, player, w2s, hud);
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateThreatMark(dom, state, w2s);
@@ -1592,6 +1593,41 @@ export const masslineHud = {
     if (dom.ridePill) setStyle(dom.ridePill, 'display', 'none');
     this._lineStrainReadout?.hide();
     this._cadenceReadout?.hide();
+  },
+
+  // HUD-FRAME-BREADTH: the acquisition preview solve runs on the HUD's budgeted
+  // 'massline-preview' job at 15 Hz where a scheduler is live (?rfx=-hudBreadth keeps the
+  // per-frame solve). Without a live scheduler the call is a straight pass-through.
+  _registerPreviewTask(hud) {
+    try {
+      const tasks = (hud && hud.frameTasks)
+        || this.registry?.get?.('ui')?.hud?.frameTasks;
+      if (!tasks || typeof tasks.register !== 'function') return null;
+      this._previewJobRanAt = -Infinity;
+      return tasks.register('massline-preview', () => {
+        this._previewJobRanAt = (typeof performance !== 'undefined' && performance.now)
+          ? performance.now() : Date.now();
+        if (!frameCostFixOn('hudBreadth') || !this._previewQueued) return;
+        this._previewQueued = false;
+        const a = this._previewArgs;
+        if (a) this._updateAcquisitionPreview(a.dom, a.state, a.player, a.w2s, a.hud);
+      }, { hz: 15 });
+    } catch (_) { return null; }
+  },
+  _queueAcquisitionPreview(dom, state, player, w2s, hud) {
+    const a = this._previewArgs || (this._previewArgs = {});
+    a.dom = dom; a.state = state; a.player = player; a.w2s = w2s; a.hud = hud;
+    const nowMs = (typeof performance !== 'undefined' && performance.now)
+      ? performance.now() : Date.now();
+    a.at = nowMs;
+    const task = this._previewTask !== undefined ? this._previewTask
+      : (this._previewTask = this._registerPreviewTask(hud));
+    if (task && frameCostFixOn('hudBreadth') && nowMs - this._previewJobRanAt < 250) {
+      this._previewQueued = true;
+      return;
+    }
+    this._previewQueued = false;
+    this._updateAcquisitionPreview(dom, state, player, w2s, hud);
   },
 
   // The pre-latch answer to "what will the Massline grab?" (PHYSICAL_PLAY_GRAMMAR §7.1, rule 2).

@@ -1,3 +1,4 @@
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { releaseWindowOpen, throwActionCue } from './throwCue.js';
@@ -158,6 +159,36 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   // moved; while it sits still the world under it is re-sampled at ~8 Hz, an imperceptible lag
   // for hover feedback. Click/gesture picks stay synchronous and are untouched.
   let repickIdleS = Infinity;
+  // HUD-FRAME-BREADTH: the scene raycast runs on the HUD's budgeted 'hover-pick' job at 8 Hz
+  // where a scheduler is live; a pointer jump > 48 px, a viewport invalidation or the first
+  // pick requests it so it still lands on this presented frame. Without a live scheduler the
+  // elapsed gate below behaves exactly as before.
+  let hoverPickJobRanAt = -Infinity;
+  let queuedHoverPick = null;
+  let hoverPickTask;
+  function hoverPickJob() {
+    if (hoverPickTask !== undefined) return hoverPickTask;
+    hoverPickTask = null;
+    try {
+      const tasks = ctx && ctx.registry && typeof ctx.registry.get === 'function'
+        && ctx.registry.get('ui') && ctx.registry.get('ui').hud
+        && ctx.registry.get('ui').hud.frameTasks;
+      if (tasks && typeof tasks.register === 'function') {
+        hoverPickTask = tasks.register('hover-pick', () => {
+          hoverPickJobRanAt = (typeof performance !== 'undefined' && performance.now)
+            ? performance.now() : Date.now();
+          if (!frameCostFixOn('hudBreadth')) return;
+          const job = queuedHoverPick;
+          queuedHoverPick = null;
+          if (!job || destroyed || !acceptingInput()) return;
+          const hit = pickAt(job.pt);
+          applyHoverPick(hit && hit.entity ? hit.entity : null, job.deliberate);
+          publishHover();
+        }, { hz: 8 });
+      }
+    } catch (_) { hoverPickTask = null; }
+    return hoverPickTask;
+  }
   let lastRepickX = null;
   let lastRepickY = null;
   let previewTextKey = '';
@@ -661,6 +692,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (destroyed) return;
     hoverPresentation.update();
     if (!acceptingInput()) {
+      queuedHoverPick = null;
       if (gestureActive || (state.input && hasOwn(state.input, 'worldObjectTargetId'))) {
         cancelAll('ui-intercept');
       } else {
@@ -686,6 +718,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
         repickIdleS = Infinity;
         lastRepickX = null;
         lastRepickY = null;
+        queuedHoverPick = null;
         setHover(null);
       } else {
         repickIdleS += Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
@@ -707,8 +740,20 @@ export function createWorldObjectInteraction(ctx, screenManager) {
           viewportInvalidated = false;
           lastRepickX = pt.x;
           lastRepickY = pt.y;
-          const hit = pickAt(pt);
-          applyHoverPick(hit && hit.entity ? hit.entity : null, deliberateMove);
+          const task = hoverPickJob();
+          const nowMs = (typeof performance !== 'undefined' && performance.now)
+            ? performance.now() : Date.now();
+          const schedulerLive = !!task && frameCostFixOn('hudBreadth')
+            && nowMs - hoverPickJobRanAt < 250;
+          if (schedulerLive) {
+            queuedHoverPick = { pt, deliberate: deliberateMove };
+            // A jump, invalidation or first pick lands on this presented frame's job run;
+            // idle repicks simply wait for the 8 Hz cadence.
+            if (deliberateMove) task.request();
+          } else {
+            const hit = pickAt(pt);
+            applyHoverPick(hit && hit.entity ? hit.entity : null, deliberateMove);
+          }
         }
       }
     }
