@@ -6,6 +6,10 @@ import { ASTEROID_SCAN_GLYPH_BY_TYPE } from '../../data/mining.js';
 import { SITE_BALANCE } from '../../data/sites.js';
 import { BELT_ORBITAL_STRUCTURES } from '../../data/beltEmpireData.js';
 import { readFrameOrigin } from '../../render/frameCoordinates.js';
+import { rockName } from '../asteroid/rockNames.js';
+
+// A claimed rock's grade for how well it was dug, when a machine in it reads the rock at all.
+const gradeOf = (site) => (site && site.report && site.report.seating && site.report.seating.grade) || null;
 
 export const TACTICAL_MAP_MODES = Object.freeze([
   Object.freeze({ id: 'standard', short: 'TAC', label: 'Rocks' }),
@@ -88,7 +92,7 @@ function drawCutawayInset(g, siteNode, w, h) {
   g.font = '700 12px sans-serif';
   g.fillStyle = '#8ce0ff';
   g.textAlign = 'left';
-  g.fillText(`${siteNode.specialization?.tag || 'SITE'} Interior Cutaway`, bx + pad, by + 16);
+  g.fillText(`Inside ${rockName(siteNode.asteroidId)}`, bx + pad, by + 16);
 
   const gx = bx + pad;
   const gy = by + 24;
@@ -291,7 +295,18 @@ export function drawSectorRadarMinimap(g, {
 
 function drawHoveredAsteroidReticle(g, row, w, h) {
   if (!row) return;
-  const bw = 204;
+  // The chip is as wide as its longest line: its text used to run out past the right edge.
+  const chipNetMw = row.site ? Math.round((row.site.totalPowerGenMw || 0) - (row.site.totalPowerDrawMw || 0)) : 0;
+  const chipLines = row.site ? [
+    ['700 12px sans-serif', `${rockName(row.site.asteroidId)} · ${row.site.specialization?.label || 'Claim'}`],
+    ['500 12px monospace', `${gradeOf(row.site) ? `Grade ${gradeOf(row.site)} · ` : ''}${chipNetMw >= 0 ? `${chipNetMw} MW spare` : `short ${-chipNetMw} MW`} · ${row.site.storedU} in store`],
+    ['500 12px monospace', 'Click to look · 2 runs a line · 8 goes inside'],
+  ] : [
+    ['700 12px sans-serif', `Unclaimed rock · ${row.glyph}`],
+    ['500 12px monospace', 'Click to look · 1 claims it'],
+  ];
+  let bw = 204;
+  for (const [font, text] of chipLines) { g.font = font; bw = Math.max(bw, Math.ceil(g.measureText(text).width) + 18); }
   const bh = row.site ? 56 : 42;
   const bx = Math.min(w - bw - 420, Math.max(16, row.x + row.radiusPx + 14));
   const by = Math.min(h - bh - 104, Math.max(96, row.y - bh * 0.5));
@@ -307,20 +322,16 @@ function drawHoveredAsteroidReticle(g, row, w, h) {
   g.textAlign = 'left';
   g.font = '700 12px sans-serif';
   g.fillStyle = row.site ? '#8ce0ff' : '#f2b949';
-  const head = row.site
-    ? `${row.site.specialization?.label || 'Claim'} (${row.site.directive?.short || 'STD'})`
-    : `Unclaimed rock · ${row.glyph}`;
-  g.fillText(head, bx + 9, by + 17);
+  g.fillText(chipLines[0][1], bx + 9, by + 17);
 
   g.font = '500 12px monospace';
   g.fillStyle = '#d8d3c8';
   if (row.site) {
-    const netMw = Math.round((row.site.totalPowerGenMw || 0) - (row.site.totalPowerDrawMw || 0));
-    g.fillText(`${netMw >= 0 ? '+' : ''}${netMw} MW · ${row.site.storedU} units · ${row.site.drones?.length || 0} drn`, bx + 9, by + 33);
+    g.fillText(chipLines[1][1], bx + 9, by + 33);
     g.fillStyle = '#92b4c7';
-    g.fillText('Click to look · 2 link · 8 go inside', bx + 9, by + 48);
+    g.fillText(chipLines[2][1], bx + 9, by + 48);
   } else {
-    g.fillText('Click to look · 1 claims it', bx + 9, by + 33);
+    g.fillText(chipLines[1][1], bx + 9, by + 33);
   }
   g.restore();
 }
@@ -651,7 +662,7 @@ export function renderFieldTacticalCanvas({
       // Mode-aware pill text above hex
       g.font = '700 12px sans-serif';
       g.textAlign = 'center';
-      let label = `${a.site.specialization?.tag || 'SITE'} · ${a.site.storedU} units`;
+      let label = `${rockName(a.site.asteroidId)}${gradeOf(a.site) ? ` · ${gradeOf(a.site)}` : ''} · ${a.site.storedU} units`;
       if (mapMode === 'power_thermal') {
         label = `${netMw >= 0 ? '+' : ''}${Math.round(netMw)} MW · ${a.site.thermal?.worstBand?.toUpperCase() || 'OK'}`;
       } else if (mapMode === 'defense_threat') {

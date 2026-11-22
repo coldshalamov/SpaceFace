@@ -378,11 +378,15 @@ async function fillWork(page, shot) {
   f.parked = await go('ArrowLeft', (p) => p.col <= MID + 1);
   await shot('05b-tunnel');
   await build(true);
-  f.coreClick = await clickCell(MID + 2, 2);
+  // The two bays are the ends of the tunnel; use whichever really got dug (rock hardness varies).
+  const bays = [];
+  for (const c of [MID + 2, MID - 1, MID + 1]) { const t = await tile(c, 2); if (t && t.type === 'empty' && c !== f.parked?.col) bays.push(c); }
+  f.bays = bays;
+  f.coreClick = await clickCell(bays[0] ?? MID + 2, 2);
   f.afterCore = await site();
   await shot('05c-core');
   f.extractorKey = await arm('sm_extractor');
-  f.extractorClick = await clickCell(MID - 1, 2);
+  f.extractorClick = await clickCell(bays[1] ?? MID - 1, 2);
   f.afterExtractor = await site();
   await shot('05d-extractor');
   // Strip-mine a cell the extractor was reading: one down from the middle of the tunnel.
@@ -436,12 +440,30 @@ async function fillWork(page, shot) {
     .map((n) => (n.textContent || '').trim()).filter((t) => t && t.length < 240).slice(0, 5));
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !window.SF.state.drill, null, { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(3200);
   b.parting = await toasts();
+  b.partingLine = await page.evaluate(() => window.SF.state.ui?.lastRockParting ?? '(not set)');
+  b.haulCard = await page.evaluate(() => (document.querySelector('.ast-summary-modal')?.textContent || '').split(/[ \n\t]+/).join(' ').trim().slice(0, 400) || null);
   await shot('05j-parting-line');
-  await page.waitForTimeout(1500);
+  await page.evaluate(() => { const k = document.querySelector('.ast-summary-modal button'); if (k) k.click(); });
+  await page.waitForTimeout(900);
+  // The cockpit's own line for the rock, with the claim targeted.
+  b.targetCard = await page.evaluate(() => [...document.querySelectorAll('[class*="target"]')]
+    .map((n) => (n.textContent || '').split(/[ \n\t]+/).join(' ').trim()).filter((t) => /Your claim/.test(t)).map((t) => t.slice(0, 260))[0] || null);
   await page.keyboard.press('Shift+KeyB');
   await page.waitForTimeout(3000);
+  // Pull the belt view back until another rock is in reach of a click.
+  for (let i = 0; i < 6; i++) {
+    const peek = await page.evaluate(() => {
+      const st = window.SF.state;
+      const mine = new Set(Object.values(st.sites?.byId || {}).filter((s) => s && s.anchored).map((s) => s.asteroidId));
+      return st.entityList.filter((e) => e && e.alive !== false && e.type === 'asteroid' && !mine.has(e.id)).length;
+    });
+    b.freeRocksInSector = peek;
+    await page.mouse.move(640, 430);
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(500);
+  }
   const rocks = () => page.evaluate(async () => {
     const st = window.SF.state;
     const { readFrameOrigin } = await import('/src/render/frameCoordinates.js');
@@ -454,7 +476,7 @@ async function fillWork(page, shot) {
       if (!e || e.alive === false || e.type !== 'asteroid') continue;
       const v = new window.SF.THREE.Vector3(e.pos.x - origin.x, 0, e.pos.z - origin.z).project(cam);
       const x = (v.x * 0.5 + 0.5) * window.innerWidth, y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-      if (x < 240 || x > 1120 || y < 140 || y > 720) continue;
+      if (x < 200 || x > 1150 || y < 120 || y > 735) continue;
       (mine.has(e.id) ? out.claimed : out.free).push({ id: e.id, x, y });
     }
     const c = out.claimed[0];

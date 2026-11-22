@@ -3,6 +3,7 @@
 
 import { starvedIndustryNeedFor } from '../systems/economy.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { rockName } from './asteroid/rockNames.js';
 import { SECTORS } from '../data/sectors.js';
 import {
   CONFLICT_REACTION_SURFACES,
@@ -287,6 +288,18 @@ export function registerWorldBeats(on, state) {
     rememberCourierLoss(state, payload || {});
     const id = payload && (payload.courierId || payload.siteId || payload.id || 'courier');
     return publish(cite('A courier is missing.', 'courier_lost', `site:courierLost:${id}`));
+  });
+  // A belt raid that got through, named by the rock it hit and what it cost. It also lands on
+  // the dock card, so a pilot who was elsewhere hears about it on their next landing.
+  on('site:raided', (payload) => {
+    const units = payload && Number(payload.units) > 0 ? Math.round(Number(payload.units)) : 0;
+    if (!units) return null;
+    const rock = payload.asteroidId != null ? rockName(payload.asteroidId) : 'your claim';
+    return publish(cite(
+      `Raiders hit ${rock}: ${units} units gone. It needs a turret or a patrol drone.`,
+      'claim_raided',
+      `site:raided:${payload.siteId || 'site'}:${units}:${Math.round(Number(state && state.simTime) || 0)}`,
+    ));
   });
   on('site:courierDelivered', (payload) => {
     clearCourierLoss(state, payload || {});

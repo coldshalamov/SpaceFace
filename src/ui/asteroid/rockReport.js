@@ -1,8 +1,10 @@
 // What a worked rock amounts to, in a player's words. One wording for the belt view's rock card,
 // the list of claims, and the line the rover board says on the way out. No DOM here: this turns
 // the sim's report (src/systems/siteReport.js) into labelled sentences and nothing else.
-import { NEIGHBOUR_RULES } from '../../data/sites.js';
+import { NEIGHBOUR_RULES, classifySiteSpecialization } from '../../data/sites.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { asteroidSiteReadMethods, findAsteroidSiteFromState } from '../../systems/asteroidSiteReadModel.js';
+import { seatingGrade } from '../../systems/siteReport.js';
 
 const TRADE_WORD = Object.freeze({
   extraction: 'mining', smelting: 'smelting', fabrication: 'fabricating',
@@ -78,4 +80,39 @@ export function rockReportSentence(report) {
   const makes = report.makes.length ? ` Makes ${flowLine(report.makes)}.` : ' Makes nothing yet.';
   const lift = report.lift && report.lift.mult > 1 ? ` Neighbours add ${pct(report.lift.mult - 1)}.` : '';
   return `${head}${makes}${lift}`;
+}
+
+// The cockpit's line for a rock the pilot owns: "Your claim: mining, grade B · 3 machines · 1 line out".
+// The grade needs the rock's interior, so it is worked out once per change to the claim and kept.
+const claimCache = new Map();
+const CLAIM_CACHE_MAX = 64;
+const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+export function claimedRockLine(entity, state) {
+  if (!entity || entity.type !== 'asteroid' || !state || !state.sites || !state.sites.byId) return null;
+  const byData = entity.data && entity.data.siteId ? state.sites.byId[entity.data.siteId] : null;
+  const site = byData || findAsteroidSiteFromState(state, entity.id);
+  if (!site || !site.anchored || !Array.isArray(site.machines)) return null;
+  const key = [
+    (site.cleared || []).length, (site.drillRubble || []).length, (site.drillFill || []).length,
+    site.machines.map((m) => `${m.defId}@${m.col},${m.row}:${m.mode || ''}`).join('|'),
+  ].join('#');
+  let hit = claimCache.get(site.id);
+  if (!hit || hit.key !== key) {
+    let grade = null;
+    try {
+      const view = Object.create(asteroidSiteReadMethods);
+      view.state = state;
+      view._rt = new Map();
+      grade = seatingGrade(view._seatingShareOf(site));
+    } catch (_) { grade = null; }
+    hit = { key, grade };
+    if (claimCache.size >= CLAIM_CACHE_MAX) claimCache.delete(claimCache.keys().next().value);
+    claimCache.set(site.id, hit);
+  }
+  const trade = TRADE_WORD[classifySiteSpecialization(site).id] || 'claim';
+  const out = (Array.isArray(site.links) ? site.links : []).filter((l) => l && l.active !== false).length;
+  const parts = [`Your claim: ${trade}${hit.grade ? `, grade ${hit.grade}` : ''}`, count(site.machines.length, 'machine')];
+  if (out) parts.push(`${count(out, 'line')} out`);
+  return parts.join(' · ');
 }

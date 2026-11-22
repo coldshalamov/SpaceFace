@@ -23,6 +23,17 @@ import { ARCHITECT_TABS, renderFieldArchitectWorkspace } from './fieldArchitectP
 export { TACTICAL_MAP_MODES, ARCHITECT_TABS };
 
 const ASTEROID_DEF_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+// Why the belt view said no, in a pilot's words.
+const REFUSAL_WORDS = Object.freeze({
+  'already-commissioned': 'This rock is already claimed.',
+  'missing-prereq': 'Unlock the doctrine before it first.',
+  'max-links': 'This rock has all the lines it can hold.',
+  'max-defenses': 'There is no room for another build around this rock.',
+  'no-site': 'Claim the rock first.',
+  'bad-site': 'Pick two different claims.',
+  'wrong-sector': 'Both rocks must be in this sector.',
+  'no-asteroid': 'That rock is gone.',
+});
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
 // Each tool says what it is and, under it, what the player gets. Plain words: this bar is the
@@ -431,24 +442,39 @@ export function createFieldBuildMode(ctx) {
     Promise.resolve(promiseOrResult).then((res) => {
       if (!res || res.ok === false) {
         const msg = res?.reason === 'materials'
-          ? `Insufficient materials (${Object.entries(res.missing || {}).map(([k, q]) => `${q} ${commodityDisplayName(k)}`).join(', ')})`
+          ? `Need ${Object.entries(res.missing || {}).map(([k, q]) => `${q} ${commodityDisplayName(k)}`).join(', ')}.`
           : (res?.reason === 'insufficient-credits'
             ? `Need ${res.cost || ''} cr to unlock doctrine.`
-            : (res?.reason === 'missing-prereq'
-              ? 'Research prerequisite tier first.'
-              : (res?.reason === 'out-of-range'
-                ? `Out of belt link range (${res.dist} / ${res.maxRange} m)`
-                : (res?.reason === 'already-commissioned'
-                  ? 'Asteroid already hosts an active rig.'
-                  : `Action unavailable (${res?.reason || 'blocked'}).`))));
+            : (res?.reason === 'out-of-range'
+              ? `Too far apart: ${res.dist} away, ${res.maxRange} at most. A mass relay stretches the reach.`
+              : (REFUSAL_WORDS[res?.reason] || 'That cannot be done here.')));
         announceToast(msg, 'warn');
       } else if (successText) {
-        announceToast(successText, 'good');
+        const text = typeof successText === 'function' ? successText(res) : successText;
+        if (text) announceToast(text, 'good');
       }
       inspectorSig = '';
       crestSig = '';
       renderInspector();
     }).catch(() => {});
+  }
+
+  // What a new line did for the two rocks it joins: the good-neighbours rule, said once, at the
+  // moment the player draws the line.
+  function lineResultText(kind, fromSiteId, toSiteId) {
+    const base = kind === 'power' ? 'Power line run.' : 'Cargo line run.';
+    try {
+      const sys = currentSiteSys();
+      const net = sys && sys.sectorNetworkProjection ? sys.sectorNetworkProjection(state?.world?.currentSectorId || null) : null;
+      const a = net && net.sites.find((s) => s.siteId === fromSiteId);
+      const b = net && net.sites.find((s) => s.siteId === toSiteId);
+      if (!a || !b || !a.report || !b.report) return base;
+      const gain = (node) => Math.round(((node.report.lift && node.report.lift.mult) || 1) * 100 - 100);
+      const ga = gain(a);
+      const gb = gain(b);
+      if (ga <= 0 && gb <= 0) return `${base} Both rocks do the same work, so neither speeds the other up.`;
+      return `${base} ${rockName(a.asteroidId)} now runs ${ga}% faster and ${rockName(b.asteroidId)} ${gb}% faster.`;
+    } catch (_) { return base; }
   }
 
   function setTool(nextTool) {
@@ -472,8 +498,8 @@ export function createFieldBuildMode(ctx) {
     if (!active) { hintBanner.hidden = true; return; }
     if (activeTool === 'link_material') {
       linkHintText.textContent = linkSourceSiteId
-        ? 'Click destination site to connect Cargo Line · Commodity:'
-        : 'Click source site to start a Cargo Line · Commodity:';
+        ? 'Click the claim the goods go to · Carry:'
+        : 'Click the claim the goods come from · Carry:';
       // Populate commodity filter choices from source site lanes or player catalog
       const sys = currentSiteSys();
       const proj = linkSourceSiteId && sys?.projection ? sys.projection(linkSourceSiteId) : null;
@@ -490,7 +516,7 @@ export function createFieldBuildMode(ctx) {
         linkGoodSel.textContent = '';
         const allOpt = document.createElement('option');
         allOpt.value = '';
-        allOpt.textContent = 'Auto (All Surplus)';
+        allOpt.textContent = 'Whatever is spare';
         linkGoodSel.appendChild(allOpt);
         for (const gid of [...goodSet].sort()) {
           const opt = document.createElement('option');
@@ -553,11 +579,11 @@ export function createFieldBuildMode(ctx) {
     }
     if (toolId === 'commission') {
       if (selectedAsteroidId == null) {
-        announceToast('Click an asteroid in the field first to commission a rig.', 'warn');
+        announceToast('Click a rock first, then claim it.', 'warn');
         setTool('commission');
         return;
       }
-      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Automated field rig online.');
+      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Claimed. It is mining.');
       return;
     }
     if (toolId === 'turret' || toolId === 'sensor' || toolId === 'solar_sail') {
@@ -872,8 +898,10 @@ export function createFieldBuildMode(ctx) {
       const targetSite = hit.site;
       if (linkSourceSiteId && targetSite && targetSite.siteId !== linkSourceSiteId) {
         const kind = activeTool === 'link_power' ? 'power' : 'material';
-        runSiteOp(sys.setSiteLink(linkSourceSiteId, targetSite.siteId, kind, kind === 'material' ? (selectedLinkGoodId || null) : null),
-          kind === 'power' ? 'Power relay tether connected.' : 'Material transfer line connected.');
+        const fromId = linkSourceSiteId;
+        const toId = targetSite.siteId;
+        runSiteOp(sys.setSiteLink(fromId, toId, kind, kind === 'material' ? (selectedLinkGoodId || null) : null),
+          () => lineResultText(kind, fromId, toId));
         setTool('select');
       } else if (targetSite) {
         selectedAsteroidId = hit.asteroidId;
@@ -881,7 +909,7 @@ export function createFieldBuildMode(ctx) {
         linkSourceSiteId = targetSite.siteId;
         updateHintBanner();
       } else {
-        announceToast('Target asteroid must be commissioned before linking.', 'warn');
+        announceToast('Claim that rock before running a line to it.', 'warn');
       }
       inspectorSig = '';
       renderInspector();

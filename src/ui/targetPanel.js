@@ -1,5 +1,6 @@
 import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';
 import { rockAssayLine } from './asteroid/rockAssay.js';
+import { claimedRockLine } from './asteroid/rockReport.js';
 import { targetFrameHtml } from './views/targetFrame.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { normalizePatrolPaperwork } from '../missions/patrolPaperwork.js';
@@ -823,6 +824,9 @@ export function objectInfoLine(t, state, p, dist) {
   const d = t.data || {};
   const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
+    // A rock the pilot owns says what it has become before it says what is in it.
+    const claim = claimedRockLine(t, state);
+    if (claim) facts.push(claim);
     if (d.respawnAt != null) facts.push('Mined out');
     else {
       // The scan reads the strata before the pilot commits: what is in there, how deep, how

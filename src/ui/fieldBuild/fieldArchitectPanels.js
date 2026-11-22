@@ -533,18 +533,18 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
 function renderOrbitalTab({ panel, vm, sys, callbacks }) {
   const { runSiteOp, setOrbitalFilter } = callbacks;
   if (!vm.selectedSite) {
-    panel.appendChild(el('h3', 'fb-card-title', 'Orbital & Fleet'));
-    panel.appendChild(el('p', 'fb-tool-sub', 'Select a claimed asteroid site first to anchor orbital megastructures or deploy autonomous fleet drones.'));
+    panel.appendChild(el('h3', 'fb-card-title', 'Guards and drones'));
+    panel.appendChild(el('p', 'fb-tool-sub', 'Pick one of your claims first. Then you can build guards around it and launch drones.'));
     return;
   }
   const site = vm.selectedSite;
   const head = el('div', 'fb-card-head');
-  head.append(el('h3', 'fb-card-title', 'Orbital & Autonomous Fleet'), el('span', 'fb-badge mint', `${site.defenses.length}/${SITE_BALANCE.maxDefensesPerSite}`));
+  head.append(el('h3', 'fb-card-title', 'Guards and drones'), el('span', 'fb-badge mint', `${site.defenses.length}/${SITE_BALANCE.maxDefensesPerSite}`));
   panel.appendChild(head);
 
   // Autonomous Fleet Drones
   const droneSec = el('div', 'fb-section');
-  droneSec.appendChild(el('h4', 'fb-sec-title', `Drone Berth Bay (${site.drones?.length || 0} / ${site.maxDrones || 6})`));
+  droneSec.appendChild(el('h4', 'fb-sec-title', `Drones (${site.drones?.length || 0} of ${site.maxDrones || 6})`));
   const droneList = el('div', 'fb-list');
   for (const spec of BELT_DRONE_TYPE_LIST) {
     const row = el('div', 'fb-struct-card');
@@ -569,7 +569,7 @@ function renderOrbitalTab({ panel, vm, sys, callbacks }) {
 
   // 12 Tiered Orbital Megastructures + Role Filter Pills
   const orbSec = el('div', 'fb-section');
-  orbSec.appendChild(el('h4', 'fb-sec-title', 'Orbital Belt Megastructures (Tiers 1–4)'));
+  orbSec.appendChild(el('h4', 'fb-sec-title', 'Built around the rock'));
   const roleFilter = vm.orbitalFilter || 'all';
   const filterBar = el('div', 'fb-pill-strip');
   for (const [fKey, fLbl] of [['all', 'All'], ['power', 'Power'], ['defense', 'Defense'], ['logistics', 'Logistics'], ['fleet', 'Fleet']]) {
@@ -591,7 +591,7 @@ function renderOrbitalTab({ panel, vm, sys, callbacks }) {
     const installedCount = site.defenses.filter((d) => d.kind === struct.id).length;
     const card = el('div', 'fb-struct-card');
     const top = el('div', 'fb-kv-row');
-    const deployBtn = el('button', 'fb-mini-btn', 'Anchor');
+    const deployBtn = el('button', 'fb-mini-btn', 'Build');
     deployBtn.type = 'button';
     deployBtn.disabled = site.defenses.length >= SITE_BALANCE.maxDefensesPerSite;
     deployBtn.addEventListener('click', () => runSiteOp(sys.deploySiteDefense(site.siteId, struct.id), `${struct.name} anchored on flank orbit.`));
@@ -615,24 +615,24 @@ function renderMatrixTab({ panel, vm, sys, callbacks }) {
   const m = vm.supplyMatrix || vm.network.supplyMatrix || { commodities: [], totalPowerGenMw: 0, totalPowerDrawMw: 0, netPowerMw: 0, activeLinkCount: 0 };
 
   const head = el('div', 'fb-card-head');
-  head.append(el('h3', 'fb-card-title', 'Sector Supply Matrix'), el('span', 'fb-badge', `${m.activeLinkCount || 0} links`));
+  head.append(el('h3', 'fb-card-title', 'Supply in this belt'), el('span', 'fb-badge', `${m.activeLinkCount || 0} links`));
   panel.appendChild(head);
 
   const summaryRow = el('div', 'fb-kv-row');
-  summaryRow.append(el('span', '', 'Sector Power Net'), el('span', 'fb-kv-val', `${m.totalPowerGenMw || 0} / ${m.totalPowerDrawMw || 0} MW (${m.netPowerMw >= 0 ? '+' : ''}${m.netPowerMw || 0})`));
+  summaryRow.append(el('span', '', 'Power made / used'), el('span', 'fb-kv-val', `${m.totalPowerGenMw || 0} / ${m.totalPowerDrawMw || 0} MW (${m.netPowerMw >= 0 ? '+' : ''}${m.netPowerMw || 0})`));
   panel.appendChild(summaryRow);
 
-  const autoBtn = el('button', 'fb-action-btn primary', '[G] Auto-Balance Sector Cluster');
+  const autoBtn = el('button', 'fb-action-btn primary', 'Link my claims for me (G)');
   autoBtn.type = 'button';
   autoBtn.addEventListener('click', () => {
-    runSiteOp(sys.autoLinkSectorCluster(vm.sectorId), 'Sector power and material supply network balanced.');
+    runSiteOp(sys.autoLinkSectorCluster(vm.sectorId), 'Lines run between your claims.');
   });
   panel.appendChild(autoBtn);
 
   // Sector-Wide Batch Directives
   if (vm.network.sites?.length) {
     const batchDirSec = el('div', 'fb-section');
-    batchDirSec.appendChild(el('h4', 'fb-sec-title', 'Sector-Wide Shift Directive'));
+    batchDirSec.appendChild(el('h4', 'fb-sec-title', 'Work order for every claim'));
     const bar = el('div', 'fb-pill-strip');
     for (const d of SITE_DIRECTIVES) {
       const b = el('button', 'fb-chip-btn', d.tag);
@@ -651,10 +651,10 @@ function renderMatrixTab({ panel, vm, sys, callbacks }) {
   }
 
   const sec = el('div', 'fb-section');
-  sec.appendChild(el('h4', 'fb-sec-title', 'Commodity Balance (units per minute)'));
+  sec.appendChild(el('h4', 'fb-sec-title', 'Made and used each minute'));
   const list = el('div', 'fb-list');
   if (!m.commodities?.length) {
-    list.appendChild(el('div', 'fb-tool-sub', 'No active extraction or refining chains in this sector yet.'));
+    list.appendChild(el('div', 'fb-tool-sub', 'Nothing is being made in this belt yet.'));
   } else {
     for (const c of m.commodities) {
       const card = el('div', 'fb-struct-card');
@@ -687,7 +687,7 @@ function renderDoctrinesTab({ panel, vm, sys, callbacks }) {
   const head = el('div', 'fb-card-head');
   head.append(el('h3', 'fb-card-title', 'Belt Doctrines'), el('span', 'fb-badge amber', `${unlockedCount} / ${BELT_DOCTRINES.length}`));
   panel.appendChild(head);
-  panel.appendChild(el('p', 'fb-tool-sub', 'Alpha Centauri empire doctrines permanently upgrade extraction yield, cryo conduction, drone swarms, and cluster sovereignty.'));
+  panel.appendChild(el('p', 'fb-tool-sub', 'Doctrines are permanent upgrades for every claim you own: more ore, cooler machines, better drones, a stronger guard.'));
 
   // Cumulative Empire Modifier Summary
   const mods = vm.empireModifiers || null;

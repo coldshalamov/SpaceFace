@@ -3405,8 +3405,11 @@ export const asteroidScreen = {
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.18, 0.7);
       setTimeout(() => {
         if (ctx.screenManager) ctx.screenManager.popScreen();
-        if (total > 0) showSummary(yields);
-        if (parting && ctx.bus) ctx.bus.emit('toast', { text: parting, kind: 'good', ttl: 7 });
+        // With a haul to report, the rock's line rides the report card; a flight notice can be
+        // dropped while a fight is on, and a card cannot. With no haul it is a notice.
+        if (total > 0) showSummary(yields, parting);
+        else if (parting && ctx.bus) ctx.bus.emit('toast', { text: parting, kind: 'good', ttl: 7 });
+        if (state.ui) state.ui.lastRockParting = parting;
         setTimeout(() => {
           if (fade) {
             fade.classList.remove('active');
@@ -3422,7 +3425,7 @@ export const asteroidScreen = {
       }, 400);
     }
 
-    function showSummary(yields) {
+    function showSummary(yields, parting = null) {
       const root = document.getElementById('ui-root');
       if (!root) return;
       const modal = document.createElement('div');
@@ -3446,6 +3449,15 @@ export const asteroidScreen = {
         val.textContent = `+${qty} units`;
         row.append(name, val);
         box.appendChild(row);
+      }
+      if (parting) {
+        const claim = document.createElement('div');
+        claim.className = 'row ast-summary-claim';
+        claim.style.display = 'block';
+        claim.style.marginTop = '0.6rem';
+        claim.style.lineHeight = '1.4';
+        claim.textContent = parting;
+        box.appendChild(claim);
       }
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';

@@ -12,7 +12,7 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import { machineSeating, seatingGrade, siteSeating, neighbourLift, buildRockReport } from '../src/systems/siteReport.js';
 import { raidWorstGuardedRock } from '../src/systems/beltEmpireSystem.js';
 import { stepContinuousRecipe, processSpeedParts } from '../src/systems/siteProduction.js';
-import { rockReportLines } from '../src/ui/asteroid/rockReport.js';
+import { rockReportLines, claimedRockLine } from '../src/ui/asteroid/rockReport.js';
 
 function makeHarness() {
   const handlers = new Map();
@@ -245,6 +245,15 @@ test('the rock report: one summary a player reads on the belt and on the way out
   assert.match(text, /Dug: grade [ABCD]/);
   assert.match(text, /Neighbours: \+\d+% from Brass Kettle/);
   assert.doesNotMatch(text, /site_\d|cmdty_|undefined|NaN|[—–]/, 'no ids, no dashes');
+
+  // The cockpit's target card says the same thing in one line, for a rock the pilot owns only.
+  const rockEnt = h.entities.get(7001);
+  assert.match(claimedRockLine(rockEnt, h.state), /^Your claim: mining, grade [ABCD] · 3 machines · 1 line out$/);
+  h.entities.set(7003, { id: 7003, type: 'asteroid', alive: true, pos: { x: 900, z: 0 }, data: {} });
+  assert.equal(claimedRockLine(h.entities.get(7003), h.state), null, 'an unclaimed rock says nothing');
+  const mirrorBefore = JSON.stringify(h.state.sites.byId[mine.id]);
+  claimedRockLine(rockEnt, h.state);
+  assert.equal(JSON.stringify(h.state.sites.byId[mine.id]), mirrorBefore, 'reading the line writes nothing');
 
   // An empty report still reads as sentences.
   const bare = rockReportLines(buildRockReport({ specialization: { id: 'outpost', label: 'Anchored Claim' } }), { nameOf });
