@@ -76,7 +76,7 @@ function ratePerMinOf(asset) {
 }
 
 function unitOf(kind) {
-  return kind === 'Site' ? 'u' : 'cr';
+  return kind === 'Site' ? 'units' : 'cr';
 }
 
 function lineFor(kind, asset) {
@@ -90,8 +90,8 @@ function lineFor(kind, asset) {
     outputPerDay: perDay,
     unit,
     limit,
-    text: `${name} — ${perDay} ${unit}/day, limited by ${limit}.`,
-    crest: `${name} ${perDay} ${unit}/day · ${limit}`,
+    text: `${name}: ${perDay} ${unit} a day, limited by ${limit}.`,
+    crest: `${name} ${perDay} ${unit} a day · ${limit}`,
   };
 }
 
