@@ -1,3 +1,4 @@
+import { frameCostFixOn } from '../../render/frameCostSwitches.js';
 import { resolveCollisionProxyManifest, proxyWorldPrimitives, resolveDockAnchor } from '../../data/collisionProxyManifests.js';
 import { canvasFont } from '../canvasFonts.js';
 import { drawTradeHubPlan, tradeHubPlan } from './harborPlan.js';
@@ -587,6 +588,127 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   const drawCostSamples = [];
   const steadyCostSamples = [];
   const textWidthMemo = new Map();
+
+  // Label text never touches the on-screen canvas. Setting a font, measuring or drawing text on a
+  // canvas that is in the document makes the browser bring the page's styles up to date first,
+  // and after a frame of HUD writes that was the most expensive single function in a round-6 Swarm
+  // fight (44 ms of every second). Text is measured on a detached canvas and rasterised once per
+  // run into a small detached sprite (outline row above, fill row below); a label is then a plate
+  // plus blits. The part of a label that changes all the time (the distance) is composed from
+  // one-character sprites, so a changing number costs no text work at all.
+  const TEXT_PAD = 3;
+  const TEXT_ROW_H = 20;
+  const TEXT_SPRITE_MAX = 192;
+  const textSprites = new Map();
+  let measureCtx = null;
+  const textMeasureCtx = () => {
+    if (measureCtx === null) {
+      const c = typeof doc.createElement === 'function' ? doc.createElement('canvas') : null;
+      measureCtx = (c && c.getContext && c.getContext('2d')) || false;
+    }
+    return measureCtx || ctx;
+  };
+  const measureLabelText = (text, weight) => {
+    const key = `w|${weight}|${text}`;
+    let w = textWidthMemo.get(key);
+    if (w === undefined) {
+      const g = textMeasureCtx();
+      g.font = canvasFont(weight, 12, 'read');
+      w = g.measureText(text).width;
+      if (textWidthMemo.size >= 256) textWidthMemo.clear();
+      textWidthMemo.set(key, w);
+    }
+    return w;
+  };
+  const textSprite = (text, weight, color, outlined) => {
+    const key = `${weight}|${color}|${outlined ? 1 : 0}|${text}`;
+    let sprite = textSprites.get(key);
+    if (sprite !== undefined) return sprite;
+    sprite = null;
+    const w = measureLabelText(text, weight);
+    const canvasEl = typeof doc.createElement === 'function' ? doc.createElement('canvas') : null;
+    const g = canvasEl && canvasEl.getContext && canvasEl.getContext('2d');
+    if (g && typeof g.fillText === 'function' && typeof g.drawImage === 'function') {
+      const cssW = Math.ceil(w) + TEXT_PAD * 2;
+      canvasEl.width = Math.max(1, Math.ceil(cssW * dpr));
+      canvasEl.height = Math.max(1, Math.ceil(TEXT_ROW_H * 2 * dpr));
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.font = canvasFont(weight, 12, 'read');
+      g.textAlign = 'left';
+      g.textBaseline = 'middle';
+      if (outlined) {
+        g.strokeStyle = 'rgba(4, 12, 18, 0.92)';
+        g.lineWidth = 2.4;
+        g.strokeText(text, TEXT_PAD, TEXT_ROW_H * 0.5);
+      }
+      g.fillStyle = color;
+      g.fillText(text, TEXT_PAD, TEXT_ROW_H * 1.5);
+      sprite = { canvas: canvasEl, w, cssW, outlined };
+    }
+    if (textSprites.size >= TEXT_SPRITE_MAX) textSprites.clear();
+    textSprites.set(key, sprite);
+    return sprite;
+  };
+  // Blit one row (0 = outline, 1 = fill) of a text sprite with its text origin at x, centred on midY.
+  const blitTextRow = (g, sprite, row, x, midY) => {
+    const sw = sprite.canvas.width;
+    const sh = sprite.canvas.height * 0.5;
+    g.drawImage(sprite.canvas, 0, row * sh, sw, sh, x - TEXT_PAD, midY - TEXT_ROW_H * 0.5, sprite.cssW, TEXT_ROW_H);
+  };
+  const labelRuns = [];
+  // The runs of a label: the steady part as one shaped run, the changing part one character each.
+  // Returns the label's text width, negative when a sprite could not be made on this host.
+  const collectLabelRuns = (steady, changing, weight, color) => {
+    labelRuns.length = 0;
+    let w = 0;
+    let ok = true;
+    const push = (text) => {
+      const sprite = textSprite(text, weight, color, true);
+      if (!sprite) { ok = false; w += measureLabelText(text, weight); return; }
+      labelRuns.push(sprite);
+      w += sprite.w;
+    };
+    if (steady) push(steady);
+    for (let i = 0; i < changing.length; i += 1) {
+      const ch = changing[i];
+      if (ch === ' ') { w += measureLabelText(' ', weight); labelRuns.push(null); } else push(ch);
+    }
+    return ok ? w : -w;
+  };
+  const drawLabelRuns = (g, weight, x, midY) => {
+    const space = measureLabelText(' ', weight);
+    for (let row = 0; row < 2; row += 1) {
+      let at = x;
+      for (let i = 0; i < labelRuns.length; i += 1) {
+        const sprite = labelRuns[i];
+        if (!sprite) { at += space; continue; }
+        blitTextRow(g, sprite, row, at, midY);
+        at += sprite.w;
+      }
+    }
+  };
+  const paintLabelPlate = (g, tagged, x, y, w, h) => {
+    if (tagged) {
+      const c = 4;
+      g.beginPath();
+      g.moveTo(x + c, y); g.lineTo(x + w - c, y); g.lineTo(x + w, y + c);
+      g.lineTo(x + w, y + h - c); g.lineTo(x + w - c, y + h);
+      g.lineTo(x + c, y + h); g.lineTo(x, y + h - c); g.lineTo(x, y + c);
+      g.closePath();
+      g.fillStyle = 'rgba(9, 22, 32, 0.94)';
+      g.fill();
+      g.strokeStyle = COLOR_COURSE;
+      g.lineWidth = 1.05;
+      g.stroke();
+    } else {
+      g.fillStyle = 'rgba(7, 18, 28, 0.84)';
+      g.fillRect(x, y, w, h);
+    }
+  };
+  // Fonts that land late change every measured width, so the sprites go with them.
+  if (doc.fonts && typeof doc.fonts.addEventListener === 'function') {
+    doc.fonts.addEventListener('loadingdone', () => { textSprites.clear(); textWidthMemo.clear(); });
+  }
 
   // Pointer hover state — rect cached ONLY in pointer/resize events, NEVER inside draw().
   let cachedRect = null;
@@ -1211,88 +1333,109 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     }
 
     // Furnaces & crushers from roomWalls
-    for (let i = 0; i < roomWalls.length; i += 1) {
-      const wall = roomWalls[i];
-      if (!wall || !wall.pos || wall.alive === false) continue;
-      const kind = wall.data?.roomKind;
-      if (kind !== 'furnace' && kind !== 'crusher') continue;
-      const at = project(wall.pos.x, wall.pos.z);
-      const rPx = clamp((wall.radius || 28) * scale, 7, 26);
-      if (at.x + rPx < -8 || at.x - rPx > width + 8 || at.y + rPx < -8 || at.y - rPx > height + 8) continue;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(at.x, at.y, rPx, 0, TAU);
-      ctx.fillStyle = dangerHatch || 'rgba(255, 116, 62, 0.28)';
-      ctx.fill();
-      ctx.strokeStyle = '#ff7d47';
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-      // Tiny thermal core diamond
-      ctx.fillStyle = '#ffd18a';
-      ctx.beginPath();
-      ctx.moveTo(at.x, at.y - 3);
-      ctx.lineTo(at.x + 3, at.y);
-      ctx.lineTo(at.x, at.y + 3);
-      ctx.lineTo(at.x - 3, at.y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+    if (roomWalls.length) {
+      let roomHazardCtxSaved = false;
+      for (let i = 0; i < roomWalls.length; i += 1) {
+        const wall = roomWalls[i];
+        if (!wall || !wall.pos || wall.alive === false) continue;
+        const kind = wall.data?.roomKind;
+        if (kind !== 'furnace' && kind !== 'crusher') continue;
+        const at = project(wall.pos.x, wall.pos.z);
+        const rPx = clamp((wall.radius || 28) * scale, 7, 26);
+        if (at.x + rPx < -8 || at.x - rPx > width + 8 || at.y + rPx < -8 || at.y - rPx > height + 8) continue;
+        if (!roomHazardCtxSaved) {
+          ctx.save();
+          ctx.lineWidth = 1.4;
+          roomHazardCtxSaved = true;
+        }
+        ctx.beginPath();
+        ctx.arc(at.x, at.y, rPx, 0, TAU);
+        ctx.fillStyle = dangerHatch || 'rgba(255, 116, 62, 0.28)';
+        ctx.fill();
+        ctx.strokeStyle = '#ff7d47';
+        ctx.stroke();
+        // Tiny thermal core diamond
+        ctx.fillStyle = '#ffd18a';
+        ctx.beginPath();
+        ctx.moveTo(at.x, at.y - 3);
+        ctx.lineTo(at.x + 3, at.y);
+        ctx.lineTo(at.x, at.y + 3);
+        ctx.lineTo(at.x - 3, at.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (roomHazardCtxSaved) ctx.restore();
     }
 
     // Active fields (snare wells, currents, player/environmental fields)
-    for (let i = 0; i < activeFields.length; i += 1) {
-      const field = activeFields[i];
-      if (!field || !field.center || !(field.radius > 0)) continue;
-      const at = project(field.center.x, field.center.z);
-      const rPx = clamp(field.radius * scale, 6, Math.max(width, height));
-      if (at.x + rPx < -8 || at.x - rPx > width + 8 || at.y + rPx < -8 || at.y - rPx > height + 8) continue;
-      const hostileField = field.kind === 'snare' || field.kind === 'thermal' || field.tag === 'hostile';
-      // A field bigger than the scope would hatch the whole instrument: draw its edge only.
-      const hugeField = rPx > Math.min(width, height) * 0.6;
+    if (activeFields.length) {
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(at.x, at.y, rPx, 0, TAU);
-      if (!hugeField) {
-        ctx.fillStyle = (hostileField ? dangerHatch : fieldHatch) || 'rgba(138, 216, 238, 0.16)';
-        ctx.fill();
-      }
-      ctx.strokeStyle = hostileField ? 'rgba(255, 126, 78, 0.52)' : 'rgba(148, 224, 244, 0.42)';
       ctx.lineWidth = 1.0;
       ctx.setLineDash([3, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      for (let i = 0; i < activeFields.length; i += 1) {
+        const field = activeFields[i];
+        if (!field || !field.center || !(field.radius > 0)) continue;
+        const at = project(field.center.x, field.center.z);
+        const rPx = clamp(field.radius * scale, 6, Math.max(width, height));
+        if (at.x + rPx < -8 || at.x - rPx > width + 8 || at.y + rPx < -8 || at.y - rPx > height + 8) continue;
+        const hostileField = field.kind === 'snare' || field.kind === 'thermal' || field.tag === 'hostile';
+        // A field bigger than the scope would hatch the whole instrument: draw its edge only.
+        const hugeField = rPx > Math.min(width, height) * 0.6;
+        ctx.beginPath();
+        ctx.arc(at.x, at.y, rPx, 0, TAU);
+        if (!hugeField) {
+          ctx.fillStyle = (hostileField ? dangerHatch : fieldHatch) || 'rgba(138, 216, 238, 0.16)';
+          ctx.fill();
+        }
+        ctx.strokeStyle = hostileField ? 'rgba(255, 126, 78, 0.52)' : 'rgba(148, 224, 244, 0.42)';
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
     // Mines (hatched blast disc + spiked mine pip)
-    for (let i = 0; i < mines.length; i += 1) {
-      const mine = mines[i];
-      if (!mine || !mine.pos || mine.alive === false) continue;
-      const at = project(mine.pos.x, mine.pos.z);
-      if (!pointInsideChamfer(at.x, at.y, width, height, 6, cut)) continue;
-      const triggerR = clamp((mine.data?.triggerRadius || 55) * scale, 5, 22);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(at.x, at.y, triggerR, 0, TAU);
-      ctx.fillStyle = dangerHatch || 'rgba(255, 108, 70, 0.20)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 118, 78, 0.52)';
-      ctx.lineWidth = 0.85;
-      ctx.setLineDash([2, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      // Crisp mine cross-star pip
-      ctx.strokeStyle = '#ff7254';
-      ctx.fillStyle = '#ffb86c';
-      ctx.lineWidth = 1.25;
-      ctx.beginPath();
-      ctx.moveTo(at.x - 3.2, at.y); ctx.lineTo(at.x + 3.2, at.y);
-      ctx.moveTo(at.x, at.y - 3.2); ctx.lineTo(at.x, at.y + 3.2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(at.x, at.y, 1.8, 0, TAU);
-      ctx.fill();
-      ctx.restore();
+    if (mines.length) {
+      let drawnMines = null;
+      for (let i = 0; i < mines.length; i += 1) {
+        const mine = mines[i];
+        if (!mine || !mine.pos || mine.alive === false) continue;
+        const at = project(mine.pos.x, mine.pos.z);
+        if (!pointInsideChamfer(at.x, at.y, width, height, 6, cut)) continue;
+        if (!drawnMines) drawnMines = [];
+        drawnMines.push(at.x, at.y, clamp((mine.data?.triggerRadius || 55) * scale, 5, 22));
+      }
+      if (drawnMines) {
+        ctx.save();
+        ctx.fillStyle = dangerHatch || 'rgba(255, 108, 70, 0.20)';
+        ctx.strokeStyle = 'rgba(255, 118, 78, 0.52)';
+        ctx.lineWidth = 0.85;
+        ctx.setLineDash([2, 3]);
+        for (let i = 0; i < drawnMines.length; i += 3) {
+          ctx.beginPath();
+          ctx.arc(drawnMines[i], drawnMines[i + 1], drawnMines[i + 2], 0, TAU);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#ff7254';
+        ctx.lineWidth = 1.25;
+        ctx.beginPath();
+        for (let i = 0; i < drawnMines.length; i += 3) {
+          const mx = drawnMines[i], my = drawnMines[i + 1];
+          ctx.moveTo(mx - 3.2, my); ctx.lineTo(mx + 3.2, my);
+          ctx.moveTo(mx, my - 3.2); ctx.lineTo(mx, my + 3.2);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#ffb86c';
+        ctx.beginPath();
+        for (let i = 0; i < drawnMines.length; i += 3) {
+          const mx = drawnMines[i], my = drawnMines[i + 1];
+          ctx.moveTo(mx + 1.8, my);
+          ctx.arc(mx, my, 1.8, 0, TAU);
+        }
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     // 4. Sensor ping: one thin ring leaves the ship, crosses the scope, then the scope rests. Each
@@ -1642,6 +1785,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     // Objective marker & bright rim bearing notch
     let objectiveAnchor = null;
     let objectiveText = '';
+    let objectiveDistText = '';
     if (target) {
       const projT = project(target.x, target.z);
       const dx = projT.x - cx;
@@ -1703,12 +1847,12 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       const fitKey = 'obj|' + cleanTitle + '|' + budgetPx;
       let fits = textWidthMemo.get(fitKey);
       if (fits === undefined) {
-        ctx.font = canvasFont(650, 12, 'read');
-        fits = ctx.measureText(cleanTitle + ' · 00.0 km').width <= budgetPx;
+        fits = measureLabelText(cleanTitle + ' · 00.0 km', 650) <= budgetPx;
         textWidthMemo.set(fitKey, fits);
       }
       if (!fits) cleanTitle = 'OBJECTIVE';
-      objectiveText = distStr ? `${cleanTitle} · ${distStr}` : cleanTitle;
+      objectiveText = cleanTitle;
+      objectiveDistText = distStr ? ` · ${distStr}` : '';
     }
 
     // 11b. Fly-to-berth autopilot: a thin dashed amber lane from the ship to the berth station
@@ -1762,10 +1906,9 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       if (fade > 0.02) {
         ctx.save();
         ctx.globalAlpha = fade;
-        ctx.font = canvasFont(650, 12, 'read');
         const word = 'Incoming';
-        const ww = textWidthMemo.get('cast|word') ?? ctx.measureText(word).width;
-        textWidthMemo.set('cast|word', ww);
+        const wordSprite = textSprite(word, 650, '#ffd9cf', false);
+        const ww = wordSprite ? wordSprite.w : measureLabelText(word, 650);
         const n = castAnnounce.jobs.length;
         const boxW = 12 + ww + 10 + n * 21;
         const bx = cut + 10;
@@ -1775,10 +1918,14 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         ctx.strokeStyle = 'rgba(255, 120, 96, 0.7)';
         ctx.lineWidth = 1;
         ctx.strokeRect(bx + 0.5, by + 0.5, boxW - 1, 23);
-        ctx.fillStyle = '#ffd9cf';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(word, bx + 8, by + 12.5);
+        if (wordSprite) blitTextRow(ctx, wordSprite, 1, bx + 8, by + 12.5);
+        else {
+          ctx.font = canvasFont(650, 12, 'read');
+          ctx.fillStyle = '#ffd9cf';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(word, bx + 8, by + 12.5);
+        }
         for (let i = 0; i < n; i += 1) {
           const job = castAnnounce.jobs[i];
           const color = (jobColors && CONTACT_JOB_PALETTE[job]) || TACTICAL_MAP_PALETTE.hostile;
@@ -1800,17 +1947,12 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     );
     if (blind) occupiedRects.push({ x: 10, y: 6, w: 124, h: 20 });
 
-    const drawSmartLabel = (text, anchor, color, { tagged = false, markRadius = 10 } = {}) => {
-      if (!text || !anchor) return false;
-      const font = canvasFont(tagged ? 650 : 540, 12, 'read');
-      const memoKey = `${tagged ? 1 : 0}|${text}`;
-      let tw = textWidthMemo.get(memoKey);
-      if (tw === undefined) {
-        ctx.font = font;
-        tw = ctx.measureText(text).width;
-        if (textWidthMemo.size >= 64) textWidthMemo.clear();
-        textWidthMemo.set(memoKey, tw);
-      }
+    // `steady` is the part that stays put (a name); `changing` is the part that ticks (the distance).
+    const drawSmartLabel = (steady, changing, anchor, color, { tagged = false, markRadius = 10 } = {}) => {
+      if (!(steady || changing) || !anchor) return false;
+      const weight = tagged ? 650 : 540;
+      const measured = collectLabelRuns(steady, changing, weight, color);
+      const tw = Math.abs(measured);
       const padX = tagged ? 7 : 4;
       const boxH = tagged ? 20 : 17;
       const boxW = tw + padX * 2;
@@ -1830,38 +1972,29 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       if (!placed) return false;
 
       ctx.save();
-      if (tagged) {
-        const { x, y, w, h } = placed;
-        const c = 4;
-        ctx.beginPath();
-        ctx.moveTo(x + c, y); ctx.lineTo(x + w - c, y); ctx.lineTo(x + w, y + c);
-        ctx.lineTo(x + w, y + h - c); ctx.lineTo(x + w - c, y + h);
-        ctx.lineTo(x + c, y + h); ctx.lineTo(x, y + h - c); ctx.lineTo(x, y + c);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(9, 22, 32, 0.94)';
-        ctx.fill();
-        ctx.strokeStyle = COLOR_COURSE;
-        ctx.lineWidth = 1.05;
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = 'rgba(7, 18, 28, 0.84)';
-        ctx.fillRect(placed.x, placed.y, placed.w, placed.h);
+      paintLabelPlate(ctx, tagged, placed.x, placed.y, placed.w, placed.h);
+      const midY = placed.y + placed.h * 0.5 + 0.5;
+      if (measured >= 0 && frameCostFixOn('hudText')) drawLabelRuns(ctx, weight, placed.x + padX, midY);
+      else {
+        // No detached canvas on this host (or ?rfx=-hudText, the measurable old path): draw the
+        // words directly.
+        const text = `${steady || ''}${changing || ''}`;
+        ctx.font = canvasFont(weight, 12, 'read');
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(4, 12, 18, 0.92)';
+        ctx.lineWidth = 2.4;
+        ctx.strokeText(text, placed.x + padX, midY);
+        ctx.fillStyle = color;
+        ctx.fillText(text, placed.x + padX, midY);
       }
-      ctx.font = canvasFont(tagged ? 650 : 540, 12, 'read');
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = 'rgba(4, 12, 18, 0.92)';
-      ctx.lineWidth = 2.4;
-      ctx.strokeText(text, placed.x + padX, placed.y + placed.h * 0.5 + 0.5);
-      ctx.fillStyle = color;
-      ctx.fillText(text, placed.x + padX, placed.y + placed.h * 0.5 + 0.5);
       ctx.restore();
       return true;
     };
 
     // Label priority 1: Objective
     if (objectiveAnchor && objectiveText) {
-      drawSmartLabel(objectiveText, objectiveAnchor, COLOR_COURSE, { tagged: true, markRadius: 11 });
+      drawSmartLabel(objectiveText, objectiveDistText, objectiveAnchor, COLOR_COURSE, { tagged: true, markRadius: 11 });
     }
 
     // Label priority 2: ONE contact under cursor OR selected target
@@ -1908,8 +2041,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       if (!sameAsObjective) {
         const name = contactDisplayName(focusContact.entity, focusContact.role);
         const distStr = formatMinimapDistance(focusContact.distWorld);
-        const focusLabel = distStr ? `${name} · ${distStr}` : name;
-        drawSmartLabel(focusLabel, focusContact, COLOR_FRAME_INK, { tagged: false, markRadius: 11 });
+        drawSmartLabel(name, distStr ? ` · ${distStr}` : '', focusContact, COLOR_FRAME_INK, { tagged: false, markRadius: 11 });
       }
     }
 
