@@ -521,20 +521,26 @@ async function fillWork(page, shot) {
   b.afterSecondClaim = await claims();
   b.secondToasts = await toasts();
   await shot('05l-second-claim');
-  // A cargo line from the first rock to the second.
+  // A cargo line from the first rock to the second. The ship drifts, so each rock is found again
+  // where it is now before it is clicked.
+  const where = async (id) => { const r = await rocks(); return r ? [...r.claimed, ...r.free].find((x) => x.id === id) || null : null; };
   if (first && second) {
+    await page.keyboard.press('Digit0');
+    await page.waitForTimeout(300);
+    const a = (await where(first.id)) || first;
+    await page.mouse.click(a.x, a.y);
+    await page.waitForTimeout(600);
     await page.keyboard.press('Digit2');
-    await page.waitForTimeout(400);
-    await page.mouse.click(first.x, first.y);
-    await page.waitForTimeout(700);
-    await page.mouse.click(second.x, second.y);
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
+    const t = (await where(second.id)) || second;
+    await page.mouse.click(t.x, t.y);
+    await page.waitForTimeout(1200);
   }
   b.afterLink = await claims();
   b.linkToasts = await toasts();
   await page.keyboard.press('Digit0');
   await page.waitForTimeout(300);
-  if (first) { await page.mouse.click(first.x, first.y); await page.waitForTimeout(1200); }
+  if (first) { const a = (await where(first.id)) || first; await page.mouse.click(a.x, a.y); await page.waitForTimeout(1200); }
   b.linkedCard = await cardText();
   await shot('05m-linked-rock-card');
   // Hold for the raiders: two claims and nothing guarding them. They test the belt every three minutes.
@@ -547,7 +553,7 @@ async function fillWork(page, shot) {
     return hit ? hit[0] : null;
   });
   b.topBar = await page.evaluate(() => [...document.querySelectorAll('.fb-crest-stat')].map((n) => (n.textContent || '').trim()).join(' | '));
-  if (first) { await page.mouse.click(first.x, first.y); await page.waitForTimeout(1200); }
+  if (first) { const a = (await where(first.id)) || first; await page.mouse.click(a.x, a.y); await page.waitForTimeout(1200); }
   b.raidedCard = (await cardText()).slice(0, 700);
   await shot('05o-after-a-raid');
   await page.mouse.click(700, 760).catch(() => {});
