@@ -627,6 +627,11 @@ function startPlayerPresenceHeartbeat() {
       isFocused: () => BrowserWindow.getAllWindows().some((w) => !w.isDestroyed()
         && w.isVisible() && !w.isMinimized() && w.isFocused()),
       processIds: () => [process.pid, ...app.getAppMetrics().map((m) => m.pid)],
+      // One line in the desktop log each time the game's scheduling state changes.
+      onScheduling: (line, details) => {
+        console.log(`[electron] scheduling: ${line}`);
+        try { receipt('scheduling', details); } catch (_) { /* the log is a courtesy */ }
+      },
     });
     app.once('will-quit', () => {
       try { if (stopPlayerPresenceHeartbeat) stopPlayerPresenceHeartbeat(); } catch (_) {}

@@ -31,6 +31,13 @@
 // refreshes taken (scripts/lib/smoothProfile.mjs). The sampler costs a few percent, so a profiled
 // run is for finding owners, not for the scoreboard.
 //
+// --scheduling=both|focused|unfocused (default both). The referee's window never takes focus, so
+// Windows schedules it as a background window; a player's game is focused, and the shell then gives
+// it above-normal priority and no power throttling (scripts/lib/playerPresence.cjs). The judged rows
+// are measured with that same scheduling applied to the test game's processes
+// (scripts/lib/processScheduling.cjs). "both" adds a 15 s as-he-has-it stretch scheduled as the
+// unfocused window it really is, printed beside them; "unfocused" judges the whole run that way
+// (the referee before 2026-11-22).
 // --census: after the judged window, a few seconds with the renderer wrapped: WebGL calls by name,
 // every draw with its owner, material, program and geometry, and the scene-graph size, per presented
 // frame (<out>/census.txt; scripts/lib/smoothCensus.mjs).
@@ -65,6 +72,8 @@ const TRACE_DEEP = argv.trace === 'deep';
 const PROFILE = argv.profile === true || (typeof argv.profile === 'string' && argv.profile !== '0');
 const PROFILE_INTERVAL_US = Math.max(100, Number(argv['profile-interval'] || 500));
 const CENSUS = argv.census === true;
+const SCHEDULING = ['both', 'focused', 'unfocused'].includes(argv.scheduling) ? argv.scheduling : 'both';
+const UNFOCUSED_STRETCH_S = 15;
 const EVAL_FILE = typeof argv['eval-file'] === 'string' ? resolve(ROOT, argv['eval-file']) : '';
 const WANT = { w: 1536, h: 864, dpr: 1.25 };
 const TRANSITION_S = 3;
@@ -79,6 +88,7 @@ const { installFirstLightPromptHandler } = await import('./player-truth/routes.m
 const { createHand, PRESS_THROUGH_SCREENS } = await import('./lib/playHand.mjs');
 const { summarizeSmoothProfile, formatSmoothProfile, summarizeSmoothTrace, formatSmoothTrace, summarizeSmoothInvalidations, formatSmoothInvalidations, SMOOTH_PROFILE_SYNC_FN } = await import('./lib/smoothProfile.mjs');
 const { installSmoothCensus, collectSmoothCensus, formatSmoothCensus } = await import('./lib/smoothCensus.mjs');
+const processScheduling = createRequire(import.meta.url)('./lib/processScheduling.cjs');
 const { _electron: electron } = await loadPlaywright();
 
 // His video settings, read-only. Only the settings profile is copied; saves are never touched.
@@ -257,7 +267,8 @@ try {
     const r = await cdp.send('Runtime.evaluate', { returnByValue: true, expression: `(() => { let best = 0; for (let rep = 0; rep < 5; rep++) { const a = performance.now(); let x = 0; let n = 0; while (performance.now() - a < 6) { for (let i = 0; i < 2000; i++) x += Math.sqrt(x + i); n++; } best = Math.max(best, n / (performance.now() - a)); } return Math.round(best * 100) / 100; })()` }).catch(() => null);
     return r && r.result ? r.result.value : null;
   };
-  report.cpuSpeed = { menu: await cpuSpeed() };
+  report.cpuSpeed = { menu: 0 };
+  for (let i = 0; i < 3; i++) { report.cpuSpeed.menu = Math.max(report.cpuSpeed.menu, (await cpuSpeed()) || 0); await sleep(250); }
 
   // ---- start the route on the game's own launch seam (Electron forbids query strings) ----
   const launchRoute = async () => {
@@ -338,6 +349,27 @@ try {
     report.notes.push('his settings file was not found; the game\'s default video settings were used');
   }
 
+  // ---- scheduling: what a focused player's game gets, applied to this never-focused window ----
+  const gamePids = async () => app.evaluate(({ app: a }) => [{ pid: process.pid, type: 'Browser' }, ...a.getAppMetrics().map((m) => ({ pid: m.pid, type: m.type }))]).catch(() => []);
+  const schedule = async (focused) => {
+    const procs = (await gamePids()).filter((x, i, all) => Number.isInteger(x.pid) && all.findIndex((y) => y.pid === x.pid) === i);
+    const pids = procs.map((x) => x.pid);
+    const ABOVE = os.constants.priority.PRIORITY_ABOVE_NORMAL; const NORMAL = os.constants.priority.PRIORITY_NORMAL;
+    // An unfocused window: every process at normal priority except the GPU process, which Chromium itself keeps above normal.
+    const priorityApplied = focused ? processScheduling.setPriorityClass(pids, ABOVE)
+      : processScheduling.setPriorityClass(procs.filter((x) => x.type !== 'GPU').map((x) => x.pid), NORMAL);
+    const throttling = await processScheduling.setPowerThrottlingOptOut(pids, focused);
+    const renderer = procs.find((x) => x.type === 'Tab');
+    return { focused, processes: pids.length, priorityApplied, throttlingOptOut: throttling.applied, ok: focused ? throttling.ok && priorityApplied === pids.length : true,
+      rendererPriority: renderer ? processScheduling.readPriorityClass(renderer.pid) : null, detail: throttling.detail };
+  };
+  report.scheduling = { mode: SCHEDULING, judgedAs: SCHEDULING === 'unfocused' ? 'unfocused' : 'focused' };
+  if (SCHEDULING !== 'unfocused') {
+    report.scheduling.applied = await schedule(true);
+    console.log('scheduling', JSON.stringify(report.scheduling.applied));
+    if (!report.scheduling.applied.ok) report.notes.push(`focused scheduling was not fully applied (${report.scheduling.applied.detail}): the judged rows may be an unfocused window's`);
+  }
+
   // ---- the judged window: dense input, segments alternating his cap / cap lifted ----
   const vp = { w: WANT.w, h: WANT.h };
   const hand = createHand(cdp, vp);
@@ -381,6 +413,7 @@ try {
   // 'As he has it' is whatever the game holds when the fight starts (it may have set a cap itself).
   const ownerCap = Number.isFinite(report.config.video.frameCap) ? report.config.video.frameCap : 0;
   const segments = [];
+  const speedSamples = [];
   let pauseDone = false; let relaunches = 0; let notFlying = 0;
   const pauseAt = Date.now() + SECONDS * 1000 * 0.42;
   const playing = (async () => {
@@ -435,6 +468,8 @@ try {
     const lifted = LIFT_CAP > 0 && which % 2 === 1;
     await setSeg(3, lifted ? LIFT_CAP : ownerCap); // settle: not judged
     await sleep(300);
+    // The thread-speed loop, in the unjudged settle between segments, only while the fight is live.
+    if (await isLive()) { const sp = await cpuSpeed(); if (sp > 0 && await isLive()) speedSamples.push(sp); }
     await setSeg(lifted ? 2 : 1, null);
     const m0 = await metrics();
     const segEnd = Math.min(judgedEnd, Date.now() + SEGMENT_S * 1000);
@@ -445,6 +480,24 @@ try {
   }
   await setSeg(0, ownerCap);
   await playing;
+  if (SCHEDULING === 'both') {
+    // The same fight for a few seconds more, scheduled as the unfocused window this really is.
+    report.scheduling.unfocusedApplied = await schedule(false);
+    await sleep(400);
+    await setSeg(4, null);
+    const until = Date.now() + UNFOCUSED_STRETCH_S * 1000;
+    let beat = 0;
+    while (Date.now() < until) {
+      hand.down('KeyW'); hand.trigger(beat % 6 !== 4);
+      if (beat % 6 === 1) hand.down('KeyA'); else hand.up('KeyA');
+      beat++;
+      await sleep(Math.min(1200, Math.max(0, until - Date.now())));
+      await page.evaluate(PRESS_THROUGH_SCREENS).catch(() => {});
+    }
+    hand.releaseAll();
+    await setSeg(0, null);
+    report.scheduling.restored = (await schedule(true)).ok;
+  }
   let cpuProfile = null;
   if (profiling) {
     await profSync();
@@ -466,7 +519,10 @@ try {
 
   // ---- tail window: GPU time per pass (timer queries are OFF in his build, so never in the judged window) ----
   hand.down('KeyW'); hand.trigger(true);
-  report.cpuSpeed.fight = await cpuSpeed();
+  // Median of the in-fight samples (one every segment); the single tail reading is the fallback.
+  if (!speedSamples.length) { const sp = await cpuSpeed(); if (sp > 0) speedSamples.push(sp); }
+  report.cpuSpeed.samples = speedSamples.slice();
+  report.cpuSpeed.fight = pct(speedSamples, 0.5);
   report.cpuSpeed.ratio = report.cpuSpeed.menu > 0 && report.cpuSpeed.fight > 0 ? +(report.cpuSpeed.fight / report.cpuSpeed.menu).toFixed(2) : null;
   console.log('cpu speed', JSON.stringify(report.cpuSpeed));
   // A picture of the live fight with its HUD (end.png is often a level-up card): taken here, after
@@ -618,6 +674,16 @@ try {
       hitches,
     };
   }
+  // ---- the unfocused stretch (scheduling "both"): the same fight as a background window ----
+  if (SCHEDULING === 'both') {
+    const rows = []; let last = -1;
+    for (let i = 1; i < raw.n; i++) {
+      if (pres[i] === pres[i - 1]) continue;
+      if (last >= 0 && ((flags[i] >> 1) & 7) === 4 && ((flags[last] >> 1) & 7) === 4 && liveAt[i] && liveAt[last]) rows.push({ ms: +(t[i] - t[last]).toFixed(2), cb: raw.cb[i] });
+      last = i;
+    }
+    report.unfocused = rows.length >= 30 ? stats(rows) : null;
+  }
   // The cap the game itself chose while left alone.
   {
     const caps = {};
@@ -738,6 +804,11 @@ try {
     report.profile = prof.ok ? { ok: true, file: 'profile.txt', clock: prof.clock, buckets: prof.buckets, entryPoints: prof.entryPoints.slice(0, 8), byFile: prof.byFile.slice(0, 14), self: prof.self.slice(0, 30) } : { ok: false, why: prof.why };
     console.log(prof.ok ? `smooth probe profile: ${prof.buckets.all.frames} live frames, busy ${prof.buckets.all.busyMs} of ${prof.buckets.all.intervalMs} ms per frame (idle ${prof.buckets.all.idleMs}); tables in ${join(OUT, 'profile.txt')}` : `smooth probe profile NOT MADE: ${prof.why}`);
   }
+  // An experiment script may leave its own record in window.__smExtra: keep it beside the report.
+  if (EVAL_FILE) {
+    const extra = await page.evaluate(() => (window.__smExtra ? JSON.parse(JSON.stringify(window.__smExtra)) : null)).catch(() => null);
+    if (extra) writeFileSync(join(OUT, 'extra.json'), JSON.stringify({ timeOrigin: await page.evaluate(() => performance.timeOrigin).catch(() => null), ...extra }));
+  }
   writeFileSync(join(OUT, 'frames.json'), JSON.stringify(frames));
   writeFileSync(join(OUT, 'loaf.json'), JSON.stringify({ ok: raw.loafOk, frames: raw.loaf, tasks: raw.tasks }));
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(raw.samples));
@@ -746,6 +817,7 @@ try {
   for (const [mode, m] of Object.entries(report.modes)) {
     console.log(`smooth probe ${mode === 'asis' ? 'as he has it' : `cap lifted to ${LIFT_CAP}`}: ${m.all.fps} fps, frame p50 ${m.all.p50} p95 ${m.all.p95} p99 ${m.all.p99} max ${m.all.max} ms, >50 ms x${m.all.over50}, >100 ms x${m.all.over100}, callback p50 ${m.all.cbP50} p95 ${m.all.cbP95}, busy ${m.busy && m.busy.fraction}`);
   }
+  if (report.unfocused) console.log(`smooth probe as an unfocused window (${UNFOCUSED_STRETCH_S} s, his cap): ${report.unfocused.fps} fps, frame p50 ${report.unfocused.p50} p95 ${report.unfocused.p95}, callback p50 ${report.unfocused.cbP50} p95 ${report.unfocused.cbP95}`);
   console.log(`smooth probe world x${report.world.speed} (worst 10 s ${report.world.worst10s}), worker step p50 ${report.worker.stepP50} p95 ${report.worker.stepP95}, longest task ${report.longTasks.longestMs} ms, freeze log ${report.freeze.logEntries}, load ${report.loadS} s, page errors ${report.errors.length}`);
 } catch (e) {
   console.log(e && e.smoothAssert ? `PROBE REFUSED: ${e.message}` : `PROBE FAILED ${String((e && e.stack) || e).slice(0, 800)}`);

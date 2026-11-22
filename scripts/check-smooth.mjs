@@ -4,6 +4,11 @@
 //   npm run check:smooth                 five routes, about 75 s each plus load
 //   npm run check:smooth -- --quick      Swarm round 6 in his room only, about 45 s plus load
 //   npm run check:smooth -- --routes=swarm-r6,adventure-helios [--seconds=60] [--cap=60] [--trace]
+//   npm run check:smooth -- --scheduling=unfocused          judge the game as the background window the
+//       referee's window really is (the referee before 2026-11-22). By default the judged rows are
+//       measured with a focused player's scheduling (above-normal priority, no Windows power
+//       throttling: what the shell gives the game while its window is focused) and one extra row
+//       shows the same fight for 15 s as an unfocused window.
 //   npm run check:smooth -- --routes=swarm-r2 --census      also a draw census after the judged window
 //       (<evidence>/census.txt: WebGL calls by name, every draw by owner/material/program, scene size)
 //   npm run check:smooth -- --routes=swarm-r2 --trace       also what the browser does around the
@@ -68,6 +73,7 @@ for (const name of names) {
   console.log(`[smooth] ${route.label}: ${SECONDS} s of dense input (waiting for the game lock)...`);
   const run = spawnSync(process.execPath, ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath, 'scripts/probe-smooth-electron.mjs',
     ...route.args, `--seconds=${SECONDS}`, `--cap=${CAP}`, ...(argv.trace ? [`--trace${argv.trace === true ? '' : `=${argv.trace}`}`] : []),
+    ...(typeof argv.scheduling === 'string' ? [`--scheduling=${argv.scheduling}`] : []),
     ...(argv.census === true ? ['--census'] : []), ...(typeof argv['eval-file'] === 'string' ? [`--eval-file=${argv['eval-file']}`] : []),
     ...(argv.profile ? [`--profile${argv.profile === true ? '' : `=${argv.profile}`}`] : []), ...(argv['profile-interval'] ? [`--profile-interval=${argv['profile-interval']}`] : []), `--out=${out}`],
   { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', // The wait for the game lock can be long (first come, first served); it is not part of the run budget.
@@ -126,6 +132,9 @@ const lines = [];
 let failed = false;
 let m1Failed = false;
 lines.push('');
+const sched = [...new Set(results.map((r) => r.report && r.report.scheduling && r.report.scheduling.judgedAs).filter(Boolean))];
+lines.push(sched.includes('unfocused') && sched.length === 1 ? 'Scheduling: judged as an UNFOCUSED window (normal priority, Windows free to throttle): not what a focused player gets.'
+  : 'Scheduling: judged rows have a focused player\'s scheduling (above-normal priority, no Windows power throttling), as the shell applies while his window is focused.');
 lines.push(`IS IT SMOOTH?   commit ${commit}${dirty ? ` (+${dirty} uncommitted files)` : ''}   ${new Date().toISOString().slice(0, 16).replace('T', ' ')}Z   1920x1080, his settings, his worker bundle`);
 lines.push(`${pad('route', 31)}${pad('row', 14)}${pad('fps', 7)}${pad('p50', 7)}${pad('p95', 7)}${pad('p99', 7)}${pad('max', 8)}${pad('>50', 5)}${pad('>100', 6)}${pad('cb p50/95', 12)}${pad('busy', 6)}note`);
 for (const r of results) {
@@ -145,6 +154,10 @@ for (const r of results) {
     const a = m.all;
     lines.push(`${pad(mode === 'asis' ? r.label : '', 31)}${pad(word, 14)}${pad(a.fps, 7)}${pad(a.p50, 7)}${pad(a.p95, 7)}${pad(a.p99, 7)}${pad(a.max, 8)}${pad(a.over50, 5)}${pad(a.over100, 6)}${pad(`${a.cbP50}/${a.cbP95}`, 12)}${pad(m.busy ? Math.round(m.busy.fraction * 100) + '%' : '-', 6)}${mode === 'asis' ? capWord(rep) : ''}`);
     const t = m.transitions;
+    if (mode === 'asis' && rep.unfocused) {
+      const u = rep.unfocused;
+      lines.push(`${pad('', 31)}${pad('  unfocused', 14)}${pad(u.fps, 7)}${pad(u.p50, 7)}${pad(u.p95, 7)}${pad(u.p99, 7)}${pad(u.max, 8)}${pad(u.over50, 5)}${pad(u.over100, 6)}${pad(`${u.cbP50}/${u.cbP95}`, 12)}${pad('', 6)}(${u.seconds} s of the same fight as a background window: the referee before 2026-11-22)`);
+    }
     if (t.frames) lines.push(`${pad('', 31)}${pad('  transitions', 14)}${pad(t.fps, 7)}${pad(t.p50, 7)}${pad(t.p95, 7)}${pad(t.p99, 7)}${pad(t.max, 8)}${pad(t.over50, 5)}${pad(t.over100, 6)}(${t.seconds} s after run start, pick, shop or pause)`);
   }
   const g = rep.gpu && rep.gpu.passes ? Object.entries(rep.gpu.passes).map(([k, v]) => `${k} ${v.avg}`).join(', ') : null;
@@ -230,6 +243,7 @@ for (const r of results) {
       world: rep.world.speed, worst10s: rep.world.worst10s, stepP50: rep.worker.stepP50, stepP95: rep.worker.stepP95,
       longestTask: rep.longTasks.longestMs, tasksOver50: rep.longTasks.over50, freezeLog: rep.freeze.logEntries, dataAge: rep.freeze.dataAgeMaxMs,
       gpu: rep.gpu && rep.gpu.passes ? Object.fromEntries(Object.entries(rep.gpu.passes).map(([k, v]) => [k, v.avg])) : null,
+      scheduling: rep.scheduling ? rep.scheduling.judgedAs : 'unfocused', unfocused: rep.unfocused ? { fps: rep.unfocused.fps, p50: rep.unfocused.p50, p95: rep.unfocused.p95, cbP50: rep.unfocused.cbP50, cbP95: rep.unfocused.cbP95 } : undefined,
       cpuSpeed: rep.cpuSpeed ? rep.cpuSpeed.ratio : undefined, profiled: rep.profiled === true || rep.traced === true, experiment: rep.experiment ? rep.experiment.file : undefined, ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loaded: rep.machine.otherLoadFraction > 0.4, loadS: rep.loadS });
   }
   appendFileSync(join(SMOOTH, 'history.jsonl'), `${JSON.stringify(row)}\n`);
