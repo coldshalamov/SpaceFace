@@ -332,3 +332,22 @@ hygiene sweep, not a performance task — nothing loads them.
   (`renderer.js`), R6 (`toasts.js`, systems), B1 (`partsLibrary.js`), B5 wiring
   (`visualFactory.js`/`assetLoader.js`/`main.js`) are all mid-edit by other lanes; they queue
   behind those lanes landing.
+- **Director's rulings on work in flight (2026-11-22 09:10 EST).** (1) The uncommitted Foundry
+  edits that put 4 crates on a belt instead of 6 on integrated graphics do not land: R14, never
+  emptier. The room keeps its contents on every tier; the cost comes out of how it is drawn.
+  (2) Demoting the Foundry's static merged pieces to a cheaper lit material on integrated graphics
+  may land only with a same-moment before/after pair opened and judged to look right, and it is the
+  stopgap for G4's baked lighting, not a replacement. (3) The "fast composite" that drops the
+  illustrated edge sampling may land only if the pair is indistinguishable at 1920x1080; the
+  resolution governor (74fe37f4ab, 2766aa10d9) is the sanctioned lever and already holds the Foundry
+  at 17-23 ms of GPU. Its floor of 0.5 shows stair-stepped edges: 0.6 is the working floor until the
+  upscale is better. (4) What the runtime Foundry merge (8c063dbdb0) already covers, so G4 does not
+  redo it: static set pieces merged into one world-space mesh per material at authored LOD1, deck
+  plates as one 28-triangle slab, trim and rollers in one instanced batch. Still G4's: baked
+  lighting, the cheap material, a package-compiler bake, re-entry after a death (released package
+  arrays fall back to unmerged meshes: untested), and shadows on machinery (switched off by the
+  merge: restore for shadows-on presets). (5) Programs still compile in live play in the Foundry
+  (20-32 a run): work-lamp lenses mounting after the veil lifts, keyed asteroid instances, enemy hull
+  materials on first appearance, beacon lamps (one program each: a missing shared material), wasp
+  threat plates and brood shards, the next wave's deferred warm, LOD0 parts of player hulls. Probe:
+  scripts/probe-live-compile.mjs. Unowned as of this note; first engineer free takes it.
