@@ -1618,7 +1618,7 @@ export const asteroidSites = {
 
     if (!site.anchored) this._anchorSite(site, ent, { reason: defId === 'sm_massline_core' ? 'core' : 'first-install' });
     else if (defId === 'sm_massline_core') {
-      this._ledger(site, 'good', 'Massline Core online — command and power are live.');
+      this._ledger(site, 'good', 'Massline Core online. Command and power are live.');
     }
     if (defId === 'sm_cargo_port' && (site.fleet.podsReady | 0) < 1) {
       site.fleet.podsReady = 1;
@@ -1656,8 +1656,8 @@ export const asteroidSites = {
     // truth: no durable survey without an anchored site, no anchored site without its survey.
     this._commitClaimSurvey(site);
     const line = reason === 'core'
-      ? 'Massline Core online — this asteroid is now a permanent site.'
-      : 'Claim staked — this rock will be here when you come back.';
+      ? 'Massline Core online. This rock is yours now and will not reset.'
+      : 'Claim staked. This rock will be here when you come back.';
     this._ledger(site, 'good', line);
     this.bus.emit('site:anchored', { siteId: site.id, asteroidId: site.asteroidId, sectorId: site.sectorId, reason: reason || 'first-install' });
     // The anchor moment is witnessed, so it becomes the return baseline.
@@ -3219,7 +3219,7 @@ export const asteroidSites = {
         for (const [g, q] of Object.entries(anom.lumpLoot || {})) {
           dest[g] = (Number(dest[g]) || 0) + (Number(q) || 0);
         }
-        this._ledger(site, 'good', `${anom.name} pocket breached — mineral cache recovered.`);
+        this._ledger(site, 'good', `${anom.name} dug out. What was in it is in your stores.`);
       }
     }
 

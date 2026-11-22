@@ -81,7 +81,7 @@ function buildMiniCutawayElement(site, vm, sys, callbacks) {
   svg.setAttribute('class', 'fb-cutaway-svg');
   svg.setAttribute('aria-label', 'Interactive Asteroid Interior Subterranean Schematic');
 
-  const captionDefault = `${cut.emptyCells || 0} carved · ${cut.veinCells || 0} veins · Click cell to stamp`;
+  const captionDefault = `${cut.emptyCells || 0} cells dug · ${cut.veinCells || 0} vein cells · click a cell to place the layout`;
   const caption = el('div', 'fb-cutaway-caption', captionDefault);
   const rectByCoord = new Map();
 
@@ -318,19 +318,19 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   for (const bp of ASTEROID_BLUEPRINTS) {
     const opt = document.createElement('option');
     opt.value = bp.id;
-    opt.textContent = `[T${bp.tier}] ${bp.name}`;
+    opt.textContent = bp.name;
     bpSel.appendChild(opt);
   }
   bpSel.value = vm.blueprintId || ASTEROID_BLUEPRINTS[0].id;
   bpSel.addEventListener('change', () => setBlueprint(bpSel.value));
 
-  const rotBtn = el('button', 'fb-mini-btn', `${(vm.blueprintRotation || 0) * 90}° [R]`);
+  const rotBtn = el('button', 'fb-mini-btn', `Turn (R): ${(vm.blueprintRotation || 0) * 90}°`);
   rotBtn.type = 'button';
   rotBtn.title = 'Rotate blueprint 90 degrees';
   rotBtn.addEventListener('click', () => rotateBlueprint());
 
   const bestSeat = (site.blueprintSuggestions || [])[0] || null;
-  const bestBtn = el('button', 'fb-mini-btn', 'Best Seat');
+  const bestBtn = el('button', 'fb-mini-btn', 'Best spot');
   bestBtn.type = 'button';
   bestBtn.title = bestSeat
     ? `Stamp best fit (${bestSeat.col},${bestSeat.row} at ${(bestSeat.rotation || 0) * 90}°)`
@@ -339,13 +339,13 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     const col = bestSeat ? bestSeat.col : null;
     const row = bestSeat ? bestSeat.row : null;
     const rotUse = bestSeat ? bestSeat.rotation : (vm.blueprintRotation || 0);
-    runSiteOp(sys.applySiteBlueprint(site.siteId, bpSel.value, col, row, rotUse), 'Best-seat blueprint stamped.');
+    runSiteOp(sys.applySiteBlueprint(site.siteId, bpSel.value, col, row, rotUse), 'Layout placed in its best spot.');
   });
 
-  const stampBtn = el('button', 'fb-mini-btn primary', 'Stamp');
+  const stampBtn = el('button', 'fb-mini-btn primary', 'Place');
   stampBtn.type = 'button';
   stampBtn.addEventListener('click', () => {
-    runSiteOp(sys.applySiteBlueprint(site.siteId, bpSel.value, null, null, vm.blueprintRotation || 0), 'Blueprint stamped into interior.');
+    runSiteOp(sys.applySiteBlueprint(site.siteId, bpSel.value, null, null, vm.blueprintRotation || 0), 'Layout placed.');
   });
   bpRow.append(bpSel, rotBtn, bestBtn, stampBtn);
   intSec.appendChild(bpRow);
@@ -372,10 +372,10 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   intSec.appendChild(dirTitle);
   const dirBar = el('div', 'fb-pill-strip');
   for (const d of SITE_DIRECTIVES) {
-    const b = el('button', `fb-chip-btn ${site.directive?.id === d.id ? 'active' : ''}`, d.tag);
+    const b = el('button', `fb-chip-btn ${site.directive?.id === d.id ? 'active' : ''}`, d.short || d.name);
     b.type = 'button';
     b.title = `${d.name}: ${d.summary}`;
-    b.addEventListener('click', () => runSiteOp(sys.setSiteDirective(site.siteId, d.id), `Directive set: ${d.name}.`));
+    b.addEventListener('click', () => runSiteOp(sys.setSiteDirective(site.siteId, d.id), `Work order: ${d.name}.`));
     dirBar.appendChild(b);
   }
   intSec.appendChild(dirBar);
@@ -388,15 +388,15 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     const aList = el('div', 'fb-list');
     for (const a of site.anomalies) {
       const row = el('div', 'fb-item-row');
-      const statusTxt = a.status === 'tapped' ? 'TAPPED' : (a.status === 'breached' ? 'MINED' : 'SEALED');
+      const statusTxt = a.status === 'tapped' ? 'in use' : (a.status === 'breached' ? 'dug out' : 'sealed');
       row.append(
-        el('span', '', `${a.name} (${a.col},${a.row}) · ${statusTxt}`),
+        el('span', '', `${a.name} · ${statusTxt}`),
         a.status !== 'breached'
           ? (() => {
-            const br = el('button', 'fb-mini-btn', 'Breach');
+            const br = el('button', 'fb-mini-btn', 'Dig it out');
             br.type = 'button';
             br.title = `Breach for lump cache: ${formatCostLine(a.lumpLoot)}`;
-            br.addEventListener('click', () => runSiteOp(sys.tapOrScanSiteAnomalies(site.siteId, 'breach', a.id), `${a.name} breached for mineral cache.`));
+            br.addEventListener('click', () => runSiteOp(sys.tapOrScanSiteAnomalies(site.siteId, 'breach', a.id), `${a.name} dug out.`));
             return br;
           })()
           : el('span', 'fb-kv-val', 'Cleared'),
@@ -597,7 +597,7 @@ function renderOrbitalTab({ panel, vm, sys, callbacks }) {
     deployBtn.disabled = site.defenses.length >= SITE_BALANCE.maxDefensesPerSite;
     deployBtn.addEventListener('click', () => runSiteOp(sys.deploySiteDefense(site.siteId, struct.id), `${struct.name} anchored on flank orbit.`));
     top.append(
-      el('strong', '', `T${struct.tier} · ${struct.name}${installedCount > 0 ? ` (x${installedCount})` : ''}`),
+      el('strong', '', `${struct.name}${installedCount > 0 ? ` (${installedCount} built)` : ''}`),
       deployBtn,
     );
     card.append(
@@ -636,7 +636,7 @@ function renderMatrixTab({ panel, vm, sys, callbacks }) {
     batchDirSec.appendChild(el('h4', 'fb-sec-title', 'Work order for every claim'));
     const bar = el('div', 'fb-pill-strip');
     for (const d of SITE_DIRECTIVES) {
-      const b = el('button', 'fb-chip-btn', d.tag);
+      const b = el('button', 'fb-chip-btn', d.short || d.name);
       b.type = 'button';
       b.title = `Set ALL sector sites to ${d.name}: ${d.summary}`;
       b.addEventListener('click', () => {
@@ -716,7 +716,7 @@ function renderDoctrinesTab({ panel, vm, sys, callbacks }) {
       actBtn.type = 'button';
       actBtn.disabled = isDone || !prereqOk;
       actBtn.addEventListener('click', () => runSiteOp(sys.unlockBeltDoctrine(doc.id), `Doctrine researched: ${doc.name}.`));
-      top.append(el('strong', '', `T${doc.tier} · ${doc.name}`), actBtn);
+      top.append(el('strong', '', `${doc.name} · tier ${doc.tier}`), actBtn);
       card.append(top, el('div', 'fb-tool-sub', doc.summary));
       list.appendChild(card);
     }
@@ -758,10 +758,10 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   panel.appendChild(raidSec);
 
   const actSec = el('div', 'fb-section');
-  actSec.appendChild(el('h4', 'fb-sec-title', `Active Charters (${empire.activeCharters?.length || 0} / 3)`));
+  actSec.appendChild(el('h4', 'fb-sec-title', `Charters you hold (${empire.activeCharters?.length || 0} of 3)`));
   const actList = el('div', 'fb-list');
   if (!empire.activeCharters?.length) {
-    actList.appendChild(el('div', 'fb-tool-sub', 'Accept a charter below to earn milestone payouts across your sector network.'));
+    actList.appendChild(el('div', 'fb-tool-sub', 'Take a charter below. Each pays once, when you meet it.'));
   } else {
     for (const c of empire.activeCharters) {
       const tpl = BELT_CHARTER_TEMPLATES.find((t) => t.id === c.id);
@@ -787,7 +787,7 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   for (const sNode of vm.network.sites || []) {
     const rawSite = sys?.getSite?.(sNode.siteId);
     for (const entry of (rawSite?.ledger || []).slice(0, 3)) {
-      if (entry?.text) logEvents.push({ t: Number(entry.t) || 0, tag: sNode.specialization?.tag || 'SITE', text: entry.text, kind: entry.kind || 'info' });
+      if (entry?.text) logEvents.push({ t: Number(entry.t) || 0, tag: rockName(sNode.asteroidId), text: entry.text, kind: entry.kind || 'info' });
     }
   }
   logEvents.sort((a, b) => b.t - a.t);
@@ -819,7 +819,7 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
     btn.type = 'button';
     btn.disabled = done || active || (empire.activeCharters?.length || 0) >= 3;
     btn.addEventListener('click', () => runSiteOp(sys.acceptBeltCharter(tpl.id), `Charter accepted: ${tpl.name}.`));
-    top.append(el('strong', '', `T${tpl.tier} · ${tpl.name}`), btn);
+    top.append(el('strong', '', tpl.name), btn);
     card.append(top, el('div', 'fb-tool-sub', tpl.summary));
     availList.appendChild(card);
   }
