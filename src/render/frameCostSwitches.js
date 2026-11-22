@@ -28,7 +28,10 @@
 // createRibbonTrailBatch in src/render/engineTrailSurfaces.js, minted through
 // _mintNpcRibbonTrail in src/render/vfx.js), replyOnFrame (while animation frames arrive, worker
 // replies are applied at the frame boundary only; the message task just enqueues,
-// src/core/simLaneMain.js).
+// src/core/simLaneMain.js), hudBreadth (the 10 Hz numeric block splits into budgeted
+// frame-task jobs, contact marks solve at 15 Hz, hover picks and the massline preview move
+// onto the hud scheduler, and HUD overlay geometry reads kept elements instead of per-frame
+// selector searches, src/ui/hud.js + src/ui/worldObjectInteraction.js + src/ui/masslineHud.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).
