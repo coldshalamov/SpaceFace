@@ -1712,6 +1712,10 @@ export function createRadar(ctx) {
   canvas.className = 'sf-radar-semantic-canvas';
   canvas.setAttribute('role', 'img');
   const backgroundCanvas = document.createElement('canvas');
+  // HUD-FRAME-BREADTH: the legacy scope's 'N' is a fixed glyph — raster it into a sprite at
+  // configure time so the per-tick paint is a blit, not a text shaping pass.
+  const northSprite = document.createElement('canvas');
+  const northSpriteLogical = { w: 24, h: 18 };
   const g = canvas.getContext('2d');
   const background = backgroundCanvas.getContext('2d');
   if (!g || !background) {
@@ -1766,6 +1770,18 @@ export function createRadar(ctx) {
     g.imageSmoothingEnabled = false;
     background.imageSmoothingEnabled = true;
     drawBackground(background, center, radius, { grid: !orreryFrame });
+    // Raster the 'N' once at this DPR: the sprite's bottom edge aligns with the old baseline.
+    northSprite.width = Math.round(northSpriteLogical.w * dpr);
+    northSprite.height = Math.round(northSpriteLogical.h * dpr);
+    const ng = northSprite.getContext('2d');
+    if (ng) {
+      ng.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ng.fillStyle = 'rgba(232,226,212,0.62)';
+      ng.font = canvasFont(700, 12, 'data');
+      ng.textAlign = 'center';
+      ng.textBaseline = 'bottom';
+      ng.fillText('N', northSpriteLogical.w / 2, northSpriteLogical.h);
+    }
     if (orreryFrame) mountOrreryFrame();
   }
 
@@ -2340,14 +2356,12 @@ export function createRadar(ctx) {
     const sweepAngle = reducedMotion ? -Math.PI / 2 : ((now % 3600) / 3600) * Math.PI * 2;
     if (!showChart && !reducedMotion) drawRadarSweep(g, center, radius, sweepAngle);
 
-    if (!showChart && !frame) {
-      g.save();
-      g.fillStyle = 'rgba(232,226,212,0.62)';
-      g.font = canvasFont(700, 12, 'data');
-      g.textAlign = 'center';
-      g.textBaseline = 'bottom';
-      g.fillText('N', center, center - radius + 14);
-      g.restore();
+    // HUD-FRAME-BREADTH: the static 'N' is rastered once at configure time and blitted back —
+    // one drawImage instead of a full text shape + raster on every scope paint.
+    if (!showChart && !frame && northSprite) {
+      g.drawImage(northSprite, 0, 0, northSprite.width, northSprite.height,
+        center - northSpriteLogical.w / 2, center - radius + 14 - northSpriteLogical.h,
+        northSpriteLogical.w, northSpriteLogical.h);
     }
 
     const player = state.entities && typeof state.entities.get === 'function'
