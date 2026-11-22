@@ -140,6 +140,7 @@ export function machineIsHeavy(def) {
  */
 export function stepContinuousRecipe({
   recipeId, dtMin, powerRatio, store, roomFor, carry, throughputBudget, processMultiplier = 1,
+  speedMultiplier = 1,
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
   const result = { moved: 0, produced: {}, consumed: {}, status: 'idle', limit: null };
@@ -151,7 +152,8 @@ export function stepContinuousRecipe({
   const inputPerBatch = inputs.reduce((s, [, qty]) => s + qty, 0);
 
   // Requested batches this step from the machine's rated input throughput.
-  let batches = (recipe.inputRatePerMin * dtMin * clamp01(powerRatio) * processSpeed(processMultiplier)) / inputPerBatch;
+  let batches = (recipe.inputRatePerMin * dtMin * clamp01(powerRatio) * processSpeed(processMultiplier)
+    * speedBoost(speedMultiplier)) / inputPerBatch;
   if (!(batches > 0)) {
     result.status = powerRatio <= 0 ? 'no-power' : 'idle';
     result.limit = powerRatio <= 0 ? 'power' : null;
@@ -228,6 +230,7 @@ export function stepContinuousRecipe({
  */
 export function stepFabricator({
   machine, recipeId, dtS, powerRatio, store, roomFor, wantsBuild, throughputBudget = Infinity, processMultiplier = 1,
+  speedMultiplier = 1,
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
   const result = { completed: null, started: false, moved: 0, produced: {}, status: 'idle', limit: null, progress: 0 };
@@ -277,7 +280,8 @@ export function stepFabricator({
       loadInputs();
       return result;
     }
-    machine.job.progressS = Math.min(recipe.buildS, machine.job.progressS + dtS * powerRatio * processSpeed(processMultiplier));
+    machine.job.progressS = Math.min(recipe.buildS, machine.job.progressS
+      + dtS * powerRatio * processSpeed(processMultiplier) * speedBoost(speedMultiplier));
     result.progress = Math.min(1, machine.job.progressS / recipe.buildS);
     if (machine.job.progressS + 1e-9 >= recipe.buildS) {
       const [outputId, qty] = Object.entries(recipe.output)[0];
@@ -354,6 +358,24 @@ export function stepFabricator({
 
 function processSpeed(value) {
   return Number.isFinite(value) ? Math.max(1, Math.min(1 + SITE_BALANCE.maxProcessBonus, value)) : 1;
+}
+
+// Ice beside the machine and good neighbours across a line are paid ON TOP of the capped
+// matched-face bonus above. Riding the capped number, "runs twice as fast" really ran 1.6x.
+const SPEED_BOOST_MAX = 4;
+function speedBoost(value) {
+  return Number.isFinite(value) ? Math.max(1, Math.min(SPEED_BOOST_MAX, value)) : 1;
+}
+
+/**
+ * The two halves of a processing machine's speed, split the way the step functions take them:
+ * `processMultiplier` is the matched-face bonus (capped by processSpeed), `speedMultiplier` is
+ * what ice adds. Their product is machineCapability().processMultiplier, the number cards show.
+ */
+export function processSpeedParts(cap) {
+  const cool = cap && cap.coolMultiplier > 1 ? cap.coolMultiplier : 1;
+  const whole = cap && Number.isFinite(cap.processMultiplier) ? cap.processMultiplier : 1;
+  return { processMultiplier: whole / cool, speedMultiplier: cool };
 }
 
 // Infinity explicitly means unbounded; NaN/negative space must fail closed.

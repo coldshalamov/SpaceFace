@@ -137,6 +137,8 @@ export function buildFieldArchitectViewModel({
     selectedSite: selectedProjection ? {
       siteId: selectedProjection.site.id,
       asteroidId: selectedProjection.site.asteroidId,
+      // The rock's one summary, from the belt network read (the flow ledger lives there).
+      report: (siteById.get(selectedProjection.site.id) || {}).report || null,
       specialization: selectedProjection.specialization || classifySiteSpecialization(selectedProjection.site),
       directive: selectedProjection.directive || null,
       synergies: selectedProjection.synergies || null,
@@ -684,7 +686,7 @@ export function createFieldBuildMode(ctx) {
     statPower.appendChild(el('strong', '', `${totals.totalPowerGenMw.toFixed(0)}/${totals.totalPowerDrawMw.toFixed(0)}`));
     statLinks.textContent = 'Links';
     statLinks.appendChild(el('strong', '', String(totals.activeLinkCount)));
-    statDefs.textContent = 'Defense';
+    statDefs.textContent = 'Guard';
     statDefs.appendChild(el('strong', '', String(totals.totalDefenseRating ?? totals.defenseCount)));
   }
 

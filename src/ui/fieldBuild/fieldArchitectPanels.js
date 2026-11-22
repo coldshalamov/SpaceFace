@@ -17,6 +17,8 @@ import {
 } from '../../data/beltEmpireData.js';
 import { rotateCellOffset } from '../../systems/asteroidInteriorPuzzle.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { rockName } from '../asteroid/rockNames.js';
+import { rockReportLines, rockReportSentence } from '../asteroid/rockReport.js';
 
 export const ARCHITECT_TABS = Object.freeze([
   Object.freeze({ id: 'site', label: 'Rock' }),
@@ -167,9 +169,9 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   // Multi-select batch command deck
   if (Array.isArray(vm.selectedAsteroidIds) && vm.selectedAsteroidIds.length > 1) {
     const batchSec = el('div', 'fb-section fb-batch-card');
-    batchSec.appendChild(el('h4', 'fb-sec-title', `Squad Selection (${vm.selectedAsteroidIds.length} Rocks)`));
+    batchSec.appendChild(el('h4', 'fb-sec-title', `${vm.selectedAsteroidIds.length} rocks picked`));
     const btnRow = el('div', 'fb-inline-controls');
-    const rigAll = el('button', 'fb-mini-btn primary', 'Rig All Unclaimed');
+    const rigAll = el('button', 'fb-mini-btn primary', 'Claim all');
     rigAll.type = 'button';
     rigAll.addEventListener('click', () => {
       for (const aid of vm.selectedAsteroidIds) {
@@ -177,7 +179,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
       }
       callbacks.toast(`Claiming ${vm.selectedAsteroidIds.length} rocks.`, 'good');
     });
-    const turAll = el('button', 'fb-mini-btn', '+Turret All');
+    const turAll = el('button', 'fb-mini-btn', 'Turret on each');
     turAll.type = 'button';
     turAll.addEventListener('click', () => {
       for (const aid of vm.selectedAsteroidIds) {
@@ -207,9 +209,11 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     } else {
       for (const s of vm.network.sites) {
         const row = el('div', 'fb-item-row');
-        const netMw = Math.round((s.totalPowerGenMw || 0) - (s.totalPowerDrawMw || 0));
+        // Each claim by its name and what it amounts to: its trade, how well it was dug, what it makes.
+        const what = el('span', 'fb-claim-line');
+        what.append(el('strong', '', rockName(s.asteroidId)), el('span', 'fb-tool-sub', rockReportSentence(s.report)));
         row.append(
-          el('span', '', `${s.specialization?.label || 'Claim'} (${netMw >= 0 ? '+' : ''}${netMw} MW)`),
+          what,
           (() => {
             const b = el('button', 'fb-mini-btn', 'Focus');
             b.type = 'button';
@@ -226,9 +230,11 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   }
 
   const head = el('div', 'fb-card-head');
-  const title = vm.selectedSite ? vm.selectedSite.specialization.label : (vm.selectedAsteroid.name || 'Asteroid');
+  // A claimed rock keeps its name; its trade is the badge beside it.
+  const title = (vm.selectedAsteroid && vm.selectedAsteroid.name)
+    || (vm.selectedSite ? rockName(vm.selectedSite.asteroidId) : 'Asteroid');
   const badge = el('span', `fb-badge ${vm.selectedSite ? 'mint' : 'amber'}`,
-    vm.selectedSite ? vm.selectedSite.specialization.tag : 'Unclaimed');
+    vm.selectedSite ? vm.selectedSite.specialization.label : 'Unclaimed');
   head.append(el('h3', 'fb-card-title', title), badge);
   panel.appendChild(head);
 
@@ -276,22 +282,33 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   }
 
   const site = vm.selectedSite;
+  // What this rock amounts to: the same report the rover board gives on the way out.
+  if (site.report) {
+    const repSec = el('div', 'fb-section fb-rock-report');
+    repSec.appendChild(el('h4', 'fb-sec-title', 'What this rock is now'));
+    for (const line of rockReportLines(site.report, { nameOf: rockName })) {
+      const row = el('div', `fb-kv-row fb-report-row${line.tone ? ` is-${line.tone}` : ''}`);
+      row.append(el('span', '', line.label), el('span', 'fb-kv-val', line.value));
+      repSec.appendChild(row);
+    }
+    panel.appendChild(repSec);
+  }
   const capPct = site.synergies?.summary?.capacitorCapacityMwS > 0
     ? Math.round((site.capacitorMwS / site.synergies.summary.capacitorCapacityMwS) * 100)
     : 0;
   const pwrRow = el('div', 'fb-kv-row');
-  pwrRow.append(el('span', '', 'Power Grid (Gen / Draw)'), el('span', 'fb-kv-val', `${site.totalPowerGenMw.toFixed(0)} / ${site.totalPowerDrawMw.toFixed(0)} MW`));
+  pwrRow.append(el('span', '', 'Power made / used'), el('span', 'fb-kv-val', `${site.totalPowerGenMw.toFixed(0)} / ${site.totalPowerDrawMw.toFixed(0)} MW`));
   const capRow = el('div', 'fb-kv-row');
-  capRow.append(el('span', '', 'Capacitor Reserve'), el('span', 'fb-kv-val', `${Math.round(site.capacitorMwS || 0)} MwS (${capPct}%)`));
+  capRow.append(el('span', '', 'Stored charge'), el('span', 'fb-kv-val', `${capPct}%`));
   const storRow = el('div', 'fb-kv-row');
-  storRow.append(el('span', '', 'Lane Storage'), el('span', 'fb-kv-val', `${site.storedU} / ${site.capacityU} units`));
+  storRow.append(el('span', '', 'In store'), el('span', 'fb-kv-val', `${site.storedU} of ${site.capacityU} units`));
   const defRow = el('div', 'fb-kv-row');
-  defRow.append(el('span', '', 'Orbital & Drones'), el('span', 'fb-kv-val', `${site.defenses.length} orb · ${site.drones?.length || 0}/${site.maxDrones || 6} drn`));
+  defRow.append(el('span', '', 'Guards and drones'), el('span', 'fb-kv-val', `${site.defenses.length} built · ${site.drones?.length || 0} of ${site.maxDrones || 6} drones`));
   panel.append(pwrRow, capRow, storRow, defRow);
 
   // Live Interior Cutaway + Remote Blueprint Stamper
   const intSec = el('div', 'fb-section');
-  intSec.appendChild(el('h4', 'fb-sec-title', 'Subterranean Cutaway & Blueprints'));
+  intSec.appendChild(el('h4', 'fb-sec-title', 'Inside the rock'));
   const cutEl = buildMiniCutawayElement(site, vm, sys, callbacks);
   if (cutEl) intSec.appendChild(cutEl);
 
@@ -350,7 +367,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
 
   // Shift Directives (5 tactical presets)
   const dirTitle = el('div', 'fb-kv-row');
-  dirTitle.append(el('span', '', 'Shift Directive'), el('span', 'fb-kv-val', site.directive?.name || 'Balanced'));
+  dirTitle.append(el('span', '', 'Work order'), el('span', 'fb-kv-val', site.directive?.name || 'Balanced'));
   intSec.appendChild(dirTitle);
   const dirBar = el('div', 'fb-pill-strip');
   for (const d of SITE_DIRECTIVES) {
@@ -366,7 +383,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   // Anomalies list ("Tap Forever vs Mine Now")
   if (site.anomalies?.length) {
     const anomSec = el('div', 'fb-section');
-    anomSec.appendChild(el('h4', 'fb-sec-title', 'Deep Geological Anomalies'));
+    anomSec.appendChild(el('h4', 'fb-sec-title', 'Odd finds in the rock'));
     const aList = el('div', 'fb-list');
     for (const a of site.anomalies) {
       const row = el('div', 'fb-item-row');
@@ -404,10 +421,10 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     storeEntries.push([gid, Math.floor(merged[gid]), Math.trunc(Number(site.reserves?.[gid]) || 0)]);
   }
   const stockSec = el('div', 'fb-section');
-  stockSec.appendChild(el('h4', 'fb-sec-title', 'Stockpile & Reserve Floor'));
+  stockSec.appendChild(el('h4', 'fb-sec-title', 'Stock, and how much to keep back'));
   const stockList = el('div', 'fb-list');
   if (!storeEntries.length) {
-    stockList.appendChild(el('div', 'fb-tool-sub', 'Extracting initial stock...'));
+    stockList.appendChild(el('div', 'fb-tool-sub', 'Nothing in store yet.'));
   } else {
     for (const [goodId, qty, reserve] of storeEntries) {
       const row = el('div', 'fb-item-row');
@@ -429,12 +446,12 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
 
   // Inter-Asteroid Links
   const linkSec = el('div', 'fb-section');
-  linkSec.appendChild(el('h4', 'fb-sec-title', 'Inter-Asteroid Links'));
+  linkSec.appendChild(el('h4', 'fb-sec-title', 'Lines to other rocks'));
   const linkList = el('div', 'fb-list');
   for (const l of site.links) {
     const peer = vm.peerSites.find((p) => p.siteId === l.targetSiteId);
     const row = el('div', 'fb-item-row');
-    const desc = `${l.kind === 'power' ? 'Power' : 'Cargo'} → ${peer?.specialization?.label || l.targetSiteId}`;
+    const desc = `${l.kind === 'power' ? 'Power' : 'Cargo'} → ${peer ? rockName(peer.asteroidId) : 'a rock out of this sector'}`;
     const rm = el('button', 'fb-mini-btn danger', '×');
     rm.type = 'button';
     rm.addEventListener('click', () => runSiteOp(sys.removeSiteLink(site.siteId, l.targetSiteId, l.kind), 'Link removed.'));
@@ -447,15 +464,15 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     for (const peer of vm.peerSites) {
       const opt = document.createElement('option');
       opt.value = peer.siteId;
-      opt.textContent = `${peer.specialization?.label || 'Site'} (${peer.siteId})`;
+      opt.textContent = `${rockName(peer.asteroidId)} · ${peer.specialization?.label || 'Claim'}`;
       peerSel.appendChild(opt);
     }
     const addMatBtn = el('button', 'fb-mini-btn', '+Cargo');
     addMatBtn.type = 'button';
-    addMatBtn.addEventListener('click', () => runSiteOp(sys.setSiteLink(site.siteId, peerSel.value, 'material', vm.selectedLinkGoodId || null), 'Material transfer line linked.'));
-    const addPwrBtn = el('button', 'fb-mini-btn', '+MW');
+    addMatBtn.addEventListener('click', () => runSiteOp(sys.setSiteLink(site.siteId, peerSel.value, 'material', vm.selectedLinkGoodId || null), 'Cargo line run.'));
+    const addPwrBtn = el('button', 'fb-mini-btn', '+Power');
     addPwrBtn.type = 'button';
-    addPwrBtn.addEventListener('click', () => runSiteOp(sys.setSiteLink(site.siteId, peerSel.value, 'power', null), 'Power tether linked.'));
+    addPwrBtn.addEventListener('click', () => runSiteOp(sys.setSiteLink(site.siteId, peerSel.value, 'power', null), 'Power line run.'));
     quickLinkRow.append(peerSel, addMatBtn, addPwrBtn);
     linkList.appendChild(quickLinkRow);
   }
@@ -464,7 +481,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
 
   // Machine Recipes & Trade Route + Enter Asteroid Works
   const opsSec = el('div', 'fb-section');
-  opsSec.appendChild(el('h4', 'fb-sec-title', 'Recipes & Trade Route'));
+  opsSec.appendChild(el('h4', 'fb-sec-title', 'What it makes and where it sells'));
   for (const m of site.machines) {
     const def = SITE_MACHINE_BY_ID.get(m.defId);
     if (!def?.modes?.length) continue;
@@ -484,7 +501,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   }
   if (site.courier?.stations?.length) {
     const routeRow = el('div', 'fb-kv-row');
-    routeRow.append(el('span', '', 'Station Route'));
+    routeRow.append(el('span', '', 'Sells at'));
     const stSel = el('select', 'fb-select');
     const autoOpt = document.createElement('option');
     autoOpt.value = '';
@@ -502,10 +519,10 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     opsSec.appendChild(routeRow);
   }
   const navRow = el('div', 'fb-inline-controls');
-  const orbShortcut = el('button', 'fb-action-btn', 'Orbital & Drones →');
+  const orbShortcut = el('button', 'fb-action-btn', 'Guards and drones');
   orbShortcut.type = 'button';
   orbShortcut.addEventListener('click', () => setTab('orbital'));
-  const openBtn = el('button', 'fb-action-btn primary', '[8] Asteroid Works');
+  const openBtn = el('button', 'fb-action-btn primary', 'Go inside (8)');
   openBtn.type = 'button';
   openBtn.addEventListener('click', () => enterSelectedWorks());
   navRow.append(orbShortcut, openBtn);
@@ -725,12 +742,15 @@ function renderChartersTab({ panel, vm, sys, callbacks }) {
   }
 
   const raidSec = el('div', 'fb-section');
-  raidSec.appendChild(el('h4', 'fb-sec-title', 'Bastion Sovereignty & Raids'));
+  raidSec.appendChild(el('h4', 'fb-sec-title', 'Raids'));
   const rating = vm.network.totals?.totalDefenseRating || 0;
   const pressure = empire.raidStatus?.pressure || 0;
   const rRow = el('div', 'fb-kv-row');
-  rRow.append(el('span', '', 'Defense Rating vs Raid Pressure'), el('span', 'fb-kv-val', `${rating} / ${pressure}`));
+  rRow.append(el('span', '', 'Guard, of what raiders test'), el('span', 'fb-kv-val', `${rating} of ${pressure}`));
   raidSec.appendChild(rRow);
+  raidSec.appendChild(el('div', 'fb-tool-sub', pressure > 0
+    ? 'Every three minutes raiders test this belt. If the guard falls short they take a quarter of the stock at the worst-guarded rock. Turrets and patrol drones raise the guard.'
+    : 'One claim draws no raiders. A second one does.'));
   if (empire.raidStatus?.lastMessage) {
     raidSec.appendChild(el('div', 'fb-tool-sub', empire.raidStatus.lastMessage));
   }

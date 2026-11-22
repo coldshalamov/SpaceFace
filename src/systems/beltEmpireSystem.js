@@ -3,7 +3,7 @@
 // Pure, deterministic simulation helper owned by src/systems/asteroidSites.js.
 // Zero wall-clock timers, zero Math.random(), zero Three.js/DOM, and never writes credits directly.
 import { hash32 } from '../core/rng.js';
-import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../data/sites.js';
+import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, RAID_RULES } from '../data/sites.js';
 import { COMMODITIES } from '../data/commodities.js';
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 import {
@@ -675,16 +675,76 @@ export function stepBeltEmpireSector(sitesSys, state, dtS) {
     const danger = sectorObj ? dangerIndex(sectorObj) : 0.2;
     empire.raidStatus.pressure = matrix.siteCount >= 2 ? Math.round(25 + matrix.siteCount * 15 + danger * 10) : 0;
     if (matrix.siteCount >= 2) {
+      const guard = `Guard ${matrix.totalDefenseRating} of ${empire.raidStatus.pressure} needed.`;
+      let hit = null;
       if (matrix.totalDefenseRating >= empire.raidStatus.pressure) {
         empire.raidStatus.mitigated = (empire.raidStatus.mitigated || 0) + 1;
-        empire.raidStatus.lastMessage = `Bastion defenses repelled syndicate probe (${matrix.totalDefenseRating} >= ${empire.raidStatus.pressure}).`;
+        empire.raidStatus.lastMessage = `Raiders looked this belt over and left. ${guard}`;
       } else {
         empire.raidStatus.losses = (empire.raidStatus.losses || 0) + 1;
-        empire.raidStatus.lastMessage = `Under-defended belt claim (${matrix.totalDefenseRating} < ${empire.raidStatus.pressure}): add turrets, flak, or patrol drones.`;
+        hit = raidWorstGuardedRock(sitesSys, sectorId, matrix);
+        empire.raidStatus.lastMessage = hit
+          ? `Raiders took ${hit.units} units from your worst-guarded rock. ${guard}`
+          : `Raiders came through and found nothing worth taking. ${guard}`;
       }
       sitesSys.bus?.emit?.('site:raidChecked', { ...empire.raidStatus });
+      if (hit) sitesSys.bus?.emit?.('site:raided', { ...hit, sectorId });
     }
   }
+}
+
+/**
+ * A raid the belt's guard rating failed to turn away. Raiders go for the rock that is guarded
+ * worst (ties: the one holding most), and carry off RAID_RULES.lootShare of each good waiting
+ * there, from the dock stage first and then the lane stores. Whole units only. Machines, cables
+ * and the rock itself are never touched: a raid costs stock, and a turret or a patrol drone on
+ * that rock is how a player answers it. Deterministic: no roll, no clock.
+ */
+export function raidWorstGuardedRock(sitesSys, sectorId, matrix) {
+  const byId = sitesSys?.state?.sites?.byId;
+  if (!byId || !matrix || !Array.isArray(matrix.sites)) return null;
+  let target = null;
+  for (const row of matrix.sites) {
+    const site = byId[row.siteId];
+    if (!site || !site.anchored) continue;
+    const stores = raidableStores(sitesSys, site);
+    const stock = stores.reduce((s, store) => s + storeTotal(store), 0);
+    if (stock < RAID_RULES.minStockU) continue;
+    const guard = Number(row.defenseRating) || 0;
+    if (!target || guard < target.guard || (guard === target.guard && stock > target.stock)
+      || (guard === target.guard && stock === target.stock && site.id < target.site.id)) {
+      target = { site, stores, stock, guard };
+    }
+  }
+  if (!target) return null;
+  const taken = {};
+  let units = 0;
+  for (const store of target.stores) {
+    for (const goodId of Object.keys(store).sort()) {
+      const loot = Math.floor((Number(store[goodId]) || 0) * RAID_RULES.lootShare);
+      if (loot <= 0) continue;
+      store[goodId] = (Number(store[goodId]) || 0) - loot;
+      if (store[goodId] <= 1e-9) delete store[goodId];
+      taken[goodId] = (taken[goodId] || 0) + loot;
+      units += loot;
+    }
+  }
+  if (!units) return null;
+  if (!target.site.stats) target.site.stats = {};
+  target.site.stats.raidedU = (Number(target.site.stats.raidedU) || 0) + units;
+  sitesSys._ledger?.(target.site, 'bad',
+    `Raiders took ${units} units. A turret or a patrol drone on this rock turns them away.`);
+  return { siteId: target.site.id, asteroidId: target.site.asteroidId ?? null, taken, units, guard: target.guard };
+}
+
+function raidableStores(sitesSys, site) {
+  const out = [];
+  if (site.exportBuffer && typeof site.exportBuffer === 'object') out.push(site.exportBuffer);
+  if (typeof sitesSys._runtime === 'function') sitesSys._runtime(site);
+  for (const lane of Array.isArray(site.laneStores) ? site.laneStores : []) {
+    if (lane && lane.store && typeof lane.store === 'object') out.push(lane.store);
+  }
+  return out;
 }
 
 /**

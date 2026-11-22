@@ -22,6 +22,7 @@ import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
 import { rockName } from './rockNames.js';
+import { rockReportSentence } from './rockReport.js';
 import { rockAssayLine } from './rockAssay.js';
 import { ROCK_GEOLOGY, resolveBoreFamily } from '../../systems/drillFieldModel.js';
 import { worksObjectiveLine } from '../../data/worksContractWords.js';
@@ -3383,6 +3384,16 @@ export const asteroidScreen = {
       endRequested = true;
       const yields = result ? { ...result.yieldLog } : (d ? { ...d.yieldLog } : {});
       const total = Object.values(yields).reduce((a, b) => a + b, 0);
+      // A claimed rock says what it amounts to as the rover lifts out: its trade, how well it
+      // was dug and what it makes. The same summary heads its card in the belt view.
+      let parting = null;
+      try {
+        const site = currentSiteId && siteSys && typeof siteSys.getSite === 'function' ? siteSys.getSite(currentSiteId) : null;
+        if (site && site.anchored && typeof siteSys.sectorNetworkProjection === 'function') {
+          const node = (siteSys.sectorNetworkProjection(site.sectorId).sites || []).find((s) => s.siteId === site.id);
+          if (node && node.report) parting = `${rockName(site.asteroidId)}. ${rockReportSentence(node.report)}`;
+        }
+      } catch (_) { parting = null; }
       const fade = document.getElementById('sf-dock-overlay');
       if (fade) {
         fade.hidden = false;
@@ -3395,6 +3406,7 @@ export const asteroidScreen = {
       setTimeout(() => {
         if (ctx.screenManager) ctx.screenManager.popScreen();
         if (total > 0) showSummary(yields);
+        if (parting && ctx.bus) ctx.bus.emit('toast', { text: parting, kind: 'good', ttl: 7 });
         setTimeout(() => {
           if (fade) {
             fade.classList.remove('active');

@@ -687,3 +687,14 @@ body.sf-field-build #alerts { opacity: 0 !important; pointer-events: none !impor
 .fb-hint-banner[hidden] {
   display: none !important;
 }
+
+/* The rock's one summary: a short label, then a sentence that is allowed to wrap. */
+.fb-report-row { align-items: baseline; }
+.fb-report-row > span:first-child { flex: 0 0 82px; color: #9aa3ad; }
+.fb-report-row .fb-kv-val { flex: 1 1 auto; min-width: 0; text-align: left; white-space: normal; line-height: 1.35; font-family: inherit; color: #d8d3c8; }
+.fb-report-row.is-good .fb-kv-val { color: #6ceab8; }
+.fb-report-row.is-warn .fb-kv-val { color: #f0c36a; }
+.fb-report-row.is-bad .fb-kv-val { color: #ff8c8c; }
+.fb-report-row.is-muted .fb-kv-val { color: #9aa3ad; }
+.fb-claim-line { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fb-claim-line strong { font-size: 12px; color: #efe9dc; }

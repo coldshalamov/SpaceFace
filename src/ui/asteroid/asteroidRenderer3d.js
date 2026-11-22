@@ -4439,8 +4439,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // Packed fill is cast stone: paler and flatter than the native rock it sits in, so a block the
     // player set reads as made, not as a cave-in.
     else if (tile && tile.fill) {
+      // The tint multiplies a warm rust albedo, so "pale" has to pull red down and blue up
+      // hard before the face stops reading as native rock (a near-white tint changed nothing).
       const grey = (out.r + out.g + out.b) / 3;
-      out.r = grey * 0.5 + 0.56; out.g = grey * 0.5 + 0.55; out.b = grey * 0.5 + 0.52;
+      out.r = grey * 0.70; out.g = grey * 0.90; out.b = grey * 1.24;
     }
     else if (tile && tile.rubble) { out.r *= 0.7; out.g *= 0.66; out.b *= 0.62; }
     else if (tile && tile.fault) { out.r *= 0.55; out.g *= 0.5; out.b *= 0.62; }

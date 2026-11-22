@@ -5,6 +5,7 @@
 import { COLS, ROWS, generateDrillField, resolveBoreFamily, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, applyFillMarks, FILL_TILE, tileIndex, entryShaftIndex } from './drillFieldModel.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { PACKED_FILL, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization } from '../data/sites.js';
+import { siteSeating, neighbourLift, buildRockReport } from './siteReport.js';
 import { contactProfile, machineCapability, clamp01, round3 } from './siteProduction.js';
 import { buildComponents, buildPowerComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent, stagedCourierLoad } from './siteLogistics.js';
 import { paintStructuralFalls } from './siteStructuralModel.js';
@@ -156,6 +157,63 @@ function constructionAccess(field, machines, start, excluded = -1) {
 }
 
 export const asteroidSiteReadMethods = {
+  /** How well this rock was dug: the share of useful rock its machines touch. Pure read. */
+  siteSeating(site) {
+    if (!site) return siteSeating(null);
+    return siteSeating(site, this._runtime(site).geo);
+  },
+
+  /** What this rock's linked neighbours of other trades add to it. Pure read. */
+  neighbourLift(site) {
+    const byId = this.state && this.state.sites && this.state.sites.byId;
+    if (!site || !byId) return neighbourLift(null);
+    // The common case, a rock with no line in or out, costs one pass over the claims.
+    return neighbourLift(site, byId, (other) => this._seatingShareOf(other));
+  },
+
+  /**
+   * A NEIGHBOUR's seating, read without touching its record. A read view clones only the rock it
+   * was asked about, and `_runtime` re-homes lane stock on the record it is given, so a neighbour
+   * is measured straight off its rock here. (The sim's owner overrides this with its own cached
+   * runtime, which it is allowed to keep.)
+   */
+  _seatingShareOf(other) {
+    const rt = this._rt && this._rt.get(other.id);
+    if (rt && rt.field && !rt.fieldDirty && !rt.geoDirty) return siteSeating(other, rt.geo).share;
+    const field = this._rockField(other);
+    const geo = {};
+    for (const m of Array.isArray(other.machines) ? other.machines : []) {
+      geo[m.id] = contactProfile(field, m.col, m.row, COLS, ROWS);
+    }
+    return siteSeating(other, geo).share;
+  },
+
+  /** The rock as this claim knows it: generated from the seed, then every saved list applied. */
+  _rockField(site) {
+    const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
+    const field = generateDrillField((seed >>> 0) || 1, resolveBoreFamily(site));
+    applyClearedTiles(field, site.cleared);
+    // A fallen slab is rock again, painted after the cleared list reopens the cell.
+    paintStructuralFalls(field, site.structure);
+    // The sealed mouth is a cap even when an older cleared list still names it.
+    applySealedDeadDropCap(site, field);
+    // Vented seams and seismic faults live on the asteroid record, outside site.cleared.
+    // Paint them so contact reads (gas taps, fracture scars) stay truthful off-session.
+    // A resident rock's data is the freshest copy; an off-sector claim reads its own
+    // mirrors (kept by copyDrillSessionAccounting and re-stamped on rematerialize).
+    const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
+    const dd = ent && ent.data;
+    const flagList = (key) => (dd && Array.isArray(dd[key]) ? dd[key] : site[key]);
+    applyFlaggedTiles(field, flagList('drillVented'), (t) => { if (t.type === 'empty') t.vented = true; });
+    applyFlaggedTiles(field, flagList('drillScars'), (t) => { if (t.type === 'empty') t.scar = true; });
+    // Live order (drill.js begin): rubble first, faults last, so a seismic shot that softened
+    // standing fill keeps the mark on the rebuilt field.
+    applyRubbleTiles(field, flagList('drillRubble'));
+    applyFillMarks(field, flagList('drillFill'));
+    applyFlaggedTiles(field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
+    return field;
+  },
+
   siteForAsteroid(asteroidId) {
     if (asteroidId == null) return null;
     const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(asteroidId) : null;
@@ -189,27 +247,7 @@ export const asteroidSiteReadMethods = {
     }
     if (rt.field && sealedDeadDropCapMissing(rt.field, site)) rt.fieldDirty = true;
     if (rt.fieldDirty || !rt.field) {
-      const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
-      rt.field = generateDrillField((seed >>> 0) || 1, resolveBoreFamily(site));
-      applyClearedTiles(rt.field, site.cleared);
-      // A fallen slab is rock again, painted after the cleared list reopens the cell.
-      paintStructuralFalls(rt.field, site.structure);
-      // The sealed mouth is a cap even when an older cleared list still names it.
-      applySealedDeadDropCap(site, rt.field);
-      // Vented seams and seismic faults live on the asteroid record, outside site.cleared —
-      // paint them so contact reads (gas taps, fracture scars) stay truthful off-session.
-      // A resident rock's data is the freshest copy; an off-sector claim reads its own
-      // mirrors (kept by copyDrillSessionAccounting and re-stamped on rematerialize).
-      const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
-      const dd = ent && ent.data;
-      const flagList = (key) => (dd && Array.isArray(dd[key]) ? dd[key] : site[key]);
-      applyFlaggedTiles(rt.field, flagList('drillVented'), (t) => { if (t.type === 'empty') t.vented = true; });
-      applyFlaggedTiles(rt.field, flagList('drillScars'), (t) => { if (t.type === 'empty') t.scar = true; });
-      // Live order (drill.js begin): rubble first, faults last — a seismic shot that softened
-      // standing fill keeps the mark on the rebuilt field.
-      applyRubbleTiles(rt.field, flagList('drillRubble'));
-      applyFillMarks(rt.field, flagList('drillFill'));
-      applyFlaggedTiles(rt.field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
+      rt.field = this._rockField(site);
       rt.fieldDirty = false;
       rt.geoDirty = true;
       // Power runs through crystal and copper left in the rock, so a changed field can join or
@@ -772,6 +810,8 @@ export const asteroidSiteReadMethods = {
       exportBuffer: site.exportBuffer,
       exportOff: site.exportOff,
       field: rt.field,
+      seating: siteSeating(site, rt.geo),
+      neighbours: this.neighbourLift(site),
     };
   },
 
@@ -832,6 +872,8 @@ export const asteroidSiteReadMethods = {
         exportRatePerMin: proj.exportRatePerMin,
         signature: proj.signature,
         thermal: proj.thermal,
+        seating: proj.seating,
+        neighbours: proj.neighbours,
       });
     }
 
@@ -856,6 +898,18 @@ export const asteroidSiteReadMethods = {
     const empireModifiers = getEmpireModifiers(empire);
     const weather = getActiveWeather(empire, this.state);
     const supplyMatrix = computeSectorSupplyMatrix(this, activeSectorId);
+    // The one summary of each rock, built from the flow ledger above (never a second count).
+    const matrixRowBySite = new Map((supplyMatrix.sites || []).map((row) => [row.siteId, row]));
+    for (const node of nodes) {
+      node.report = buildRockReport({
+        specialization: node.specialization,
+        seating: node.seating,
+        lift: node.neighbours,
+        matrixRow: matrixRowBySite.get(node.siteId) || null,
+        machines: node.machines,
+        defenses: node.defenses,
+      });
+    }
 
     return {
       sectorId: activeSectorId,

@@ -44,8 +44,9 @@ import {
 } from '../data/sites.js';
 import {
   contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
-  RING_OFFSETS,
+  RING_OFFSETS, processSpeedParts,
 } from './siteProduction.js';
+import { siteSeating } from './siteReport.js';
 import {
   stepSiteStructure, normalizeSiteStructure, paintStructuralFalls, paintStructuralFracture,
 } from './siteStructuralModel.js';
@@ -2231,7 +2232,7 @@ export const asteroidSites = {
     fromSite.links.push(link);
     fromSite.anchored = true;
     toSite.anchored = true;
-    this._ledger(fromSite, 'good', `${normKind === 'power' ? 'Power tether' : 'Material line'} linked to ${toSite.id}.`);
+    this._ledger(fromSite, 'good', `${normKind === 'power' ? 'Power line' : 'Cargo line'} run to a neighbouring rock.`);
     this.bus.emit('site:linkCreated', { fromSiteId: fromSite.id, toSiteId: toSite.id, kind: normKind, goodId: normGood });
     return { ok: true, link: { ...link } };
   },
@@ -2248,7 +2249,7 @@ export const asteroidSites = {
     });
     const removed = before - fromSite.links.length;
     if (removed > 0) {
-      this._ledger(fromSite, 'info', `${kind || 'Supply'} link to ${toSiteId} disconnected.`);
+      this._ledger(fromSite, 'info', `${kind === 'power' ? 'Power line' : (kind ? 'Cargo line' : 'Line')} to a neighbouring rock cut.`);
       this.bus.emit('site:linkRemoved', { fromSiteId: fromSite.id, toSiteId, kind });
     }
     return { ok: removed > 0, removed };
@@ -2406,7 +2407,8 @@ export const asteroidSites = {
     this._runtime(site);
     ent.data.siteSpecialization = classifySiteSpecialization(site).id;
     this._ensureBeacon(site);
-    this._ledger(site, 'good', `Remote field rig commissioned (${template}).`);
+    this._ledger(site, 'good', template === 'refinery'
+      ? 'Claimed from the belt view, with a smelter running.' : 'Claimed from the belt view and mining.');
     this.bus.emit('site:commissioned', { siteId: site.id, asteroidId, template });
     return { ok: true, siteId: site.id, asteroidId };
   },
@@ -3204,6 +3206,9 @@ export const asteroidSites = {
       weather,
     });
     rt.synergies = synergies;
+    // Good neighbours: every rock of another trade on a line with this one lifts what its
+    // machines make, by more the better that neighbour was dug (data/sites.js NEIGHBOUR_RULES).
+    const neighbourMult = this.neighbourLift(site).mult;
 
     // Grant once-only lump loot if a subterranean anomaly cell was excavated/breached
     if (!site.breachedAnomalies) site.breachedAnomalies = {};
@@ -3292,7 +3297,7 @@ export const asteroidSites = {
       const synMod = synergies.machineModifiers[m.id];
       if (def.id === 'sm_extractor' || def.id === 'sm_gas_tap') {
         const cap = machineCapability(def, rt.geo[m.id], m.mode);
-        const yieldMult = synMod?.yieldMult ?? 1;
+        const yieldMult = (synMod?.yieldMult ?? 1) * neighbourMult;
         if (def.usesGeology && !cap.geologyLive && cap.powerGen <= 0) {
           status.state = 'no-geology';
         } else if (cap.powerDraw > 0 && powerRatio <= 0) {
@@ -3332,9 +3337,11 @@ export const asteroidSites = {
       } else if (def.id === 'sm_refinery') {
         if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
         else {
+          const speed = processSpeedParts(machineCapability(def, rt.geo[m.id], m.mode));
           const res = stepContinuousRecipe({
             recipeId: m.mode,
-            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier * (synMod?.processMult ?? 1),
+            processMultiplier: speed.processMultiplier * (synMod?.processMult ?? 1),
+            speedMultiplier: speed.speedMultiplier * neighbourMult,
             dtMin,
             powerRatio,
             store,
@@ -3367,9 +3374,11 @@ export const asteroidSites = {
           const wantsBuild = buildingPods
             ? site.fleet.podsReady + reservedPods < Math.min(site.fleet.podTarget, SITE_BALANCE.maxPodTarget)
             : true;
+          const speed = processSpeedParts(machineCapability(def, rt.geo[m.id], m.mode));
           const res = stepFabricator({
             machine: m,
-            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier * (synMod?.processMult ?? 1),
+            processMultiplier: speed.processMultiplier * (synMod?.processMult ?? 1),
+            speedMultiplier: speed.speedMultiplier * neighbourMult,
             recipeId: m.mode,
             dtS,
             powerRatio,
@@ -3442,9 +3451,11 @@ export const asteroidSites = {
           const entRack = rockEnt && rockEnt.data ? Number(rockEnt.data.chargeStock) : NaN;
           const rack = Math.max(0, Math.floor(Number.isFinite(entRack) ? entRack : (Number(site.chargeStock) || 0)));
           const wantsCharge = rack < SITE_BALANCE.chargeRackMax;
+          const speed = processSpeedParts(machineCapability(def, rt.geo[m.id], m.mode));
           const res = stepFabricator({
             machine: m,
-            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            processMultiplier: speed.processMultiplier,
+            speedMultiplier: speed.speedMultiplier * neighbourMult,
             recipeId: m.mode,
             dtS,
             powerRatio,
@@ -4161,4 +4172,12 @@ export const asteroidSites = {
   projection: asteroidSiteReadMethods.projection,
 
   sectorNetworkProjection: asteroidSiteReadMethods.sectorNetworkProjection,
+
+  siteSeating: asteroidSiteReadMethods.siteSeating,
+  neighbourLift: asteroidSiteReadMethods.neighbourLift,
+  _rockField: asteroidSiteReadMethods._rockField,
+  // The owner keeps a dirty-tracked runtime for every claim, so a neighbour costs a cache read.
+  _seatingShareOf(other) {
+    return siteSeating(other, this._runtime(other).geo).share;
+  },
 };

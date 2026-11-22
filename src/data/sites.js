@@ -38,6 +38,32 @@ export const CONTACT_RULES = Object.freeze({
   braceBasaltContacts: 3,
 });
 
+// Good neighbours (the outside half of the board's puzzle). A claimed rock joined by a cargo or
+// power line to a rock of ANOTHER trade runs faster: `liftPerTrade` for a perfectly dug neighbour,
+// scaled down by how much of its rock that neighbour's machines really touch, one count per trade,
+// `maxTrades` trades at most. So how a rock was dug matters to every rock around it, and five
+// identical rocks in a row earn nothing from each other.
+export const NEIGHBOUR_RULES = Object.freeze({
+  liftPerTrade: 0.1,
+  maxTrades: 3,
+  plainShare: 0.5,            // a neighbour with no machine that reads rock (a fort, a relay)
+  // Contacts at which one machine counts as fully seated.
+  fullSeat: Object.freeze({ extractor: 6, gasTap: 2 }),
+  grades: Object.freeze([
+    Object.freeze({ id: 'A', min: 0.8 }),
+    Object.freeze({ id: 'B', min: 0.6 }),
+    Object.freeze({ id: 'C', min: 0.35 }),
+    Object.freeze({ id: 'D', min: 0 }),
+  ]),
+});
+
+// Belt raids. Every `beltEmpireSystem` raid check that the belt's guard rating fails to meet
+// takes a share of the stock waiting at the worst-guarded rock. Nothing is ever broken.
+export const RAID_RULES = Object.freeze({
+  lootShare: 0.25,            // of each good waiting at the rock that is hit
+  minStockU: 12,              // a rock holding less than this is not worth the trip
+});
+
 // Packed fill (design/overhaul 05_ADVENTURE 3.3 "Backfill"). One cast block sets one dug cell
 // solid again: it counts as matrix for every machine beside it, so a contact wasted by careless
 // digging can be bought back. It is the only way a hollow cell in a claim ever closes on purpose.

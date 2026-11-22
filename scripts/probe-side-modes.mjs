@@ -314,7 +314,13 @@ const JOB_FILL = { shots: 'fill', sectorId: 'sector_ceres_belt', stationId: 'sta
     facts.fillBuy = await page.evaluate(async () => {
       const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
       if (!laneCommandSink()) return 'no-lane';
-      return laneRpc('economyTrade', { commodityId: 'cmdty_regocrete', side: 'buy', qty: 4, sourceStationId: 'station_beltout' });
+      const buy = (commodityId, qty) => laneRpc('economyTrade', { commodityId, side: 'buy', qty, sourceStationId: 'station_beltout' });
+      // Blocks to pack with, and the price of a second claim from the belt view.
+      const blocks = await buy('cmdty_regocrete', 10);
+      const unit = await buy('cmdty_control_unit', 1).catch((e) => String(e));
+      const iron = await buy('cmdty_ore_iron', 8).catch((e) => String(e));
+      const rock = await buy('cmdty_silicate', 8).catch((e) => String(e));
+      return { ...blocks, unit, iron, rock };
     }).catch((e) => String(e));
   },
   work: fillWork };
@@ -423,6 +429,86 @@ async function fillWork(page, shot) {
   f.packedAfterReturn = await tile(MID, 3);
   f.siteAfterReturn = await site();
   await shot('05i-back-in-the-rock');
+
+  // Out again, and the belt: what the rock amounts to, a second claim, a line between the two.
+  const b = facts.belt = {};
+  const toasts = () => page.evaluate(() => [...document.querySelectorAll('[class*="toast"]')]
+    .map((n) => (n.textContent || '').trim()).filter((t) => t && t.length < 240).slice(0, 5));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !window.SF.state.drill, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1400);
+  b.parting = await toasts();
+  await shot('05j-parting-line');
+  await page.waitForTimeout(1500);
+  await page.keyboard.press('Shift+KeyB');
+  await page.waitForTimeout(3000);
+  const rocks = () => page.evaluate(async () => {
+    const st = window.SF.state;
+    const { readFrameOrigin } = await import('/src/render/frameCoordinates.js');
+    const cam = st.render && st.render.camera;
+    if (!cam) return null;
+    const origin = readFrameOrigin(st, { x: 0, z: 0 });
+    const mine = new Set(Object.values(st.sites?.byId || {}).filter((s) => s && s.anchored).map((s) => s.asteroidId));
+    const out = { claimed: [], free: [] };
+    for (const e of st.entityList) {
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      const v = new window.SF.THREE.Vector3(e.pos.x - origin.x, 0, e.pos.z - origin.z).project(cam);
+      const x = (v.x * 0.5 + 0.5) * window.innerWidth, y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      if (x < 240 || x > 1120 || y < 140 || y > 720) continue;
+      (mine.has(e.id) ? out.claimed : out.free).push({ id: e.id, x, y });
+    }
+    const c = out.claimed[0];
+    if (c) out.free.sort((p, q) => Math.hypot(p.x - c.x, p.y - c.y) - Math.hypot(q.x - c.x, q.y - c.y));
+    return out;
+  });
+  const cardText = () => page.evaluate(() => [...document.querySelectorAll('.fb-section, .fb-card-head')]
+    .map((n) => (n.textContent || '').split(/[ \n\t]+/).join(' ').trim()).filter(Boolean).join(' | ').slice(0, 1400));
+  const claims = () => page.evaluate(() => Object.values(window.SF.state.sites?.byId || {}).filter((s) => s && s.anchored)
+    .map((s) => ({ id: s.id, rock: s.asteroidId, machines: s.machines.length, links: (s.links || []).map((l) => `${l.kind}>${l.targetSiteId}`) })));
+  const tab = (word) => page.evaluate((w) => {
+    const hit = [...document.querySelectorAll('button')].find((n) => (n.textContent || '').trim().toLowerCase() === w);
+    if (hit) hit.click();
+    return !!hit;
+  }, word);
+  let seen = await rocks();
+  b.rocksSeen = seen ? { claimed: seen.claimed.length, free: seen.free.length } : null;
+  const first = seen && seen.claimed[0];
+  if (first) { await page.mouse.click(first.x, first.y); await page.waitForTimeout(900); }
+  b.claimedCard = await cardText();
+  await shot('05k-belt-claimed-rock');
+  const second = seen && seen.free[0];
+  if (second) {
+    await page.keyboard.press('Digit1');
+    await page.waitForTimeout(400);
+    await page.mouse.click(second.x, second.y);
+    await page.waitForTimeout(1500);
+  }
+  b.afterSecondClaim = await claims();
+  b.secondToasts = await toasts();
+  await shot('05l-second-claim');
+  // A cargo line from the first rock to the second.
+  if (first && second) {
+    await page.keyboard.press('Digit2');
+    await page.waitForTimeout(400);
+    await page.mouse.click(first.x, first.y);
+    await page.waitForTimeout(700);
+    await page.mouse.click(second.x, second.y);
+    await page.waitForTimeout(1500);
+  }
+  b.afterLink = await claims();
+  b.linkToasts = await toasts();
+  await page.keyboard.press('Digit0');
+  await page.waitForTimeout(300);
+  if (first) { await page.mouse.click(first.x, first.y); await page.waitForTimeout(1200); }
+  b.linkedCard = await cardText();
+  await shot('05m-linked-rock-card');
+  await page.mouse.click(700, 760).catch(() => {});
+  b.charterTab = await tab('charter');
+  await page.waitForTimeout(800);
+  b.raidCard = await cardText();
+  await shot('05n-raids');
+  await page.evaluate(() => window.SF.bus.emit('ui:closeFieldBuild', {}));
+  await page.waitForTimeout(600);
 }
 
 async function runJob(page, plan = JOB_FIRST_CUT) {
@@ -454,7 +540,7 @@ async function runJob(page, plan = JOB_FIRST_CUT) {
       const e = st.entityList.find((x) => x && x.alive !== false && x.type === 'station'
         && (x.data?.stationId === stationId || (x.name || '').toLowerCase() === stationName.toLowerCase()));
       return e ? { id: e.id, x: e.pos.x, z: e.pos.z, radius: e.radius || 40 } : null;
-    }, plan);
+    }, { stationId: plan.stationId, stationName: plan.stationName });
     facts.jobStation = station;
     if (!station) throw new Error(`${plan.stationName} is not in this sector`);
     await relocate(page, { x: station.x - station.radius - 160, z: station.z, heading: 0 });
