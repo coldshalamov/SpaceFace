@@ -7,12 +7,15 @@
 // knobs decide it for a process: its priority class, and its "power throttling" state. A process
 // may opt out of throttling explicitly (always the high class) instead of leaving it to focus.
 //
-// Measured in the referee's own setup, Foundry round 2, one run switching state every 10 s in a
-// shuffled order with six other cores kept busy (2026-11-22): the frame callback was 24.8 ms p50
-// as an unfocused window, 24.3 with above-normal priority alone, 22.3 with the throttling opt-out
-// alone and 18.8 with both (26 -> 32 frames a second). A fixed arithmetic loop ran at the same
-// speed in all four, so the gain is not clock speed; it is the scheduler keeping the frame's
-// threads where they are. Neither knob does much alone.
+// Measured in the referee's own setup (2026-11-22). Best case, Foundry round 2, one run switching
+// state every 10 s in a shuffled order with six other cores kept busy: the frame callback was
+// 24.8 ms p50 as an unfocused window, 24.3 with above-normal priority alone, 22.3 with the
+// throttling opt-out alone and 18.8 with both. Typical case, ten ordinary referee runs that play
+// the same fight both ways: the callback was between 2.0 ms slower and 9.3 ms faster with both
+// applied, median about 3 ms faster, and frames a second were not reliably higher. A fixed
+// arithmetic loop ran at the same speed in every state, so whatever is gained is not clock speed.
+// What Windows gives a window that really is focused has not been measured here (the referee's
+// window never takes focus); stating both for the game's own processes removes the question.
 //
 // Node can set the priority class (os.setPriority). The throttling state needs one Win32 call
 // (SetProcessInformation, ProcessPowerThrottling) that Node and Electron do not expose, so it is

@@ -9,9 +9,10 @@
 //
 // The same tick gives the focused game scheduling priority over background work and hands it
 // back when the window loses focus. With the priority goes the power-throttling opt-out
-// (scripts/lib/processScheduling.cjs): Windows normally grants a focused window its high
-// quality-of-service class by itself, but the two only pay off together (measured there), so the
-// game states it for its own processes instead of depending on how the shell classifies the window.
+// (scripts/lib/processScheduling.cjs): Windows is documented to grant a focused window its high
+// quality-of-service class by itself; that has not been measured here, and the measured gain from
+// the pair is modest (figures there), so the game states it for its own processes instead of
+// depending on how the shell classifies the window.
 
 const fs = require('node:fs');
 const os = require('node:os');
