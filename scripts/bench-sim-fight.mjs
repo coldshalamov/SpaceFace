@@ -170,6 +170,17 @@ async function runArm(label, flags) {
     out.shipsMean = Math.round(ships.reduce((a, b) => a + b, 0) / Math.max(1, ships.length));
     out.shipsMax = Math.max(0, ...ships);
     out.deaths = deaths; out.spawned = spawned;
+    {
+      // What the world is made of at the end: a leak shows up here as one kind growing.
+      const kinds = new Map();
+      for (const e of state.entityList) {
+        if (!e || e.alive === false) continue;
+        const k = e.type === 'projectile' || e.type === 'pickup' || e.type === 'fx' || e.type === 'payload'
+          ? e.type + ':' + ((e.data && (e.data.kind || e.data.weaponId || e.data.commodityId || e.data.fxKind)) || '-') : e.type;
+        kinds.set(k, (kinds.get(k) || 0) + 1);
+      }
+      out.census = [...kinds.entries()].sort((x, y) => y[1] - x[1]).slice(0, 14);
+    }
     out.run = state.run ? { phase: state.run.phase, wave: state.run.wave, kind: state.run.kind } : null;
     out.simTime = r2(state.simTime || 0);
     const diag = state.physicsRuntime && state.physicsRuntime.diagnostics;
@@ -203,7 +214,7 @@ async function runArm(label, flags) {
 }
 
 function line(o) {
-  return `${String(o.label).padEnd(10)} step mean ${String(o.meanMs).padStart(6)}  p50 ${String(o.p50).padStart(6)}  p95 ${String(o.p95).padStart(6)}  p99 ${String(o.p99).padStart(6)}  max ${String(o.max).padStart(6)}  worst10s ${String(o.worst10sMeanMs).padStart(6)}  >16.7ms ${String(o.over16).padStart(4)}/${o.ticks}  ents ${o.entsMean}/${o.entsMax} ships ${o.shipsMean}/${o.shipsMax} deaths ${o.deaths} spawned ${o.spawned} wave ${o.run ? o.run.wave : '-'} ${o.physics ? `bodies ${o.physics.bodies} dyn ${o.physics.dynamic}` : ''}${o.hash ? ' hash ' + o.hash : ''}`;
+  return `${String(o.label).padEnd(10)} step mean ${String(o.meanMs).padStart(6)}  p50 ${String(o.p50).padStart(6)}  p95 ${String(o.p95).padStart(6)}  p99 ${String(o.p99).padStart(6)}  max ${String(o.max).padStart(6)}  worst10s ${String(o.worst10sMeanMs).padStart(6)}  >16.7ms ${String(o.over16).padStart(4)}/${o.ticks}  ents ${o.entsMean}/${o.entsMax} ships ${o.shipsMean}/${o.shipsMax} deaths ${o.deaths} spawned ${o.spawned} wave ${o.run ? o.run.wave : '-'} ${o.physics ? `bodies ${o.physics.bodies} dyn ${o.physics.dynamic}` : ''}${o.hash ? ' hash ' + o.hash : ''}${o.census ? ' | census: ' + o.census.map(([k, n]) => k + ' ' + n).join(', ') : ''}`;
 }
 
 const results = [];
