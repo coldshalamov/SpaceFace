@@ -317,6 +317,10 @@ hygiene sweep, not a performance task — nothing loads them.
   Boot wall-clock on this machine is agent-load noise (17–60 s swings) — the build count is
   the signal. The full boot win still wants B1–B3 (static batches, worker parse, transcode
   cache), which queue behind other lanes' files.
+- **Audit honesty fix landed** (same day): `mergeable-draws` now subtracts primitives on
+  dynamic-role nodes using each render package's own semantic table. The naive count was
+  45 rows / 2,669 dc; role-aware it is 38 rows / 1,502 dc — the honest remaining debt, most of
+  it in scene-root packages whose parentId shape the cross-parent pass does not yet reach.
 - **Corrections to this plan from execution:** the `layTether` rAF item in R1 is over-attributed
   — its settle loop is bounded (≤3 passes + one 900 ms tail); steady state has no per-frame
   reads. The G2 tranche is blocked by power-of-two quantization: every flagged body's 2×-closest-framing

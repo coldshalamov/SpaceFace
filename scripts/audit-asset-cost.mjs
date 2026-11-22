@@ -456,6 +456,24 @@ async function parseGlb(absPath) {
       rec.boundsCaveat = rec.boundsCaveat || 'no accessor min/max (compressed or empty)';
     }
     rec.duplicateGeometryGroups = [...geoSignatures.values()].filter((n) => n > 1).length;
+    // Render packages carry their own semantic table: primitives on dynamic-role nodes are
+    // addressed individually at runtime (turrets, breakables, motion surfaces) and are not
+    // mergeable waste, whatever the container-level material bucketing implies.
+    if (rec.path.includes('/render-packages/')) {
+      try {
+        const metaPath = resolvePath(dirname(absPath), 'render-package.json');
+        const meta = JSON.parse((await readFile(metaPath)).toString('utf8'));
+        const dynamicNodes = new Set((meta.dynamicGroups || []).map((g) => g && g.nodeId).filter(Boolean));
+        const roleById = new Map((meta.nodes || []).map((n) => [n && n.id, n]));
+        let dynamicPrimitives = 0;
+        for (const entry of meta.geometry || []) {
+          if (!entry) continue;
+          if (dynamicNodes.has(entry.nodeId)) dynamicPrimitives += 1;
+          else if (roleById.get(entry.nodeId)?.role === 'dynamic') dynamicPrimitives += 1;
+        }
+        rec.dynamicPrimitives = dynamicPrimitives;
+      } catch { /* metadata is optional; the container numbers stand alone */ }
+    }
   } catch (err) {
     rec.parseError = String(err && err.message || err);
   } finally {
@@ -812,12 +830,17 @@ for (const rel of diskFiles) {
     });
   }
   if (rec.primitivesPerMaterialMax >= MERGEABLE_MATERIAL_PRIMS) {
-    const mergeable = Math.max(0, rec.primitives - rec.materials);
-    pushFlag(rel, 'mergeable-draws', {
-      primitives: rec.primitives, materials: rec.materials, mergeableDraws: mergeable,
-      saveBytesEq: mergeable * DRAW_CALL_BYTES_EQ, effort: 'low',
-      note: `${rec.primitivesPerMaterialMax} primitives share one material (the runtime's rigid-opaque BatchedMesh pool absorbs eligible statics; canopies, decals, nav lights, transparents and dynamic hulls still draw one by one)`,
-    });
+    const dynamicPrimitives = rec.dynamicPrimitives || 0;
+    const mergeable = Math.max(0, rec.primitives - dynamicPrimitives - rec.materials);
+    if (mergeable >= MERGEABLE_MATERIAL_PRIMS) {
+      pushFlag(rel, 'mergeable-draws', {
+        primitives: rec.primitives, materials: rec.materials, mergeableDraws: mergeable,
+        saveBytesEq: mergeable * DRAW_CALL_BYTES_EQ, effort: 'low',
+        note: `${rec.primitivesPerMaterialMax} primitives share one material`
+          + (dynamicPrimitives ? `, ${dynamicPrimitives} of them on dynamic-role nodes the runtime addresses individually` : '')
+          + ' (the runtime\'s rigid-opaque BatchedMesh pool absorbs eligible statics; canopies, decals, nav lights, transparents and dynamic hulls still draw one by one)',
+      });
+    }
   }
   // 3. texture waste — sized against the closest normal gameplay framing (chase-close
   //    zoom 58), so a hero place that legitimately needs 4096 px does not flag.
