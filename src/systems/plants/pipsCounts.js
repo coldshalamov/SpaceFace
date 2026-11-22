@@ -68,6 +68,7 @@ export function pipsWord(n) {
 }
 
 export const pipsCountsPlant = {
+  modes: ['flight'],
   name: 'plants118',
 
   init(ctx) {

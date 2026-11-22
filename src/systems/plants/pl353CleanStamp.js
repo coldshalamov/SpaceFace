@@ -95,6 +95,7 @@ export function isSmuggledUntil(smuggledUntil, now) {
 }
 
 export const pl353CleanStamp = {
+  modes: ['flight'],
   name: 'plantsPl353',
 
   init(ctx) {

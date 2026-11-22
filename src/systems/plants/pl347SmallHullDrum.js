@@ -93,6 +93,7 @@ export function isSkippedFor(skippedUntil, hullKey, now) {
 }
 
 export const pl347SmallHullDrum = {
+  modes: ['flight'],
   name: 'plantsPl347',
 
   init(ctx) {

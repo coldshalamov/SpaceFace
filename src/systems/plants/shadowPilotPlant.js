@@ -58,6 +58,7 @@ export function shadowPilotStyle(impacts, tuning = SHADOW_PILOT_TUNING) {
 }
 
 export const shadowPilotPlant = {
+  modes: ['flight'],
   name: 'plants133',
 
   init(ctx) {

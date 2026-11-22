@@ -64,6 +64,7 @@ export function rangePosition(stationPos, sectorId = DRONE_RANGE_TUNING.sectorId
 }
 
 export const pl190DroneRange = {
+  modes: ['flight'],
   name: 'plantsPl190',
 
   init(ctx) {

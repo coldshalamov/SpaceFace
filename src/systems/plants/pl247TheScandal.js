@@ -77,6 +77,7 @@ export function weighNumberFor(entityId, mass) {
 }
 
 export const pl247TheScandal = {
+  modes: ['flight'],
   name: 'plantsPl247',
 
   init(ctx) {

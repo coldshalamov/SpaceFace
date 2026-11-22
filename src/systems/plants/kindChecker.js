@@ -72,6 +72,7 @@ export function checkerVerdict({ overMass, waved, waiverUntil, refusedUntil, fix
 }
 
 export const kindCheckerPlant = {
+  modes: ['flight'],
   name: 'plants300',
 
   init(ctx) {

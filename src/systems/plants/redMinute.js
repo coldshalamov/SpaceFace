@@ -51,6 +51,7 @@ export function isCutter(e, playerId) {
 }
 
 export const redMinutePlant = {
+  modes: ['flight'],
   name: 'plants119',
 
   init(ctx) {

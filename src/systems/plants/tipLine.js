@@ -67,6 +67,7 @@ export function isScannerStation(info) {
 }
 
 export const tipLinePlant = {
+  modes: ['flight'],
   name: 'plants295',
 
   init(ctx) {

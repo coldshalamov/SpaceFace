@@ -159,7 +159,9 @@ export const secondRinse = {
     // Sector entry, Continue, player replacement and time discontinuities are placements, not flight.
     const prior = this._prev;
     const continuous = prior?.player === player && prior?.skiff === skiff
-      && simTime >= prior.time && simTime - prior.time <= 0.1;
+      // Tolerance covers the cadenced 0.1 s beat ([6] in SYSTEM_CADENCE_TICKS) with float
+      // headroom — a gap that size is still flight, not a placement discontinuity.
+      && simTime >= prior.time && simTime - prior.time <= 0.25;
     const prev = continuous ? prior.pos : player.pos;
     // Every sheet and the cord lie inside the hail radius for every heading and whip phase.
     // Even when both endpoints are outside, a fast pass through the pocket still tests contact.

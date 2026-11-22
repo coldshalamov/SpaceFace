@@ -99,6 +99,7 @@ export function classifySnagBump(pod, host, closingSpeed, tuning = SNAGGED_TUNIN
  * what the player does with it.
  */
 export const snaggedPodPlant = {
+  modes: ['flight'],
   name: 'plantsPl177',
   init(ctx) {
     this.state = ctx.state;

@@ -58,6 +58,7 @@ export function tickingCrateVerdict(shakes, tuning = TICKING_CRATE_TUNING) {
 }
 
 export const tickingCratePlant = {
+  modes: ['flight'],
   name: 'plants156',
 
   init(ctx) {

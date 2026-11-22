@@ -70,6 +70,7 @@ export function facingStation(playerPos, playerRot, stationPos, arcRad = BLUE_MI
 }
 
 export const pl216BlueMinute = {
+  modes: ['flight'],
   name: 'plantsPl216',
 
   init(ctx) {

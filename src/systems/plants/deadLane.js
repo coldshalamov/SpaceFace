@@ -89,6 +89,7 @@ export function deadLaneRowFor(memory, hullId, now, cap = DEAD_LANE_TUNING.memor
  * and thanks a towed lamp line in horns for a day.
  */
 export const deadLanePlant = {
+  modes: ['flight'],
   name: 'plantsPl197',
   init(ctx) {
     this.state = ctx.state;

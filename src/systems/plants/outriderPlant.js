@@ -63,6 +63,7 @@ export function outriderCircleVerdict({ boostedOff = false, completed = false, h
 }
 
 export const outriderPlant = {
+  modes: ['flight'],
   name: 'plants184',
 
   init(ctx) {

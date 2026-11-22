@@ -50,6 +50,7 @@ export function magpieLineFor(row) {
 }
 
 export const magpieReadsPlant = {
+  modes: ['flight'],
   name: 'plants117',
 
   init(ctx) {

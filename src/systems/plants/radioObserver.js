@@ -85,6 +85,7 @@ export function hullMarkKey(player) {
 }
 
 export const radioObserverPlant = {
+  modes: ['flight'],
   name: 'plantsRadioObserver',
 
   init(ctx) {

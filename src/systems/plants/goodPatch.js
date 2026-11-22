@@ -40,6 +40,7 @@ export function patchedHull(hull, hullMax, amount = GOOD_PATCH_TUNING.patchHull)
 }
 
 export const goodPatchPlant = {
+  modes: ['flight'],
   name: 'plants143',
 
   init(ctx) {

@@ -76,6 +76,7 @@ export function isTinyOutpost(info) {
 }
 
 export const spareBedPlant = {
+  modes: ['flight'],
   name: 'plants303',
 
   init(ctx) {

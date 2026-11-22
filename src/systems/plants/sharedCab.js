@@ -87,6 +87,7 @@ export function isLurkingAstern(playerPos, trailPos, trailRot, asternDist, corri
 }
 
 export const sharedCabPlant = {
+  modes: ['flight'],
   name: 'plants301',
 
   init(ctx) {

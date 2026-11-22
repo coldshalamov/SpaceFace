@@ -55,6 +55,7 @@ export function coachVerdict(skips, tuning = SHADOW_COACH_TUNING) {
 }
 
 export const shadowCoachPlant = {
+  modes: ['swarm'],
   name: 'plants326',
 
   init(ctx) {

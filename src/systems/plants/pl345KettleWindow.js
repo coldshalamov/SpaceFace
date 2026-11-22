@@ -64,6 +64,7 @@ export function isCooledFor(cooledUntil, hullKey, now) {
 }
 
 export const pl345KettleWindow = {
+  modes: ['flight'],
   name: 'plantsPl345',
 
   init(ctx) {

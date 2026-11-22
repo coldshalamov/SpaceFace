@@ -61,6 +61,7 @@ export function segmentCrossesLine(ax, az, bx, bz, cx, cz, dx, dz) {
 }
 
 export const waitingLinePlant = {
+  modes: ['flight'],
   name: 'plants221',
 
   init(ctx) {

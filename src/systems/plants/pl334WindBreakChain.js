@@ -80,6 +80,7 @@ export function isChainBroken(brokenUntil, now) {
 }
 
 export const pl334WindBreakChain = {
+  modes: ['flight'],
   name: 'plantsPl334',
 
   init(ctx) {

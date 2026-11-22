@@ -61,6 +61,7 @@ export function midpointOf(a, b) {
 }
 
 export const chasedThiefPlant = {
+  modes: ['flight'],
   name: 'plants158',
 
   init(ctx) {

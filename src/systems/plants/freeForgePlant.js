@@ -53,6 +53,7 @@ export function ledgerVerdict({ boughtFirst = false, armed = false, given = fals
 }
 
 export const freeForgePlant = {
+  modes: ['swarm'],
   name: 'plants331',
 
   init(ctx) {

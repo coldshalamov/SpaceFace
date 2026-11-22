@@ -83,6 +83,7 @@ export function isElsewhereFor(elsewhereUntil, hullKey, now) {
 }
 
 export const pl349MercyTug = {
+  modes: ['flight'],
   name: 'plantsPl349',
 
   init(ctx) {

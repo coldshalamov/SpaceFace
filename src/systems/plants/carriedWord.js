@@ -79,6 +79,7 @@ export function haulerKindFor(seed, sectorId, tuning = CARRIED_WORD_TUNING) {
 }
 
 export const carriedWordPlant = {
+  modes: ['flight'],
   name: 'plants302',
 
   init(ctx) {

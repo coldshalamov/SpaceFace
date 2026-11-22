@@ -958,6 +958,10 @@ export function createRegistry(ctx) {
         }
         return;
       }
+      // SIM-RATE-TIERS-BREADTH: open the step-deferred presentation window — emits of the
+      // deferral set inside the step collect and deliver once at drainStepDeferred below.
+      if (ctx.bus.beginStep) ctx.bus.beginStep(state.playerId);
+      try {
       // Tier-1 causal counting: one hoisted boolean per step; per-system work is a branch + an
       // integer increment. Counts are workload facts, never durations, so they stay valid under
       // host contention (see perfCounters.js header).
@@ -990,6 +994,8 @@ export function createRegistry(ctx) {
             if (countSystems) tier1.countSystemInvocation(s.name);
             s.update(postInputPartitions.updateDt(s, dt, state), state);
           }
+          // Deferred presentation emits land once, in order, before the sweep.
+          if (ctx.bus.drainStepDeferred) ctx.bus.drainStepDeferred();
           if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
           core.lifetimeSweep(dt, state);
         } finally {
@@ -1021,6 +1027,8 @@ export function createRegistry(ctx) {
         try { s.update(postInputPartitions.updateDt(s, dt, state), state); }
         finally { recordSystem(s.name, perfNow() - t); }
       }
+      // Deferred presentation emits land once, in order, before the sweep.
+      if (ctx.bus.drainStepDeferred) ctx.bus.drainStepDeferred();
       t = perfNow();
       if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
       try { core.lifetimeSweep(dt, state); }
@@ -1028,6 +1036,9 @@ export function createRegistry(ctx) {
         recordSystem('core.lifetimeSweep', perfNow() - t);
         perf.recordStepTotal(perfNow() - stepStart);
         if (stepProfilerActive) stepProfiler.endTick();
+      }
+      } finally {
+        if (ctx.bus.endStep) ctx.bus.endStep();
       }
     },
     renderUpdate(alpha, frameDt, presentationFrame = null) {

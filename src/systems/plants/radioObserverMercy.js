@@ -90,6 +90,7 @@ export const RADIO_MERCY_TUNING = Object.freeze({
 });
 
 export const radioObserverMercyPlant = {
+  modes: ['flight'],
   name: 'plantsRadioObserverMercy',
 
   init(ctx) {

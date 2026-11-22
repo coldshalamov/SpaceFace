@@ -67,6 +67,7 @@ export function mascotVerdict({ fed = false, starveRounds = 0 } = {}, tuning = M
 }
 
 export const mascotPlant = {
+  modes: ['swarm'],
   name: 'plants332',
 
   init(ctx) {

@@ -83,6 +83,7 @@ export function isLockedFor(lockedUntil, hullKey, now) {
 }
 
 export const pl350KeyWall = {
+  modes: ['flight'],
   name: 'plantsPl350',
 
   init(ctx) {

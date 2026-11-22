@@ -55,6 +55,7 @@ export function doorOffsetFor(seed, tuning = SURRENDER_DOOR_TUNING) {
 }
 
 export const surrenderDoorPlant = {
+  modes: ['swarm'],
   name: 'plants330',
 
   init(ctx) {

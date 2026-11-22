@@ -81,6 +81,7 @@ export function isDriedFor(freeloaders, hullKey, now) {
 }
 
 export const pl333NoQuestionsShelf = {
+  modes: ['flight'],
   name: 'plantsPl333',
 
   init(ctx) {

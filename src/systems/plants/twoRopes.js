@@ -50,6 +50,7 @@ export function wellPullDir(fromPos, wellPos) {
 }
 
 export const twoRopesPlant = {
+  modes: ['flight'],
   name: 'plants138',
 
   init(ctx) {

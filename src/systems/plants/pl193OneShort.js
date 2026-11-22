@@ -66,6 +66,7 @@ export function shortageOf(names = SENNA_NAMES, tuning = ONE_SHORT_TUNING) {
 }
 
 export const pl193OneShort = {
+  modes: ['flight'],
   name: 'plantsPl193',
 
   init(ctx) {

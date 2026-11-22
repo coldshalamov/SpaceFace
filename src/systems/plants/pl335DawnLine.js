@@ -88,6 +88,7 @@ export function isChalkedOver(chalkedUntil, now) {
 }
 
 export const pl335DawnLine = {
+  modes: ['flight'],
   name: 'plantsPl335',
 
   init(ctx) {

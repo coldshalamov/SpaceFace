@@ -57,6 +57,7 @@ export function isTapPulse(simTime, tuning = ROWANS_TAP_TUNING) {
 }
 
 export const pl239RowansTap = {
+  modes: ['flight'],
   name: 'plantsPl239',
 
   init(ctx) {

@@ -84,6 +84,7 @@ export function isInNoMood(cutUntil, hullKey, now) {
 }
 
 export const pl346FixedRope = {
+  modes: ['flight'],
   name: 'plantsPl346',
 
   init(ctx) {

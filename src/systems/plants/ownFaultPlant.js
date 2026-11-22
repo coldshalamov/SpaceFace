@@ -66,6 +66,7 @@ export function ownFaultVerdict({ towSeconds = 0, strippedPods = 0, open = true 
 }
 
 export const ownFaultPlant = {
+  modes: ['flight'],
   name: 'plants109',
 
   init(ctx) {

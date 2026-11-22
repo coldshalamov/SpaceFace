@@ -112,6 +112,7 @@ export function swingLineRowFor(memory, key, now, cap = SWING_LINE_TUNING.memory
  * being cut loose. Player passage is read from the live player pose in update().
  */
 export const someonesCoursePlant = {
+  modes: ['flight'],
   name: 'plantsPl123',
   init(ctx) {
     this.state = ctx.state;

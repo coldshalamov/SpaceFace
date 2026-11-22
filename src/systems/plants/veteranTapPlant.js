@@ -75,6 +75,7 @@ export function droneSideFor(seed, tuning = VETERAN_TAP_TUNING) {
 }
 
 export const veteranTapPlant = {
+  modes: ['swarm'],
   name: 'plants321',
 
   init(ctx) {

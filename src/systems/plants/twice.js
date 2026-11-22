@@ -59,6 +59,7 @@ export function answererPos(anchorPos, seed, sectorId, distWu = TWICE_TUNING.far
 }
 
 export const twicePlant = {
+  modes: ['flight'],
   name: 'plants142',
 
   init(ctx) {

@@ -78,6 +78,7 @@ export function takeoffVerdict({ speedWu, blemished, coachingLive }, tuning = AF
 }
 
 export const afterHoursCoachPlant = {
+  modes: ['flight'],
   name: 'plants304',
 
   init(ctx) {

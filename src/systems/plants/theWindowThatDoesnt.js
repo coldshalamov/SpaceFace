@@ -52,6 +52,7 @@ export function litOrder(windows, darkIdx) {
 }
 
 export const theWindowThatDoesntPlant = {
+  modes: ['flight'],
   name: 'plants170',
 
   init(ctx) {

@@ -66,6 +66,7 @@ export function isDryFor(dryUntil, hullKey, now) {
 }
 
 export const pl337HonorUrn = {
+  modes: ['flight'],
   name: 'plantsPl337',
 
   init(ctx) {

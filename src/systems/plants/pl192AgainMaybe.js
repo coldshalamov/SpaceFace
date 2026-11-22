@@ -37,6 +37,7 @@ const finite = (v, f = 0) => {
 export const AGAIN_MAYBE_SALT = hash32('plantsPl192', AGAIN_MAYBE_TUNING.sectorId);
 
 export const pl192AgainMaybe = {
+  modes: ['flight'],
   name: 'plantsPl192',
 
   init(ctx) {

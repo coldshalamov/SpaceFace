@@ -65,6 +65,7 @@ export function onShadeEdge(pos, edgeX, tuning = SHADE_MARKET_TUNING) {
 const STALL_SALT = hash32('plantsPl172', SHADE_MARKET_TUNING.sectorId);
 
 export const pl172ShadeMarket = {
+  modes: ['flight'],
   name: 'plantsPl172',
 
   init(ctx) {

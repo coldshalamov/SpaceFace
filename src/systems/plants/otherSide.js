@@ -120,6 +120,7 @@ export function otherSideRowFor(memory, key, now, cap = OTHER_SIDE_TUNING.memory
  * Push them to the dock, or fly past and owe the lane.
  */
 export const otherSidePlant = {
+  modes: ['flight'],
   name: 'plantsPl251',
   init(ctx) {
     this.state = ctx.state;

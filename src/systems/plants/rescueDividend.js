@@ -90,6 +90,7 @@ export function demandCount(job, strangerId) {
 }
 
 export const rescueDividendPlant = {
+  modes: ['flight'],
   name: 'plants299',
 
   init(ctx) {

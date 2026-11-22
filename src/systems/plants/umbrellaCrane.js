@@ -93,6 +93,7 @@ export function isComplaint(payload, gantryId, playerId, tuning = UMBRELLA_CRANE
 }
 
 export const umbrellaCranePlant = {
+  modes: ['flight'],
   name: 'plants298',
 
   init(ctx) {

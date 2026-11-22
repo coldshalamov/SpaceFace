@@ -41,6 +41,7 @@ export function shelfEdgeVerdict(cycles, roadCycles = SHELF_TUNING.roadCycles) {
 }
 
 export const theShelfPlant = {
+  modes: ['flight'],
   name: 'plants139',
 
   init(ctx) {

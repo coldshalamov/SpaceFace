@@ -53,6 +53,7 @@ export function hogVerdict(hogRounds, dry, tuning = TAP_CHEER_TUNING) {
 }
 
 export const tapCheerPlant = {
+  modes: ['swarm'],
   name: 'plants328',
 
   init(ctx) {

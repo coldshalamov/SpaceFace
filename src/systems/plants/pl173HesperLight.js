@@ -83,6 +83,7 @@ export function lookerApproach(lampPos, sectorId = HESPER_LIGHT_TUNING.sectorId)
 }
 
 export const pl173HesperLight = {
+  modes: ['flight'],
   name: 'plantsPl173',
 
   init(ctx) {

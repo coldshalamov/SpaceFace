@@ -69,6 +69,7 @@ export function isBannedFor(bannedUntil, hullKey, now) {
 }
 
 export const pl340EchoCount = {
+  modes: ['flight'],
   name: 'plantsPl340',
 
   init(ctx) {

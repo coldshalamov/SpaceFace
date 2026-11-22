@@ -69,6 +69,7 @@ export function isMutedFor(mutedUntil, hullKey, now) {
 }
 
 export const pl339SignalMirror = {
+  modes: ['flight'],
   name: 'plantsPl339',
 
   init(ctx) {

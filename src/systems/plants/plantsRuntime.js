@@ -13,6 +13,7 @@
 import { afterHoursCoachPlant } from './afterHoursCoach.js';
 import { anselsDishPlant } from './anselsDish.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
+import { isSwarmRuleset } from '../survivalSwarm.js';
 import { getSimStepProfiler, nowNs } from '../../core/simStepProfiler.js';
 import { badMagnetPlant } from './badMagnetPlant.js';
 import { borrowedBoostPlant } from './borrowedBoost.js';
@@ -483,12 +484,31 @@ export const plantsRuntime = {
     }
     this._initBoundPlants = this._boundPlants;
     this._updatablePlants = this._boundPlants.filter(p => typeof p.update === 'function');
+    // Per-door update lists (SIM-RATE-TIERS-BREADTH batch D): each plant declares `modes`
+    // read from its own guard — 'swarm' plants check a live survival-ruleset run, the rest
+    // are Adventure flight vignettes. A plant with no declaration stays on the flight list,
+    // matching its `mode !== 'flight'` early return; only a declared 'swarm' entry is
+    // walked during a Swarm run, so campaign vignettes cost nothing there.
+    this._plantsByDoor = { flight: [], swarm: [] };
+    for (const p of this._updatablePlants) {
+      const modes = p.modes;
+      if (Array.isArray(modes) && modes.includes('swarm') && !modes.includes('flight')) {
+        this._plantsByDoor.swarm.push(p);
+      } else {
+        this._plantsByDoor.flight.push(p);
+      }
+    }
   },
   update(dt, state) {
     if (!ownsContext(this) || state !== this._ctx.state) return;
     if (isRacingCorridorSession(state)) return;
-    // Only plants that have an update are walked (most are event-only).
-    const plants = this._boundPlants === this._initBoundPlants ? this._updatablePlants : this._boundPlants;
+    // Only plants that have an update are walked (most are event-only), and only the list
+    // for the live door: a survival-ruleset run walks 'swarm', everything else 'flight'.
+    const door = state.run && state.run.kind === 'survival' && isSwarmRuleset(state.run.ruleset)
+      ? 'swarm' : 'flight';
+    const plants = this._boundPlants === this._initBoundPlants
+      ? this._plantsByDoor[door]
+      : this._boundPlants;
     const prof = getSimStepProfiler();
     const profActive = prof.active;
     for (let i = 0; i < plants.length; i++) {

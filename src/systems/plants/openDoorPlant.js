@@ -49,6 +49,7 @@ export function doorVerdict(used, tuning = OPEN_DOOR_TUNING) {
 }
 
 export const openDoorPlant = {
+  modes: ['swarm'],
   name: 'plants327',
 
   init(ctx) {

@@ -61,6 +61,7 @@ export function isRationed(rationedUntil, hullKey, now) {
 }
 
 export const pl338TowPost = {
+  modes: ['flight'],
   name: 'plantsPl338',
 
   init(ctx) {

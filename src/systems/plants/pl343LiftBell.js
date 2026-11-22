@@ -75,6 +75,7 @@ export function isSilencedFor(silencedUntil, hullKey, now) {
 }
 
 export const pl343LiftBell = {
+  modes: ['flight'],
   name: 'plantsPl343',
 
   init(ctx) {

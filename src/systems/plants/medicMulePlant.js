@@ -67,6 +67,7 @@ export function muleStartFor(pos, seed, tuning = MEDIC_MULE_TUNING) {
 }
 
 export const medicMulePlant = {
+  modes: ['swarm'],
   name: 'plants323',
 
   init(ctx) {

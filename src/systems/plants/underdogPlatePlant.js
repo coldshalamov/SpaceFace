@@ -52,6 +52,7 @@ export function padOffsetFor(seed, tuning = UNDERDOG_PLATE_TUNING) {
 }
 
 export const underdogPlatePlant = {
+  modes: ['swarm'],
   name: 'plants325',
 
   init(ctx) {

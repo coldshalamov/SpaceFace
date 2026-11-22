@@ -57,6 +57,7 @@ export function aheadOfNose(skiffPos, skiffVel, playerPos, aheadWu = RAT_RUN_TUN
 }
 
 export const ratRunPlant = {
+  modes: ['flight'],
   name: 'plants165',
 
   init(ctx) {

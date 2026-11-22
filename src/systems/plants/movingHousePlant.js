@@ -63,6 +63,7 @@ export function movingHouseVerdict({ chairTaken = false, rackTakenCount = 0 }, t
 }
 
 export const movingHousePlant = {
+  modes: ['flight'],
   name: 'plants108',
 
   init(ctx) {

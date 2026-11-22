@@ -50,6 +50,7 @@ export function spinPair(rot, magnitude) {
 }
 
 export const dutchAfterYouPlant = {
+  modes: ['flight'],
   name: 'plants116',
 
   init(ctx) {

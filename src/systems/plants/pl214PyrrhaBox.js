@@ -78,6 +78,7 @@ export function isABox(ent) {
 }
 
 export const pl214PyrrhaBox = {
+  modes: ['flight'],
   name: 'plantsPl214',
 
   init(ctx) {

@@ -63,6 +63,7 @@ export function nearestBeacons(beacons, origin, k = WAVE_BACK_TUNING.flashNeares
 }
 
 export const waveBackPlant = {
+  modes: ['swarm'],
   name: 'plants212',
 
   init(ctx) {

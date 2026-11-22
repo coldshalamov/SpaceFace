@@ -44,6 +44,7 @@ export function lineVerdict(knockedAt, now, graceS = RUTHS_TUNING.knockGraceS) {
 }
 
 export const ruthsKnockPlant = {
+  modes: ['flight'],
   name: 'plants168',
 
   init(ctx) {

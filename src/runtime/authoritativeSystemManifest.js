@@ -562,6 +562,32 @@ export const SYSTEM_CADENCE_TICKS = Object.freeze({
   combatOutcome: [6, 3],    // 10 Hz: flee/surrender receipts
   lawSecurity: [6, 4],      // 10 Hz: patrols, witnesses, wanted sweep
   titles: [15, 5],          // 4 Hz: title/reputation observers
+  // SIM-RATE-TIERS-BREADTH batch A — Adventure ambient + faction owners at 10 Hz.
+  // Phases are load-spread across the six 10 Hz lanes (audit sim-hot-path-events.txt §2
+  // weights), never two heavy owners on one tick. Each received the elapsed-simTime dt
+  // the cadence stamping supplies, so dwell/accumulator work stays exact.
+  // ilexArk, archiveRedaction, vaelLiens, faction_helix, faction_meridian and pitbornCull
+  // were audited back to TABLE: their update issues one-shot physics commands
+  // (queuePhysicsImpulse / aiManeuver.request) for visible bodies — consumed once per
+  // step, so a cadenced owner under-thrusts them 6x (proved by test/ilex-ark.test.mjs).
+  choirResonance: [6, 0],
+  fulfillmentRoutes: [6, 0],
+  vergeCourt: [6, 1],
+  frontierHomesteads: [6, 1],
+  understoryGardens: [6, 2],
+  secondRinse: [6, 3],
+  borrowedSun: [6, 4],
+  massSignature: [6, 5],
+  // SIM-RATE-TIERS-BREADTH batch B — remaining 'only-needs-recent' audit rows that react
+  // to the player inside a fight: 10 Hz keeps hostile/encounter reactions inside 100 ms.
+  wingmen: [6, 0],
+  stationServices: [6, 1],
+  faction_concord: [6, 2],
+  salvageOutfits: [6, 3],
+  pirateParley: [6, 4],
+  faction_drift: [6, 5],
+  // Ledger-speed bookkeeping (Line tonnage/class memory): 4 Hz like titles.
+  lineProgression: [15, 13],
 });
 
 /** Period in ticks for a cadenced system (1 = every tick). */
@@ -594,6 +620,15 @@ export const NEAR_CLOCK_IDS = Object.freeze([
   // FB-089: observer telemetry republished each active tick — a catch-up extra step would
   // only repaint the same kinematics read, so it does not belong on the table.
   'masslineTelemetry',
+  // SIM-RATE-TIERS-BREADTH — cadenced owners (SYSTEM_CADENCE_TICKS) ride the near clock:
+  // they fire on their fixed phase of primary ticks and skip catch-up extra steps, where
+  // a table entry would re-run their whole pass just to stay recent. The accumulated
+  // elapsed dt lands on their next phase tick.
+  'secondRinse', 'borrowedSun', 'massSignature', 'lineProgression',
+  'wingmen', 'stationServices',
+  'faction_concord', 'faction_drift',
+  'understoryGardens', 'fulfillmentRoutes',
+  'choirResonance', 'vergeCourt', 'frontierHomesteads',
 ]);
 
 /**
@@ -613,7 +648,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // aiPorts flushes (and replays) the AI's maneuvers, planetRuntime queues planet drag/heat/harvest.
   'aiPorts', 'planetRuntime',
   // Flight + physics authorities: single writers of position/velocity.
-  'heroManeuvers', 'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
+  'heroManeuvers', 'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
   'nemesis', 'nemesisEncounter',
   // Capital score publishes orders the tactical slot reads the same tick.
@@ -632,7 +667,6 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'plants',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'dyingHull', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
-  'lineProgression',
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
@@ -655,11 +689,10 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // swarmDrops: effect timers and the turret fire on the 60 Hz step.
   'swarmDrops',
   // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.
-  'wingmen', 'world', 'borrowedSun', 'heat',
+  'world', 'heat',
   // Chronicler: fact events must land on the tick that creates them (its FB-090 quiet
-  // latch already covers the idle pole). Docked-yard job progression is real per-tick
-  // service work, so the yard stays on the table.
-  'chronicler', 'stationServices',
+  // latch already covers the idle pole).
+  'chronicler',
   // Pro-experience owners — salvageTender publishes this tick's bounded berth force and
   // industrialDisasters queues tether impulses immediately before physics; the yard and
   // workshop observe the settled tick and run their own body work on the 60 Hz step.
@@ -667,12 +700,12 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Counterweight Circuit observes the settled post-physics tick like the yard
   // and workshop — attempt legs read committed positions and impact receipts.
   'counterweightCircuit', 'breakwaterSpur', 'cinderglassJob',
-  // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
-  // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
-  'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
-  // faction-strange owners — per-step faction work on the same settled tick.
-  'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
-  'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
+  // §34 faction owners audited back from a [6] cadence (SIM-RATE-TIERS-BREADTH): their
+  // update calls queuePhysicsImpulse / aiManeuver.request per step on visible patrol,
+  // courier, collector and convoy bodies — one-shot commands, not held intents — so a
+  // 10 Hz owner under-thrusts them (proved by test/ilex-ark.test.mjs). They stay table
+  // until the steering moves to a held intent like traffic's data.intent.
+  'faction_meridian', 'faction_helix', 'pitbornCull', 'vaelLiens', 'archiveRedaction',
 ]);
 
 const CLOCK_BY_ID = new Map();

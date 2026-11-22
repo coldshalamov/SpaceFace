@@ -87,6 +87,7 @@ export function otherFighterPos(pos, seed, tuning = CROWD_COIN_TUNING) {
 }
 
 export const crowdCoinPlant = {
+  modes: ['swarm'],
   name: 'plants322',
 
   init(ctx) {

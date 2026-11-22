@@ -55,6 +55,7 @@ export function ivesSpot(sectorId = IVES_MINUTE_TUNING.sectorId, tuning = IVES_M
 }
 
 export const pl236IvesMinute = {
+  modes: ['flight'],
   name: 'plantsPl236',
 
   init(ctx) {

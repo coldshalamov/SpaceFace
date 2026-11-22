@@ -62,6 +62,7 @@ export function isFacing(playerPos, playerRot, targetPos, arcRad = SEE_HIM_TUNIN
 }
 
 export const pl238SeeHim = {
+  modes: ['flight'],
   name: 'plantsPl238',
 
   init(ctx) {

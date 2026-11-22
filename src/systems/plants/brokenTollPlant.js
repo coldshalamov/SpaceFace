@@ -65,6 +65,7 @@ export function isFlyingThrough(distWu, speedWu, tuning = BROKEN_TOLL_TUNING) {
 }
 
 export const brokenTollPlant = {
+  modes: ['flight'],
   name: 'plants131',
 
   init(ctx) {

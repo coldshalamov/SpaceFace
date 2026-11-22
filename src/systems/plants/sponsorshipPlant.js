@@ -57,6 +57,7 @@ export function isWaspSpawn(entity, tuning = SPONSORSHIP_TUNING) {
 }
 
 export const sponsorshipPlant = {
+  modes: ['swarm'],
   name: 'plants114',
 
   init(ctx) {

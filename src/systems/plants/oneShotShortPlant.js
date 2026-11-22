@@ -33,6 +33,7 @@ export function oneShotShortVerdict(shots, tuning = ONE_SHOT_SHORT_TUNING) {
 }
 
 export const oneShotShortPlant = {
+  modes: ['swarm'],
   name: 'plants222',
 
   init(ctx) {
