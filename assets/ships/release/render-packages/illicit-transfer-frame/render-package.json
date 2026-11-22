@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Berth_A",
       "nodePath": [
         0,
-        13
+        12
       ],
       "parentNodeId": "sf.render.illicit-transfer-frame.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Berth_B",
       "nodePath": [
         0,
-        14
+        13
       ],
       "parentNodeId": "sf.render.illicit-transfer-frame.root",
       "worldTransform": [
@@ -99,74 +99,74 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "533e8248571647107522d964390f3da1b925c8bf413f4248a7fe57ea18a3cb50",
+  "contentHash": "0810b29b932f5e92239bb00110651f8b5ed34c9dc839b68b419ef060fa51a414",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          6.738540390442095,
-          3.3998438188584537,
+          8.110259283757513,
+          3.399890788006136,
           -1.74000084432556
         ],
         "min": [
-          3.2618176829361243,
-          -0.16015036719691667,
+          1.88945517004051,
+          -0.16028803547395598,
           -6.060147307959373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dc55fc248d6fef672c2246b192360e4894d62818f4f9b77b132aeaf2a528da5",
+      "geometryHash": "b134c9281ad96a1df3ffb466e6aceadbdfbc61be7af20b71066c7e7533795fd5",
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.0",
-      "indexCount": 360,
+      "indexCount": 396,
       "indexed": true,
       "materialHash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 240
     },
     {
       "bounds": {
         "max": [
-          6.599693047051522,
-          3.3200804513787627,
+          6.599740512110866,
+          3.6997419657538626,
           6
         ],
         "min": [
-          -1.1004261135341928,
-          -0.7002148345073236,
+          -1.100563285899569,
+          -0.7001678653596417,
           -6.0040175308440356
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c53287d9ef07b608a45303f96ea67a0c948b0ef42ec66ab24da696863a214a6",
+      "geometryHash": "5f64fcd6c49bad72cf6326e01764093f9fda7a65cc894b90157747d513687cd2",
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.1",
-      "indexCount": 96,
+      "indexCount": 168,
       "indexed": true,
       "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
       "primitiveIndex": 1,
-      "vertexCount": 60
+      "vertexCount": 108
     },
     {
       "bounds": {
         "max": [
-          6.3729582894935115,
-          2.55992817380032,
+          6.372821117128135,
+          2.5599751429480015,
           5.559824379463928
         ],
         "min": [
-          3.4265142657877083,
-          0.2800252533391552,
+          3.426561730847053,
+          0.2800722224868373,
           2.239674208121795
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d625e2db81430c470894eb7606257e5d9f10e05e60c97fa1e4499154b02a855d",
+      "geometryHash": "895c98a2b122da53575da15fa670b058ca13b3f531613408f3b49a4f24f876d4",
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.2",
       "indexCount": 300,
       "indexed": true,
@@ -180,18 +180,18 @@
     {
       "bounds": {
         "max": [
-          0.5496785512019122,
-          0.8996684507045317,
+          0.5497260162612578,
+          0.8997154198522137,
           -5.699735054902992
         ],
         "min": [
-          -0.5502065878641025,
-          0.7002600320053045,
+          -0.5501591228047573,
+          0.7003070011529865,
           -6.100028991699219
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b87637785a6df4b1450907863d420450ef24a643917030994e1b1d1e7421255",
+      "geometryHash": "ce8a8fc74fb6a40eed5ab4fbb27beceac2bc343d9ddcecfa7f159aad0450c3fe",
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.3",
       "indexCount": 36,
       "indexed": true,
@@ -205,301 +205,126 @@
     {
       "bounds": {
         "max": [
-          1.200340835920502,
-          0.7999642413549181,
-          -1.1002321676655393
+          5.250225574821375,
+          3.520274388924558,
+          4.149748366865782
         ],
         "min": [
-          -1.2001303228838065,
-          -0.7002148345073236,
-          -3.700296382593796
+          4.750042791250813,
+          2.6899598899519424,
+          -4.150073149215387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e0ae44379aa7a533fd24c0d9004be3f62944c2940fea4b1ba797f9d37d8e5a8",
+      "geometryHash": "9c8f2569e8d242ab75d6466cffebaceecafef83e4e7b5b29eba8f13a1dbc1bf3",
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.4",
-      "indexCount": 36,
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 4,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          8.186329902742774,
+          3.625148446166374,
+          3.3934734752064903
+        ],
+        "min": [
+          -1.2002674952491832,
+          -0.7001678653596417,
+          -5.8393209479924515
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8c64b13905787714971acf518365763bc805b392cec01ddeb7e0ab18a58e4af",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.5",
+      "indexCount": 516,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
-      "primitiveIndex": 4,
+      "primitiveIndex": 5,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          8.143494020207385,
+          3.199743819608022,
+          -2.0634856124376397
+        ],
+        "min": [
+          1.856958983289525,
+          0.00016188660903315721,
+          -5.736662539847294
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "872881ae754de2ee8aa870b007af53bc4e61f9802aa9c7416227cceaa43b8abb",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.6",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 6,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          7.468274958000834,
+          2.2003014395905067,
+          -2.4135581697096162
+        ],
+        "min": [
+          6.168242850536705,
+          1.3997135659980537,
+          -2.567915056776796
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "462e8e35a8adc22c25ad0d043996aec588f13511d17204ab1e98ae5d0b9e53e9",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.7",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 7,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          1.1752301461583772,
-          0.6751493422431796,
+          1.1752776112177226,
+          0.6751963113908617,
           3.999822777991918
         ],
         "min": [
-          -1.1750196331216816,
-          -0.7748083540948123,
+          -1.1751568054870578,
+          -0.7747613849471304,
           2.1997925243819494
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fca1bf0017caf9f1e8dde4b86a66b420eab5653785397ad3803824553c832be",
-      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.5",
+      "geometryHash": "a0a913dff2d0c3ebbe7c41360f5b334a334ab344a7bd79de1fb3e28a6bcd0f6e",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.8",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
-      "primitiveIndex": 5,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          5.250025340845512,
-          3.519990177683037,
-          -3.6500246317348717
-        ],
-        "min": [
-          4.749974659154488,
-          3.4399506055137192,
-          -4.149990278023856
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "22dba3e1a9fa3927cb3a9c9489142ef4f4626330a05765a6e6a3ef774aa689ad",
-      "id": "sf.render.illicit-transfer-frame.mesh.h0-lens.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.3",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-lens",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          5.043283019637911,
-          3.625178970005424,
-          -4.406818451032497
-        ],
-        "min": [
-          4.956716980362089,
-          2.9747644386587337,
-          -4.843177616596222
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d2746371300c632863ae174bc8a568bc350299e0236a1e1da8d10d801d0601a5",
-      "id": "sf.render.illicit-transfer-frame.mesh.h0-lens.primitive.1",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.3",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-lens",
-      "primitiveIndex": 1,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          5.449964829889984,
-          3.700031382650356,
-          -3.4500001072883606
-        ],
-        "min": [
-          4.550035170110016,
-          3.540058532564269,
-          -4.350014802470367
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "03b89eba6b2d30e7b0a9d1d93ec96bfbe7421db1088bea6586355a622dd32a04",
-      "id": "sf.render.illicit-transfer-frame.mesh.h0-lens.primitive.2",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.3",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-lens",
-      "primitiveIndex": 2,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          5.250025340845512,
-          2.769990177683037,
-          4.149975558999992
-        ],
-        "min": [
-          4.749974659154488,
-          2.6899506055137192,
-          3.6500099127110075
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "22dba3e1a9fa3927cb3a9c9489142ef4f4626330a05765a6e6a3ef774aa689ad",
-      "id": "sf.render.illicit-transfer-frame.mesh.h1-lens.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.4",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-lens",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          5.043283019637911,
-          2.875178970005424,
-          3.3931817397023663
-        ],
-        "min": [
-          4.956716980362089,
-          2.2247644386587337,
-          2.9568225741386414
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d2746371300c632863ae174bc8a568bc350299e0236a1e1da8d10d801d0601a5",
-      "id": "sf.render.illicit-transfer-frame.mesh.h1-lens.primitive.1",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.4",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-lens",
-      "primitiveIndex": 1,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          5.449964829889984,
-          2.950031382650356,
-          4.350000083446503
-        ],
-        "min": [
-          4.550035170110016,
-          2.790058532564269,
-          3.449985388264496
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "03b89eba6b2d30e7b0a9d1d93ec96bfbe7421db1088bea6586355a622dd32a04",
-      "id": "sf.render.illicit-transfer-frame.mesh.h1-lens.primitive.2",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.4",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-lens",
-      "primitiveIndex": 2,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.110157032725928,
-          3.1002086767577843,
-          -2.164809243541476
-        ],
-        "min": [
-          1.8898429672740726,
-          0.09969602190666382,
-          -5.635190947193387
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "99c6eaa32934f09c8d4983ca5aa48fc2ff039f17cff8c1568819f1d3ae3a9167",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.186083883927424,
-          3.2299227158984065,
-          -1.9607017737817993
-        ],
-        "min": [
-          1.8139161160725763,
-          -0.00013429331387282417,
-          -5.8392984169530635
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4d7073916cee4d2cd66f2c2b3550a0b1fec4e97a3f57fcfbdcb10cac5632c0f2",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.1",
-      "indexCount": 360,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
-      "primitiveIndex": 1,
-      "vertexCount": 240
-    },
-    {
-      "bounds": {
-        "max": [
-          8.143082514072336,
-          3.200038991978321,
-          -2.0632981406418924
-        ],
-        "min": [
-          1.8569174859276636,
-          -0.00013429331387282417,
-          -5.736702050092971
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1c0670c6d76d2c6c735c929a8316edc6d0247bb833664442462e4bfbfd3a9f0a",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.2",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
-      "primitiveIndex": 2,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          7.468242669096689,
-          2.1998681070279473,
-          -2.413899598849005
-        ],
-        "min": [
-          6.168636838350352,
-          1.4001049456166497,
-          -2.5677573621758296
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b4db616398dcb41167e99f6a3e0dfbec2f7b6b2518c427d7ed41ea902a9f2cb0",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.3",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
-      "primitiveIndex": 3,
+      "primitiveIndex": 8,
       "vertexCount": 24
     }
   ],
@@ -587,8 +412,8 @@
         0,
         6.050014495849609,
         0,
-        2.7692050337791443,
-        1.3125177323818207,
+        3.4930312037467957,
+        1.462490290403366,
         -0.050014495849609375,
         1
       ],
@@ -597,7 +422,7 @@
       "nodeName": "berthA_a",
       "nodePath": [
         0,
-        0
+        17
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -615,8 +440,8 @@
         0,
         6.050014495849609,
         0,
-        2.7692050337791443,
-        1.3125177323818207,
+        3.4930312037467957,
+        1.462490290403366,
         -0.050014495849609375,
         1
       ]
@@ -646,7 +471,7 @@
       "nodeName": "berthA_f",
       "nodePath": [
         0,
-        1
+        0
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -695,7 +520,7 @@
       "nodeName": "berthA_tie",
       "nodePath": [
         0,
-        2
+        1
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -744,7 +569,7 @@
       "nodeName": "berthB_tie",
       "nodePath": [
         0,
-        7
+        6
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -793,7 +618,7 @@
       "nodeName": "berthB0_l",
       "nodePath": [
         0,
-        3
+        2
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -842,7 +667,7 @@
       "nodeName": "berthB0_r",
       "nodePath": [
         0,
-        4
+        3
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -891,7 +716,7 @@
       "nodeName": "berthB1_l",
       "nodePath": [
         0,
-        5
+        4
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -940,7 +765,7 @@
       "nodeName": "berthB1_r",
       "nodePath": [
         0,
-        6
+        5
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -989,7 +814,7 @@
       "nodeName": "cut_hazard",
       "nodePath": [
         0,
-        9
+        8
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -1016,21 +841,21 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h0-lens",
       "localTransform": [
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         0,
-        -0.16260208934545517,
-        -0.24658876657485962,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1038,28 +863,28 @@
       "nodeName": "h0_lens",
       "nodePath": [
         0,
-        11,
+        10,
         0
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         5,
-        3.337397910654545,
-        -4.146588861942291,
+        3.5,
+        -3.9000000953674316,
         1
       ]
     },
@@ -1088,7 +913,7 @@
       "nodeName": "h0_post",
       "nodePath": [
         0,
-        11,
+        10,
         1
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1138,7 +963,7 @@
       "nodeName": "h0_shade",
       "nodePath": [
         0,
-        11,
+        10,
         2
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1166,21 +991,21 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h1-lens",
       "localTransform": [
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         0,
-        -0.16260208934545517,
-        -0.24658876657485962,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1188,28 +1013,28 @@
       "nodeName": "h1_lens",
       "nodePath": [
         0,
-        12,
+        11,
         0
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         0,
         0,
         0,
-        0.6965887546539307,
+        1,
         0,
         5,
-        2.587397910654545,
-        3.653411328792572,
+        2.75,
+        3.9000000953674316,
         1
       ]
     },
@@ -1238,7 +1063,7 @@
       "nodeName": "h1_post",
       "nodePath": [
         0,
-        12,
+        11,
         1
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1288,7 +1113,7 @@
       "nodeName": "h1_shade",
       "nodePath": [
         0,
-        12,
+        11,
         2
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1316,20 +1141,20 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
       "localTransform": [
-        3.059999942779541,
+        1,
         0,
         0,
         0,
         0,
-        3.059999942779541,
+        1,
         0,
         0,
         0,
         0,
-        3.059999942779541,
+        1,
         0,
         0,
-        0.014894187450408936,
+        0,
         0,
         1
       ],
@@ -1338,27 +1163,27 @@
       "nodeName": "held_pod_body",
       "nodePath": [
         0,
-        10,
+        9,
         0
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        3.0502131663592142,
+        0.9968017069923744,
         0,
-        -0.24453893236062385,
-        0,
-        0,
-        3.059999942779541,
+        -0.07991468527234602,
         0,
         0,
-        0.24453893236062385,
+        1,
         0,
-        3.0502131663592142,
+        0,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
         0,
         5,
-        1.6148942112922668,
+        1.600000023841858,
         -3.9000000953674316,
         1
       ]
@@ -1388,7 +1213,7 @@
       "nodeName": "held_pod_casts",
       "nodePath": [
         0,
-        10,
+        9,
         1
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1438,7 +1263,7 @@
       "nodeName": "held_pod_enda",
       "nodePath": [
         0,
-        10,
+        9,
         2
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1488,7 +1313,7 @@
       "nodeName": "held_pod_endf",
       "nodePath": [
         0,
-        10,
+        9,
         3
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1538,7 +1363,7 @@
       "nodeName": "held_pod_plate",
       "nodePath": [
         0,
-        10,
+        9,
         4
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1588,7 +1413,7 @@
       "nodeName": "held_pod_railp",
       "nodePath": [
         0,
-        10,
+        9,
         5
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1638,7 +1463,7 @@
       "nodeName": "held_pod_rails",
       "nodePath": [
         0,
-        10,
+        9,
         6
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
@@ -1688,7 +1513,7 @@
       "nodeName": "spine",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -1737,7 +1562,7 @@
       "nodeName": "spine_patch_a",
       "nodePath": [
         0,
-        16
+        15
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -1786,7 +1611,7 @@
       "nodeName": "spine_patch_b",
       "nodePath": [
         0,
-        17
+        16
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -1861,7 +1686,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "9a39ce7681b0af9b12d7a9c6144cb1c36f64074748a423319fba298073b8d017"
+      "sha256": "42fc2c22ed6b628f22957df618dc5c9eace0f2bc9819c3cdbc8d1c16a4d4d6eb"
     },
     "sourceGlb": {
       "bytes": 26248,
@@ -1875,30 +1700,30 @@
     }
   },
   "render": {
-    "bytes": 29360,
-    "sha256": "2c3294d126c2148ca87054366f62b604574e58ce284e69fd4ec3dde022b020a3",
+    "bytes": 27564,
+    "sha256": "d340569d0692b5ef688f3347824116eacfd330a163bd819bfdddf11a363fabdc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        3.4929767805218086,
-        1.4626115142777718,
+        3.493031203746795,
+        1.462490290403366,
         -0.050014495849609375
       ],
       "max": [
-        8.186083883927424,
-        3.700031382650356,
+        8.186329902742774,
+        3.6997419657538626,
         6
       ],
       "min": [
-        -1.2001303228838065,
-        -0.7748083540948123,
+        -1.2002674952491832,
+        -0.7747613849471304,
         -6.100028991699219
       ],
       "size": [
-        9.38621420681123,
-        4.474839736745168,
+        9.386597397991956,
+        4.474503350700993,
         12.100028991699219
       ]
     },
@@ -1925,7 +1750,7 @@
           1
         ],
         "name": "SOCKET_Berth_A",
-        "planIndex": 44,
+        "planIndex": 27,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1962,7 +1787,7 @@
           1
         ],
         "name": "SOCKET_Berth_B",
-        "planIndex": 45,
+        "planIndex": 28,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1981,67 +1806,12 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
+      "hull": 6,
       "rubber": 1,
-      "signal": 2,
+      "signal": 1,
       "warning": 1
     },
     "materialProfiles": [
-      {
-        "allowTextures": false,
-        "planIndex": 3,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 4,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 5,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 6,
-        "role": "warning"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 8,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 20,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 22,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 32,
-        "role": "signal"
-      },
       {
         "allowTextures": false,
         "planIndex": 33,
@@ -2054,8 +1824,28 @@
       },
       {
         "allowTextures": false,
-        "planIndex": 39,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 36,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 37,
         "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 39,
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -2065,10 +1855,10 @@
       {
         "allowTextures": false,
         "planIndex": 41,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
-    "nodeCount": 49,
+    "nodeCount": 42,
     "primitives": [
       {
         "canopy": false,
@@ -2085,309 +1875,12 @@
           0,
           6.050014495849609,
           0,
-          2.7692050337791443,
-          1.3125177323818207,
+          3.4930312037467957,
+          1.462490290403366,
           -0.050014495849609375,
           1
         ],
         "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          2.7692050337791443,
-          1.3125177323818207,
-          -0.050014495849609375,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_1",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          2.7692050337791443,
-          1.3125177323818207,
-          -0.050014495849609375,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_2",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          2.7692050337791443,
-          1.3125177323818207,
-          -0.050014495849609375,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_3",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          2.7692050337791443,
-          1.3125177323818207,
-          -0.050014495849609375,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_4",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          0,
-          0,
-          0,
-          6.050014495849609,
-          0,
-          2.7692050337791443,
-          1.3125177323818207,
-          -0.050014495849609375,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_5",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0502131663592142,
-          0,
-          -0.24453893236062385,
-          0,
-          0,
-          3.059999942779541,
-          0,
-          0,
-          0.24453893236062385,
-          0,
-          3.0502131663592142,
-          0,
-          5,
-          1.6148942112922668,
-          -3.9000000953674316,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0502131663592142,
-          0,
-          -0.24453893236062385,
-          0,
-          0,
-          3.059999942779541,
-          0,
-          0,
-          0.24453893236062385,
-          0,
-          3.0502131663592142,
-          0,
-          5,
-          1.6148942112922668,
-          -3.9000000953674316,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2_1",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0502131663592142,
-          0,
-          -0.24453893236062385,
-          0,
-          0,
-          3.059999942779541,
-          0,
-          0,
-          0.24453893236062385,
-          0,
-          3.0502131663592142,
-          0,
-          5,
-          1.6148942112922668,
-          -3.9000000953674316,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2_2",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0502131663592142,
-          0,
-          -0.24453893236062385,
-          0,
-          0,
-          3.059999942779541,
-          0,
-          0,
-          0.24453893236062385,
-          0,
-          3.0502131663592142,
-          0,
-          5,
-          1.6148942112922668,
-          -3.9000000953674316,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2_3",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.6965887546539307,
-          0,
-          0,
-          0,
-          0,
-          0.6965887546539307,
-          0,
-          0,
-          0,
-          0,
-          0.6965887546539307,
-          0,
-          5,
-          3.337397910654545,
-          -4.146588861942291,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane3",
-        "planIndex": 32,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.6965887546539307,
-          0,
-          0,
-          0,
-          0,
-          0.6965887546539307,
-          0,
-          0,
-          0,
-          0,
-          0.6965887546539307,
-          0,
-          5,
-          3.337397910654545,
-          -4.146588861942291,
-          1
-        ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane3_1",
         "planIndex": 33,
         "tags": {
           "canopy": false,
@@ -2397,24 +1890,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
-          5,
-          3.337397910654545,
-          -4.146588861942291,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
           1
         ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane3_2",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_1",
         "planIndex": 34,
         "tags": {
           "canopy": false,
@@ -2424,24 +1917,132 @@
       {
         "canopy": false,
         "matrix": [
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
-          5,
-          2.587397910654545,
-          3.653411328792572,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
           1
         ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane4",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_2",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_3",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_4",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_5",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          0,
+          0,
+          0,
+          6.050014495849609,
+          0,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_6",
         "planIndex": 39,
         "tags": {
           "canopy": false,
@@ -2451,24 +2052,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
-          5,
-          2.587397910654545,
-          3.653411328792572,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
           1
         ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane4_1",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_7",
         "planIndex": 40,
         "tags": {
           "canopy": false,
@@ -2478,24 +2079,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          0.6965887546539307,
+          6.050014495849609,
           0,
-          5,
-          2.587397910654545,
-          3.653411328792572,
+          3.4930312037467957,
+          1.462490290403366,
+          -0.050014495849609375,
           1
         ],
-        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane4_2",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_8",
         "planIndex": 41,
         "tags": {
           "canopy": false,
@@ -2507,19 +2108,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_illicit_transfer_frame.glb"
   },
-  "runtimeHash": "3bd0f88ad793a0ea4ea36e772c7fbce17f223edcc2e1ccf27d07cc00ca6039bd",
+  "runtimeHash": "744643223f9ca166678872d2c90b7227e405be673b1eed633382aec3696973ce",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.186083883927424,
-          3.700031382650356,
+          8.186329902742774,
+          3.6997419657538626,
           6
         ],
         "min": [
-          -1.2001303228838065,
-          -0.7748083540948123,
+          -1.2002674952491832,
+          -0.7747613849471304,
           -6.100028991699219
         ]
       },

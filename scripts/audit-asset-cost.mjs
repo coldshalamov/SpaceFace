@@ -24,9 +24,9 @@
 //   world   drawn world size per body = modelTruthCensus.json worldSize (measured by
 //           scripts/model-truth-census.mjs through the same loader fits the game uses:
 //           ships 24-58 WU, places 1:1 authored metres->WU, stations ~180 WU).
-//   LOD     whole-ship runtime demotion is OFF (WHOLE_SHIP_LOD_RUNTIME_DEMOTION=false,
-//           src/render/wholeShipLodPolicy.js): every hull draws its LOD0 triangles
-//           (a <32 px spawn speck may start on lod2). LOD px thresholds 120/45: lod.js.
+//   LOD     whole-ship runtime demotion is ON for anonymous hostiles (safe swap; player,
+//           named, mission and traffic hulls stay LOD0) — src/render/wholeShipLodPolicy.js.
+//           A <32 px spawn speck may start on lod2. LOD px thresholds 120/45: lod.js.
 //   crowd   crucible waves carry 6..14 enemy bodies (median 10) — src/data/survivalWaves.js;
 //           the mass enemy (wasp_swarmer, 540 spawns) wears the ashline_dart hull.
 import { open as openFile, readdir, readFile, stat } from 'node:fs/promises';
@@ -940,9 +940,11 @@ L.push(`- px per WU = 1080 / (2 · D · tan(25°)) = **${pxPerWuAt(DEFAULT_ZOOM)
 L.push("- A body's length projects at ×sin(60°)=0.866 (tilt foreshortening); footprint area = pxLen·pxWid.");
 L.push('- Drawn world size per body: `src/data/modelTruthCensus.json` `worldSize` (measured through the '
   + 'same loader fits the game uses — ships 24–58 WU, places 1:1 authored metres→WU, stations ~180 WU).');
-L.push('- The active LOD is **LOD0 for every hull**: whole-ship runtime demotion is OFF '
-  + '(`WHOLE_SHIP_LOD_RUNTIME_DEMOTION=false`, `src/render/wholeShipLodPolicy.js`); only a <32 px spawn '
-  + 'speck may start on lod2. Render packages carry LOD0+LOD1+LOD2 in one GLB; only the LOD0 meshes draw.');
+L.push('- The active LOD is **LOD0 for hulls that do not demote**: whole-ship runtime demotion is ON '
+  + 'for anonymous hostile ships (`WHOLE_SHIP_LOD_RUNTIME_DEMOTION=true` with the single-frame safe '
+  + 'swap, `src/render/wholeShipLodPolicy.js`); player, named, mission and traffic hulls stay LOD0, '
+  + 'and only a <32 px spawn speck may start on lod2. Render packages carry LOD0+LOD1+LOD2 in one '
+  + 'GLB; only the admitted LOD meshes draw.');
 L.push('- Crowd bodies (Swarm waves) are also costed at a typical 300 WU engagement slant range '
   + `(${pxPerWuAt(CROWD_SLANT_WU).toFixed(2)} px/WU there); waves carry 6–14 bodies, median 10 `
   + '(`src/data/survivalWaves.js`). The mass enemy (wasp_swarmer, 540 spawns) wears the ashline_dart hull.');
@@ -1075,12 +1077,12 @@ if (partsManifest) {
 }
 if (shipFamilies.length) {
   const lod1NeverDrawn = shipFamilies.filter((r) => r.lodTris.lod1 > 0 || r.censusLod1);
-  L.push(`- **Whole-ship LOD1 is compiled, shipped and never drawn.** ${lod1NeverDrawn.length} of ${shipFamilies.length} `
-    + 'hull bodies (player, enemy, faction, traffic) carry authored lod1 — separate files and/or in-package meshes — '
-    + 'but runtime demotion is disabled (`WHOLE_SHIP_LOD_RUNTIME_DEMOTION=false`). Every hull from the player to the '
-    + 'tenth wasp of a wave draws its full LOD0 triangle count at any size. Demotion was disabled after visible '
-    + 'on-screen swap thrashing, so the safe wins are fixing that swap (prepare-then-swap on the resident copy) or '
-    + 'cutting LOD0 counts; the LOD1 triangles exist already either way.');
+  L.push(`- **Whole-ship LOD1 is compiled and shipped, and drawn only by demoting hulls.** ${lod1NeverDrawn.length} of ${shipFamilies.length} `
+    + 'hull bodies (player, enemy, faction, traffic) carry authored lod1 — separate files and/or in-package meshes. '
+    + 'Runtime demotion is ON for anonymous hostile ships via the single-frame safe swap '
+    + '(`WHOLE_SHIP_LOD_RUNTIME_DEMOTION=true`); player, named, mission and traffic hulls still draw their full '
+    + 'LOD0 triangle count at any size. Extending demotion to traffic and distant faction hulls — whose lod1 '
+    + 'triangles are already paid for — is the open win.');
 }
 const dangling = danglingRefs.filter((d) => !d.raw.includes('assets/...'));
 if (dangling.length) {

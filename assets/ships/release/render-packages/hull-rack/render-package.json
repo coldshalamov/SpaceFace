@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Next_Section",
       "nodePath": [
         0,
-        13
+        12
       ],
       "parentNodeId": "sf.render.hull-rack.root",
       "worldTransform": [
@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "226d6c98b7fd5c65dd5d1716ff4ffa101202e1265ca3fd15723318b74f19672d",
+  "contentHash": "7f4c1bf802b34faa902888bc6d803b890c0c302b6bdbb70619343132074d58dd",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           8.560433387756348,
-          6.535844764579192,
+          6.536614401006253,
           3.570004035880322
         ],
         "min": [
           -8.560433387756348,
-          -0.5696780870763494,
+          -0.5699534573191403,
           -3.570004035880322
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fed793dd3c5bb28943417a2e84216a64e167acb27b7663f21841572ad36e9d5c",
+      "geometryHash": "b856657cf9d4fb9172909358ebae6aebde96c8e48db85d44e525813c5dfa6f00",
       "id": "sf.render.hull-rack.mesh.bed-p.primitive.0",
       "indexCount": 8640,
       "indexed": true,
@@ -84,277 +84,127 @@
     {
       "bounds": {
         "max": [
-          8.000309812715923,
-          6.639300424894495,
+          8.199906086657567,
+          6.7403907016273035,
+          0.19959627394164403
+        ],
+        "min": [
+          7.799668532104427,
+          6.659925188048735,
+          -0.19959627394164403
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19a1fee97029403077efc1963a74ad7d3bdfb91fd3bdc3c1a84278393ad25f49",
+      "id": "sf.render.hull-rack.mesh.bed-p.primitive.1",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.hull-rack.static-opaque-lane.1",
+      "nodeId": "sf.render.hull-rack.mesh.bed-p",
+      "primitiveIndex": 1,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.350387047116188,
+          6.914906815492511,
           3.1206511678441595
         ],
         "min": [
           -8.000309812715923,
-          6.360283644044134,
+          6.360008273801343,
           -3.1206511678441595
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6be0b16ed69686a381c7a1eb2262f897086aa8ae86be002964fa3934f25f477f",
-      "id": "sf.render.hull-rack.mesh.bed-p.primitive.1",
-      "indexCount": 120,
+      "geometryHash": "d1fa4606f19f9b8d084c51ff336b0e870431ff86bc0761140feba3d832b815f4",
+      "id": "sf.render.hull-rack.mesh.bed-p.primitive.2",
+      "indexCount": 156,
       "indexed": true,
       "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.hull-rack.static-opaque-lane.1",
       "nodeId": "sf.render.hull-rack.mesh.bed-p",
-      "primitiveIndex": 1,
+      "primitiveIndex": 2,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          7.419286104278466,
+          5.630593618244969,
+          2.902244773845188
+        ],
+        "min": [
+          -7.019048549725327,
+          0.769745093430533,
+          -2.902244773845188
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d5e9cf0208f5c7dfcbf03137db5a1937724b8e3d5ccae9dca99c61f3405d47f",
+      "id": "sf.render.hull-rack.mesh.bed-p.primitive.3",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.hull-rack.static-opaque-lane.1",
+      "nodeId": "sf.render.hull-rack.mesh.bed-p",
+      "primitiveIndex": 3,
+      "vertexCount": 1080
+    },
+    {
+      "bounds": {
+        "max": [
+          6.914547882740173,
+          1.2496644065598528,
+          2.8238692736063222
+        ],
+        "min": [
+          -6.514310328187034,
+          0.8502106070091018,
+          2.3379411721253565
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7996f6c7d579027d1b1fdf3a09ab2213f0f00a70e13ef0c8e6302322836a1c7",
+      "id": "sf.render.hull-rack.mesh.bed-p.primitive.4",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.hull-rack.static-opaque-lane.1",
+      "nodeId": "sf.render.hull-rack.mesh.bed-p",
+      "primitiveIndex": 4,
       "vertexCount": 72
     },
     {
       "bounds": {
         "max": [
-          8.20002135955029,
-          6.739984834213988,
-          0.20002135955028968
+          6.584325775067087,
+          3.499563766750217,
+          2.8499944403526105
         ],
         "min": [
-          7.7999786404497105,
-          6.659991244463261,
-          -0.20002135955028968
+          -6.811092222424871,
+          1.2998247267127265,
+          -2.8499944403526105
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35b58f2bba760d8c5c2ebba2b605170ef3c07a44f7edaebb31217822c6699f67",
-      "id": "sf.render.hull-rack.mesh.hood-lens.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.2",
-      "nodeId": "sf.render.hull-rack.mesh.hood-lens",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          8.349999994039536,
-          6.915000853450958,
-          0.3499999940395355
-        ],
-        "min": [
-          7.6500000059604645,
-          6.765022218961712,
-          -0.3499999940395355
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e1f6f3049a8c7cd250ecc3ea12e8cbcebe365cfbacddd76db1c36782aa05df00",
-      "id": "sf.render.hull-rack.mesh.hood-lens.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.2",
-      "nodeId": "sf.render.hull-rack.mesh.hood-lens",
-      "primitiveIndex": 1,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.9804820492026303,
-          5.63006463036872,
-          2.901926040692456
-        ],
-        "min": [
-          -7.019518069149383,
-          0.7699364186730278,
-          -2.901926054963263
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8f34fc3e6af9a1d5884c3241906bc03b54d6453406bd304f0bf8e8c3fbe3836c",
-      "id": "sf.render.hull-rack.mesh.s0-rib-a.primitive.0",
-      "indexCount": 600,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.3",
-      "nodeId": "sf.render.hull-rack.mesh.s0-rib-a",
-      "primitiveIndex": 0,
-      "vertexCount": 360
-    },
-    {
-      "bounds": {
-        "max": [
-          -4.108087876169055,
-          1.2499171953655037,
-          2.824223622600549
-        ],
-        "min": [
-          -6.514422354742081,
-          0.8499193288665321,
-          2.338436451855641
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5c2bb47ee111fc29a81cdb5f0b5ac241eea24bd8c5f59a0bed86db2cd1845282",
-      "id": "sf.render.hull-rack.mesh.s0-rib-a.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.3",
-      "nodeId": "sf.render.hull-rack.mesh.s0-rib-a",
-      "primitiveIndex": 1,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.8158796608275396,
-          3.499936437746514,
-          2.8502535156554467
-        ],
-        "min": [
-          -6.811418035300189,
-          1.2999065142364437,
-          2.352110420796272
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "072ea1b12229ebdd36e594e725e7959d0ac861a1ddacfe3c7a7537dad537586d",
-      "id": "sf.render.hull-rack.mesh.s0-rib-a.primitive.2",
-      "indexCount": 36,
+      "geometryHash": "80306b6f6eaa08a1690dc503d8e52748b2af1306c809b20c968d0c2cb968c539",
+      "id": "sf.render.hull-rack.mesh.bed-p.primitive.5",
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
       "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.3",
-      "nodeId": "sf.render.hull-rack.mesh.s0-rib-a",
-      "primitiveIndex": 2,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.112800463123194,
-          5.63006463036872,
-          2.7300000190734863
-        ],
-        "min": [
-          -1.312800928039423,
-          0.7699364186730278,
-          -2.7300000190734863
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8f34fc3e6af9a1d5884c3241906bc03b54d6453406bd304f0bf8e8c3fbe3836c",
-      "id": "sf.render.hull-rack.mesh.s1-rib-a.primitive.0",
-      "indexCount": 600,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.4",
-      "nodeId": "sf.render.hull-rack.mesh.s1-rib-a",
-      "primitiveIndex": 0,
-      "vertexCount": 360
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5998267359758975,
-          1.2499171953655037,
-          2.7000064277509224
-        ],
-        "min": [
-          -0.7998272008921268,
-          0.8499193288665321,
-          2.500049152267162
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5c2bb47ee111fc29a81cdb5f0b5ac241eea24bd8c5f59a0bed86db2cd1845282",
-      "id": "sf.render.hull-rack.mesh.s1-rib-a.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.4",
-      "nodeId": "sf.render.hull-rack.mesh.s1-rib-a",
-      "primitiveIndex": 1,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          7.419517572756753,
-          5.63006463036872,
-          2.90192611204649
-        ],
-        "min": [
-          3.3804815528100005,
-          0.7699364186730278,
-          -2.901925983609229
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8f34fc3e6af9a1d5884c3241906bc03b54d6453406bd304f0bf8e8c3fbe3836c",
-      "id": "sf.render.hull-rack.mesh.s2-rib-a.primitive.0",
-      "indexCount": 600,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.5",
-      "nodeId": "sf.render.hull-rack.mesh.s2-rib-a",
-      "primitiveIndex": 0,
-      "vertexCount": 360
-    },
-    {
-      "bounds": {
-        "max": [
-          6.914421858349451,
-          1.2499171953655037,
-          2.8242236939545826
-        ],
-        "min": [
-          4.508087379776425,
-          0.8499193288665321,
-          2.338436523209675
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5c2bb47ee111fc29a81cdb5f0b5ac241eea24bd8c5f59a0bed86db2cd1845282",
-      "id": "sf.render.hull-rack.mesh.s2-rib-a.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.5",
-      "nodeId": "sf.render.hull-rack.mesh.s2-rib-a",
-      "primitiveIndex": 1,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.584119961131844,
-          3.499936437746514,
-          -2.352110363713045
-        ],
-        "min": [
-          3.5885815866591937,
-          1.2999065142364437,
-          -2.8502534585722197
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "6831fe7afa9ea2ee320a621460791c8b65cb55e7c0b845b6b8d10c6b6ee90751",
-      "id": "sf.render.hull-rack.mesh.s2-rib-a.primitive.2",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.hull-rack.static-opaque-lane.5",
-      "nodeId": "sf.render.hull-rack.mesh.s2-rib-a",
-      "primitiveIndex": 2,
-      "vertexCount": 24
+      "meshName": "render:sf.render.hull-rack.static-opaque-lane.1",
+      "nodeId": "sf.render.hull-rack.mesh.bed-p",
+      "primitiveIndex": 5,
+      "vertexCount": 48
     }
   ],
   "hlods": [],
@@ -421,7 +271,7 @@
         8.560433387756348,
         0,
         0,
-        3.034811168909073,
+        3.172476679086685,
         0,
         1
       ],
@@ -430,7 +280,7 @@
       "nodeName": "bed_p",
       "nodePath": [
         0,
-        0
+        15
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -449,7 +299,7 @@
         8.560433387756348,
         0,
         0,
-        3.034811168909073,
+        3.172476679086685,
         0,
         1
       ]
@@ -479,7 +329,7 @@
       "nodeName": "bed_s",
       "nodePath": [
         0,
-        1
+        0
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -528,7 +378,7 @@
       "nodeName": "end_a_p",
       "nodePath": [
         0,
-        3
+        2
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -577,7 +427,7 @@
       "nodeName": "end_a_s",
       "nodePath": [
         0,
-        4
+        3
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -626,7 +476,7 @@
       "nodeName": "end_f_p",
       "nodePath": [
         0,
-        5
+        4
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -675,7 +525,7 @@
       "nodeName": "end_f_s",
       "nodePath": [
         0,
-        6
+        5
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -724,7 +574,7 @@
       "nodeName": "frame_a",
       "nodePath": [
         0,
-        7
+        6
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -773,7 +623,7 @@
       "nodeName": "frame_f",
       "nodePath": [
         0,
-        8
+        7
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -800,20 +650,20 @@
     {
       "id": "sf.render.hull-rack.mesh.hood-lens",
       "localTransform": [
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
-        0.06749625876545906,
+        0,
         0,
         1
       ],
@@ -822,27 +672,27 @@
       "nodeName": "hood_lens",
       "nodePath": [
         0,
-        9,
+        8,
         0
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-rack.body",
       "worldTransform": [
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         8,
-        6.7874960489571095,
+        6.71999979019165,
         0,
         1
       ]
@@ -872,7 +722,7 @@
       "nodeName": "hood_shade",
       "nodePath": [
         0,
-        9,
+        8,
         1
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -900,20 +750,20 @@
     {
       "id": "sf.render.hull-rack.mesh.s0-rib-a",
       "localTransform": [
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
-        -5.960464477539063e-8,
-        4.76837158203125e-7,
+        0,
+        0,
         0,
         1
       ],
@@ -922,28 +772,28 @@
       "nodeName": "s0_rib_a",
       "nodePath": [
         0,
-        10,
+        9,
         0
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-rack.body",
       "worldTransform": [
-        2.710367595848968,
+        0.9928086362317385,
         0,
-        0.3268143182334863,
-        0,
-        0,
-        2.7300000190734863,
+        0.11971220364474622,
         0,
         0,
-        -0.3268143182334863,
+        1,
         0,
-        2.710367595848968,
         0,
-        -5.000000059176006,
-        3.200000524520874,
-        -7.135403373524321e-9,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
         1
       ]
     },
@@ -972,7 +822,7 @@
       "nodeName": "s0_rib_b",
       "nodePath": [
         0,
-        10,
+        9,
         1
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1022,7 +872,7 @@
       "nodeName": "s0_scorch",
       "nodePath": [
         0,
-        10,
+        9,
         2
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1072,7 +922,7 @@
       "nodeName": "s0_skin",
       "nodePath": [
         0,
-        10,
+        9,
         3
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1122,7 +972,7 @@
       "nodeName": "s0_str_a",
       "nodePath": [
         0,
-        10,
+        9,
         4
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1172,7 +1022,7 @@
       "nodeName": "s0_str_b",
       "nodePath": [
         0,
-        10,
+        9,
         5
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1200,20 +1050,20 @@
     {
       "id": "sf.render.hull-rack.mesh.s1-rib-a",
       "localTransform": [
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
-        -2.384185791015625e-7,
-        4.76837158203125e-7,
+        0,
+        0,
         0,
         1
       ],
@@ -1222,27 +1072,27 @@
       "nodeName": "s1_rib_a",
       "nodePath": [
         0,
-        11,
+        10,
         0
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-rack.body",
       "worldTransform": [
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
-        0.3999997675418854,
-        3.200000524520874,
+        0.4000000059604645,
+        3.200000047683716,
         0,
         1
       ]
@@ -1272,7 +1122,7 @@
       "nodeName": "s1_rib_b",
       "nodePath": [
         0,
-        11,
+        10,
         1
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1322,7 +1172,7 @@
       "nodeName": "s1_scorch",
       "nodePath": [
         0,
-        11,
+        10,
         2
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1372,7 +1222,7 @@
       "nodeName": "s1_str_a",
       "nodePath": [
         0,
-        11,
+        10,
         3
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1422,7 +1272,7 @@
       "nodeName": "s1_str_b",
       "nodePath": [
         0,
-        11,
+        10,
         4
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1450,20 +1300,20 @@
     {
       "id": "sf.render.hull-rack.mesh.s2-rib-a",
       "localTransform": [
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
         0,
         0,
         0,
-        2.7300000190734863,
+        1,
         0,
-        -5.364418029785156e-7,
-        4.76837158203125e-7,
+        0,
+        0,
         0,
         1
       ],
@@ -1472,28 +1322,28 @@
       "nodeName": "s2_rib_a",
       "nodePath": [
         0,
-        12,
+        11,
         0
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-rack.body",
       "worldTransform": [
-        2.710367595848968,
+        0.9928086362317385,
         0,
-        -0.3268143182334863,
-        0,
-        0,
-        2.7300000190734863,
+        -0.11971220364474622,
         0,
         0,
-        0.3268143182334863,
+        1,
         0,
-        2.710367595848968,
         0,
-        5.399999562783377,
-        3.200000524520874,
-        6.421863036171889e-8,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
         1
       ]
     },
@@ -1522,7 +1372,7 @@
       "nodeName": "s2_rib_b",
       "nodePath": [
         0,
-        12,
+        11,
         1
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1572,7 +1422,7 @@
       "nodeName": "s2_scorch",
       "nodePath": [
         0,
-        12,
+        11,
         2
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1622,7 +1472,7 @@
       "nodeName": "s2_skin",
       "nodePath": [
         0,
-        12,
+        11,
         3
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1672,7 +1522,7 @@
       "nodeName": "s2_str_a",
       "nodePath": [
         0,
-        12,
+        11,
         4
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1722,7 +1572,7 @@
       "nodeName": "s2_str_b",
       "nodePath": [
         0,
-        12,
+        11,
         5
       ],
       "parentId": "sf.render.hull-rack.root",
@@ -1772,7 +1622,7 @@
       "nodeName": "spine_p",
       "nodePath": [
         0,
-        14
+        13
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -1821,7 +1671,7 @@
       "nodeName": "spine_s",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.hull-rack.root",
       "role": "immutable",
@@ -1896,7 +1746,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a28f2698fe113ea6f674e967916cec5e453a2d2f9ef2aa1a0dc4900badc4f20f"
+      "sha256": "0372ce078ce86f8af011ec4354385af81e2d7ddbdce177dadb10f188bddd37ca"
     },
     "sourceGlb": {
       "bytes": 36412,
@@ -1910,30 +1760,30 @@
     }
   },
   "render": {
-    "bytes": 52664,
-    "sha256": "d8eb234e359256811cf295c5c6c876398cfa7f2eee6368e9a099c83fbad5f8a6",
+    "bytes": 56280,
+    "sha256": "fe57f29c1ee33f2319df8242d35e3c34784e618534ae8cd1b43a220695827964",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        3.1726613831873043,
+        3.172476679086685,
         0
       ],
       "max": [
         8.560433387756348,
-        6.915000853450958,
+        6.914906815492511,
         3.570004035880322
       ],
       "min": [
         -8.560433387756348,
-        -0.5696780870763494,
+        -0.5699534573191403,
         -3.570004035880322
       ],
       "size": [
         17.120866775512695,
-        7.484678940527307,
+        7.484860272811652,
         7.140008071760644
       ]
     },
@@ -1960,7 +1810,7 @@
           1
         ],
         "name": "SOCKET_Next_Section",
-        "planIndex": 46,
+        "planIndex": 33,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1979,74 +1829,44 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 7,
+      "hull": 3,
       "mechanical": 1,
-      "rubber": 3,
+      "rubber": 1,
       "signal": 1
     },
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 3,
+        "planIndex": 37,
         "role": "mechanical"
       },
       {
         "allowTextures": false,
-        "planIndex": 4,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 15,
+        "planIndex": 38,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 20,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 22,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 30,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 31,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 38,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 39,
-        "role": "rubber"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 40,
         "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 41,
+        "role": "rubber"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 42,
+        "role": "hull"
       }
     ],
-    "nodeCount": 49,
+    "nodeCount": 43,
     "primitives": [
       {
         "canopy": false,
@@ -2064,12 +1884,12 @@
           8.560433387756348,
           0,
           0,
-          3.034811168909073,
+          3.172476679086685,
           0,
           1
         ],
         "name": "rendersfrenderhull-rackstatic-opaque-lane1",
-        "planIndex": 3,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2091,227 +1911,11 @@
           8.560433387756348,
           0,
           0,
-          3.034811168909073,
+          3.172476679086685,
           0,
           1
         ],
         "name": "rendersfrenderhull-rackstatic-opaque-lane1_1",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3499999940395355,
-          0,
-          0,
-          0,
-          0,
-          0.3499999940395355,
-          0,
-          0,
-          0,
-          0,
-          0.3499999940395355,
-          0,
-          8,
-          6.7874960489571095,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane2",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3499999940395355,
-          0,
-          0,
-          0,
-          0,
-          0.3499999940395355,
-          0,
-          0,
-          0,
-          0,
-          0.3499999940395355,
-          0,
-          8,
-          6.7874960489571095,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane2_1",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.710367595848968,
-          0,
-          0.3268143182334863,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0,
-          -0.3268143182334863,
-          0,
-          2.710367595848968,
-          0,
-          -5,
-          3.200000047683716,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane3",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.710367595848968,
-          0,
-          0.3268143182334863,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0,
-          -0.3268143182334863,
-          0,
-          2.710367595848968,
-          0,
-          -5,
-          3.200000047683716,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane3_1",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.710367595848968,
-          0,
-          0.3268143182334863,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0,
-          -0.3268143182334863,
-          0,
-          2.710367595848968,
-          0,
-          -5,
-          3.200000047683716,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane3_2",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.7300000190734863,
-          0,
-          0,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0.4000000059604645,
-          3.200000047683716,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane4",
-        "planIndex": 30,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.7300000190734863,
-          0,
-          0,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0.4000000059604645,
-          3.200000047683716,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane4_1",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.710367595848968,
-          0,
-          -0.3268143182334863,
-          0,
-          0,
-          2.7300000190734863,
-          0,
-          0,
-          0.3268143182334863,
-          0,
-          2.710367595848968,
-          0,
-          5.400000095367432,
-          3.200000047683716,
-          0,
-          1
-        ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane5",
         "planIndex": 38,
         "tags": {
           "canopy": false,
@@ -2321,24 +1925,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.710367595848968,
-          0,
-          -0.3268143182334863,
+          8.560433387756348,
           0,
           0,
-          2.7300000190734863,
           0,
           0,
-          0.3268143182334863,
+          8.560433387756348,
           0,
-          2.710367595848968,
           0,
-          5.400000095367432,
-          3.200000047683716,
+          0,
+          0,
+          8.560433387756348,
+          0,
+          0,
+          3.172476679086685,
           0,
           1
         ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane5_1",
+        "name": "rendersfrenderhull-rackstatic-opaque-lane1_2",
         "planIndex": 39,
         "tags": {
           "canopy": false,
@@ -2348,25 +1952,79 @@
       {
         "canopy": false,
         "matrix": [
-          2.710367595848968,
-          0,
-          -0.3268143182334863,
+          8.560433387756348,
           0,
           0,
-          2.7300000190734863,
           0,
           0,
-          0.3268143182334863,
+          8.560433387756348,
           0,
-          2.710367595848968,
           0,
-          5.400000095367432,
-          3.200000047683716,
+          0,
+          0,
+          8.560433387756348,
+          0,
+          0,
+          3.172476679086685,
           0,
           1
         ],
-        "name": "rendersfrenderhull-rackstatic-opaque-lane5_2",
+        "name": "rendersfrenderhull-rackstatic-opaque-lane1_3",
         "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.560433387756348,
+          0,
+          0,
+          0,
+          0,
+          8.560433387756348,
+          0,
+          0,
+          0,
+          0,
+          8.560433387756348,
+          0,
+          0,
+          3.172476679086685,
+          0,
+          1
+        ],
+        "name": "rendersfrenderhull-rackstatic-opaque-lane1_4",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.560433387756348,
+          0,
+          0,
+          0,
+          0,
+          8.560433387756348,
+          0,
+          0,
+          0,
+          0,
+          8.560433387756348,
+          0,
+          0,
+          3.172476679086685,
+          0,
+          1
+        ],
+        "name": "rendersfrenderhull-rackstatic-opaque-lane1_5",
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2377,19 +2035,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_hull_rack.glb"
   },
-  "runtimeHash": "d3f18c17e8023660662d9475671a1e816b332a9e29952eb0010a9978de19ad52",
+  "runtimeHash": "ef75680caa80d73c963f11e0dbb6cc074b8d39694e5f0de37f1cfe9210788f98",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8.560433387756348,
-          6.915000853450958,
+          6.914906815492511,
           3.570004035880322
         ],
         "min": [
           -8.560433387756348,
-          -0.5696780870763494,
+          -0.5699534573191403,
           -3.570004035880322
         ]
       },

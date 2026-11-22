@@ -415,6 +415,9 @@ export async function derivePilotSemanticManifest(pilot, sourcePath, { sourceByt
     pilot,
     meshNodes.map((node, index) => ({ record: meshRecords[index], node })),
     mergeGroups,
+    // The rootNode manifest is flat (every mesh record hangs off the semantic root), so one
+    // cross-parent group per asset is boundary-safe here; the compiler bakes the pivots.
+    { crossParent: true },
   );
 
   return {
@@ -681,13 +684,17 @@ function deriveFlightStaticMergeGroups(pilot, semanticNodes, meshNodes) {
 // opaque meshes join into one mesh per material bucket, so a wreck's hundred-odd hull plates
 // submit a handful of merged draws instead of one draw per plate (the asset-cost audit's
 // mergeable-draws rows: 50 packages, ~4,000 draws/frame across the wreck and crowd families,
-// none of them on the flight-static lane). Dynamics, blends (canopy and glass draw in their
-// own transparent order), non-render helpers (collision hulls), LOD-named nodes, morph
-// targets and cross-parent siblings keep their own draws; assertSafeMergeBoundaries
-// re-checks every rule at compile time.
-function deriveStaticOpaqueMergeGroups(pilot, entries, mergeGroups) {
+// none of them on the flight-static lane). With { crossParent: true } the group may span
+// siblings' pivots: the compiler then bakes each member's ancestor chain to the lowest common
+// ancestor and refuses any chain that crosses a motion pivot, a dynamic-named node, a node
+// extension, transform animation or a skin joint. Dynamics, blends (canopy and glass draw in
+// their own transparent order), non-render helpers (collision hulls), LOD-named nodes and
+// morph targets keep their own draws; assertSafeMergeBoundaries re-checks every rule at
+// compile time.
+function deriveStaticOpaqueMergeGroups(pilot, entries, mergeGroups, { crossParent = false } = {}) {
   const claimed = new Set();
   for (const group of mergeGroups) for (const nodeId of group.nodeIds) claimed.add(nodeId);
+  const candidates = [];
   const buckets = new Map();
   for (const { record, node } of entries) {
     if (!record || claimed.has(record.id)) continue;
@@ -698,8 +705,30 @@ function deriveStaticOpaqueMergeGroups(pilot, entries, mergeGroups) {
     if (Object.keys(mesh.getExtras()).length > 0 || mesh.listExtensions().length > 0) continue;
     const parent = node.getParentNode();
     if (!parent) continue;
-    if (!buckets.has(parent)) buckets.set(parent, []);
-    buckets.get(parent).push(record);
+    if (crossParent) {
+      // A pivot that moves or instances its subtree must keep its children unmerged.
+      let blocked = false;
+      for (let ancestor = parent; ancestor && !blocked; ancestor = ancestor.getParentNode()) {
+        const name = String(ancestor.getName() || '');
+        if (name.startsWith('MOTION_')) blocked = true;
+        else if ((pilot.dynamicNameIncludes || []).some((token) => name.includes(token))) blocked = true;
+        else if (typeof ancestor.listExtensions === 'function' && ancestor.listExtensions().length > 0) blocked = true;
+      }
+      if (blocked) continue;
+      candidates.push(record);
+    } else {
+      if (!buckets.has(parent)) buckets.set(parent, []);
+      buckets.get(parent).push(record);
+    }
+  }
+  if (crossParent) {
+    if (candidates.length < 2) return;
+    for (const record of candidates) record.mergeBoundary = 'static:opaque';
+    mergeGroups.push({
+      id: `${pilot.assetId}.static-opaque-lane.${mergeGroups.length + 1}`,
+      nodeIds: candidates.map((record) => record.id),
+    });
+    return;
   }
   let index = 0;
   for (const records of buckets.values()) {

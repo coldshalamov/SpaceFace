@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Jaw",
       "nodePath": [
         0,
-        13
+        12
       ],
       "parentNodeId": "sf.render.salvage-clamp.root",
       "worldTransform": [
@@ -53,49 +53,49 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "658d97e5875a097fa799728b22e568f7992e9cc32407fd3942c03abf075c8c72",
+  "contentHash": "7892914c0f912d247cfae2b58014336bd161dc7a70cb646916781bdf83c7926b",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          2.8001205366442212,
-          7.051911787119597,
-          1.8002422848296076
+          2.800186964039245,
+          7.474984169006348,
+          1.7999898362323146
         ],
         "min": [
-          -2.8001205366442212,
+          -2.800186964039245,
           0.00013885326916351914,
-          -1.8002422848296076
+          -1.7999898362323146
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a590a1e7af454acdc5edc15f7b6cd0020ca59947dae55a50364d2b07870cd873",
+      "geometryHash": "e2d1e945ce0c4d9258549720f6a6f49bfe9f1ba703933572f2bd310d71abab8c",
       "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.0",
-      "indexCount": 228,
+      "indexCount": 264,
       "indexed": true,
       "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
       "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
       "primitiveIndex": 0,
-      "vertexCount": 144
+      "vertexCount": 168
     },
     {
       "bounds": {
         "max": [
-          1.532941572087606,
-          7.200009346008301,
-          1.3997856066772874
+          1.5330881052403866,
+          7.199870077060822,
+          1.3998653608820226
         ],
         "min": [
-          -2.472174532725243,
-          0.6496587109472203,
-          -1.3997856066772874
+          -2.472605010445733,
+          0.6498278531537887,
+          -1.3998653608820226
         ]
       },
       "drawMode": 4,
-      "geometryHash": "313f4b3f7b46d66ef349b1304b950442db53c87d0dce500118db8478741e5e85",
+      "geometryHash": "91ba4529b59aac46e8b6f525ef21b9f8885e79d8e5f8c1df3f163b66f735f2e8",
       "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.1",
       "indexCount": 432,
       "indexed": true,
@@ -109,18 +109,18 @@
     {
       "bounds": {
         "max": [
-          0.6499593163097741,
-          6.904693145494326,
-          0.1933617979555785
+          0.6496889998846248,
+          6.904681325006502,
+          0.19344672468474783
         ],
         "min": [
-          -1.4454893043758787,
-          2.3791481560703547,
-          -0.44517159392954775
+          -1.4454895884020103,
+          2.3792141972989223,
+          -0.4448362183198801
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1e1917e77ac18ac888ea738d8cd617fdc4798e1bc371b79b6884b99ba3f6dd2",
+      "geometryHash": "db8106c36892acd1b66e4922cc26f20c7f1ba0669c69c1bda361dfe0840abee0",
       "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.2",
       "indexCount": 180,
       "indexed": true,
@@ -134,77 +134,52 @@
     {
       "bounds": {
         "max": [
-          1.8942864320170936,
-          4.6957543331677005,
-          1.1822535839772614
+          0.5999585918878382,
+          7.299787135329595,
+          0.1998341165375461
         ],
         "min": [
-          -0.09448360581920313,
-          2.4041972980782367,
-          -1.1822535839772614
+          0.1998341165375461,
+          7.219944737169617,
+          -0.1998341165375461
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3646dc73acca58585c3df7d20dcfe1cadeaedb29f2a954fc426f2a8293c4abb4",
+      "geometryHash": "eb0443511c352dbac3850156a621cc9bfe6aa13045c426146756b04e2d06de1c",
       "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.3",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
+      "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
+      "primitiveIndex": 3,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8945460477674891,
+          4.695784349626297,
+          1.1822377956116812
+        ],
+        "min": [
+          -0.09444215096637452,
+          2.404307522434915,
+          -1.1822377956116812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "02106abcd78af6439a35215594176889f92357aee7f02a7c2353c5c5167b1e66",
+      "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.4",
       "indexCount": 72,
       "indexed": true,
       "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
       "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
-      "primitiveIndex": 3,
+      "primitiveIndex": 4,
       "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          0.6000213655107541,
-          7.2999852538306875,
-          0.20002135955028968
-        ],
-        "min": [
-          0.1999786464101748,
-          7.21999166407996,
-          -0.20002135955028968
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "35b58f2bba760d8c5c2ebba2b605170ef3c07a44f7edaebb31217822c6699f67",
-      "id": "sf.render.salvage-clamp.mesh.hood-lens.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.2",
-      "nodeId": "sf.render.salvage-clamp.mesh.hood-lens",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.75,
-          7.475001273067657,
-          0.3499999940395355
-        ],
-        "min": [
-          0.050000011920928955,
-          7.325022638578411,
-          -0.3499999940395355
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e1f6f3049a8c7cd250ecc3ea12e8cbcebe365cfbacddd76db1c36782aa05df00",
-      "id": "sf.render.salvage-clamp.mesh.hood-lens.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.2",
-      "nodeId": "sf.render.salvage-clamp.mesh.hood-lens",
-      "primitiveIndex": 1,
-      "vertexCount": 24
     }
   ],
   "hlods": [],
@@ -251,20 +226,20 @@
     {
       "id": "sf.render.salvage-clamp.mesh.aframe-p",
       "localTransform": [
-        3.5999352463695686,
+        3.737422657868592,
         0,
         0,
         0,
         0,
-        3.5999352463695686,
+        3.737422657868592,
         0,
         0,
         0,
         0,
-        3.5999352463695686,
+        3.737422657868592,
         0,
         0,
-        3.600074099638732,
+        3.7375615111377556,
         0,
         1
       ],
@@ -273,26 +248,26 @@
       "nodeName": "aframe_p",
       "nodePath": [
         0,
-        0
+        18
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        3.5999352463695686,
+        3.737422657868592,
         0,
         0,
         0,
         0,
-        3.5999352463695686,
+        3.737422657868592,
         0,
         0,
         0,
         0,
-        3.5999352463695686,
+        3.737422657868592,
         0,
         0,
-        3.600074099638732,
+        3.7375615111377556,
         0,
         1
       ]
@@ -322,7 +297,7 @@
       "nodeName": "aframe_s",
       "nodePath": [
         0,
-        1
+        0
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -371,7 +346,7 @@
       "nodeName": "apex_cap",
       "nodePath": [
         0,
-        2
+        1
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -420,7 +395,7 @@
       "nodeName": "brace",
       "nodePath": [
         0,
-        3
+        2
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -469,7 +444,7 @@
       "nodeName": "cable_a",
       "nodePath": [
         0,
-        4
+        3
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -518,7 +493,7 @@
       "nodeName": "drop_a",
       "nodePath": [
         0,
-        6
+        5
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -567,7 +542,7 @@
       "nodeName": "drop_b",
       "nodePath": [
         0,
-        7
+        6
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -616,7 +591,7 @@
       "nodeName": "hinge",
       "nodePath": [
         0,
-        8
+        7
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -643,20 +618,20 @@
     {
       "id": "sf.render.salvage-clamp.mesh.hood-lens",
       "localTransform": [
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
-        0.06749625876545906,
+        0,
         0,
         1
       ],
@@ -665,27 +640,27 @@
       "nodeName": "hood_lens",
       "nodePath": [
         0,
-        9,
+        8,
         0
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0.4000000059604645,
-        7.347496468573809,
+        7.28000020980835,
         0,
         1
       ]
@@ -715,7 +690,7 @@
       "nodeName": "hood_shade",
       "nodePath": [
         0,
-        9,
+        8,
         1
       ],
       "parentId": "sf.render.salvage-clamp.root",
@@ -765,7 +740,7 @@
       "nodeName": "jaw_p",
       "nodePath": [
         0,
-        10
+        9
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -814,7 +789,7 @@
       "nodeName": "jaw_s",
       "nodePath": [
         0,
-        11
+        10
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -863,7 +838,7 @@
       "nodeName": "skid",
       "nodePath": [
         0,
-        12
+        11
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -912,7 +887,7 @@
       "nodeName": "tooth_p",
       "nodePath": [
         0,
-        14
+        13
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -961,7 +936,7 @@
       "nodeName": "tooth_s",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -1010,7 +985,7 @@
       "nodeName": "winch",
       "nodePath": [
         0,
-        16
+        15
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -1059,7 +1034,7 @@
       "nodeName": "winch_stand_a",
       "nodePath": [
         0,
-        17
+        16
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -1108,7 +1083,7 @@
       "nodeName": "winch_stand_b",
       "nodePath": [
         0,
-        18
+        17
       ],
       "parentId": "sf.render.salvage-clamp.root",
       "role": "immutable",
@@ -1183,7 +1158,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "81db8994aab8f3d5e5be9a5e90016a715c448f01b55eaed13f1fcaa1ea681cf8"
+      "sha256": "aeee51150983c3c6d00cf19a48621cb5862feb9fb338ed63d5fc9ae1615e7fe5"
     },
     "sourceGlb": {
       "bytes": 22308,
@@ -1197,31 +1172,31 @@
     }
   },
   "render": {
-    "bytes": 18900,
-    "sha256": "02e5328c13c7da816bc6e0b05b43df9580cbf6206416a1264a590353f6edc9b5",
+    "bytes": 18312,
+    "sha256": "593531ff9dcbfa8174dd6f2bf36b0b8acc5f271b8e7271671435cf594ef569af",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        3.7375700631684103,
+        3.7375615111377556,
         0
       ],
       "max": [
-        2.8001205366442212,
-        7.475001273067657,
-        1.8002422848296076
+        2.800186964039245,
+        7.474984169006348,
+        1.7999898362323146
       ],
       "min": [
-        -2.8001205366442212,
+        -2.800186964039245,
         0.00013885326916351914,
-        -1.8002422848296076
+        -1.7999898362323146
       ],
       "size": [
-        5.6002410732884425,
-        7.474862419798494,
-        3.600484569659215
+        5.60037392807849,
+        7.474845315737184,
+        3.599979672464629
       ]
     },
     "hidden": [],
@@ -1247,7 +1222,7 @@
           1
         ],
         "name": "SOCKET_Jaw",
-        "planIndex": 23,
+        "planIndex": 16,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1266,7 +1241,7 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 3,
+      "hull": 2,
       "mechanical": 1,
       "rubber": 1,
       "signal": 1
@@ -1274,59 +1249,54 @@
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 3,
+        "planIndex": 23,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 4,
+        "planIndex": 24,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 5,
+        "planIndex": 25,
         "role": "mechanical"
       },
       {
         "allowTextures": false,
-        "planIndex": 6,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 17,
+        "planIndex": 26,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 18,
-        "role": "hull"
+        "planIndex": 27,
+        "role": "rubber"
       }
     ],
-    "nodeCount": 29,
+    "nodeCount": 28,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
-          3.600074099638732,
+          3.7375615111377556,
           0,
           1
         ],
         "name": "rendersfrendersalvage-clampstatic-opaque-lane1",
-        "planIndex": 3,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1335,25 +1305,25 @@
       {
         "canopy": false,
         "matrix": [
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
-          3.600074099638732,
+          3.7375615111377556,
           0,
           1
         ],
         "name": "rendersfrendersalvage-clampstatic-opaque-lane1_1",
-        "planIndex": 4,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1362,25 +1332,25 @@
       {
         "canopy": false,
         "matrix": [
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
-          3.600074099638732,
+          3.7375615111377556,
           0,
           1
         ],
         "name": "rendersfrendersalvage-clampstatic-opaque-lane1_2",
-        "planIndex": 5,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1389,25 +1359,25 @@
       {
         "canopy": false,
         "matrix": [
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          3.5999352463695686,
+          3.737422657868592,
           0,
           0,
-          3.600074099638732,
+          3.7375615111377556,
           0,
           1
         ],
         "name": "rendersfrendersalvage-clampstatic-opaque-lane1_3",
-        "planIndex": 6,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1416,52 +1386,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.3499999940395355,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          0.3499999940395355,
+          3.737422657868592,
           0,
           0,
           0,
           0,
-          0.3499999940395355,
-          0,
-          0.4000000059604645,
-          7.347496468573809,
-          0,
-          1
-        ],
-        "name": "rendersfrendersalvage-clampstatic-opaque-lane2",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3499999940395355,
+          3.737422657868592,
           0,
           0,
-          0,
-          0,
-          0.3499999940395355,
-          0,
-          0,
-          0,
-          0,
-          0.3499999940395355,
-          0,
-          0.4000000059604645,
-          7.347496468573809,
+          3.7375615111377556,
           0,
           1
         ],
-        "name": "rendersfrendersalvage-clampstatic-opaque-lane2_1",
-        "planIndex": 18,
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane1_4",
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1472,20 +1415,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
   },
-  "runtimeHash": "e03ded95e9a202cb6f01a4b2b8fd0a44cad8321ef7e2313f0e76ca4d31874044",
+  "runtimeHash": "432d78e1524fc0835dc0c1c916ac07fc13913c6369f71001af8e573a0b90fce2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          2.8001205366442212,
-          7.475001273067657,
-          1.8002422848296076
+          2.800186964039245,
+          7.474984169006348,
+          1.7999898362323146
         ],
         "min": [
-          -2.8001205366442212,
+          -2.800186964039245,
           0.00013885326916351914,
-          -1.8002422848296076
+          -1.7999898362323146
         ]
       },
       "id": "sf.render.salvage-clamp.body",

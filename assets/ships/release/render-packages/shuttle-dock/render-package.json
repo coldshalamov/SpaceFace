@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Approach",
       "nodePath": [
         0,
-        33
+        32
       ],
       "parentNodeId": "sf.render.shuttle-dock.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cradle",
       "nodePath": [
         0,
-        34
+        33
       ],
       "parentNodeId": "sf.render.shuttle-dock.root",
       "worldTransform": [
@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f3f2aa3488f99bbd7a7c163d761baa2d9bd71d4e524b08aecbc802d5517fd0ed",
+  "contentHash": "b80b21eb4e5b0f5cd88f3124c3b7368a604dc8438cf65e4be21635aa0f07439c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -155,6 +155,31 @@
     {
       "bounds": {
         "max": [
+          2.6010762531843867,
+          1.999439403571619,
+          -2.8006464429387283
+        ],
+        "min": [
+          -6.59967432226701,
+          1.8004681040434345,
+          -3.0999394060945686
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae972dc6295bb53de04d124ab908a1cd20cad8c2afdac44c6328580b6a7e3836",
+      "id": "sf.render.shuttle-dock.mesh.apg0.primitive.10",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.shuttle-dock.static-opaque-lane.1",
+      "nodeId": "sf.render.shuttle-dock.mesh.apg0",
+      "primitiveIndex": 10,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
           19.12363624572754,
           0.9310136859370828,
           1.730548697577065
@@ -185,22 +210,22 @@
           3.72067969979069
         ],
         "min": [
-          -3.189991779722053,
+          -6.999288949050504,
           0.2805949000844472,
-          -3.72067969979069
+          -4.999780911043303
         ]
       },
       "drawMode": 4,
-      "geometryHash": "728b26c2d23d5a1135a7efae6350fd327173df1b03ad84fd3d1667f34a7b0c9a",
+      "geometryHash": "99d16a854d552982dc4586f26da4b3b9ed3755c32a2b6aae79f34e1ef63f10c1",
       "id": "sf.render.shuttle-dock.mesh.apg0.primitive.3",
-      "indexCount": 360,
+      "indexCount": 396,
       "indexed": true,
       "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.shuttle-dock.static-opaque-lane.1",
       "nodeId": "sf.render.shuttle-dock.mesh.apg0",
       "primitiveIndex": 3,
-      "vertexCount": 216
+      "vertexCount": 240
     },
     {
       "bounds": {
@@ -355,56 +380,6 @@
     {
       "bounds": {
         "max": [
-          3,
-          1.450386032346156,
-          -2.8000909005292813
-        ],
-        "min": [
-          -7,
-          1.1500838991023437,
-          -4.999865063559159
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5c6466c93a40202b787e33318cc504d193939116375c3107890b5567c278ac4e",
-      "id": "sf.render.shuttle-dock.mesh.walk-deck.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.shuttle-dock.static-opaque-lane.2",
-      "nodeId": "sf.render.shuttle-dock.mesh.walk-deck",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.6002075258644375,
-          1.9997192029141053,
-          -2.8000909005292813
-        ],
-        "min": [
-          -6.6002075258644375,
-          1.8001281509410838,
-          -3.0997826635835737
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ec63c47774f8e49e341d25e7fce0032189332b378637398e5f4206ee50ea808d",
-      "id": "sf.render.shuttle-dock.mesh.walk-deck.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.shuttle-dock.static-opaque-lane.2",
-      "nodeId": "sf.render.shuttle-dock.mesh.walk-deck",
-      "primitiveIndex": 1,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
           2.8000001907348633,
           3.1498290327618554,
           -2.999972592945025
@@ -543,7 +518,7 @@
       "nodeName": "apg0",
       "nodePath": [
         0,
-        0
+        35
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -592,7 +567,7 @@
       "nodeName": "apg1",
       "nodePath": [
         0,
-        1
+        0
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -641,7 +616,7 @@
       "nodeName": "apg2",
       "nodePath": [
         0,
-        2
+        1
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -690,7 +665,7 @@
       "nodeName": "apg3",
       "nodePath": [
         0,
-        3
+        2
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -739,7 +714,7 @@
       "nodeName": "apg4",
       "nodePath": [
         0,
-        4
+        3
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -788,7 +763,7 @@
       "nodeName": "appost0",
       "nodePath": [
         0,
-        5
+        4
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -837,7 +812,7 @@
       "nodeName": "appost0s",
       "nodePath": [
         0,
-        6
+        5
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -886,7 +861,7 @@
       "nodeName": "appost1",
       "nodePath": [
         0,
-        7
+        6
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -935,7 +910,7 @@
       "nodeName": "appost1s",
       "nodePath": [
         0,
-        8
+        7
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -984,7 +959,7 @@
       "nodeName": "appost2",
       "nodePath": [
         0,
-        9
+        8
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1033,7 +1008,7 @@
       "nodeName": "appost2s",
       "nodePath": [
         0,
-        10
+        9
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1082,7 +1057,7 @@
       "nodeName": "appost3",
       "nodePath": [
         0,
-        11
+        10
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1131,7 +1106,7 @@
       "nodeName": "appost3s",
       "nodePath": [
         0,
-        12
+        11
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1180,7 +1155,7 @@
       "nodeName": "appost4",
       "nodePath": [
         0,
-        13
+        12
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1229,7 +1204,7 @@
       "nodeName": "appost4s",
       "nodePath": [
         0,
-        14
+        13
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1278,7 +1253,7 @@
       "nodeName": "apr0",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1327,7 +1302,7 @@
       "nodeName": "apr1",
       "nodePath": [
         0,
-        16
+        15
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1376,7 +1351,7 @@
       "nodeName": "apr2",
       "nodePath": [
         0,
-        17
+        16
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1425,7 +1400,7 @@
       "nodeName": "apr3",
       "nodePath": [
         0,
-        18
+        17
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1474,7 +1449,7 @@
       "nodeName": "apr4",
       "nodePath": [
         0,
-        19
+        18
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1523,7 +1498,7 @@
       "nodeName": "cradle_a",
       "nodePath": [
         0,
-        21
+        20
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1572,7 +1547,7 @@
       "nodeName": "cradle_f",
       "nodePath": [
         0,
-        22
+        21
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1621,7 +1596,7 @@
       "nodeName": "cradle_tie_p",
       "nodePath": [
         0,
-        23
+        22
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1670,7 +1645,7 @@
       "nodeName": "cradle_tie_s",
       "nodePath": [
         0,
-        24
+        23
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1719,7 +1694,7 @@
       "nodeName": "deck",
       "nodePath": [
         0,
-        25
+        24
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1768,7 +1743,7 @@
       "nodeName": "deck_frame",
       "nodePath": [
         0,
-        26
+        25
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1817,7 +1792,7 @@
       "nodeName": "mast_col",
       "nodePath": [
         0,
-        27
+        26
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1866,7 +1841,7 @@
       "nodeName": "mast_fl_housing",
       "nodePath": [
         0,
-        28
+        27
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1915,7 +1890,7 @@
       "nodeName": "mast_fl_lens",
       "nodePath": [
         0,
-        29
+        28
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -1964,7 +1939,7 @@
       "nodeName": "mast_foot",
       "nodePath": [
         0,
-        30
+        29
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -2013,7 +1988,7 @@
       "nodeName": "mast_head",
       "nodePath": [
         0,
-        31
+        30
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -2062,7 +2037,7 @@
       "nodeName": "plate",
       "nodePath": [
         0,
-        32
+        31
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
@@ -2089,21 +2064,21 @@
     {
       "id": "sf.render.shuttle-dock.mesh.walk-deck",
       "localTransform": [
-        5,
+        1,
         0,
         0,
         0,
         0,
-        5,
+        1,
         0,
         0,
         0,
         0,
-        5,
+        1,
         0,
         0,
-        0.2749015986919403,
-        0.000022113323211669922,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2111,28 +2086,28 @@
       "nodeName": "walk_deck",
       "nodePath": [
         0,
-        35,
+        34,
         0
       ],
       "parentId": "sf.render.shuttle-dock.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.shuttle-dock.body",
       "worldTransform": [
-        5,
+        1,
         0,
         0,
         0,
         0,
-        5,
+        1,
         0,
         0,
         0,
         0,
-        5,
+        1,
         0,
         -2,
-        1.5749015510082245,
-        -3.89997798204422,
+        1.2999999523162842,
+        -3.9000000953674316,
         1
       ]
     },
@@ -2161,7 +2136,7 @@
       "nodeName": "walk_glass",
       "nodePath": [
         0,
-        35,
+        34,
         1
       ],
       "parentId": "sf.render.shuttle-dock.root",
@@ -2211,7 +2186,7 @@
       "nodeName": "walk_glow",
       "nodePath": [
         0,
-        35,
+        34,
         2
       ],
       "parentId": "sf.render.shuttle-dock.root",
@@ -2287,7 +2262,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "db30499d711bb1e9327ebe0a491c5ff55dcd2355ae1f3a5b2033898203d49ec5"
+      "sha256": "a8e20812989063dc7656257aed532c7b07658955b0b9707a2bec07f395b4d175"
     },
     "sourceGlb": {
       "bytes": 33960,
@@ -2301,8 +2276,8 @@
     }
   },
   "render": {
-    "bytes": 40328,
-    "sha256": "1428fd2821eb943d1d00bacd19791de06b04354df2c55a9da61a37fcce38433d",
+    "bytes": 39700,
+    "sha256": "7dbeb2daf22d8002c5a71cabe8384cb4d4fa19088c83a4e25078c0d5cf50c21a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2351,7 +2326,7 @@
           1
         ],
         "name": "SOCKET_Approach",
-        "planIndex": 45,
+        "planIndex": 34,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2388,7 +2363,7 @@
           1
         ],
         "name": "SOCKET_Cradle",
-        "planIndex": 46,
+        "planIndex": 35,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2408,7 +2383,7 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 6,
+      "hull": 5,
       "mechanical": 1,
       "signal": 4,
       "warning": 1
@@ -2416,72 +2391,94 @@
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 3,
+        "planIndex": 38,
+        "role": "glass"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 41,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 4,
+        "planIndex": 42,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 5,
+        "planIndex": 43,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 6,
+        "planIndex": 44,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 7,
+        "planIndex": 45,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 8,
+        "planIndex": 46,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 9,
+        "planIndex": 47,
         "role": "mechanical"
       },
       {
         "allowTextures": false,
-        "planIndex": 10,
+        "planIndex": 48,
         "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 11,
-        "role": "warning"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 12,
-        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 49,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": false,
         "planIndex": 50,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 51,
-        "role": "glass"
+        "role": "signal"
       }
     ],
-    "nodeCount": 53,
+    "nodeCount": 52,
     "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          4.800000190734863,
+          0,
+          0,
+          0,
+          0,
+          4.800000190734863,
+          0,
+          0,
+          0,
+          0,
+          4.800000190734863,
+          0,
+          -2,
+          2.3499999046325684,
+          -3.9000000953674316,
+          1
+        ],
+        "name": "walk_glass",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
       {
         "canopy": false,
         "matrix": [
@@ -2503,7 +2500,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1",
-        "planIndex": 3,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2530,7 +2527,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_1",
-        "planIndex": 4,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2557,7 +2554,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_2",
-        "planIndex": 5,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2584,7 +2581,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_3",
-        "planIndex": 6,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2611,7 +2608,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_4",
-        "planIndex": 7,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2638,7 +2635,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_5",
-        "planIndex": 8,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2665,7 +2662,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_6",
-        "planIndex": 9,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2692,7 +2689,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_7",
-        "planIndex": 10,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2719,7 +2716,7 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_8",
-        "planIndex": 11,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2746,60 +2743,6 @@
           1
         ],
         "name": "rendersfrendershuttle-dockstatic-opaque-lane1_9",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          5,
-          0,
-          0,
-          0,
-          0,
-          5,
-          0,
-          0,
-          0,
-          0,
-          5,
-          0,
-          -2,
-          1.5749015510082245,
-          -3.89997798204422,
-          1
-        ],
-        "name": "rendersfrendershuttle-dockstatic-opaque-lane2",
-        "planIndex": 49,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          5,
-          0,
-          0,
-          0,
-          0,
-          5,
-          0,
-          0,
-          0,
-          0,
-          5,
-          0,
-          -2,
-          1.5749015510082245,
-          -3.89997798204422,
-          1
-        ],
-        "name": "rendersfrendershuttle-dockstatic-opaque-lane2_1",
         "planIndex": 50,
         "tags": {
           "canopy": false,
@@ -2809,24 +2752,24 @@
       {
         "canopy": false,
         "matrix": [
-          4.800000190734863,
+          13.69683313369751,
           0,
           0,
           0,
           0,
-          4.800000190734863,
+          13.69683313369751,
           0,
           0,
           0,
           0,
-          4.800000190734863,
+          13.69683313369751,
           0,
-          -2,
-          2.3499999046325684,
-          -3.9000000953674316,
+          5.426803112030029,
+          3.479183942079544,
+          0,
           1
         ],
-        "name": "walk_glass",
+        "name": "rendersfrendershuttle-dockstatic-opaque-lane1_10",
         "planIndex": 51,
         "tags": {
           "canopy": false,
@@ -2838,7 +2781,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "72bd93c9cbfe5d06dd7f610cad4e8efa6cf9056f7f32d320e566303234007d9f",
+  "runtimeHash": "ae98e4e62d6d439e80f11f6fd44c56424c9062bb4b3ec555230d1a632fd3602e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

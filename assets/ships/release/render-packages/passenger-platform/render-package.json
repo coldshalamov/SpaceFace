@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Gate",
       "nodePath": [
         0,
-        30
+        29
       ],
       "parentNodeId": "sf.render.passenger-platform.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Shuttle_Side",
       "nodePath": [
         0,
-        31
+        30
       ],
       "parentNodeId": "sf.render.passenger-platform.root",
       "worldTransform": [
@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b4ab5fefb9364c268b50fb1550648da85358092068ef7c91dc7c55cdb317f909",
+  "contentHash": "4af78405900dc3089b04928c83fab1d8278d8ed90ec733a4f0f3ddd90c146d3d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -130,18 +130,18 @@
     {
       "bounds": {
         "max": [
-          7.299783318582721,
-          5.209892670214076,
-          1.9395123142185735
+          7.30018314555759,
+          5.210192116629591,
+          1.9401621449349125
         ],
         "min": [
-          -7.299783318582721,
-          2.2495972510423483,
-          -0.15039521469771416
+          -7.299889568676135,
+          2.2503367571513944,
+          -0.1500956176507279
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0df2fe119e91ea1e07c98d783dc0be3160cd1dc4255a46a67aafa23ec699d190",
+      "geometryHash": "f9ef30aa3af58fd55ef2c349fe14cec906ff5985ac39eac73e92a8e33b7dd64e",
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -155,18 +155,18 @@
     {
       "bounds": {
         "max": [
-          6.621051667836543,
-          5.299739162111412,
-          1.5400860621967223
+          6.62122713014423,
+          5.29984654596459,
+          1.5402429489125031
         ],
         "min": [
-          -6.621051667836543,
-          0.00026102862345123157,
-          -1.6895046845912045
+          -6.620933553262775,
+          -0.00034199275557744713,
+          -1.6893312134246357
         ]
       },
       "drawMode": 4,
-      "geometryHash": "997580633fad1f8eaf211c14b878b887bf6e05df8659bcae9172912bd44b57ee",
+      "geometryHash": "ce70174f73ef5670eb3f37e942fdc34cbd79a1d9b4c86a36b64155ddfdbf07bb",
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.1",
       "indexCount": 720,
       "indexed": true,
@@ -180,47 +180,47 @@
     {
       "bounds": {
         "max": [
-          8,
-          2.2495972510423483,
-          2.00030518509476
+          8.5039701461792,
+          5.770280461688683,
+          2.0006033332506417
         ],
         "min": [
           -8,
-          1.7505585840908424,
-          -2.00030518509476
+          1.7496822472694362,
+          -2.0006033332506417
         ]
       },
       "drawMode": 4,
-      "geometryHash": "931c5cb097d979172ca88a320f181c23d9cd512e02858d6d0eb98771824a90ce",
+      "geometryHash": "6fcbaa6c9abc3c414682ab3751c6111dfc543c047fdc11120d03e90a7057468e",
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.2",
-      "indexCount": 36,
+      "indexCount": 216,
       "indexed": true,
       "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
       "nodeId": "sf.render.passenger-platform.mesh.cglow0",
       "primitiveIndex": 2,
-      "vertexCount": 24
+      "vertexCount": 132
     },
     {
       "bounds": {
         "max": [
-          -7.360332041383099,
-          4.999925325019215,
-          0.7998290963469344
+          8.47475690515993,
+          5.54967012433627,
+          0.7998383920448185
         ],
         "min": [
-          -7.440412610248115,
-          4.199852080596473,
-          -0.7998290963469344
+          8.324661287509201,
+          4.950295006871954,
+          -0.7998383920448185
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a67189b1aacb48fe70776dd17fc9de3b76b41afd6b0434d323b68ce8d9f319d",
+      "geometryHash": "726493026b218ec0ad15ffd6189110d5c554f90b1837dfa570fedb7473fcc84e",
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.3",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
       "nodeId": "sf.render.passenger-platform.mesh.cglow0",
@@ -230,77 +230,52 @@
     {
       "bounds": {
         "max": [
-          7.843745231482894,
-          5.299739162111412,
-          0.5400555436872463
+          -7.360330756991864,
+          4.999655310663133,
+          0.7998383920448185
         ],
         "min": [
-          -7.843745231482894,
-          2.25057384334558,
-          -1.9492782372508928
+          -7.439911654940908,
+          4.199565080333667,
+          -0.7998383920448185
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87d31ff54f4bd10a392f41944cb931d21c2a1474126ea41d4f4cc2c6d68d35c5",
+      "geometryHash": "0c0d1e9d48ed4afc4134a5451ad1c75ba11aa820b57463dceb56553117b43d21",
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.4",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
+      "nodeId": "sf.render.passenger-platform.mesh.cglow0",
+      "primitiveIndex": 4,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.843146487260558,
+          5.29984654596459,
+          0.5399412822871823
+        ],
+        "min": [
+          -7.842852910379104,
+          2.2503367571513944,
+          -1.9492283231822718
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "814c6670a420818034181db390692691f930190adb85150a13e5d9d9e775e697",
+      "id": "sf.render.passenger-platform.mesh.cglow0.primitive.5",
       "indexCount": 300,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
       "nodeId": "sf.render.passenger-platform.mesh.cglow0",
-      "primitiveIndex": 4,
+      "primitiveIndex": 5,
       "vertexCount": 180
-    },
-    {
-      "bounds": {
-        "max": [
-          8.503985342189383,
-          5.769938230514526,
-          1.6198891734685446
-        ],
-        "min": [
-          8.296013894871164,
-          2.25,
-          -1.6198891734685446
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4575305e71cf7d1ca2da12b084715d6a4436fb8c8f92674ebfef5c8bb93c8db2",
-      "id": "sf.render.passenger-platform.mesh.glintel.primitive.0",
-      "indexCount": 180,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.2",
-      "nodeId": "sf.render.passenger-platform.mesh.glintel",
-      "primitiveIndex": 0,
-      "vertexCount": 108
-    },
-    {
-      "bounds": {
-        "max": [
-          8.474981059763806,
-          5.550150223689589,
-          0.7999273669706235
-        ],
-        "min": [
-          8.32501817729674,
-          4.950030135650727,
-          -0.7999273669706235
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "94e76710005c0acdc8f3766be3244b2e74fb13a302e8432a3ca014ff3a40a02a",
-      "id": "sf.render.passenger-platform.mesh.glintel.primitive.1",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
-      "materialPipelineKey": "opaque",
-      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.2",
-      "nodeId": "sf.render.passenger-platform.mesh.glintel",
-      "primitiveIndex": 1,
-      "vertexCount": 24
     }
   ],
   "hlods": [],
@@ -410,20 +385,20 @@
     {
       "id": "sf.render.passenger-platform.mesh.cglow0",
       "localTransform": [
-        8,
+        8.2519850730896,
         0,
         0,
         0,
         0,
-        8,
+        8.2519850730896,
         0,
         0,
         0,
         0,
-        8,
+        8.2519850730896,
         0,
-        0,
-        2.6500000953674316,
+        0.2519850730895996,
+        2.8849692344665527,
         0,
         1
       ],
@@ -432,26 +407,26 @@
       "nodeName": "cglow0",
       "nodePath": [
         0,
-        1
+        31
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        8,
+        8.2519850730896,
         0,
         0,
         0,
         0,
-        8,
+        8.2519850730896,
         0,
         0,
         0,
         0,
-        8,
+        8.2519850730896,
         0,
-        0,
-        2.6500000953674316,
+        0.2519850730895996,
+        2.8849692344665527,
         0,
         1
       ]
@@ -481,7 +456,7 @@
       "nodeName": "cglow1",
       "nodePath": [
         0,
-        2
+        1
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -530,7 +505,7 @@
       "nodeName": "cglow2",
       "nodePath": [
         0,
-        3
+        2
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -579,7 +554,7 @@
       "nodeName": "cglow3",
       "nodePath": [
         0,
-        4
+        3
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -628,7 +603,7 @@
       "nodeName": "cpost0",
       "nodePath": [
         0,
-        6
+        5
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -677,7 +652,7 @@
       "nodeName": "cpost1",
       "nodePath": [
         0,
-        7
+        6
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -726,7 +701,7 @@
       "nodeName": "cpost2",
       "nodePath": [
         0,
-        8
+        7
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -775,7 +750,7 @@
       "nodeName": "cpost3",
       "nodePath": [
         0,
-        9
+        8
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -824,7 +799,7 @@
       "nodeName": "deck",
       "nodePath": [
         0,
-        10
+        9
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -851,20 +826,20 @@
     {
       "id": "sf.render.passenger-platform.mesh.glintel",
       "localTransform": [
-        1.7599691152572632,
+        1,
         0,
         0,
         0,
         0,
-        1.7599691152572632,
+        1,
         0,
         0,
         0,
         0,
-        1.7599691152572632,
+        1,
         0,
         0,
-        1.7599691152572632,
+        0,
         0,
         1
       ],
@@ -873,27 +848,27 @@
       "nodeName": "glintel",
       "nodePath": [
         0,
-        11,
+        10,
         0
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.7599691152572632,
+        1,
         0,
         0,
         0,
         0,
-        1.7599691152572632,
+        1,
         0,
         0,
         0,
         0,
-        1.7599691152572632,
+        1,
         0,
         8.399999618530273,
-        4.009969115257263,
+        2.25,
         0,
         1
       ]
@@ -923,7 +898,7 @@
       "nodeName": "gpost_p",
       "nodePath": [
         0,
-        11,
+        10,
         1
       ],
       "parentId": "sf.render.passenger-platform.root",
@@ -973,7 +948,7 @@
       "nodeName": "gpost_s",
       "nodePath": [
         0,
-        11,
+        10,
         2
       ],
       "parentId": "sf.render.passenger-platform.root",
@@ -1023,7 +998,7 @@
       "nodeName": "gsign",
       "nodePath": [
         0,
-        11,
+        10,
         3
       ],
       "parentId": "sf.render.passenger-platform.root",
@@ -1073,7 +1048,7 @@
       "nodeName": "guide0",
       "nodePath": [
         0,
-        12
+        11
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1122,7 +1097,7 @@
       "nodeName": "guide1",
       "nodePath": [
         0,
-        13
+        12
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1171,7 +1146,7 @@
       "nodeName": "guide2",
       "nodePath": [
         0,
-        14
+        13
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1220,7 +1195,7 @@
       "nodeName": "guide3",
       "nodePath": [
         0,
-        15
+        14
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1269,7 +1244,7 @@
       "nodeName": "guide4",
       "nodePath": [
         0,
-        16
+        15
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1318,7 +1293,7 @@
       "nodeName": "guide5",
       "nodePath": [
         0,
-        17
+        16
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1367,7 +1342,7 @@
       "nodeName": "leg0",
       "nodePath": [
         0,
-        18
+        17
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1416,7 +1391,7 @@
       "nodeName": "leg0b",
       "nodePath": [
         0,
-        19
+        18
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1465,7 +1440,7 @@
       "nodeName": "leg1",
       "nodePath": [
         0,
-        20
+        19
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1514,7 +1489,7 @@
       "nodeName": "leg1b",
       "nodePath": [
         0,
-        21
+        20
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1563,7 +1538,7 @@
       "nodeName": "leg2",
       "nodePath": [
         0,
-        22
+        21
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1612,7 +1587,7 @@
       "nodeName": "leg2b",
       "nodePath": [
         0,
-        23
+        22
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1661,7 +1636,7 @@
       "nodeName": "leg3",
       "nodePath": [
         0,
-        24
+        23
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1710,7 +1685,7 @@
       "nodeName": "leg3b",
       "nodePath": [
         0,
-        25
+        24
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1759,7 +1734,7 @@
       "nodeName": "plate",
       "nodePath": [
         0,
-        26
+        25
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1808,7 +1783,7 @@
       "nodeName": "rail",
       "nodePath": [
         0,
-        27
+        26
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1857,7 +1832,7 @@
       "nodeName": "sign_hang_p",
       "nodePath": [
         0,
-        28
+        27
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1906,7 +1881,7 @@
       "nodeName": "sign_hang_s",
       "nodePath": [
         0,
-        29
+        28
       ],
       "parentId": "sf.render.passenger-platform.root",
       "role": "immutable",
@@ -1981,7 +1956,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "8f4410a62e61fa2afd9ae1365e35a3618d82aa9bba751bcb015d48e23e26b5df"
+      "sha256": "b915b1735ece3bdab64d4e7bd965a8d6f857b35f196cc7815313c6dd6338eb21"
     },
     "sourceGlb": {
       "bytes": 23812,
@@ -1995,31 +1970,31 @@
     }
   },
   "render": {
-    "bytes": 25304,
-    "sha256": "9ce68e97e25fcc68906a80f6800b39f8f97044789b990ace79493e277fe2d0a4",
+    "bytes": 24784,
+    "sha256": "4fe8ac483d36f504d80a999c8dc39475c460f2c4ad2923590fcf4f58bc239538",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.25199267109469137,
-        2.885099629568989,
+        0.2519850730895996,
+        2.8849692344665527,
         0
       ],
       "max": [
-        8.503985342189383,
-        5.769938230514526,
-        2.00030518509476
+        8.5039701461792,
+        5.770280461688683,
+        2.0006033332506417
       ],
       "min": [
         -8,
-        0.00026102862345123157,
-        -2.00030518509476
+        -0.00034199275557744713,
+        -2.0006033332506417
       ],
       "size": [
-        16.50398534218938,
-        5.769677201891075,
-        4.00061037018952
+        16.5039701461792,
+        5.770622454444261,
+        4.001206666501283
       ]
     },
     "hidden": [],
@@ -2045,7 +2020,7 @@
           1
         ],
         "name": "SOCKET_Gate",
-        "planIndex": 43,
+        "planIndex": 35,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2082,7 +2057,7 @@
           1
         ],
         "name": "SOCKET_Shuttle_Side",
-        "planIndex": 44,
+        "planIndex": 36,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2102,7 +2077,7 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 5,
+      "hull": 4,
       "signal": 2
     },
     "materialProfiles": [
@@ -2113,41 +2088,36 @@
       },
       {
         "allowTextures": false,
-        "planIndex": 4,
+        "planIndex": 38,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 5,
+        "planIndex": 39,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 6,
+        "planIndex": 40,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 8,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 20,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
+        "planIndex": 41,
         "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 43,
+        "role": "hull"
       }
     ],
-    "nodeCount": 45,
+    "nodeCount": 44,
     "primitives": [
       {
         "canopy": true,
@@ -2179,25 +2149,25 @@
       {
         "canopy": false,
         "matrix": [
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
-          0,
-          2.6500000953674316,
+          0.2519850730895996,
+          2.8849692344665527,
           0,
           1
         ],
         "name": "rendersfrenderpassenger-platformstatic-opaque-lane1",
-        "planIndex": 4,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2206,25 +2176,25 @@
       {
         "canopy": false,
         "matrix": [
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
-          0,
-          2.6500000953674316,
+          0.2519850730895996,
+          2.8849692344665527,
           0,
           1
         ],
         "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_1",
-        "planIndex": 5,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2233,25 +2203,25 @@
       {
         "canopy": false,
         "matrix": [
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
-          0,
-          2.6500000953674316,
+          0.2519850730895996,
+          2.8849692344665527,
           0,
           1
         ],
         "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_2",
-        "planIndex": 6,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2260,25 +2230,25 @@
       {
         "canopy": false,
         "matrix": [
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
-          0,
-          2.6500000953674316,
+          0.2519850730895996,
+          2.8849692344665527,
           0,
           1
         ],
         "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_3",
-        "planIndex": 7,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2287,25 +2257,25 @@
       {
         "canopy": false,
         "matrix": [
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          8,
+          8.2519850730896,
           0,
-          0,
-          2.6500000953674316,
+          0.2519850730895996,
+          2.8849692344665527,
           0,
           1
         ],
         "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_4",
-        "planIndex": 8,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2314,52 +2284,25 @@
       {
         "canopy": false,
         "matrix": [
-          1.7599691152572632,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          1.7599691152572632,
+          8.2519850730896,
           0,
           0,
           0,
           0,
-          1.7599691152572632,
+          8.2519850730896,
           0,
-          8.399999618530273,
-          4.009969115257263,
-          0,
-          1
-        ],
-        "name": "rendersfrenderpassenger-platformstatic-opaque-lane2",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7599691152572632,
-          0,
-          0,
-          0,
-          0,
-          1.7599691152572632,
-          0,
-          0,
-          0,
-          0,
-          1.7599691152572632,
-          0,
-          8.399999618530273,
-          4.009969115257263,
+          0.2519850730895996,
+          2.8849692344665527,
           0,
           1
         ],
-        "name": "rendersfrenderpassenger-platformstatic-opaque-lane2_1",
-        "planIndex": 21,
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_5",
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2370,20 +2313,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_passenger_platform.glb"
   },
-  "runtimeHash": "d1ae83a539649fb100561985a9c894a1a685acdcbb27e200ffc4620216df4536",
+  "runtimeHash": "e301299ffadcb351e5fb4563bd6041c8c28486b06058033a63ea8de56bfdf602",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.503985342189383,
-          5.769938230514526,
-          2.00030518509476
+          8.5039701461792,
+          5.770280461688683,
+          2.0006033332506417
         ],
         "min": [
           -8,
-          0.00026102862345123157,
-          -2.00030518509476
+          -0.00034199275557744713,
+          -2.0006033332506417
         ]
       },
       "id": "sf.render.passenger-platform.body",

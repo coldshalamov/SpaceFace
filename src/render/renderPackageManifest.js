@@ -1014,7 +1014,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.comms-array",
-    "expectedContentHash": "d16ebd800edda4f5ed12d303d36e95cf61cc5bfa2fb148c56ab26617e4199a2f",
+    "expectedContentHash": "deb46964a294f5b57c38ac01e58969e57304f3d9ecb6716acd3e4a0d975ac978",
     "key": "comms-array",
     "metadataUrl": "assets/ships/release/render-packages/comms-array/render-package.json",
     "runtimeAssetId": "place_comms_array",
@@ -1708,7 +1708,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-rack",
-    "expectedContentHash": "226d6c98b7fd5c65dd5d1716ff4ffa101202e1265ca3fd15723318b74f19672d",
+    "expectedContentHash": "7f4c1bf802b34faa902888bc6d803b890c0c302b6bdbb70619343132074d58dd",
     "key": "hull-rack",
     "metadataUrl": "assets/ships/release/render-packages/hull-rack/render-package.json",
     "runtimeAssetId": "place_hull_rack",
@@ -1788,7 +1788,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.illicit-transfer-frame",
-    "expectedContentHash": "533e8248571647107522d964390f3da1b925c8bf413f4248a7fe57ea18a3cb50",
+    "expectedContentHash": "0810b29b932f5e92239bb00110651f8b5ed34c9dc839b68b419ef060fa51a414",
     "key": "illicit-transfer-frame",
     "metadataUrl": "assets/ships/release/render-packages/illicit-transfer-frame/render-package.json",
     "runtimeAssetId": "place_illicit_transfer_frame",
@@ -1818,7 +1818,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.inspection-platform",
-    "expectedContentHash": "07cf54f07fe97172275f067e8eb26d8fcadbbfc1a3c645c40e5c341910f8f4da",
+    "expectedContentHash": "eb88e5de6ed1eda564fc3bf0389f9450dc85491e966b2d5f5d7de8d9553e3033",
     "key": "inspection-platform",
     "metadataUrl": "assets/ships/release/render-packages/inspection-platform/render-package.json",
     "runtimeAssetId": "place_inspection_platform",
@@ -2330,7 +2330,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.passenger-platform",
-    "expectedContentHash": "b4ab5fefb9364c268b50fb1550648da85358092068ef7c91dc7c55cdb317f909",
+    "expectedContentHash": "4af78405900dc3089b04928c83fab1d8278d8ed90ec733a4f0f3ddd90c146d3d",
     "key": "passenger-platform",
     "metadataUrl": "assets/ships/release/render-packages/passenger-platform/render-package.json",
     "runtimeAssetId": "place_passenger_platform",
@@ -2380,7 +2380,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pirate-sensor-mast",
-    "expectedContentHash": "31ba2cbb48a2f4e67309c4cf4d95fa31e8fcfae0c083b786a395ddd93d895753",
+    "expectedContentHash": "ed168438e388f304f1f8824a0a13144a2ebaaa25c77d24c4bc27551d25f800e7",
     "key": "pirate-sensor-mast",
     "metadataUrl": "assets/ships/release/render-packages/pirate-sensor-mast/render-package.json",
     "runtimeAssetId": "place_pirate_sensor_mast",
@@ -2440,7 +2440,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.power-skid-patched",
-    "expectedContentHash": "94c33f6f84ba6d5c1ff4aa2ca2f660469e3f0247dbe4ee2693631ac95b4f392a",
+    "expectedContentHash": "ce4094334e3c264456bb348f9e8ecdb06645c794c97ad218105051b55d61a7a3",
     "key": "power-skid-patched",
     "metadataUrl": "assets/ships/release/render-packages/power-skid-patched/render-package.json",
     "runtimeAssetId": "place_power_skid_patched",
@@ -2650,7 +2650,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.salvage-clamp",
-    "expectedContentHash": "658d97e5875a097fa799728b22e568f7992e9cc32407fd3942c03abf075c8c72",
+    "expectedContentHash": "7892914c0f912d247cfae2b58014336bd161dc7a70cb646916781bdf83c7926b",
     "key": "salvage-clamp",
     "metadataUrl": "assets/ships/release/render-packages/salvage-clamp/render-package.json",
     "runtimeAssetId": "place_salvage_clamp",
@@ -2770,7 +2770,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.shuttle-dock",
-    "expectedContentHash": "f3f2aa3488f99bbd7a7c163d761baa2d9bd71d4e524b08aecbc802d5517fd0ed",
+    "expectedContentHash": "b80b21eb4e5b0f5cd88f3124c3b7368a604dc8438cf65e4be21635aa0f07439c",
     "key": "shuttle-dock",
     "metadataUrl": "assets/ships/release/render-packages/shuttle-dock/render-package.json",
     "runtimeAssetId": "place_shuttle_dock",
