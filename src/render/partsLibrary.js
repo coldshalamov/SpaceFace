@@ -123,6 +123,7 @@ import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, installStaticLodLeafMatrixUpdate } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import {
   canInstallWholeShipLodFamily,
   isOrdinaryLodShip,
@@ -2561,8 +2562,9 @@ function initialShipProjectionCurrent(sample, state) {
   // itself in live play (measured in the Foundry: six wasps 50 px long on screen, each on its
   // 24-draw, 24,900-triangle body). The projection must still be the same lens; where the camera
   // stands may have moved by one frame, and the publish-time recheck reads the newest sample.
+  const strict = !frameCostFixOn('shipTier'); // ?rfx=-shipTier: the old bit-equal camera rule
   for (let i = 0; i < 16; i++) {
-    if (projection[i] !== sample.projection[i]) return false;
+    if (projection[i] !== sample.projection[i] || (strict && view[i] !== sample.view[i])) return false;
   }
   return true;
 }

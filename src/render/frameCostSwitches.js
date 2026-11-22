@@ -31,7 +31,10 @@
 // src/core/simLaneMain.js), hudBreadth (the 10 Hz numeric block splits into budgeted
 // frame-task jobs, contact marks solve at 15 Hz, hover picks and the massline preview move
 // onto the hud scheduler, and HUD overlay geometry reads kept elements instead of per-frame
-// selector searches, src/ui/hud.js + src/ui/worldObjectInteraction.js + src/ui/masslineHud.js).
+// selector searches, src/ui/hud.js + src/ui/worldObjectInteraction.js + src/ui/masslineHud.js),
+// shipTier (the ship detail-tier selector reads the hull's size instead of its cull envelope, and a
+// ship may be admitted on a cheaper body from a one-frame-old size sample, src/render/lod.js +
+// src/render/renderer.js + src/render/partsLibrary.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).

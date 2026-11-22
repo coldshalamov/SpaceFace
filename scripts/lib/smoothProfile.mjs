@@ -90,7 +90,11 @@ export function summarizeSmoothProfile({ profile, syncs, ticks, liveAt, frames, 
   const { tn, flags, scr } = ticks;
   const T = tn.length;
   const frameOfTick = new Int32Array(T).fill(-1);
-  const bucketOf = (f) => { const r = Math.round(f.ms / refreshMs); return r <= 2 ? 'made30' : r === 3 ? 'three' : 'long'; };
+  // A frame is classed by the same window its samples are gathered from (callback to callback),
+  // not by the display timestamps: classing by one clock and sampling by the other put a late
+  // callback's work in its neighbour's bucket (the made-30 column read more work than its interval).
+  const windowMs = (f) => (Number.isInteger(f.i0) && Number.isInteger(f.i1) && f.i1 < T ? tn[f.i1] - tn[f.i0] : f.ms);
+  const bucketOf = (f) => { const r = Math.round(windowMs(f) / refreshMs); return r <= 2 ? 'made30' : r === 3 ? 'three' : 'long'; };
   const BUCKETS = ['all', 'made30', 'three', 'long'];
   const mk = () => ({ frames: 0, intervalMs: 0, cbMs: 0, total: 0, idle: 0, gc: 0, screens: 0, self: new Map(), file: new Map(), incl: new Map(), entry: new Map() });
   const B = Object.fromEntries(BUCKETS.map((b) => [b, mk()]));
@@ -99,7 +103,7 @@ export function summarizeSmoothProfile({ profile, syncs, ticks, liveAt, frames, 
     if (!Number.isInteger(f.i0) || !Number.isInteger(f.i1)) return;
     for (let k = f.i0 + 1; k <= f.i1 && k < T; k++) frameOfTick[k] = fi;
     const b = bucketOf(f); frameBucket[fi] = b;
-    for (const name of ['all', b]) { B[name].frames++; B[name].intervalMs += f.ms; B[name].cbMs += f.cb || 0; }
+    for (const name of ['all', b]) { B[name].frames++; B[name].intervalMs += windowMs(f); B[name].cbMs += f.cb || 0; }
   });
   const add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
   let used = 0; let droppedNotLive = 0; let droppedNoFrame = 0; let k = 1;

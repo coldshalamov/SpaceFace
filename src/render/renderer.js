@@ -31103,7 +31103,8 @@ export const render = {
         const sampledShip = typeName === 'ship' && !!entity && !isPlayer
           && posed && isOrdinaryLodShip(entity);
         const projectedPx = shipFamily && !posed ? Infinity : (shipFamily || sampledShip) ? projectedShipDiameterPx(
-          mesh.position, shipLodSphereRadius(entity?.radius, lodRadius), this.cam && this.cam.obj, this.viewport,
+          mesh.position, frameCostFixOn('shipTier') ? shipLodSphereRadius(entity?.radius, lodRadius)
+            : Math.max(lodRadius, (Number(entity?.radius) || 0) * 2), this.cam && this.cam.obj, this.viewport,
         ) : presentedLodWidthPx(
           userData,
           mesh.position,
