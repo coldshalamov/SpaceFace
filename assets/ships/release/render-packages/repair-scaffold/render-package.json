@@ -53,383 +53,108 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a1ccb81efb5bb09d444bfc89ea3d38cd69adc78146916332ac311ca70f6650df",
+  "contentHash": "fb89e5c7641e4cb9ba70fbf933d3a23bbfcffbb8489d0dd2095a60d82589d1d2",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.643273653860957,
-          7.611001491546631,
-          -1.001315536601472
+          3.7605867682132104,
+          6.049820333365449,
+          0.8001439011005639
         ],
         "min": [
-          1.556726393822759,
-          6.038998126983643,
-          -1.4486842726636646
+          -3.7605867682132104,
+          -1.4823862314224243,
+          -1.5501704570626225
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f49db8d512bd6f9639f718a49a733d05bbb69942c1ece733c5198590b5738172",
-      "id": "sf.render.repair-scaffold.mesh.basket-hanger.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.021",
-      "nodeId": "sf.render.repair-scaffold.mesh.basket-hanger",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          2.4000000953674316,
-          6.0500611532511925,
-          -0.5500335264037489
-        ],
-        "min": [
-          0.800000011920929,
-          5.249939037483671,
-          -1.549966437833464
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0fd5261fa99138b0bd122d5ce7ac6eb72663f5a8964aaf7c215bb491c804d9d6",
+      "geometryHash": "412c0c7f145e820835bed798221388128a1d8bc94741a260e712c61498e073ef",
       "id": "sf.render.repair-scaffold.mesh.basket.primitive.0",
-      "indexCount": 36,
+      "indexCount": 108,
       "indexed": true,
       "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
+      "meshName": "render:sf.render.repair-scaffold.static-opaque-lane.1",
       "nodeId": "sf.render.repair-scaffold.mesh.basket",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 72
     },
     {
       "bounds": {
         "max": [
-          3.2324017747794627,
-          0.08606075495481491,
-          0.07793120419709514
-        ],
-        "min": [
-          2.717598034485674,
-          -0.7860607504844666,
-          -0.07793120419709514
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "66193adb5f8734244f66a8e5f5797a9d7c4688bdf9a3ca8303db7586142ea825",
-      "id": "sf.render.repair-scaffold.mesh.clamparm0.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.020",
-      "nodeId": "sf.render.repair-scaffold.mesh.clamparm0",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.717598034485674,
-          0.08606075495481491,
-          0.07793120419709514
-        ],
-        "min": [
-          -3.2324017747794627,
-          -0.7860607504844666,
-          -0.07793120419709514
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "34fe1633b1bfaa77697703f8976547e8295ee8379f5bc79f26c20ec1cf603e6f",
-      "id": "sf.render.repair-scaffold.mesh.clamparm1.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.018",
-      "nodeId": "sf.render.repair-scaffold.mesh.clamparm1",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          3.7606112933535054,
-          -0.6176137334196212,
-          0.800000011920929
-        ],
-        "min": [
-          2.7393887066464946,
-          -1.482386230817592,
-          -0.800000011920929
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fb2d10ba75a3107519c254d85c8fe2aad8562a4a65a11d555042e5e3e5bb9d14",
-      "id": "sf.render.repair-scaffold.mesh.clampjaw0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.repair-scaffold.mesh.clampjaw0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.7393887066464946,
-          -0.6176137334196212,
-          0.800000011920929
-        ],
-        "min": [
-          -3.7606112933535054,
-          -1.482386230817592,
-          -0.800000011920929
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "54c12759f224494446af1bbf9768b1339a8986872bd6a7881f527d9afbf63c65",
-      "id": "sf.render.repair-scaffold.mesh.clampjaw1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.repair-scaffold.mesh.clampjaw1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.700000047683716,
-          2.475148874428302,
-          1.3000244377668382
-        ],
-        "min": [
-          -2.700000047683716,
-          2.324851316306561,
-          -1.3000244377668382
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "57ba2892b3e420d766cdd85bd0b67d00eb76f47119bdec834662823c97bd50b0",
-      "id": "sf.render.repair-scaffold.mesh.deck-a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.repair-scaffold.mesh.deck-a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.700000047683716,
-          5.0751487790608705,
-          1.3000244377668382
-        ],
-        "min": [
-          -2.700000047683716,
-          4.9248512209391295,
-          -1.3000244377668382
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "57ba2892b3e420d766cdd85bd0b67d00eb76f47119bdec834662823c97bd50b0",
-      "id": "sf.render.repair-scaffold.mesh.deck-b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.repair-scaffold.mesh.deck-b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.745005224169412,
-          7.600010679775145,
-          0.17499999701976776
-        ],
-        "min": [
-          2.4949945469487522,
-          7.399989320224855,
-          -0.17499999701976776
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c2c39137e3ef78f6f98f322dd21952bc2cfa9b0c9daf960e745b4053b4a1b9cf",
-      "id": "sf.render.repair-scaffold.mesh.lamp-a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.repair-scaffold.mesh.lamp-a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.4949945469487522,
-          7.600010679775145,
-          0.17499999701976776
-        ],
-        "min": [
-          -2.745005224169412,
-          7.399989320224855,
-          -0.17499999701976776
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c2c39137e3ef78f6f98f322dd21952bc2cfa9b0c9daf960e745b4053b4a1b9cf",
-      "id": "sf.render.repair-scaffold.mesh.lamp-b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.repair-scaffold.mesh.lamp-b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.877932017136272,
-          7.599999904632568,
-          -1.3100069965445846
-        ],
-        "min": [
-          2.7220678874962965,
-          0,
-          -1.4899929557716995
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fbee34f9f561a9a6c4a80c140cd0405931ee8755379d2b5f002559d0103c8146",
-      "id": "sf.render.repair-scaffold.mesh.post0.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.019",
-      "nodeId": "sf.render.repair-scaffold.mesh.post0",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          2.877932017136272,
-          7.599999904632568,
-          1.4899929557716995
-        ],
-        "min": [
-          2.7220678874962965,
-          0,
-          1.3100069965445846
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fbee34f9f561a9a6c4a80c140cd0405931ee8755379d2b5f002559d0103c8146",
-      "id": "sf.render.repair-scaffold.mesh.post1.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.022",
-      "nodeId": "sf.render.repair-scaffold.mesh.post1",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.7220678874962965,
-          7.599999904632568,
-          -1.3100069965445846
-        ],
-        "min": [
-          -2.877932017136272,
-          0,
-          -1.4899929557716995
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fbee34f9f561a9a6c4a80c140cd0405931ee8755379d2b5f002559d0103c8146",
-      "id": "sf.render.repair-scaffold.mesh.post2.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.repair-scaffold.mesh.post2",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.7220678874962965,
-          7.599999904632568,
-          1.4899929557716995
-        ],
-        "min": [
-          -2.877932017136272,
-          0,
-          1.3100069965445846
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fbee34f9f561a9a6c4a80c140cd0405931ee8755379d2b5f002559d0103c8146",
-      "id": "sf.render.repair-scaffold.mesh.post3.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.repair-scaffold.mesh.post3",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          2.860476265791793,
+          3.232537651318861,
           7.669999599456787,
-          1.4604157091062944
+          1.4901969787453617
         ],
         "min": [
-          -2.8604755505360555,
-          -0.05514785647392273,
-          -1.460414755431978
+          -3.232537651318861,
+          -0.7863278345429117,
+          -1.4898379475417658
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c3c1bf7e0b4aca4786652d482a23bde0becf2b892cae3e78d84dd55edb9d858",
-      "id": "sf.render.repair-scaffold.mesh.rails.primitive.0",
-      "indexCount": 840,
+      "geometryHash": "1ae490049b0016e580337f0c7003fc556614c69bef3316fa4396fc9fae57e336",
+      "id": "sf.render.repair-scaffold.mesh.basket.primitive.1",
+      "indexCount": 1260,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.repair-scaffold.mesh.rails",
-      "primitiveIndex": 0,
-      "vertexCount": 504
+      "meshName": "render:sf.render.repair-scaffold.static-opaque-lane.1",
+      "nodeId": "sf.render.repair-scaffold.mesh.basket",
+      "primitiveIndex": 1,
+      "vertexCount": 756
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7001591182320426,
+          5.074863738538829,
+          1.3002613006241464
+        ],
+        "min": [
+          -2.7001591182320426,
+          2.325125821973675,
+          -1.2999022694205504
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7158227e05800ed62a78aa1993bf0f5ee37afc519784ad3a48e1f9614c289638",
+      "id": "sf.render.repair-scaffold.mesh.basket.primitive.2",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.repair-scaffold.static-opaque-lane.1",
+      "nodeId": "sf.render.repair-scaffold.mesh.basket",
+      "primitiveIndex": 2,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          2.74484986602527,
+          7.600170306029869,
+          0.17503206634279916
+        ],
+        "min": [
+          -2.74484986602527,
+          7.400179209655178,
+          -0.17523166948661859
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7d7eee2d9a42f00f9aaa29266c30186aa1cb39a4f8da47fda586526f689722c",
+      "id": "sf.render.repair-scaffold.mesh.basket.primitive.3",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.repair-scaffold.static-opaque-lane.1",
+      "nodeId": "sf.render.repair-scaffold.mesh.basket",
+      "primitiveIndex": 3,
+      "vertexCount": 48
     }
   ],
   "hlods": [],
@@ -469,25 +194,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.basket",
       "localTransform": [
-        0.8000000417232513,
+        4.576192915439606,
         0,
         0,
         0,
         0,
-        0.8000000417232513,
+        4.576192915439606,
         0,
         0,
         0,
         0,
-        0.8000000417232513,
+        4.576192915439606,
         0,
-        1.6000000536441803,
-        5.650000095367432,
-        -1.0499999821186066,
+        0,
+        3.0938066840171814,
+        -0.02998673915863037,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "basket",
+      "mergeBoundary": "static:opaque",
       "nodeName": "basket",
       "nodePath": [
         0,
@@ -497,46 +222,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.8000000417232513,
+        4.576192915439606,
         0,
         0,
         0,
         0,
-        0.8000000417232513,
+        4.576192915439606,
         0,
         0,
         0,
         0,
-        0.8000000417232513,
+        4.576192915439606,
         0,
-        1.6000000536441803,
-        5.650000095367432,
-        -1.0499999821186066,
+        0,
+        3.0938066840171814,
+        -0.02998673915863037,
         1
       ]
     },
     {
       "id": "sf.render.repair-scaffold.mesh.basket-hanger",
       "localTransform": [
-        0.7860016822814941,
+        1,
         0,
         0,
         0,
         0,
-        0.7860016822814941,
+        1,
         0,
         0,
         0,
         0,
-        0.7860016822814941,
+        1,
         0,
-        1.600000023841858,
-        6.824999809265137,
-        -1.2249999046325684,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "basket_hanger",
+      "mergeBoundary": "static:opaque",
       "nodeName": "basket_hanger",
       "nodePath": [
         0,
@@ -546,46 +271,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.7860016822814941,
+        1,
         0,
         0,
         0,
         0,
-        0.7860016822814941,
+        1,
         0,
         0,
         0,
         0,
-        0.7860016822814941,
+        1,
         0,
-        1.600000023841858,
-        6.824999809265137,
-        -1.2249999046325684,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.repair-scaffold.mesh.clamparm0",
       "localTransform": [
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
-        2.9749999046325684,
-        -0.3499999977648258,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "clamparm0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "clamparm0",
       "nodePath": [
         0,
@@ -595,20 +320,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
-        2.9749999046325684,
-        -0.3499999977648258,
+        0,
+        0,
         0,
         1
       ]
@@ -616,25 +341,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.clamparm1",
       "localTransform": [
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
-        -2.9749999046325684,
-        -0.3499999977648258,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "clamparm1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "clamparm1",
       "nodePath": [
         0,
@@ -644,20 +369,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
         0,
         0,
         0,
-        0.43606075271964073,
+        1,
         0,
-        -2.9749999046325684,
-        -0.3499999977648258,
+        0,
+        0,
         0,
         1
       ]
@@ -665,25 +390,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.clampjaw0",
       "localTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
-        3.25,
-        -1.0499999821186066,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "clampjaw0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "clampjaw0",
       "nodePath": [
         0,
@@ -693,20 +418,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
-        3.25,
-        -1.0499999821186066,
+        0,
+        0,
         0,
         1
       ]
@@ -714,25 +439,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.clampjaw1",
       "localTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
-        -3.25,
-        -1.0499999821186066,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "clampjaw1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "clampjaw1",
       "nodePath": [
         0,
@@ -742,20 +467,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
-        -3.25,
-        -1.0499999821186066,
+        0,
+        0,
         0,
         1
       ]
@@ -763,25 +488,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.deck-a",
       "localTransform": [
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
-        2.4000000953674316,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "deck_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "deck_a",
       "nodePath": [
         0,
@@ -791,20 +516,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
-        2.4000000953674316,
+        0,
         0,
         1
       ]
@@ -812,25 +537,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.deck-b",
       "localTransform": [
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
-        5,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "deck_b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "deck_b",
       "nodePath": [
         0,
@@ -840,20 +565,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
-        5,
+        0,
         0,
         1
       ]
@@ -861,25 +586,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.lamp-a",
       "localTransform": [
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
-        2.619999885559082,
-        7.5,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lamp_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "lamp_a",
       "nodePath": [
         0,
@@ -889,20 +614,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
-        2.619999885559082,
-        7.5,
+        0,
+        0,
         0,
         1
       ]
@@ -910,25 +635,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.lamp-b",
       "localTransform": [
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
-        -2.619999885559082,
-        7.5,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "lamp_b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "lamp_b",
       "nodePath": [
         0,
@@ -938,20 +663,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
         0,
         0,
         0,
-        0.17499999701976776,
+        1,
         0,
-        -2.619999885559082,
-        7.5,
+        0,
+        0,
         0,
         1
       ]
@@ -959,25 +684,25 @@
     {
       "id": "sf.render.repair-scaffold.mesh.post0",
       "localTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        2.799999952316284,
-        3.799999952316284,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "post0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "post0",
       "nodePath": [
         0,
@@ -987,46 +712,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        2.799999952316284,
-        3.799999952316284,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.repair-scaffold.mesh.post1",
       "localTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        2.799999952316284,
-        3.799999952316284,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "post1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "post1",
       "nodePath": [
         0,
@@ -1036,46 +761,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        2.799999952316284,
-        3.799999952316284,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.repair-scaffold.mesh.post2",
       "localTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        -2.799999952316284,
-        3.799999952316284,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "post2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "post2",
       "nodePath": [
         0,
@@ -1085,46 +810,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        -2.799999952316284,
-        3.799999952316284,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.repair-scaffold.mesh.post3",
       "localTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        -2.799999952316284,
-        3.799999952316284,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "post3",
+      "mergeBoundary": "static:opaque",
       "nodeName": "post3",
       "nodePath": [
         0,
@@ -1134,46 +859,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        3.799999952316284,
+        1,
         0,
-        -2.799999952316284,
-        3.799999952316284,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.repair-scaffold.mesh.rails",
       "localTransform": [
-        3.862573727965355,
+        1,
         0,
         0,
         0,
         0,
-        3.862573727965355,
+        1,
         0,
         0,
         0,
         0,
-        3.862573727965355,
+        1,
         0,
-        3.5762786865234375e-7,
-        3.807425871491432,
-        4.76837158203125e-7,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "rails",
+      "mergeBoundary": "static:opaque",
       "nodeName": "rails",
       "nodePath": [
         0,
@@ -1183,21 +908,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.repair-scaffold.body",
       "worldTransform": [
-        3.862573727965355,
+        1,
         0,
         0,
         0,
         0,
-        3.862573727965355,
+        1,
         0,
         0,
         0,
         0,
-        3.862573727965355,
+        1,
         0,
-        3.5762786865234375e-7,
-        3.807425871491432,
-        4.76837158203125e-7,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -1252,7 +977,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "640dbd7f6b1cc4ba26d53330bda01365725070a583155697be5dfe46ada666b9"
+      "sha256": "f20d902a1fa9ab89479ff55ff924d60eb86b9274e45fb8a579128acc252447f1"
     },
     "sourceGlb": {
       "bytes": 19512,
@@ -1260,37 +985,37 @@
       "uri": "place_repair_scaffold.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 23892,
-    "sha256": "b0aa6e92d5ea8a047bca48456a200812f039bca9e9c6571c33733c85460ccaf3",
+    "bytes": 17424,
+    "sha256": "e2374f6bbcbc2aaa952cd100e60fbfc6f0c8f625417f9243a1500887d5d8358f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        3.0938066843195977,
-        -0.02998674103088228
+        3.0938066840171814,
+        -0.02998673915863037
       ],
       "max": [
-        3.7606112933535054,
+        3.7605867682132104,
         7.669999599456787,
-        1.4899929557716995
+        1.4901969787453617
       ],
       "min": [
-        -3.7606112933535054,
-        -1.482386230817592,
-        -1.549966437833464
+        -3.7605867682132104,
+        -1.4823862314224243,
+        -1.5501704570626225
       ],
       "size": [
-        7.521222586707011,
-        9.15238583027438,
-        3.0399593936051637
+        7.521173536426421,
+        9.152385830879211,
+        3.040367435807984
       ]
     },
     "hidden": [],
@@ -1316,7 +1041,7 @@
           1
         ],
         "name": "SOCKET_Clamp",
-        "planIndex": 18,
+        "planIndex": 22,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1335,20 +1060,15 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 10,
-      "service": 3,
-      "signal": 2
+      "hull": 2,
+      "service": 1,
+      "signal": 1
     },
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 2,
-        "role": "service"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": false,
@@ -1363,109 +1083,32 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "service"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 7,
-        "role": "service"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 10,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 11,
         "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 12,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 17,
-        "role": "hull"
       }
     ],
-    "nodeCount": 19,
+    "nodeCount": 23,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          0.8000000417232513,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.8000000417232513,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.8000000417232513,
+          4.576192915439606,
           0,
-          1.6000000536441803,
-          5.650000095367432,
-          -1.0499999821186066,
+          0,
+          3.0938066840171814,
+          -0.02998673915863037,
           1
         ],
-        "name": "basket",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.7860016822814941,
-          0,
-          0,
-          0,
-          0,
-          0.7860016822814941,
-          0,
-          0,
-          0,
-          0,
-          0.7860016822814941,
-          0,
-          1.600000023841858,
-          6.824999809265137,
-          -1.2249999046325684,
-          1
-        ],
-        "name": "basket_hanger",
+        "name": "rendersfrenderrepair-scaffoldstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1475,24 +1118,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.43606075271964073,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.43606075271964073,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.43606075271964073,
+          4.576192915439606,
           0,
-          2.9749999046325684,
-          -0.3499999977648258,
           0,
+          3.0938066840171814,
+          -0.02998673915863037,
           1
         ],
-        "name": "clamparm0",
+        "name": "rendersfrenderrepair-scaffoldstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1502,24 +1145,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.43606075271964073,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.43606075271964073,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.43606075271964073,
+          4.576192915439606,
           0,
-          -2.9749999046325684,
-          -0.3499999977648258,
           0,
+          3.0938066840171814,
+          -0.02998673915863037,
           1
         ],
-        "name": "clamparm1",
+        "name": "rendersfrenderrepair-scaffoldstatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1529,295 +1172,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.800000011920929,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.800000011920929,
+          4.576192915439606,
           0,
           0,
           0,
           0,
-          0.800000011920929,
+          4.576192915439606,
           0,
-          3.25,
-          -1.0499999821186066,
           0,
+          3.0938066840171814,
+          -0.02998673915863037,
           1
         ],
-        "name": "clampjaw0",
+        "name": "rendersfrenderrepair-scaffoldstatic-opaque-lane1_3",
         "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.800000011920929,
-          0,
-          -3.25,
-          -1.0499999821186066,
-          0,
-          1
-        ],
-        "name": "clampjaw1",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.700000047683716,
-          0,
-          0,
-          0,
-          0,
-          2.700000047683716,
-          0,
-          0,
-          0,
-          0,
-          2.700000047683716,
-          0,
-          0,
-          2.4000000953674316,
-          0,
-          1
-        ],
-        "name": "deck_a",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.700000047683716,
-          0,
-          0,
-          0,
-          0,
-          2.700000047683716,
-          0,
-          0,
-          0,
-          0,
-          2.700000047683716,
-          0,
-          0,
-          5,
-          0,
-          1
-        ],
-        "name": "deck_b",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.17499999701976776,
-          0,
-          0,
-          0,
-          0,
-          0.17499999701976776,
-          0,
-          0,
-          0,
-          0,
-          0.17499999701976776,
-          0,
-          2.619999885559082,
-          7.5,
-          0,
-          1
-        ],
-        "name": "lamp_a",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.17499999701976776,
-          0,
-          0,
-          0,
-          0,
-          0.17499999701976776,
-          0,
-          0,
-          0,
-          0,
-          0.17499999701976776,
-          0,
-          -2.619999885559082,
-          7.5,
-          0,
-          1
-        ],
-        "name": "lamp_b",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          2.799999952316284,
-          3.799999952316284,
-          -1.399999976158142,
-          1
-        ],
-        "name": "post0",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          2.799999952316284,
-          3.799999952316284,
-          1.399999976158142,
-          1
-        ],
-        "name": "post1",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          -2.799999952316284,
-          3.799999952316284,
-          -1.399999976158142,
-          1
-        ],
-        "name": "post2",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          3.799999952316284,
-          0,
-          -2.799999952316284,
-          3.799999952316284,
-          1.399999976158142,
-          1
-        ],
-        "name": "post3",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.862573727965355,
-          0,
-          0,
-          0,
-          0,
-          3.862573727965355,
-          0,
-          0,
-          0,
-          0,
-          3.862573727965355,
-          0,
-          3.5762786865234375e-7,
-          3.807425871491432,
-          4.76837158203125e-7,
-          1
-        ],
-        "name": "rails",
-        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1828,20 +1201,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold.glb"
   },
-  "runtimeHash": "6797312fea2fe4997a4eb47ec5bc12726d40787706b115515d8fdbf7264dfe2a",
+  "runtimeHash": "d1482fab8d3fed0ea26755b286e77fdc0b34ee1985ec910d808a6509988c35e4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.7606112933535054,
+          3.7605867682132104,
           7.669999599456787,
-          1.4899929557716995
+          1.4901969787453617
         ],
         "min": [
-          -3.7606112933535054,
-          -1.482386230817592,
-          -1.549966437833464
+          -3.7605867682132104,
+          -1.4823862314224243,
+          -1.5501704570626225
         ]
       },
       "id": "sf.render.repair-scaffold.body",

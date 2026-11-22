@@ -6,258 +6,33 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "477e09d1a0812a0fc2580897f0e698ed06eab32824e9e73f769e81c492b15093",
+  "contentHash": "8dea33c285d913d24ea489203a546d8daf598436a551870c57a37fb1d76ab56a",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.9600000381469727,
-          -0.11800549472500131,
-          -0.25999448900293065
-        ],
-        "min": [
-          1.7400000095367432,
-          -0.15799451326202107,
-          -0.4400054990761404
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "aa55ec327e5eedf3558af5ea7a8152e719d829486b4a91bc7a47242ac57d74d3",
-      "id": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          0.2749893159669258,
-          0.5370000004768372,
-          0.389997859191359
-        ],
-        "min": [
-          0.1250106750923775,
-          0.18699999153614044,
-          0.37000213127189785
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "93b6c118477eee10a950a1a9538b95cf2119e5259c2eefbbf6a910f800d87168",
-      "id": "sf.render.engine-resonator.mesh.det-crystal-fracture.primitive.0",
-      "indexCount": 252,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.engine-resonator.mesh.det-crystal-fracture",
-      "primitiveIndex": 0,
-      "vertexCount": 104
-    },
-    {
-      "bounds": {
-        "max": [
-          0.12319999933242798,
-          0.05680273172352966,
-          0.06719999853521585
-        ],
-        "min": [
-          -0.01119999773800373,
-          -0.032802735240203704,
-          -0.06719999853521585
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "804f38f024942ad6cf7d0a90a60dbd2796cf120a1164afa492d7bd11d8452945",
-      "id": "sf.render.engine-resonator.mesh.det-emissive-port.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.engine-resonator.mesh.det-emissive-port",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          1.0749999284744263,
-          -0.21299467155697413,
-          0.5449946376334163
-        ],
-        "min": [
-          0.7249999642372131,
-          -0.4630053274893515,
-          0.495005324219611
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "91c9c8232c9e5d49be6211a88c708ced6d8b7d22ee86393038358ae9240d1cb9",
-      "id": "sf.render.engine-resonator.mesh.det-oxidized-rib.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.engine-resonator.mesh.det-oxidized-rib",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          1.899999976158142,
-          0.5920302209549764,
-          0.01501510725883735
-        ],
-        "min": [
-          0.6999999284744263,
-          0.5319697919196269,
-          -0.01501510725883735
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "553746d9b2081d747ec44ede6ed7f92055d87c5d9ffdbf16397f78aa305672e6",
-      "id": "sf.render.engine-resonator.mesh.det-phase-seam.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.engine-resonator.mesh.det-phase-seam",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.4327999949455261,
-          0.856802774067928,
-          0.06720000505447388
+          2.5399999618530273,
+          0.8567531700123108,
+          0.5449912617052464
         ],
         "min": [
           -0.5672000050544739,
-          0.76719729841132,
-          -0.06720000505447388
+          -0.462955742596463,
+          -0.58999443744072
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f8acaa1582992b492d0f1eb0f671c42d593442aabffb83ffdece9c2dcd4d136",
-      "id": "sf.render.engine-resonator.mesh.det-resonance-port.primitive.0",
-      "indexCount": 324,
+      "geometryHash": "dfd7d21d7dc191829117e9d79f3726a5d10ced302c1345aaf13d497c8b4f2f58",
+      "id": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate.primitive.0",
+      "indexCount": 3096,
       "indexed": true,
       "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.engine-resonator.mesh.det-resonance-port",
+      "meshName": "render:sf.render.engine-resonator.static-opaque-lane.1",
+      "nodeId": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate",
       "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          2.5399999618530273,
-          0.03199329158774632,
-          0.19000005722045898
-        ],
-        "min": [
-          2.1599998474121094,
-          -0.007993292310452638,
-          -0.19000005722045898
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a02b4ca7f14dc30570f5d99b652782773401ad0dcc431b537c21a4537c015492",
-      "id": "sf.render.engine-resonator.mesh.det-resonance-ring.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.engine-resonator.mesh.det-resonance-ring",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          1.1399999856948853,
-          0.3820106956631306,
-          -0.5700021206279384
-        ],
-        "min": [
-          0.8600000143051147,
-          0.24198934701379504,
-          -0.5899978459934605
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a423d9214f0e163fa326f76cab85ebaeaaf5472a688cbc80c7b7dc8b61cbb7af",
-      "id": "sf.render.engine-resonator.mesh.det-veil-stencil.primitive.0",
-      "indexCount": 252,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.engine-resonator.mesh.det-veil-stencil",
-      "primitiveIndex": 0,
-      "vertexCount": 104
-    },
-    {
-      "bounds": {
-        "max": [
-          0.8960000276565552,
-          0.2808109469056697,
-          -0.4536172518753411
-        ],
-        "min": [
-          0.3360000252723694,
-          0.19118907085651443,
-          -0.48718272948032604
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cd5e59799578cb3ef279d009c071890808b9260442d86b27098d4f7554ef3363",
-      "id": "sf.render.engine-resonator.mesh.det-violet-bleed-vein.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.engine-resonator.mesh.det-violet-bleed-vein",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          0.3895808683689722,
-          0.4039999842643738,
-          -0.477604770986828
-        ],
-        "min": [
-          0.21041915547288573,
-          -0.3799999952316284,
-          -0.5223951992108496
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ac543a923d1e63ee4729dd6dccdeebbb1b08feb9b8073d7c76cf1275a3f16a5c",
-      "id": "sf.render.engine-resonator.mesh.det-violet-vein.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.engine-resonator.mesh.det-violet-vein",
-      "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 976
     },
     {
       "bounds": {
@@ -490,25 +265,25 @@
     {
       "id": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate",
       "localTransform": [
-        0.11000001430511475,
+        1.5535999834537506,
         0,
         0,
         0,
         0,
-        0.11000001430511475,
+        1.5535999834537506,
         0,
         0,
         0,
         0,
-        0.11000001430511475,
+        1.5535999834537506,
         0,
-        1.850000023841858,
-        -0.1380000039935112,
-        -0.3499999940395355,
+        0.9863999783992767,
+        0.1968987137079239,
+        -0.022501587867736816,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_anomaly_facet_plate",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_anomaly_facet_plate",
       "nodePath": [
         0,
@@ -518,46 +293,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.11000001430511475,
+        1.5535999834537506,
         0,
         0,
         0,
         0,
-        0.11000001430511475,
+        1.5535999834537506,
         0,
         0,
         0,
         0,
-        0.11000001430511475,
+        1.5535999834537506,
         0,
-        1.850000023841858,
-        -0.1380000039935112,
-        -0.3499999940395355,
+        0.9863999783992767,
+        0.1968987137079239,
+        -0.022501587867736816,
         1
       ]
     },
     {
       "id": "sf.render.engine-resonator.mesh.det-crystal-fracture",
       "localTransform": [
-        0.17500000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.17500000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.17500000447034836,
+        1,
         0,
-        0.19999999552965164,
-        0.3619999960064888,
-        0.3799999952316284,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_crystal_fracture",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_crystal_fracture",
       "nodePath": [
         0,
@@ -567,46 +342,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.17500000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.17500000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.17500000447034836,
+        1,
         0,
-        0.19999999552965164,
-        0.3619999960064888,
-        0.3799999952316284,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.engine-resonator.mesh.det-emissive-port",
       "localTransform": [
-        0.06719999853521585,
+        1,
         0,
         0,
         0,
         0,
-        0.06719999853521585,
+        1,
         0,
         0,
         0,
         0,
-        0.06719999853521585,
+        1,
         0,
-        0.056000000797212124,
-        0.011999998241662979,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_emissive_port",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_emissive_port",
       "nodePath": [
         0,
@@ -616,20 +391,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.06719999853521585,
+        1,
         0,
         0,
         0,
         0,
-        0.06719999853521585,
+        1,
         0,
         0,
         0,
         0,
-        0.06719999853521585,
+        1,
         0,
-        0.056000000797212124,
-        0.011999998241662979,
+        0,
+        0,
         0,
         1
       ]
@@ -637,25 +412,25 @@
     {
       "id": "sf.render.engine-resonator.mesh.det-oxidized-rib",
       "localTransform": [
-        0.17499998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.17499998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.17499998211860657,
+        1,
         0,
-        0.8999999463558197,
-        -0.33799999952316284,
-        0.5199999809265137,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_oxidized_rib",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_oxidized_rib",
       "nodePath": [
         0,
@@ -665,46 +440,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.17499998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.17499998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.17499998211860657,
+        1,
         0,
-        0.8999999463558197,
-        -0.33799999952316284,
-        0.5199999809265137,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.engine-resonator.mesh.det-phase-seam",
       "localTransform": [
-        0.6000000238418579,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000238418579,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000238418579,
+        1,
         0,
-        1.2999999523162842,
-        0.5620000064373016,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_phase_seam",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_phase_seam",
       "nodePath": [
         0,
@@ -714,20 +489,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.6000000238418579,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000238418579,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000238418579,
+        1,
         0,
-        1.2999999523162842,
-        0.5620000064373016,
+        0,
+        0,
         0,
         1
       ]
@@ -735,25 +510,25 @@
     {
       "id": "sf.render.engine-resonator.mesh.det-resonance-port",
       "localTransform": [
-        0.06720000505447388,
+        1,
         0,
         0,
         0,
         0,
-        0.06720000505447388,
+        1,
         0,
         0,
         0,
         0,
-        0.06720000505447388,
+        1,
         0,
-        -0.5,
-        0.812000036239624,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_resonance_port",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_resonance_port",
       "nodePath": [
         0,
@@ -763,20 +538,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.06720000505447388,
+        1,
         0,
         0,
         0,
         0,
-        0.06720000505447388,
+        1,
         0,
         0,
         0,
         0,
-        0.06720000505447388,
+        1,
         0,
-        -0.5,
-        0.812000036239624,
+        0,
+        0,
         0,
         1
       ]
@@ -784,25 +559,25 @@
     {
       "id": "sf.render.engine-resonator.mesh.det-resonance-ring",
       "localTransform": [
-        0.19000005722045898,
+        1,
         0,
         0,
         0,
         0,
-        0.19000005722045898,
+        1,
         0,
         0,
         0,
         0,
-        0.19000005722045898,
+        1,
         0,
-        2.3499999046325684,
-        0.011999999638646841,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_resonance_ring",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_resonance_ring",
       "nodePath": [
         0,
@@ -812,20 +587,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.19000005722045898,
+        1,
         0,
         0,
         0,
         0,
-        0.19000005722045898,
+        1,
         0,
         0,
         0,
         0,
-        0.19000005722045898,
+        1,
         0,
-        2.3499999046325684,
-        0.011999999638646841,
+        0,
+        0,
         0,
         1
       ]
@@ -833,25 +608,25 @@
     {
       "id": "sf.render.engine-resonator.mesh.det-veil-stencil",
       "localTransform": [
-        0.13999998569488525,
+        1,
         0,
         0,
         0,
-        0,
-        0.13999998569488525,
-        0,
-        0,
-        0,
-        0,
-        0.13999998569488525,
         0,
         1,
-        0.31200002133846283,
-        -0.5799999833106995,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_veil_stencil",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_veil_stencil",
       "nodePath": [
         0,
@@ -861,46 +636,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.13999998569488525,
+        1,
         0,
         0,
         0,
-        0,
-        0.13999998569488525,
-        0,
-        0,
-        0,
-        0,
-        0.13999998569488525,
         0,
         1,
-        0.31200002133846283,
-        -0.5799999833106995,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.engine-resonator.mesh.det-violet-bleed-vein",
       "localTransform": [
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
-        0.6160000264644623,
-        0.23600000888109207,
-        -0.47039999067783356,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_violet_bleed_vein",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_violet_bleed_vein",
       "nodePath": [
         0,
@@ -910,46 +685,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
-        0.6160000264644623,
-        0.23600000888109207,
-        -0.47039999067783356,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.engine-resonator.mesh.det-violet-vein",
       "localTransform": [
-        0.3919999897480011,
+        1,
         0,
         0,
         0,
         0,
-        0.3919999897480011,
+        1,
         0,
         0,
         0,
         0,
-        0.3919999897480011,
+        1,
         0,
-        0.30000001192092896,
-        0.01199999451637268,
-        -0.4999999850988388,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_violet_vein",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_violet_vein",
       "nodePath": [
         0,
@@ -959,21 +734,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-resonator.body",
       "worldTransform": [
-        0.3919999897480011,
+        1,
         0,
         0,
         0,
         0,
-        0.3919999897480011,
+        1,
         0,
         0,
         0,
         0,
-        0.3919999897480011,
+        1,
         0,
-        0.30000001192092896,
-        0.01199999451637268,
-        -0.4999999850988388,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -1273,7 +1048,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "2c92b752ad1f6ec0f7380bdc8fbe7d7a518770618540956b36c1ad681f20afba"
+      "sha256": "0f828b6fc5e42adb8c20cd43834240f348aff19c343c1201b59f552325343cad"
     },
     "sourceGlb": {
       "bytes": 90532,
@@ -1281,14 +1056,14 @@
       "uri": "engine_resonator.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 81856,
-    "sha256": "248f1801f2cf6df8ee2168c0ce9a955879276831d48082b78e94c628f884340e",
+    "bytes": 69492,
+    "sha256": "4184e7baaa7e63a29aa3cecd7a35623690d5942a9c99d819d55ced3139582c10",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1318,7 +1093,7 @@
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "accent": 13,
+      "accent": 4,
       "hull": 1,
       "mechanical": 1
     },
@@ -1326,51 +1101,6 @@
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 3,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 4,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
         "role": "accent"
       },
       {
@@ -1404,259 +1134,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.11000001430511475,
+          1.5535999834537506,
           0,
           0,
           0,
           0,
-          0.11000001430511475,
+          1.5535999834537506,
           0,
           0,
           0,
           0,
-          0.11000001430511475,
+          1.5535999834537506,
           0,
-          1.850000023841858,
-          -0.1380000039935112,
-          -0.3499999940395355,
+          0.9863999783992767,
+          0.1968987137079239,
+          -0.022501587867736816,
           1
         ],
         "name": "DET_anomaly_facet_plate",
         "planIndex": 2,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.17500000447034836,
-          0,
-          0,
-          0,
-          0,
-          0.17500000447034836,
-          0,
-          0,
-          0,
-          0,
-          0.17500000447034836,
-          0,
-          0.19999999552965164,
-          0.3619999960064888,
-          0.3799999952316284,
-          1
-        ],
-        "name": "DET_crystal_fracture",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06719999853521585,
-          0,
-          0,
-          0,
-          0,
-          0.06719999853521585,
-          0,
-          0,
-          0,
-          0,
-          0.06719999853521585,
-          0,
-          0.056000000797212124,
-          0.011999998241662979,
-          0,
-          1
-        ],
-        "name": "DET_emissive_port",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.17499998211860657,
-          0,
-          0,
-          0,
-          0,
-          0.17499998211860657,
-          0,
-          0,
-          0,
-          0,
-          0.17499998211860657,
-          0,
-          0.8999999463558197,
-          -0.33799999952316284,
-          0.5199999809265137,
-          1
-        ],
-        "name": "DET_oxidized_rib",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.6000000238418579,
-          0,
-          0,
-          0,
-          0,
-          0.6000000238418579,
-          0,
-          0,
-          0,
-          0,
-          0.6000000238418579,
-          0,
-          1.2999999523162842,
-          0.5620000064373016,
-          0,
-          1
-        ],
-        "name": "DET_phase_seam",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06720000505447388,
-          0,
-          0,
-          0,
-          0,
-          0.06720000505447388,
-          0,
-          0,
-          0,
-          0,
-          0.06720000505447388,
-          0,
-          -0.5,
-          0.812000036239624,
-          0,
-          1
-        ],
-        "name": "DET_resonance_port",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.19000005722045898,
-          0,
-          0,
-          0,
-          0,
-          0.19000005722045898,
-          0,
-          0,
-          0,
-          0,
-          0.19000005722045898,
-          0,
-          2.3499999046325684,
-          0.011999999638646841,
-          0,
-          1
-        ],
-        "name": "DET_resonance_ring",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.13999998569488525,
-          0,
-          0,
-          0,
-          0,
-          0.13999998569488525,
-          0,
-          0,
-          0,
-          0,
-          0.13999998569488525,
-          0,
-          1,
-          0.31200002133846283,
-          -0.5799999833106995,
-          1
-        ],
-        "name": "DET_veil_stencil",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.2800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.2800000011920929,
-          0,
-          0.6160000264644623,
-          0.23600000888109207,
-          -0.47039999067783356,
-          1
-        ],
-        "name": "DET_violet_bleed_vein",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3919999897480011,
-          0,
-          0,
-          0,
-          0,
-          0.3919999897480011,
-          0,
-          0,
-          0,
-          0,
-          0.3919999897480011,
-          0,
-          0.30000001192092896,
-          0.01199999451637268,
-          -0.4999999850988388,
-          1
-        ],
-        "name": "DET_violet_vein",
-        "planIndex": 11,
         "tags": {
           "canopy": false
         }
@@ -1856,7 +1352,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_resonator.glb"
   },
-  "runtimeHash": "229798ebec847c46cae8b589d3b8904da4dca785a252c798f7710bc461ec6cd3",
+  "runtimeHash": "034633b9ecf4ac174c1a3bfa1835b1492eceb6244794c95526f8c688f805d811",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,30 +53,30 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "471154f01a17d57078b6d5fb68a233b0eb0521f0431be041b150771015d8013c",
+  "contentHash": "1294451527365569ff8857c305545875cb2e2a65ddd978020476f1d0071806aa",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.1434629117252513,
-          5.349898742807975,
-          3.1499998569488525
+          3.143432816114614,
+          5.349738981339094,
+          3.1500467202390343
         ],
         "min": [
-          -3.143462673306672,
-          4.4001017340291835,
-          -3.1499998569488525
+          -3.143432577696035,
+          4.400036095154021,
+          -3.1500467202390343
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a9fd5ec7940d5875596ce63a46fb9e01039cbc799588952ed88a9a4dca94ad0",
+      "geometryHash": "0742e10f20259657bc480f0865788402b16f5bdea8dcb9cf3a70da02e88770f0",
       "id": "sf.render.observation-blister.mesh.balcony.primitive.0",
       "indexCount": 960,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.021",
+      "meshName": "render:sf.render.observation-blister.static-opaque-lane.1",
       "nodeId": "sf.render.observation-blister.mesh.balcony",
       "primitiveIndex": 0,
       "vertexCount": 576
@@ -84,177 +84,127 @@
     {
       "bounds": {
         "max": [
-          1.600000023841858,
-          0.8000610489407904,
-          1.600000023841858
+          1.599767013050455,
+          0.7997633579845673,
+          1.5997668938411655
         ],
         "min": [
-          -1.600000023841858,
-          -0.00006103701986154286,
-          -1.600000023841858
+          -1.599766774631876,
+          -0.00006103515625,
+          -1.5997668938411655
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8be07c0920ec731367432806edeac2f53911f01d7e843a8a395a74b982f4e68b",
-      "id": "sf.render.observation-blister.mesh.base.primitive.0",
+      "geometryHash": "914e3f98372502bffa9864c0887f5f5e0811cba677774dc1c4998519c50015ce",
+      "id": "sf.render.observation-blister.mesh.balcony.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.observation-blister.mesh.base",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.observation-blister.static-opaque-lane.1",
+      "nodeId": "sf.render.observation-blister.mesh.balcony",
+      "primitiveIndex": 1,
       "vertexCount": 64
     },
     {
       "bounds": {
         "max": [
-          2.5500004291534424,
-          7.450000882148743,
-          2.5500004291534424
+          2.5499423294736503,
+          7.449927604911158,
+          2.5499422102643607
         ],
         "min": [
-          -2.5500011444091797,
-          2.3499993085861206,
-          -2.5500011444091797
+          -2.549942091055071,
+          2.3500431843824368,
+          -2.5499422102643607
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08ba1dfcc72c57ff964a92b72d8f1254777727657b80a524ad22b4511181b4f7",
-      "id": "sf.render.observation-blister.mesh.dome.primitive.0",
+      "geometryHash": "69f72c160d5278db5435c235325d505f95b727fbe117823ab288ed6b3dd577b8",
+      "id": "sf.render.observation-blister.mesh.balcony.primitive.2",
       "indexCount": 1320,
       "indexed": true,
       "materialHash": "6afd4c662783ee0c598ebf5cc1a783c2dd027a24be310d9cfb96d392d41cb586",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.002",
-      "nodeId": "sf.render.observation-blister.mesh.dome",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.observation-blister.static-opaque-lane.1",
+      "nodeId": "sf.render.observation-blister.mesh.balcony",
+      "primitiveIndex": 2,
       "vertexCount": 222
     },
     {
       "bounds": {
         "max": [
-          2.569999933242798,
-          5.074944507694806,
-          2.569999933242798
+          2.5697843994747807,
+          5.074784582751996,
+          2.569784280265491
         ],
         "min": [
-          -2.569999933242798,
-          4.625055301570331,
-          -2.569999933242798
+          -2.5697841610562016,
+          4.374997292533546,
+          -2.569784280265491
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e89f802ceee69e22b02bb3b7b8e0ae32a3295a9c7a691571ce9afbd998913aa",
-      "id": "sf.render.observation-blister.mesh.glow-band.primitive.0",
-      "indexCount": 228,
+      "geometryHash": "6253d24d827dfc36be3943e79f83a56cf839f7a2679fdaae734c4da59315b179",
+      "id": "sf.render.observation-blister.mesh.balcony.primitive.3",
+      "indexCount": 432,
       "indexed": true,
       "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.observation-blister.mesh.glow-band",
-      "primitiveIndex": 0,
-      "vertexCount": 80
+      "meshName": "render:sf.render.observation-blister.static-opaque-lane.1",
+      "nodeId": "sf.render.observation-blister.mesh.balcony",
+      "primitiveIndex": 3,
+      "vertexCount": 152
     },
     {
       "bounds": {
         "max": [
-          1.9697256385998108,
-          4.5249532685381855,
-          2
+          0.13322544635973876,
+          7.739999771118164,
+          0.13983935048415946
         ],
         "min": [
-          -1.9697256385998108,
-          4.375046349992088,
-          -2
+          -0.13322520794115966,
+          7.459848639911723,
+          -0.13983935048415946
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e84d3c4d2e816d9b001c20e9c5f988aaa3b190053dd3f77935ae144dd3a9d4d",
-      "id": "sf.render.observation-blister.mesh.glow.primitive.0",
-      "indexCount": 204,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.022",
-      "nodeId": "sf.render.observation-blister.mesh.glow",
-      "primitiveIndex": 0,
-      "vertexCount": 72
-    },
-    {
-      "bounds": {
-        "max": [
-          0.13314676407893902,
-          7.739999905228615,
-          0.14000000059604645
-        ],
-        "min": [
-          -0.13314676407893902,
-          7.459999904036522,
-          -0.14000000059604645
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "40c35818bcbd99f09ec00025f2e002aab740b12279d6339c6f290cb8e4117e15",
-      "id": "sf.render.observation-blister.mesh.nav.primitive.0",
+      "geometryHash": "ee355e8c2c0629c917db61254b796b367d80add4d7db23047516b46bb3c3237c",
+      "id": "sf.render.observation-blister.mesh.balcony.primitive.4",
       "indexCount": 300,
       "indexed": true,
       "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.003",
-      "nodeId": "sf.render.observation-blister.mesh.nav",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.observation-blister.static-opaque-lane.1",
+      "nodeId": "sf.render.observation-blister.mesh.balcony",
+      "primitiveIndex": 4,
       "vertexCount": 142
     },
     {
       "bounds": {
         "max": [
-          2.9000000953674316,
-          4.400018126948488,
-          2.9000000953674316
+          2.900013135922171,
+          4.400036095154021,
+          2.9000130167128813
         ],
         "min": [
-          -2.9000000953674316,
-          3.9999814915817846,
-          -2.9000000953674316
+          -2.9000128975035917,
+          0.7997633579845673,
+          -2.9000130167128813
         ]
       },
       "drawMode": 4,
-      "geometryHash": "050e566cdd6c0a5160ad1f8ad4017c372e098aba200566e5872085e091da609f",
-      "id": "sf.render.observation-blister.mesh.ring.primitive.0",
-      "indexCount": 228,
+      "geometryHash": "d10fd4a937e88cbcdbdd4b4369799abf2a0a4babd6f42241b0606a2f74bb3628",
+      "id": "sf.render.observation-blister.mesh.balcony.primitive.5",
+      "indexCount": 408,
       "indexed": true,
       "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.observation-blister.mesh.ring",
-      "primitiveIndex": 0,
-      "vertexCount": 80
-    },
-    {
-      "bounds": {
-        "max": [
-          1.099935886544617,
-          4,
-          1.099935886544617
-        ],
-        "min": [
-          -1.099935886544617,
-          0.8000000715255737,
-          -1.099935886544617
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "62f387eec94f45e5f5a80ea79d160d95fcedf4504c50c9bcf9dfd2c05d7eacb1",
-      "id": "sf.render.observation-blister.mesh.stalk.primitive.0",
-      "indexCount": 180,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.observation-blister.mesh.stalk",
-      "primitiveIndex": 0,
-      "vertexCount": 64
+      "meshName": "render:sf.render.observation-blister.static-opaque-lane.1",
+      "nodeId": "sf.render.observation-blister.mesh.balcony",
+      "primitiveIndex": 5,
+      "vertexCount": 144
     }
   ],
   "hlods": [],
@@ -308,25 +258,25 @@
     {
       "id": "sf.render.observation-blister.mesh.balcony",
       "localTransform": [
-        3.1499998569488525,
+        3.870030403137207,
         0,
         0,
         0,
         0,
-        3.1499998569488525,
+        3.870030403137207,
         0,
         0,
         0,
         0,
-        3.1499998569488525,
+        3.870030403137207,
         0,
         1.1920928955078125e-7,
-        4.875000238418579,
+        3.869969367980957,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "balcony",
+      "mergeBoundary": "static:opaque",
       "nodeName": "balcony",
       "nodePath": [
         0,
@@ -336,20 +286,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        3.1499998569488525,
+        3.870030403137207,
         0,
         0,
         0,
         0,
-        3.1499998569488525,
+        3.870030403137207,
         0,
         0,
         0,
         0,
-        3.1499998569488525,
+        3.870030403137207,
         0,
         1.1920928955078125e-7,
-        4.875000238418579,
+        3.869969367980957,
         0,
         1
       ]
@@ -357,25 +307,25 @@
     {
       "id": "sf.render.observation-blister.mesh.base",
       "localTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
-        0.4000000059604645,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "base",
+      "mergeBoundary": "static:opaque",
       "nodeName": "base",
       "nodePath": [
         0,
@@ -385,20 +335,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
-        0.4000000059604645,
+        0,
         0,
         1
       ]
@@ -406,25 +356,25 @@
     {
       "id": "sf.render.observation-blister.mesh.dome",
       "localTransform": [
-        2.550000786781311,
+        1,
         0,
         0,
         0,
         0,
-        2.550000786781311,
+        1,
         0,
         0,
         0,
         0,
-        2.550000786781311,
+        1,
         0,
-        -3.5762786865234375e-7,
-        4.900000095367432,
-        -3.5762786865234375e-7,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "dome",
+      "mergeBoundary": "static:opaque",
       "nodeName": "dome",
       "nodePath": [
         0,
@@ -434,46 +384,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        2.550000786781311,
+        1,
         0,
         0,
         0,
         0,
-        2.550000786781311,
+        1,
         0,
         0,
         0,
         0,
-        2.550000786781311,
+        1,
         0,
-        -3.5762786865234375e-7,
-        4.900000095367432,
-        -3.5762786865234375e-7,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.observation-blister.mesh.glow",
       "localTransform": [
-        2,
+        1,
         0,
         0,
         0,
         0,
-        2,
+        1,
         0,
         0,
         0,
         0,
-        2,
+        1,
         0,
         0,
-        4.449999809265137,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "glow",
+      "mergeBoundary": "static:opaque",
       "nodeName": "glow",
       "nodePath": [
         0,
@@ -483,20 +433,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        2,
+        1,
         0,
         0,
         0,
         0,
-        2,
+        1,
         0,
         0,
         0,
         0,
-        2,
+        1,
         0,
         0,
-        4.449999809265137,
+        0,
         0,
         1
       ]
@@ -504,25 +454,25 @@
     {
       "id": "sf.render.observation-blister.mesh.glow-band",
       "localTransform": [
-        2.569999933242798,
+        1,
         0,
         0,
         0,
         0,
-        2.569999933242798,
+        1,
         0,
         0,
         0,
         0,
-        2.569999933242798,
+        1,
         0,
         0,
-        4.849999904632568,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "glow_band",
+      "mergeBoundary": "static:opaque",
       "nodeName": "glow_band",
       "nodePath": [
         0,
@@ -532,20 +482,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        2.569999933242798,
+        1,
         0,
         0,
         0,
         0,
-        2.569999933242798,
+        1,
         0,
         0,
         0,
         0,
-        2.569999933242798,
+        1,
         0,
         0,
-        4.849999904632568,
+        0,
         0,
         1
       ]
@@ -553,25 +503,25 @@
     {
       "id": "sf.render.observation-blister.mesh.nav",
       "localTransform": [
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
         0,
-        7.599999904632568,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "nav",
+      "mergeBoundary": "static:opaque",
       "nodeName": "nav",
       "nodePath": [
         0,
@@ -581,20 +531,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
         0,
-        7.599999904632568,
+        0,
         0,
         1
       ]
@@ -602,25 +552,25 @@
     {
       "id": "sf.render.observation-blister.mesh.ring",
       "localTransform": [
-        2.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        2.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        2.9000000953674316,
+        1,
         0,
         0,
-        4.199999809265137,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ring",
+      "mergeBoundary": "static:opaque",
       "nodeName": "ring",
       "nodePath": [
         0,
@@ -630,20 +580,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        2.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        2.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        2.9000000953674316,
+        1,
         0,
         0,
-        4.199999809265137,
+        0,
         0,
         1
       ]
@@ -651,25 +601,25 @@
     {
       "id": "sf.render.observation-blister.mesh.stalk",
       "localTransform": [
-        1.5999999642372131,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999642372131,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999642372131,
+        1,
         0,
         0,
-        2.400000035762787,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "stalk",
+      "mergeBoundary": "static:opaque",
       "nodeName": "stalk",
       "nodePath": [
         0,
@@ -679,20 +629,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1.5999999642372131,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999642372131,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999642372131,
+        1,
         0,
         0,
-        2.400000035762787,
+        0,
         0,
         1
       ]
@@ -748,7 +698,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "57d938e947c7623f1a1e3a185a0ff1b7ac9cc7dce55f7e60d1cb2d418d595b57"
+      "sha256": "5be7375fa1dcf1c39e58c2c6388bb1d01e7dd9ceeaf40bed8d2488ac07d82068"
     },
     "sourceGlb": {
       "bytes": 30128,
@@ -756,37 +706,37 @@
       "uri": "place_observation_blister.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 24620,
-    "sha256": "eb8e9e3a891cf5415270e9b801bf5af758e0761e183b9dae67ac73066be011ad",
+    "bytes": 22796,
+    "sha256": "a1371b4ba9e0a52ab0c548321ee017c7e3e19f5f308990ca2387d6798db44b64",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1.1920928955078125e-7,
-        3.8699694341043767,
+        3.869969367980957,
         0
       ],
       "max": [
-        3.1434629117252513,
-        7.739999905228615,
-        3.1499998569488525
+        3.143432816114614,
+        7.739999771118164,
+        3.1500467202390343
       ],
       "min": [
-        -3.143462673306672,
-        -0.00006103701986154286,
-        -3.1499998569488525
+        -3.143432577696035,
+        -0.00006103515625,
+        -3.1500467202390343
       ],
       "size": [
-        6.2869255850319234,
-        7.740060942248476,
-        6.299999713897705
+        6.286865393810649,
+        7.740060806274414,
+        6.300093440478069
       ]
     },
     "hidden": [],
@@ -812,7 +762,7 @@
           1
         ],
         "name": "SOCKET_Dome_Focus",
-        "planIndex": 10,
+        "planIndex": 16,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -832,18 +782,18 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 4,
-      "signal": 3
+      "hull": 3,
+      "signal": 2
     },
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 2,
+        "planIndex": 3,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 3,
+        "planIndex": 4,
         "role": "hull"
       },
       {
@@ -864,69 +814,32 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 11,
         "role": "hull"
       }
     ],
-    "nodeCount": 12,
+    "nodeCount": 18,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          3.1499998569488525,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          3.1499998569488525,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          3.1499998569488525,
+          3.870030403137207,
           0,
           1.1920928955078125e-7,
-          4.875000238418579,
+          3.869969367980957,
           0,
           1
         ],
-        "name": "balcony",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.600000023841858,
-          0,
-          0,
-          0,
-          0,
-          1.600000023841858,
-          0,
-          0,
-          0,
-          0,
-          1.600000023841858,
-          0,
-          0,
-          0.4000000059604645,
-          0,
-          1
-        ],
-        "name": "base",
+        "name": "rendersfrenderobservation-blisterstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -936,24 +849,51 @@
       {
         "canopy": false,
         "matrix": [
-          2.550000786781311,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          2.550000786781311,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          2.550000786781311,
+          3.870030403137207,
           0,
-          -3.5762786865234375e-7,
-          4.900000095367432,
-          -3.5762786865234375e-7,
+          1.1920928955078125e-7,
+          3.869969367980957,
+          0,
           1
         ],
-        "name": "dome",
+        "name": "rendersfrenderobservation-blisterstatic-opaque-lane1_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.870030403137207,
+          0,
+          0,
+          0,
+          0,
+          3.870030403137207,
+          0,
+          0,
+          0,
+          0,
+          3.870030403137207,
+          0,
+          1.1920928955078125e-7,
+          3.869969367980957,
+          0,
+          1
+        ],
+        "name": "rendersfrenderobservation-blisterstatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -963,24 +903,24 @@
       {
         "canopy": false,
         "matrix": [
-          2,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          2,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          2,
+          3.870030403137207,
           0,
-          0,
-          4.449999809265137,
+          1.1920928955078125e-7,
+          3.869969367980957,
           0,
           1
         ],
-        "name": "glow",
+        "name": "rendersfrenderobservation-blisterstatic-opaque-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -990,24 +930,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.569999933242798,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          2.569999933242798,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          2.569999933242798,
+          3.870030403137207,
           0,
-          0,
-          4.849999904632568,
+          1.1920928955078125e-7,
+          3.869969367980957,
           0,
           1
         ],
-        "name": "glow_band",
+        "name": "rendersfrenderobservation-blisterstatic-opaque-lane1_4",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1017,79 +957,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.14000000059604645,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          0.14000000059604645,
+          3.870030403137207,
           0,
           0,
           0,
           0,
-          0.14000000059604645,
+          3.870030403137207,
           0,
-          0,
-          7.599999904632568,
+          1.1920928955078125e-7,
+          3.869969367980957,
           0,
           1
         ],
-        "name": "nav",
+        "name": "rendersfrenderobservation-blisterstatic-opaque-lane1_5",
         "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.9000000953674316,
-          0,
-          0,
-          0,
-          0,
-          2.9000000953674316,
-          0,
-          0,
-          0,
-          0,
-          2.9000000953674316,
-          0,
-          0,
-          4.199999809265137,
-          0,
-          1
-        ],
-        "name": "ring",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.5999999642372131,
-          0,
-          0,
-          0,
-          0,
-          1.5999999642372131,
-          0,
-          0,
-          0,
-          0,
-          1.5999999642372131,
-          0,
-          0,
-          2.400000035762787,
-          0,
-          1
-        ],
-        "name": "stalk",
-        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1100,20 +986,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "1d7a31f85037ac1d17923ffd177c8a8bf51b73a4ebcd38fbfa228e8976841c0f",
+  "runtimeHash": "c60c046e6d0053285d343c9e6e4b699b703940aee4d31a3943a4dd4beadf211d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.1434629117252513,
-          7.739999905228615,
-          3.1499998569488525
+          3.143432816114614,
+          7.739999771118164,
+          3.1500467202390343
         ],
         "min": [
-          -3.143462673306672,
-          -0.00006103701986154286,
-          -3.1499998569488525
+          -3.143432577696035,
+          -0.00006103515625,
+          -3.1500467202390343
         ]
       },
       "id": "sf.render.observation-blister.body",

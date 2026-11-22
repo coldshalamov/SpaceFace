@@ -53,458 +53,208 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "59704bdd1cca891e8cc00805acdbd4bb78e381d23bb6cd3d7eb5de92640e9a6b",
+  "contentHash": "980c75b262c46773c63cd9c6edae48573b45ce594242a9cb59801f6b43c3795a",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -4.000048829626803,
-          1.200000286102295,
-          1.200000286102295
+          2.3997211532262144,
+          3.6903332073040125,
+          1.9001160212881845
         ],
         "min": [
-          -4.79995136110806,
-          -1.200000286102295,
-          -1.200000286102295
+          -4.800340161149065,
+          -3.3501420835298017,
+          -1.9001160212881845
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af2d98acf33954454cc080a78a452694381a1efd9dd0cb2b9db939a99222c4a8",
+      "geometryHash": "145c033d1a51666218a91bd7347bc9ceab67b3a4c7a4f28a6f7c21407375c9da",
       "id": "sf.render.habitat-pod.mesh.collar.primitive.0",
-      "indexCount": 180,
+      "indexCount": 336,
       "indexed": true,
       "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
       "nodeId": "sf.render.habitat-pod.mesh.collar",
       "primitiveIndex": 0,
-      "vertexCount": 64
+      "vertexCount": 160
     },
     {
       "bounds": {
         "max": [
-          -4.80003183780891,
-          0.9000000953674316,
-          0.9000000953674316
+          -4.800340161149065,
+          0.9000937911950225,
+          0.9000076642969099
         ],
         "min": [
-          -5.0999677807213635,
-          -0.9000000953674316,
-          -0.9000000953674316
+          -5.100103097260735,
+          -0.8999215373987972,
+          -0.9000076642969099
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27e00b0cb663bfc2cbc1c415891c547b857960a8bbbc144676d6527cf8611561",
-      "id": "sf.render.habitat-pod.mesh.hatch.primitive.0",
+      "geometryHash": "83a5d54702a38cefcfd680c1c14cfbd64a82daa2db7dab54c9c9d792bc0203c2",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.habitat-pod.mesh.hatch",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 1,
       "vertexCount": 64
     },
     {
       "bounds": {
         "max": [
-          -1.1113114602329217,
-          2.450000047683716,
-          2.4499998092651367
+          5.888688564300537,
+          2.4623475103909165,
+          2.500360749473424
         ],
         "min": [
-          -5.88868818213921,
-          -2.450000047683716,
-          -2.450000286102295
+          -5.888688087463379,
+          -2.462175256594691,
+          -2.500360749473424
         ]
       },
       "drawMode": 4,
-      "geometryHash": "859087fc05549fc31c2dad167186988c92245c0ba6278d83ef1a4bd024b376c0",
-      "id": "sf.render.habitat-pod.mesh.hull-domea.primitive.0",
-      "indexCount": 588,
+      "geometryHash": "3d295cf5d99997c7f8deaf054613bd321c39ec796641ea797ca752494f745f6f",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.2",
+      "indexCount": 1380,
       "indexed": true,
       "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.003",
-      "nodeId": "sf.render.habitat-pod.mesh.hull-domea",
-      "primitiveIndex": 0,
-      "vertexCount": 100
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 2,
+      "vertexCount": 272
     },
     {
       "bounds": {
         "max": [
-          5.888688539767078,
-          2.450000047683716,
-          2.4499998092651367
+          3.7333786765383885,
+          1.539875597284679,
+          0.14017691257020562
         ],
         "min": [
-          1.1113118178607904,
-          -2.450000047683716,
-          -2.450000286102295
+          3.4666831146740487,
+          1.2602406281061662,
+          -0.14017691257020562
         ]
       },
       "drawMode": 4,
-      "geometryHash": "859087fc05549fc31c2dad167186988c92245c0ba6278d83ef1a4bd024b376c0",
-      "id": "sf.render.habitat-pod.mesh.hull-domef.primitive.0",
-      "indexCount": 588,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Sphere.001",
-      "nodeId": "sf.render.habitat-pod.mesh.hull-domef",
-      "primitiveIndex": 0,
-      "vertexCount": 100
-    },
-    {
-      "bounds": {
-        "max": [
-          3.5000007152557373,
-          2.4620812551238975,
-          2.5001073257019497
-        ],
-        "min": [
-          -3.5000007152557373,
-          -2.4620812551238975,
-          -2.5001073257019497
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bb9df606c680f28b0d48938dc11824c1fbd668410dc06e731489d80d5cbfd132",
-      "id": "sf.render.habitat-pod.mesh.hull-shell.primitive.0",
-      "indexCount": 204,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.habitat-pod.mesh.hull-shell",
-      "primitiveIndex": 0,
-      "vertexCount": 72
-    },
-    {
-      "bounds": {
-        "max": [
-          0.903946070447048,
-          3.5999999046325684,
-          0.119974382054574
-        ],
-        "min": [
-          0.6960539533948099,
-          2.299999713897705,
-          -0.119974382054574
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "528cad84a906945630d9de3d949544edc2f2cd1eaaa9ad679f652495141f14ed",
-      "id": "sf.render.habitat-pod.mesh.mast.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.habitat-pod.mesh.mast",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          3.7331466687115076,
-          1.5399999767541885,
-          0.14000000059604645
-        ],
-        "min": [
-          3.466853140553629,
-          1.2599999755620956,
-          -0.14000000059604645
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "40c35818bcbd99f09ec00025f2e002aab740b12279d6339c6f290cb8e4117e15",
-      "id": "sf.render.habitat-pod.mesh.nav.primitive.0",
+      "geometryHash": "7129678c7951c8a2d85cb8a1a965073a9fd92453268ddd25defdc425fa2fc47b",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.3",
       "indexCount": 300,
       "indexed": true,
       "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
-      "meshName": "Sphere.004",
-      "nodeId": "sf.render.habitat-pod.mesh.nav",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 3,
       "vertexCount": 142
     },
     {
       "bounds": {
         "max": [
-          2.8000001907348633,
-          -0.30004574498802605,
-          2.5249763516288044
+          2.8001239240036733,
+          -0.29967680921355777,
+          2.5248018521779727
         ],
         "min": [
-          1.600000023841858,
-          -0.8999542728933674,
-          2.4750236483711956
+          1.600353323595093,
+          -0.8999215373987972,
+          2.475200790806977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e858bcfaa9a3d4d60b103a69e1cae29a7fa7fbafd26ff43828f0e671b1d2d92",
-      "id": "sf.render.habitat-pod.mesh.plate.primitive.0",
+      "geometryHash": "026fac722c3692c2133452fab297f390b70587e95e6791dfa44ce249b7c171e5",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.4",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.habitat-pod.mesh.plate",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 4,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.9000000357627869,
-          -2.6999572025637066,
-          0.049989315542087825
+          -0.9000074258783308,
+          -2.7001165799830917,
+          0.05031991733289432
         ],
         "min": [
-          -2.299999952316284,
-          -3.50004260670143,
-          -0.049989315542087825
+          -2.2997996976851662,
+          -3.5003829795665857,
+          -0.05031991733289432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3359454804eeda59ce307081aef7f8e715180add0ada6b624f321d858d95b020",
-      "id": "sf.render.habitat-pod.mesh.radfin.primitive.0",
+      "geometryHash": "79886bf70e22aed51c057b8378b770af46f9b5c8c923f627edcbdfe3c2d3527d",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.5",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.habitat-pod.mesh.radfin",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 5,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          2.4000000953674316,
-          -2.449949721943402,
-          0.8000488614062459
+          3.4501494275503832,
+          0.8001728124911324,
+          2.499641893511525
         ],
         "min": [
-          0,
-          -3.350050468791461,
-          -0.8000488614062459
+          -3.450148950713225,
+          0.19992808430589298,
+          2.380311803836376
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdced64d95bded18d15403df7a9f4c2f1544f1df150dd37beb099cf335b1dfe1",
-      "id": "sf.render.habitat-pod.mesh.utility.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.habitat-pod.mesh.utility",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.549999952316284,
-          0.8000183279956086,
-          2.4999872458029495
-        ],
-        "min": [
-          -3.450000047683716,
-          0.199981642202069,
-          2.3800128686379685
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9a6ff68862d6ed1e09e60c2cdb142422286da225e70932ca86a27a0127c1a061",
-      "id": "sf.render.habitat-pod.mesh.win0.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "02e4280501d46d43c13cd8c4285ad0285a486fe6af2f93d8189e9cbdd8024bc8",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.6",
+      "indexCount": 180,
       "indexed": true,
       "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.habitat-pod.mesh.win0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 6,
+      "vertexCount": 120
     },
     {
       "bounds": {
         "max": [
-          -1.0499999523162842,
-          0.8000183279956086,
-          2.4999872458029495
+          1.600353323595093,
+          3.6500772734376974,
+          3.800232042576369
         ],
         "min": [
-          -1.9500000476837158,
-          0.199981642202069,
-          2.3800128686379685
+          2.384185791015625e-7,
+          3.550156294733807,
+          -3.800232042576369
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a6ff68862d6ed1e09e60c2cdb142422286da225e70932ca86a27a0127c1a061",
-      "id": "sf.render.habitat-pod.mesh.win1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.habitat-pod.mesh.win1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.44999998807907104,
-          0.8000183106084952,
-          2.4999872378573613
-        ],
-        "min": [
-          -0.44999998807907104,
-          0.19998170429266604,
-          2.3800128765835566
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9a6ff68862d6ed1e09e60c2cdb142422286da225e70932ca86a27a0127c1a061",
-      "id": "sf.render.habitat-pod.mesh.win2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.habitat-pod.mesh.win2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.9500000476837158,
-          0.8000183279956086,
-          2.4999872458029495
-        ],
-        "min": [
-          1.0499999523162842,
-          0.199981642202069,
-          2.3800128686379685
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9a6ff68862d6ed1e09e60c2cdb142422286da225e70932ca86a27a0127c1a061",
-      "id": "sf.render.habitat-pod.mesh.win3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.habitat-pod.mesh.win3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.450000047683716,
-          0.8000183279956086,
-          2.4999872458029495
-        ],
-        "min": [
-          2.549999952316284,
-          0.199981642202069,
-          2.3800128686379685
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9a6ff68862d6ed1e09e60c2cdb142422286da225e70932ca86a27a0127c1a061",
-      "id": "sf.render.habitat-pod.mesh.win4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.habitat-pod.mesh.win4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.8779320865201024,
-          3.6899928955387566,
-          1.9000002145767212
-        ],
-        "min": [
-          0.7220679373217556,
-          3.51000691372638,
-          -1.9000002145767212
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "59366b80924a1f091446dcd6d0b16f9b42146fe6dc9c0ecd19ae6b7e01f1e165",
-      "id": "sf.render.habitat-pod.mesh.wing-boom.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.habitat-pod.mesh.wing-boom",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          1.600064138835313,
-          3.65001363936468,
-          -0.39999985694885254
-        ],
-        "min": [
-          -0.00006408378687283722,
-          3.549986169900457,
-          -3.799999952316284
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4d076a30c66e2c9c31f7d95c2e50653144d35ad2d8b92ea4c456b28722e6eca2",
-      "id": "sf.render.habitat-pod.mesh.wing-p.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "3edba67ae362ed292bca589ce1af186438946c679cb55e361fdf65b1d65f9451",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.7",
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.habitat-pod.mesh.wing-p",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.600064138835313,
-          3.65001363936468,
-          3.799999952316284
-        ],
-        "min": [
-          -0.00006408378687283722,
-          3.549986169900457,
-          0.39999985694885254
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4d076a30c66e2c9c31f7d95c2e50653144d35ad2d8b92ea4c456b28722e6eca2",
-      "id": "sf.render.habitat-pod.mesh.wing-s.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.habitat-pod.mesh.wing-s",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "render:sf.render.habitat-pod.static-opaque-lane.1",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 7,
+      "vertexCount": 48
     }
   ],
   "hlods": [],
@@ -572,25 +322,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.collar",
       "localTransform": [
-        1.200000286102295,
+        5.888688325881958,
         0,
         0,
         0,
         0,
-        1.200000286102295,
+        5.888688325881958,
         0,
         0,
         0,
         0,
-        1.200000286102295,
+        5.888688325881958,
         0,
-        -4.400000095367432,
-        0,
+        2.384185791015625e-7,
+        0.09497511386871338,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "collar",
+      "mergeBoundary": "static:opaque",
       "nodeName": "collar",
       "nodePath": [
         0,
@@ -600,20 +350,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        1.200000286102295,
+        5.888688325881958,
         0,
         0,
         0,
         0,
-        1.200000286102295,
+        5.888688325881958,
         0,
         0,
         0,
         0,
-        1.200000286102295,
+        5.888688325881958,
         0,
-        -4.400000095367432,
-        0,
+        2.384185791015625e-7,
+        0.09497511386871338,
         0,
         1
       ]
@@ -621,25 +371,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.hatch",
       "localTransform": [
-        0.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.9000000953674316,
+        1,
         0,
-        -4.949999809265137,
+        0,
         0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hatch",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hatch",
       "nodePath": [
         0,
@@ -649,19 +399,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.9000000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.9000000953674316,
+        1,
         0,
-        -4.949999809265137,
+        0,
         0,
         0,
         1
@@ -670,25 +420,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.hull-domea",
       "localTransform": [
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
-        -3.4999998211860657,
         0,
-        -2.384185791015625e-7,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hull_domea",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hull_domea",
       "nodePath": [
         0,
@@ -698,46 +448,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
-        -3.4999998211860657,
         0,
-        -2.384185791015625e-7,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.hull-domef",
       "localTransform": [
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
-        3.5000001788139343,
         0,
-        -2.384185791015625e-7,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hull_domef",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hull_domef",
       "nodePath": [
         0,
@@ -747,38 +497,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.450000047683716,
+        1,
         0,
-        3.5000001788139343,
         0,
-        -2.384185791015625e-7,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.hull-shell",
       "localTransform": [
-        3.5000007152557373,
+        1,
         0,
         0,
         0,
         0,
-        3.5000007152557373,
+        1,
         0,
         0,
         0,
         0,
-        3.5000007152557373,
+        1,
         0,
         0,
         0,
@@ -786,7 +536,7 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hull_shell",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hull_shell",
       "nodePath": [
         0,
@@ -796,17 +546,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        3.5000007152557373,
+        1,
         0,
         0,
         0,
         0,
-        3.5000007152557373,
+        1,
         0,
         0,
         0,
         0,
-        3.5000007152557373,
+        1,
         0,
         0,
         0,
@@ -817,25 +567,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.mast",
       "localTransform": [
-        0.6500000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.6500000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.6500000953674316,
+        1,
         0,
-        0.800000011920929,
-        2.9499998092651367,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "mast",
+      "mergeBoundary": "static:opaque",
       "nodeName": "mast",
       "nodePath": [
         0,
@@ -845,20 +595,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.6500000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.6500000953674316,
+        1,
         0,
         0,
         0,
         0,
-        0.6500000953674316,
+        1,
         0,
-        0.800000011920929,
-        2.9499998092651367,
+        0,
+        0,
         0,
         1
       ]
@@ -866,25 +616,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.nav",
       "localTransform": [
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
-        3.5999999046325684,
-        1.399999976158142,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "nav",
+      "mergeBoundary": "static:opaque",
       "nodeName": "nav",
       "nodePath": [
         0,
@@ -894,20 +644,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
         0,
         0,
         0,
-        0.14000000059604645,
+        1,
         0,
-        3.5999999046325684,
-        1.399999976158142,
+        0,
+        0,
         0,
         1
       ]
@@ -915,25 +665,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.plate",
       "localTransform": [
-        0.6000000834465027,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000834465027,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000834465027,
+        1,
         0,
-        2.2000001072883606,
-        -0.6000000089406967,
-        2.5,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "plate",
+      "mergeBoundary": "static:opaque",
       "nodeName": "plate",
       "nodePath": [
         0,
@@ -943,46 +693,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.6000000834465027,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000834465027,
+        1,
         0,
         0,
         0,
         0,
-        0.6000000834465027,
+        1,
         0,
-        2.2000001072883606,
-        -0.6000000089406967,
-        2.5,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.radfin",
       "localTransform": [
-        0.6999999582767487,
+        1,
         0,
         0,
         0,
         0,
-        0.6999999582767487,
+        1,
         0,
         0,
         0,
         0,
-        0.6999999582767487,
+        1,
         0,
-        -1.5999999940395355,
-        -3.0999999046325684,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "radfin",
+      "mergeBoundary": "static:opaque",
       "nodeName": "radfin",
       "nodePath": [
         0,
@@ -992,20 +742,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.6999999582767487,
+        1,
         0,
         0,
         0,
         0,
-        0.6999999582767487,
+        1,
         0,
         0,
         0,
         0,
-        0.6999999582767487,
+        1,
         0,
-        -1.5999999940395355,
-        -3.0999999046325684,
+        0,
+        0,
         0,
         1
       ]
@@ -1013,25 +763,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.utility",
       "localTransform": [
-        1.2000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.2000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.2000000476837158,
+        1,
         0,
-        1.2000000476837158,
-        -2.9000000953674316,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "utility",
+      "mergeBoundary": "static:opaque",
       "nodeName": "utility",
       "nodePath": [
         0,
@@ -1041,20 +791,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        1.2000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.2000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.2000000476837158,
+        1,
         0,
-        1.2000000476837158,
-        -2.9000000953674316,
+        0,
+        0,
         0,
         1
       ]
@@ -1062,25 +812,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.win0",
       "localTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        -3,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "win0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "win0",
       "nodePath": [
         0,
@@ -1090,46 +840,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        -3,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.win1",
       "localTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        -1.5,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "win1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "win1",
       "nodePath": [
         0,
@@ -1139,46 +889,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        -1.5,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.win2",
       "localTransform": [
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
-        0.5000000074505806,
-        2.440000057220459,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "win2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "win2",
       "nodePath": [
         0,
@@ -1188,46 +938,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
-        0.5000000074505806,
-        2.440000057220459,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.win3",
       "localTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        1.5,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "win3",
+      "mergeBoundary": "static:opaque",
       "nodeName": "win3",
       "nodePath": [
         0,
@@ -1237,46 +987,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        1.5,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.win4",
       "localTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        3,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "win4",
+      "mergeBoundary": "static:opaque",
       "nodeName": "win4",
       "nodePath": [
         0,
@@ -1286,46 +1036,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
         0,
         0,
         0,
-        0.4500000476837158,
+        1,
         0,
-        3,
-        0.4999999850988388,
-        2.440000057220459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.wing-boom",
       "localTransform": [
-        1.9000002145767212,
+        1,
         0,
         0,
         0,
         0,
-        1.9000002145767212,
+        1,
         0,
         0,
         0,
         0,
-        1.9000002145767212,
+        1,
         0,
-        0.800000011920929,
-        3.5999999046325684,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wing_boom",
+      "mergeBoundary": "static:opaque",
       "nodeName": "wing_boom",
       "nodePath": [
         0,
@@ -1335,20 +1085,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        1.9000002145767212,
+        1,
         0,
         0,
         0,
         0,
-        1.9000002145767212,
+        1,
         0,
         0,
         0,
         0,
-        1.9000002145767212,
+        1,
         0,
-        0.800000011920929,
-        3.5999999046325684,
+        0,
+        0,
         0,
         1
       ]
@@ -1356,25 +1106,25 @@
     {
       "id": "sf.render.habitat-pod.mesh.wing-p",
       "localTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
-        0.8000000275242201,
-        3.5999999046325684,
-        -2.0999999046325684,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wing_p",
+      "mergeBoundary": "static:opaque",
       "nodeName": "wing_p",
       "nodePath": [
         0,
@@ -1384,46 +1134,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
-        0.8000000275242201,
-        3.5999999046325684,
-        -2.0999999046325684,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.habitat-pod.mesh.wing-s",
       "localTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
-        0.8000000275242201,
-        3.5999999046325684,
-        2.0999999046325684,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "wing_s",
+      "mergeBoundary": "static:opaque",
       "nodeName": "wing_s",
       "nodePath": [
         0,
@@ -1433,21 +1183,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.habitat-pod.body",
       "worldTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
-        0.8000000275242201,
-        3.5999999046325684,
-        2.0999999046325684,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -1502,7 +1252,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "db794d3351633bf089b0131c62bba7d50cef1bdc76dfa71309598bc6f96081fe"
+      "sha256": "2ee5220faef29c8dc14677f16500d05ddf763c4022dac7a4b02a88f1a980a87c"
     },
     "sourceGlb": {
       "bytes": 27040,
@@ -1510,37 +1260,37 @@
       "uri": "place_habitat_pod.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 26864,
-    "sha256": "6861cd0cfe5d81cc3398e6d6920d3dd8e99c91d977f1b433d38da2fe11fb80a2",
+    "bytes": 23484,
+    "sha256": "a500587a7dba3066c860fde2ac813838385ffc87d083e6d3318895cf6ea27e74",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        1.7881393432617188e-7,
-        0.09497514441866328,
+        2.384185791015625e-7,
+        0.09497511386871338,
         0
       ],
       "max": [
-        5.888688539767078,
-        3.6899928955387566,
-        3.799999952316284
+        5.888688564300537,
+        3.6903332073040125,
+        3.800232042576369
       ],
       "min": [
-        -5.88868818213921,
-        -3.50004260670143,
-        -3.799999952316284
+        -5.888688087463379,
+        -3.5003829795665857,
+        -3.800232042576369
       ],
       "size": [
-        11.777376721906288,
-        7.190035502240187,
-        7.599999904632568
+        11.777376651763916,
+        7.190716186870598,
+        7.600464085152738
       ]
     },
     "hidden": [],
@@ -1566,7 +1316,7 @@
           1
         ],
         "name": "SOCKET_Airlock",
-        "planIndex": 12,
+        "planIndex": 20,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1585,14 +1335,14 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 11,
+      "hull": 5,
       "mechanical": 1,
-      "signal": 6
+      "signal": 2
     },
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 2,
+        "planIndex": 3,
         "role": "hull"
       },
       {
@@ -1608,7 +1358,7 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1618,93 +1368,43 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 10,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 11,
         "role": "mechanical"
       },
       {
         "allowTextures": false,
-        "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 14,
+        "planIndex": 9,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 15,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 16,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 17,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 18,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 19,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 20,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
+        "planIndex": 10,
         "role": "hull"
       }
     ],
-    "nodeCount": 22,
+    "nodeCount": 30,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          1.200000286102295,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          1.200000286102295,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          1.200000286102295,
+          5.888688325881958,
           0,
-          -4.400000095367432,
-          0,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
           1
         ],
-        "name": "collar",
-        "planIndex": 2,
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1",
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1713,24 +1413,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.9000000953674316,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.9000000953674316,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.9000000953674316,
+          5.888688325881958,
           0,
-          -4.949999809265137,
-          0,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
           1
         ],
-        "name": "hatch",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1740,24 +1440,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.450000047683716,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          2.450000047683716,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          2.450000047683716,
+          5.888688325881958,
           0,
-          -3.4999998211860657,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
-          -2.384185791015625e-7,
           1
         ],
-        "name": "hull_domea",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1767,24 +1467,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.450000047683716,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          2.450000047683716,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          2.450000047683716,
+          5.888688325881958,
           0,
-          3.5000001788139343,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
-          -2.384185791015625e-7,
           1
         ],
-        "name": "hull_domef",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1794,24 +1494,24 @@
       {
         "canopy": false,
         "matrix": [
-          3.5000007152557373,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          3.5000007152557373,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          3.5000007152557373,
+          5.888688325881958,
           0,
-          0,
-          0,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
           1
         ],
-        "name": "hull_shell",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_4",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1821,24 +1521,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.6500000953674316,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.6500000953674316,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.6500000953674316,
+          5.888688325881958,
           0,
-          0.800000011920929,
-          2.9499998092651367,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
           1
         ],
-        "name": "mast",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_5",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1848,24 +1548,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.14000000059604645,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.14000000059604645,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.14000000059604645,
+          5.888688325881958,
           0,
-          3.5999999046325684,
-          1.399999976158142,
+          2.384185791015625e-7,
+          0.09497511386871338,
           0,
           1
         ],
-        "name": "nav",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_6",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1875,295 +1575,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.6000000834465027,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.6000000834465027,
+          5.888688325881958,
           0,
           0,
           0,
           0,
-          0.6000000834465027,
+          5.888688325881958,
           0,
-          2.2000001072883606,
-          -0.6000000089406967,
-          2.5,
+          2.384185791015625e-7,
+          0.09497511386871338,
+          0,
           1
         ],
-        "name": "plate",
+        "name": "rendersfrenderhabitat-podstatic-opaque-lane1_7",
         "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.6999999582767487,
-          0,
-          0,
-          0,
-          0,
-          0.6999999582767487,
-          0,
-          0,
-          0,
-          0,
-          0.6999999582767487,
-          0,
-          -1.5999999940395355,
-          -3.0999999046325684,
-          0,
-          1
-        ],
-        "name": "radfin",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.2000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.2000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.2000000476837158,
-          0,
-          1.2000000476837158,
-          -2.9000000953674316,
-          0,
-          1
-        ],
-        "name": "utility",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          -3,
-          0.4999999850988388,
-          2.440000057220459,
-          1
-        ],
-        "name": "win0",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          -1.5,
-          0.4999999850988388,
-          2.440000057220459,
-          1
-        ],
-        "name": "win1",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.44999998807907104,
-          0,
-          0,
-          0,
-          0,
-          0.44999998807907104,
-          0,
-          0,
-          0,
-          0,
-          0.44999998807907104,
-          0,
-          0,
-          0.5000000074505806,
-          2.440000057220459,
-          1
-        ],
-        "name": "win2",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          1.5,
-          0.4999999850988388,
-          2.440000057220459,
-          1
-        ],
-        "name": "win3",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          0,
-          0,
-          0,
-          0.4500000476837158,
-          0,
-          3,
-          0.4999999850988388,
-          2.440000057220459,
-          1
-        ],
-        "name": "win4",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.9000002145767212,
-          0,
-          0,
-          0,
-          0,
-          1.9000002145767212,
-          0,
-          0,
-          0,
-          0,
-          1.9000002145767212,
-          0,
-          0.800000011920929,
-          3.5999999046325684,
-          0,
-          1
-        ],
-        "name": "wing_boom",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0.8000000275242201,
-          3.5999999046325684,
-          -2.0999999046325684,
-          1
-        ],
-        "name": "wing_p",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0.8000000275242201,
-          3.5999999046325684,
-          2.0999999046325684,
-          1
-        ],
-        "name": "wing_s",
-        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2174,20 +1604,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod.glb"
   },
-  "runtimeHash": "108d93dfcb49ef7c192c7db327f22d858208e99cb70b910e2bd21d47d7b87ea2",
+  "runtimeHash": "16e2bc5136f81921ad2198a370ffd919ad1d2d20f7ea19eacf59c5659cde8c22",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          5.888688539767078,
-          3.6899928955387566,
-          3.799999952316284
+          5.888688564300537,
+          3.6903332073040125,
+          3.800232042576369
         ],
         "min": [
-          -5.88868818213921,
-          -3.50004260670143,
-          -3.799999952316284
+          -5.888688087463379,
+          -3.5003829795665857,
+          -3.800232042576369
         ]
       },
       "id": "sf.render.habitat-pod.body",

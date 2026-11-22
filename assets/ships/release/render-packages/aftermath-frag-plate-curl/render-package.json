@@ -6,82 +6,57 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "12439de53a6a9dfd1df20d48eef112a2c96a02900520e3b5df724acbcd8e92c8",
+  "contentHash": "0e8cc4c293e1d6df40a2147a350c014f78327987035845991ec4a996751c322f",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -0.49875997746471357,
-          1.4771235551924184,
-          1.6636230945587158
+          3.000062942504883,
+          1.4953201907880247,
+          1.6635597208747022
         ],
         "min": [
-          -2.999921806211434,
-          -1.4092346992582754,
-          -1.8336701393127441
+          -2.9999217987060547,
+          -1.4276741762260503,
+          -1.8338525706725526
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03d56625847166f124621131944128e068de57b3114305ac5818e4d935896950",
+      "geometryHash": "bcae14d7d526f0d7b694fe93e0eb997d4a1d632c46775f7adc9f6d7d98addc44",
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0.primitive.0",
-      "indexCount": 36,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3518f0e87986cac6a5e8484a2267f48259452198763ec13b00fa3246b2a812aa",
       "materialPipelineKey": "opaque",
-      "meshName": "curl0",
+      "meshName": "render:sf.render.aftermath-frag-plate-curl.static-opaque-lane.1",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          2.426912806791502,
-          0.42255060885206264,
-          1.8336701393127441
+          2.426926792109966,
+          0.422566792357156,
+          1.8338525706725526
         ],
         "min": [
-          -0.6015530450765667,
-          -1.495527615287457,
-          -1.4332842826843262
+          -0.6016308307196582,
+          -1.4954250949628294,
+          -1.4331150418740624
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee9fcb4778b05660f8e998d315a637de620b4a1c43ec9886de2883337b0d0274",
-      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl1.primitive.0",
+      "geometryHash": "dfaad47ba99a2cc758449adcff13eb3e7e70d4928e7e54299b081bfa7ff49919",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0.primitive.1",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "135beee82ed93b195d526214395b846bb87690b5b059589c31c257d25c87b775",
       "materialPipelineKey": "opaque",
-      "meshName": "curl1",
-      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.000062949681015,
-          1.4954227020729085,
-          1.4154701232910156
-        ],
-        "min": [
-          1.8676062750580598,
-          -1.4275336077201863,
-          -1.585517168045044
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d75d8bd35e5fb9c132f417571fae15fc3d94eda22466529b079c907d0e82316c",
-      "id": "sf.render.aftermath-frag-plate-curl.mesh.curl2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "3518f0e87986cac6a5e8484a2267f48259452198763ec13b00fa3246b2a812aa",
-      "materialPipelineKey": "opaque",
-      "meshName": "curl2",
-      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl2",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.aftermath-frag-plate-curl.static-opaque-lane.1",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
+      "primitiveIndex": 1,
       "vertexCount": 24
     }
   ],
@@ -158,25 +133,25 @@
     {
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
       "localTransform": [
-        1.74864661693573,
+        2.9999923706054688,
         0,
         0,
         0,
         0,
-        1.74864661693573,
+        2.9999923706054688,
         0,
         0,
         0,
         0,
-        1.74864661693573,
+        2.9999923706054688,
         0,
-        -1.7493408918380737,
-        0.03394442796707153,
-        -0.08502352237701416,
+        0.0000705718994140625,
+        -0.00005245208740234375,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "curl0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "curl0",
       "nodePath": [
         0,
@@ -186,46 +161,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
       "worldTransform": [
-        1.74864661693573,
+        2.9999923706054688,
         0,
         0,
         0,
         0,
-        1.74864661693573,
+        2.9999923706054688,
         0,
         0,
         0,
         0,
-        1.74864661693573,
+        2.9999923706054688,
         0,
-        -1.7493408918380737,
-        0.03394442796707153,
-        -0.08502352237701416,
+        0.0000705718994140625,
+        -0.00005245208740234375,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl1",
       "localTransform": [
-        1.6334772109985352,
+        1,
         0,
         0,
         0,
         0,
-        1.6334772109985352,
+        1,
         0,
         0,
         0,
         0,
-        1.6334772109985352,
+        1,
         0,
-        0.9126798808574677,
-        -0.5364885032176971,
-        0.20019292831420898,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "curl1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "curl1",
       "nodePath": [
         0,
@@ -235,46 +210,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
       "worldTransform": [
-        1.6334772109985352,
+        1,
         0,
         0,
         0,
         0,
-        1.6334772109985352,
+        1,
         0,
         0,
         0,
         0,
-        1.6334772109985352,
+        1,
         0,
-        0.9126798808574677,
-        -0.5364885032176971,
-        0.20019292831420898,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl2",
       "localTransform": [
-        1.5004936456680298,
+        1,
         0,
         0,
         0,
         0,
-        1.5004936456680298,
+        1,
         0,
         0,
         0,
         0,
-        1.5004936456680298,
+        1,
         0,
-        2.4338346123695374,
-        0.033944547176361084,
-        -0.08502352237701416,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "curl2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "curl2",
       "nodePath": [
         0,
@@ -284,21 +259,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
       "worldTransform": [
-        1.5004936456680298,
+        1,
         0,
         0,
         0,
         0,
-        1.5004936456680298,
+        1,
         0,
         0,
         0,
         0,
-        1.5004936456680298,
+        1,
         0,
-        2.4338346123695374,
-        0.033944547176361084,
-        -0.08502352237701416,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -353,7 +328,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "81df6187adba6b6a3ebdb43a558cd0ba40a50b6e98c1702de1de69e0735268ff"
+      "sha256": "61a726580f88023f933d744219504978b3fd95390abc03670b71a08e0c90e6da"
     },
     "sourceGlb": {
       "bytes": 46172,
@@ -367,31 +342,31 @@
     }
   },
   "render": {
-    "bytes": 46940,
-    "sha256": "6be1529db2175032e03c5756e8378821cea973a7f179b5c215b9a8d3836d4f97",
+    "bytes": 45420,
+    "sha256": "b89f3bb986210b412af8fe4ffba86f811384e8e6c255b715f4951ad609be8b12",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.00007057173479041445,
-        -0.00005245660727426493,
+        0.0000705718994140625,
+        -0.00005245208740234375,
         0
       ],
       "max": [
-        3.000062949681015,
-        1.4954227020729085,
-        1.8336701393127441
+        3.000062942504883,
+        1.4953201907880247,
+        1.8338525706725526
       ],
       "min": [
-        -2.999921806211434,
-        -1.495527615287457,
-        -1.8336701393127441
+        -2.9999217987060547,
+        -1.4954250949628294,
+        -1.8338525706725526
       ],
       "size": [
-        5.999984755892449,
-        2.9909503173603653,
-        3.6673402786254883
+        5.9999847412109375,
+        2.990745285750854,
+        3.667705141345105
       ]
     },
     "hidden": [],
@@ -399,75 +374,43 @@
     "markers": [],
     "materialProfileRoles": {
       "ceramic": 1,
-      "mechanical": 2
+      "mechanical": 1
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "ceramic"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "ceramic"
       }
     ],
-    "nodeCount": 5,
+    "nodeCount": 7,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          1.74864661693573,
+          2.9999923706054688,
           0,
           0,
           0,
           0,
-          1.74864661693573,
+          2.9999923706054688,
           0,
           0,
           0,
           0,
-          1.74864661693573,
+          2.9999923706054688,
           0,
-          -1.7493408918380737,
-          0.03394442796707153,
-          -0.08502352237701416,
+          0.0000705718994140625,
+          -0.00005245208740234375,
+          0,
           1
         ],
-        "name": "curl0",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.6334772109985352,
-          0,
-          0,
-          0,
-          0,
-          1.6334772109985352,
-          0,
-          0,
-          0,
-          0,
-          1.6334772109985352,
-          0,
-          0.9126798808574677,
-          -0.5364885032176971,
-          0.20019292831420898,
-          1
-        ],
-        "name": "curl1",
+        "name": "rendersfrenderaftermath-frag-plate-curlstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -477,24 +420,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.5004936456680298,
+          2.9999923706054688,
           0,
           0,
           0,
           0,
-          1.5004936456680298,
+          2.9999923706054688,
           0,
           0,
           0,
           0,
-          1.5004936456680298,
+          2.9999923706054688,
           0,
-          2.4338346123695374,
-          0.033944547176361084,
-          -0.08502352237701416,
+          0.0000705718994140625,
+          -0.00005245208740234375,
+          0,
           1
         ],
-        "name": "curl2",
+        "name": "rendersfrenderaftermath-frag-plate-curlstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -506,20 +449,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb"
   },
-  "runtimeHash": "85f6f5728ccc1309c508aa3f4c20af3f9596db53a0e00ec0893c247c6f8f1db3",
+  "runtimeHash": "e65b18aeff9e18f3fdfb412b8c9756bc69e4f8da07dbdb69a333af6a5f0e9042",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.000062949681015,
-          1.4954227020729085,
-          1.8336701393127441
+          3.000062942504883,
+          1.4953201907880247,
+          1.8338525706725526
         ],
         "min": [
-          -2.999921806211434,
-          -1.495527615287457,
-          -1.8336701393127441
+          -2.9999217987060547,
+          -1.4954250949628294,
+          -1.8338525706725526
         ]
       },
       "id": "sf.render.aftermath-frag-plate-curl.body",

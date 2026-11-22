@@ -411,6 +411,11 @@ export async function derivePilotSemanticManifest(pilot, sourcePath, { sourceByt
   const collisions = deriveCollisionRecords(pilot, meshNodes, byNodeName);
   const mergeGroups = [];
   configureHullMultiroleStaticMerge(pilot, meshRecords, meshNodes, mergeGroups);
+  deriveStaticOpaqueMergeGroups(
+    pilot,
+    meshNodes.map((node, index) => ({ record: meshRecords[index], node })),
+    mergeGroups,
+  );
 
   return {
     schema: RENDER_PACKAGE_SOURCE_SCHEMA,
@@ -525,6 +530,11 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
     : [];
   configureCockpitDomeStaticMerge(pilot, semanticNodes, meshNodes, mergeGroups);
   configureCockpitRecessedStaticMerge(pilot, semanticNodes, meshNodes, mergeGroups);
+  deriveStaticOpaqueMergeGroups(
+    pilot,
+    meshNodes.map((node) => ({ record: byNodeName.get(node.getName()), node })),
+    mergeGroups,
+  );
 
   return {
     schema: RENDER_PACKAGE_SOURCE_SCHEMA,
@@ -665,6 +675,41 @@ function deriveFlightStaticMergeGroups(pilot, semanticNodes, meshNodes) {
       id: `${pilot.assetId}.flight-static-lane.${index + 1}`,
       nodeIds,
     }));
+}
+
+// Compile-time static merging for plain (non-flight-static) packages: same-parent immutable
+// opaque meshes join into one mesh per material bucket, so a wreck's hundred-odd hull plates
+// submit a handful of merged draws instead of one draw per plate (the asset-cost audit's
+// mergeable-draws rows: 50 packages, ~4,000 draws/frame across the wreck and crowd families,
+// none of them on the flight-static lane). Dynamics, blends (canopy and glass draw in their
+// own transparent order), non-render helpers (collision hulls), LOD-named nodes, morph
+// targets and cross-parent siblings keep their own draws; assertSafeMergeBoundaries
+// re-checks every rule at compile time.
+function deriveStaticOpaqueMergeGroups(pilot, entries, mergeGroups) {
+  const claimed = new Set();
+  for (const group of mergeGroups) for (const nodeId of group.nodeIds) claimed.add(nodeId);
+  const buckets = new Map();
+  for (const { record, node } of entries) {
+    if (!record || claimed.has(record.id)) continue;
+    if (record.role !== 'immutable' || record.pipelineKey !== 'opaque' || record.transparency !== 'opaque') continue;
+    if (/^LOD\d+_/i.test(record.node)) continue;
+    const mesh = node.getMesh();
+    if (!mesh || mesh.getWeights().length > 0) continue;
+    if (Object.keys(mesh.getExtras()).length > 0 || mesh.listExtensions().length > 0) continue;
+    const parent = node.getParentNode();
+    if (!parent) continue;
+    if (!buckets.has(parent)) buckets.set(parent, []);
+    buckets.get(parent).push(record);
+  }
+  let index = 0;
+  for (const records of buckets.values()) {
+    if (records.length < 2) continue;
+    for (const record of records) record.mergeBoundary = 'static:opaque';
+    mergeGroups.push({
+      id: `${pilot.assetId}.static-opaque-lane.${++index}`,
+      nodeIds: records.map((record) => record.id),
+    });
+  }
 }
 
 function assertReleaseBinding(pilot, row) {

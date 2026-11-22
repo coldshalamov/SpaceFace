@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2dee0edc1bf02dcdef900e124d9b3fc9a8270fe38c6c5f0af6e1af6ba7ad77ea",
+  "contentHash": "1d4ff840ea52771244291f2d1654b52d7ebbdf4b915db700def417ad75032d71",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.dynamic",
@@ -7622,8 +7622,8 @@
       "uri": "drifter_helix_courier.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -12869,7 +12869,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_helix_courier.glb"
   },
-  "runtimeHash": "e060610376e568e243b2f2ddf09d1c27049ff30985d1a800f33f9c98c878a5f1",
+  "runtimeHash": "ca50964c97122de74ee0213e0f507e99eeb58b8ba30d4ed5207d4c06801b2ffa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

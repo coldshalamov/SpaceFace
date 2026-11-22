@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f4f2680960b5a8a5067b192a61d24c3b79495d9a620e3b10a35cc084a5df07e5",
+  "contentHash": "079100d2049762dfc7a70aa48cd2f8ee7dbddcac7e9547b678b5f8b541aa1946",
   "dynamicGroups": [
     {
       "id": "sf.render.mothlight.node.lod0-motion-mothlight-hatch-1-hull.dynamic",
@@ -4545,8 +4545,8 @@
       "uri": "mothlight.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -8030,7 +8030,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mothlight.glb"
   },
-  "runtimeHash": "6c915c41939a6d287cc9720e184807b9939d368b905e1ca15a58836dae4997de",
+  "runtimeHash": "e4c22b0a983e8952f1c812749c6cdd298895f6a6074b3f317d3f87ff81053c5d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

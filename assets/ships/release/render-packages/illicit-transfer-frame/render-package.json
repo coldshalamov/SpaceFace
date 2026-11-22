@@ -99,255 +99,180 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0cbcfb035d1484e8b4e951f518b7197e43802a9840c3953dc41191c26eb8b574",
+  "contentHash": "533e8248571647107522d964390f3da1b925c8bf413f4248a7fe57ea18a3cb50",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.5384320827713127,
-          3.400037848669436,
-          -1.7400000095367432
+          6.738540390442095,
+          3.3998438188584537,
+          -1.74000084432556
         ],
         "min": [
-          3.2615681079635506,
-          -0.16003734739437325,
-          -6.060000896453857
+          3.2618176829361243,
+          -0.16015036719691667,
+          -6.060147307959373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46bb504af3f9d76d9420421ebe07712cef24ae3388e9ca94006c5420bf899b33",
+      "geometryHash": "9dc55fc248d6fef672c2246b192360e4894d62818f4f9b77b132aeaf2a528da5",
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.0",
-      "indexCount": 180,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.014",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 216
     },
     {
       "bounds": {
         "max": [
-          6.738431399919314,
-          3.4000377490483045,
-          -1.7400000095367432
+          6.599693047051522,
+          3.3200804513787627,
+          6
         ],
         "min": [
-          6.461567455671506,
-          -0.16003705405814617,
-          -6.060000419616699
+          -1.1004261135341928,
+          -0.7002148345073236,
+          -6.0040175308440356
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46bb504af3f9d76d9420421ebe07712cef24ae3388e9ca94006c5420bf899b33",
-      "id": "sf.render.illicit-transfer-frame.mesh.bertha-f.primitive.0",
-      "indexCount": 180,
-      "indexed": true,
-      "materialHash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-f",
-      "primitiveIndex": 0,
-      "vertexCount": 108
-    },
-    {
-      "bounds": {
-        "max": [
-          6.599999904632568,
-          3.3199255753724755,
-          -5.7960906804970405
-        ],
-        "min": [
-          3.4000000953674316,
-          3.080074519994956,
-          -6.003909510237823
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "11981b52864fe6ffff7a3b0cdc3194e5425464d8ab3b7dead247a1775d3d886c",
-      "id": "sf.render.illicit-transfer-frame.mesh.bertha-tie.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "7c53287d9ef07b608a45303f96ea67a0c948b0ef42ec66ab24da696863a214a6",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.1",
+      "indexCount": 96,
       "indexed": true,
       "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.015",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-tie",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 1,
+      "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
-          6.199999809265137,
-          2.5599659234380856,
-          4.038541809397905
+          6.3729582894935115,
+          2.55992817380032,
+          5.559824379463928
         ],
         "min": [
-          3.5999996662139893,
-          2.2400342672967777,
-          3.7614581429183795
+          3.4265142657877083,
+          0.2800252533391552,
+          2.239674208121795
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d098c5d399b0910a9eef26f110f4790fa2a35a9de22b3154c77ffb1a57a4fab",
-      "id": "sf.render.illicit-transfer-frame.mesh.berthb-tie.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "d625e2db81430c470894eb7606257e5d9f10e05e60c97fa1e4499154b02a855d",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.2",
+      "indexCount": 300,
       "indexed": true,
       "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.berthb-tie",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 2,
+      "vertexCount": 180
     },
     {
       "bounds": {
         "max": [
-          3.7732323676927098,
-          2.520029306411743,
-          4.060017551603191
+          0.5496785512019122,
+          0.8996684507045317,
+          -5.699735054902992
         ],
         "min": [
-          3.426767441572427,
-          0.27997085452079773,
-          2.239982877550252
+          -0.5502065878641025,
+          0.7002600320053045,
+          -6.100028991699219
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9c98e2a3553d1b677cde6e59ddb3155bf596d5b68a5f9f6d933d331dbeeaa60",
-      "id": "sf.render.illicit-transfer-frame.mesh.berthb0-l.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.berthb0-l",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          3.7732323746068994,
-          2.520029306411743,
-          5.560017349505936
-        ],
-        "min": [
-          3.4267674346582373,
-          0.27997076511383057,
-          3.7399826028103482
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fd73da62b58d06860afbd57fbee49c197a8065b9bf4c5b016adf3d368ce5f4f8",
-      "id": "sf.render.illicit-transfer-frame.mesh.berthb0-r.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.berthb0-r",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          6.373232272325279,
-          2.520029306411743,
-          4.060017551603191
-        ],
-        "min": [
-          6.026767346204995,
-          0.27997085452079773,
-          2.239982877550252
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b9c98e2a3553d1b677cde6e59ddb3155bf596d5b68a5f9f6d933d331dbeeaa60",
-      "id": "sf.render.illicit-transfer-frame.mesh.berthb1-l.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.berthb1-l",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          6.373232279239468,
-          2.520029306411743,
-          5.560017349505936
-        ],
-        "min": [
-          6.026767339290806,
-          0.27997076511383057,
-          3.7399826028103482
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fd73da62b58d06860afbd57fbee49c197a8065b9bf4c5b016adf3d368ce5f4f8",
-      "id": "sf.render.illicit-transfer-frame.mesh.berthb1-r.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.berthb1-r",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          0.550000011920929,
-          0.8999725474292468,
-          -5.699971098447918
-        ],
-        "min": [
-          -0.550000011920929,
-          0.7000274764126111,
-          -6.100029092286945
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "895034398cf1586801501c0095fbe42973b6b2a2cc668efa4dfc98893f870393",
-      "id": "sf.render.illicit-transfer-frame.mesh.cut-hazard.primitive.0",
+      "geometryHash": "9b87637785a6df4b1450907863d420450ef24a643917030994e1b1d1e7421255",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.3",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.022",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.cut-hazard",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 3,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          5.25,
-          3.5200097663700674,
-          -3.6500000953674316
+          1.200340835920502,
+          0.7999642413549181,
+          -1.1002321676655393
         ],
         "min": [
-          4.75,
-          3.4399902345240023,
-          -4.150000095367432
+          -1.2001303228838065,
+          -0.7002148345073236,
+          -3.700296382593796
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6eadcbc212a5d32a7262d5541524d1dbaf81d320df3875e1bdbbca4adfdbfd95",
+      "geometryHash": "4e0ae44379aa7a533fd24c0d9004be3f62944c2940fea4b1ba797f9d37d8e5a8",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.4",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 4,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1752301461583772,
+          0.6751493422431796,
+          3.999822777991918
+        ],
+        "min": [
+          -1.1750196331216816,
+          -0.7748083540948123,
+          2.1997925243819494
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9fca1bf0017caf9f1e8dde4b86a66b420eab5653785397ad3803824553c832be",
+      "id": "sf.render.illicit-transfer-frame.mesh.bertha-a.primitive.5",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.1",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.bertha-a",
+      "primitiveIndex": 5,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.250025340845512,
+          3.519990177683037,
+          -3.6500246317348717
+        ],
+        "min": [
+          4.749974659154488,
+          3.4399506055137192,
+          -4.149990278023856
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22dba3e1a9fa3927cb3a9c9489142ef4f4626330a05765a6e6a3ef774aa689ad",
       "id": "sf.render.illicit-transfer-frame.mesh.h0-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.021",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.3",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-lens",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -355,74 +280,74 @@
     {
       "bounds": {
         "max": [
-          5.043269614923112,
-          3.6251869946718216,
-          -4.406806019793684
+          5.043283019637911,
+          3.625178970005424,
+          -4.406818451032497
         ],
         "min": [
-          4.956730385076888,
-          2.974812924861908,
-          -4.843193980206316
+          4.956716980362089,
+          2.9747644386587337,
+          -4.843177616596222
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81537893c5393696820683619fcdcbae1a90d46139d581f4e1ef3724a743a661",
-      "id": "sf.render.illicit-transfer-frame.mesh.h0-post.primitive.0",
+      "geometryHash": "d2746371300c632863ae174bc8a568bc350299e0236a1e1da8d10d801d0601a5",
+      "id": "sf.render.illicit-transfer-frame.mesh.h0-lens.primitive.1",
       "indexCount": 60,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-post",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.3",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-lens",
+      "primitiveIndex": 1,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          5.449999988079071,
-          3.6999828992457253,
+          5.449964829889984,
+          3.700031382650356,
           -3.4500001072883606
         ],
         "min": [
-          4.550000011920929,
-          3.5400170842139858,
-          -4.350000083446503
+          4.550035170110016,
+          3.540058532564269,
+          -4.350014802470367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9d26bfdeac94de125a5a3907a4563b2495dce2966eb7ec6d1aa20d486714dac",
-      "id": "sf.render.illicit-transfer-frame.mesh.h0-shade.primitive.0",
+      "geometryHash": "03b89eba6b2d30e7b0a9d1d93ec96bfbe7421db1088bea6586355a622dd32a04",
+      "id": "sf.render.illicit-transfer-frame.mesh.h0-lens.primitive.2",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.018",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-shade",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.3",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.h0-lens",
+      "primitiveIndex": 2,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          5.25,
-          2.7700097663700674,
-          4.150000095367432
+          5.250025340845512,
+          2.769990177683037,
+          4.149975558999992
         ],
         "min": [
-          4.75,
-          2.6899902345240023,
-          3.6500000953674316
+          4.749974659154488,
+          2.6899506055137192,
+          3.6500099127110075
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6eadcbc212a5d32a7262d5541524d1dbaf81d320df3875e1bdbbca4adfdbfd95",
+      "geometryHash": "22dba3e1a9fa3927cb3a9c9489142ef4f4626330a05765a6e6a3ef774aa689ad",
       "id": "sf.render.illicit-transfer-frame.mesh.h1-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.017",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.4",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-lens",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -430,74 +355,74 @@
     {
       "bounds": {
         "max": [
-          5.043269614923112,
-          2.8751869946718216,
-          3.39319417094118
+          5.043283019637911,
+          2.875178970005424,
+          3.3931817397023663
         ],
         "min": [
-          4.956730385076888,
-          2.224812924861908,
-          2.9568062105285464
+          4.956716980362089,
+          2.2247644386587337,
+          2.9568225741386414
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81537893c5393696820683619fcdcbae1a90d46139d581f4e1ef3724a743a661",
-      "id": "sf.render.illicit-transfer-frame.mesh.h1-post.primitive.0",
+      "geometryHash": "d2746371300c632863ae174bc8a568bc350299e0236a1e1da8d10d801d0601a5",
+      "id": "sf.render.illicit-transfer-frame.mesh.h1-lens.primitive.1",
       "indexCount": 60,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.012",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-post",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.4",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-lens",
+      "primitiveIndex": 1,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          5.449999988079071,
-          2.9499828992457253,
+          5.449964829889984,
+          2.950031382650356,
           4.350000083446503
         ],
         "min": [
-          4.550000011920929,
-          2.7900170842139858,
-          3.4500001072883606
+          4.550035170110016,
+          2.790058532564269,
+          3.449985388264496
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9d26bfdeac94de125a5a3907a4563b2495dce2966eb7ec6d1aa20d486714dac",
-      "id": "sf.render.illicit-transfer-frame.mesh.h1-shade.primitive.0",
+      "geometryHash": "03b89eba6b2d30e7b0a9d1d93ec96bfbe7421db1088bea6586355a622dd32a04",
+      "id": "sf.render.illicit-transfer-frame.mesh.h1-lens.primitive.2",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.020",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-shade",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.4",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.h1-lens",
+      "primitiveIndex": 2,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          8.11029544046374,
-          3.100228912662928,
-          -2.164825322294278
+          8.110157032725928,
+          3.1002086767577843,
+          -2.164809243541476
         ],
         "min": [
-          1.88970455953626,
-          0.09977113502078794,
-          -5.635174868440585
+          1.8898429672740726,
+          0.09969602190666382,
+          -5.635190947193387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e95d8afd76040136ba929c72591542a27d0d87b96650896b5bb4df5d3eb0ad90",
+      "geometryHash": "99c6eaa32934f09c8d4983ca5aa48fc2ff039f17cff8c1568819f1d3ae3a9167",
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "e7b6d4f2887c2d8cee4620fc022e1af88f84e9b4e675c4380234f068736d7ed7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.019",
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
       "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -506,225 +431,75 @@
       "bounds": {
         "max": [
           8.186083883927424,
-          3.200086666487955,
+          3.2299227158984065,
           -1.9607017737817993
         ],
         "min": [
           1.8139161160725763,
-          -0.00008661880423899149,
+          -0.00013429331387282417,
           -5.8392984169530635
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfbd17e6ac5dfbdce621029bfb23b7b3ed350e9efef578c4f71dcbe2fd7d93be",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-casts.primitive.0",
-      "indexCount": 288,
+      "geometryHash": "4d7073916cee4d2cd66f2c2b3550a0b1fec4e97a3f57fcfbdcb10cac5632c0f2",
+      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.1",
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-casts",
-      "primitiveIndex": 0,
-      "vertexCount": 192
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
+      "primitiveIndex": 1,
+      "vertexCount": 240
     },
     {
       "bounds": {
         "max": [
-          2.361742470844348,
-          3.200000047683716,
-          -2.0633751048354307
+          8.143082514072336,
+          3.200038991978321,
+          -2.0632981406418924
         ],
         "min": [
-          1.8568074384750437,
-          0,
-          -5.273119896077309
+          1.8569174859276636,
+          -0.00013429331387282417,
+          -5.736702050092971
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b8ff4adece2e81b8a66ae79b2abe8d09580eb9eed780df5dcdeda9f2ea8ad0d",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-enda.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "1c0670c6d76d2c6c735c929a8316edc6d0247bb833664442462e4bfbfd3a9f0a",
+      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.2",
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-enda",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
+      "primitiveIndex": 2,
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          8.143192561524955,
-          3.200000047683716,
-          -2.5268802946575546
+          7.468242669096689,
+          2.1998681070279473,
+          -2.413899598849005
         ],
         "min": [
-          7.638257529155652,
-          0,
-          -5.7366250858994325
+          6.168636838350352,
+          1.4001049456166497,
+          -2.5677573621758296
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b8ff4adece2e81b8a66ae79b2abe8d09580eb9eed780df5dcdeda9f2ea8ad0d",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-endf.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-endf",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          7.468349114803058,
-          2.2000335532770907,
-          -2.413953206494001
-        ],
-        "min": [
-          6.168512181928424,
-          1.3999665152682508,
-          -2.567671715647583
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "790cfb66dde369b892c6287b9fb19c524c39060f35ca6914cc14f863642e92c9",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-plate.primitive.0",
+      "geometryHash": "b4db616398dcb41167e99f6a3e0dfbec2f7b6b2518c427d7ed41ea902a9f2cb0",
+      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body.primitive.3",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-plate",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          7.584286395874604,
-          3.2298751471516822,
-          -5.019852204960081
-        ],
-        "min": [
-          2.1887559048110665,
-          3.0901247860911156,
-          -5.611064748076949
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "16507dd2cbc4a573fa4c4eb4125b05c761f1e8c15dbcdf2fce12e95c872c13d9",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-railp.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.016",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-railp",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          7.8112440951889335,
-          3.2298751471516822,
-          -2.1889354426579146
-        ],
-        "min": [
-          2.415713604125396,
-          3.0901247860911156,
-          -2.780147985774782
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "16507dd2cbc4a573fa4c4eb4125b05c761f1e8c15dbcdf2fce12e95c872c13d9",
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-rails.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.014",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-rails",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.2000213189401119,
-          0.8000778066074022,
-          -1.1000001430511475
-        ],
-        "min": [
-          -1.2000213189401119,
-          -0.7000777827655443,
-          -3.700000047683716
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d9e84bd5ea59e1b4a2cf354f7296bb843638c31e67c9885cb7ee0e4f107bf2f9",
-      "id": "sf.render.illicit-transfer-frame.mesh.spine-patch-a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.023",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.spine-patch-a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.1749999523162842,
-          0.6750022475453217,
-          4.000031030370525
-        ],
-        "min": [
-          -1.1749999523162842,
-          -0.7750022713871796,
-          2.1999685404760325
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b8407b6d6098bc8a052fc8898bde9ff918af9b4459e34af18258f1babace824c",
-      "id": "sf.render.illicit-transfer-frame.mesh.spine-patch-b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.spine-patch-b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.1001312295907468,
-          0.7002166814172796,
-          6
-        ],
-        "min": [
-          -1.1001312295907468,
-          -0.7002166814172796,
-          -6
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0cecd012e0393a9596256c8e5ee34e8f20be54e91eb3233813839372c65c3ac9",
-      "id": "sf.render.illicit-transfer-frame.mesh.spine.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.015",
-      "nodeId": "sf.render.illicit-transfer-frame.mesh.spine",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.illicit-transfer-frame.static-opaque-lane.2",
+      "nodeId": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
+      "primitiveIndex": 3,
       "vertexCount": 24
     }
   ],
@@ -800,25 +575,25 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-a",
       "localTransform": [
-        2.160000443458557,
+        6.050014495849609,
         0,
         0,
         0,
         0,
-        2.160000443458557,
+        6.050014495849609,
         0,
         0,
         0,
         0,
-        2.160000443458557,
+        6.050014495849609,
         0,
-        3.4000000953674316,
-        1.6200002506375313,
-        -3.9000004529953003,
+        2.7692050337791443,
+        1.3125177323818207,
+        -0.050014495849609375,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthA_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthA_a",
       "nodePath": [
         0,
@@ -828,46 +603,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        2.160000443458557,
+        6.050014495849609,
         0,
         0,
         0,
         0,
-        2.160000443458557,
+        6.050014495849609,
         0,
         0,
         0,
         0,
-        2.160000443458557,
+        6.050014495849609,
         0,
-        3.4000000953674316,
-        1.6200002506375313,
-        -3.9000004529953003,
+        2.7692050337791443,
+        1.3125177323818207,
+        -0.050014495849609375,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-f",
       "localTransform": [
-        2.160000205039978,
+        1,
         0,
         0,
         0,
         0,
-        2.160000205039978,
+        1,
         0,
         0,
         0,
         0,
-        2.160000205039978,
+        1,
         0,
-        6.59999942779541,
-        1.620000347495079,
-        -3.900000214576721,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthA_f",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthA_f",
       "nodePath": [
         0,
@@ -877,46 +652,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        2.160000205039978,
+        1,
         0,
         0,
         0,
         0,
-        2.160000205039978,
+        1,
         0,
         0,
         0,
         0,
-        2.160000205039978,
+        1,
         0,
-        6.59999942779541,
-        1.620000347495079,
-        -3.900000214576721,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.bertha-tie",
       "localTransform": [
-        1.5999999046325684,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999046325684,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999046325684,
+        1,
         0,
-        5,
-        3.200000047683716,
-        -5.900000095367432,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthA_tie",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthA_tie",
       "nodePath": [
         0,
@@ -926,46 +701,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.5999999046325684,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999046325684,
+        1,
         0,
         0,
         0,
         0,
-        1.5999999046325684,
+        1,
         0,
-        5,
-        3.200000047683716,
-        -5.900000095367432,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.berthb-tie",
       "localTransform": [
-        1.3000000715255737,
+        1,
         0,
         0,
         0,
         0,
-        1.3000000715255737,
+        1,
         0,
         0,
         0,
         0,
-        1.3000000715255737,
+        1,
         0,
-        4.899999737739563,
-        2.4000000953674316,
-        3.899999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthB_tie",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthB_tie",
       "nodePath": [
         0,
@@ -975,46 +750,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.3000000715255737,
+        1,
         0,
         0,
         0,
         0,
-        1.3000000715255737,
+        1,
         0,
         0,
         0,
         0,
-        1.3000000715255737,
+        1,
         0,
-        4.899999737739563,
-        2.4000000953674316,
-        3.899999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.berthb0-l",
       "localTransform": [
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
-        3.5999999046325684,
-        1.4000000804662704,
-        3.150000214576721,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthB0_l",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthB0_l",
       "nodePath": [
         0,
@@ -1024,46 +799,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
-        3.5999999046325684,
-        1.4000000804662704,
-        3.150000214576721,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.berthb0-r",
       "localTransform": [
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
-        3.5999999046325684,
-        1.4000000357627869,
-        4.649999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthB0_r",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthB0_r",
       "nodePath": [
         0,
@@ -1073,46 +848,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
-        3.5999999046325684,
-        1.4000000357627869,
-        4.649999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.berthb1-l",
       "localTransform": [
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
-        6.199999809265137,
-        1.4000000804662704,
-        3.150000214576721,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthB1_l",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthB1_l",
       "nodePath": [
         0,
@@ -1122,46 +897,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292259454727,
+        1,
         0,
-        6.199999809265137,
-        1.4000000804662704,
-        3.150000214576721,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.berthb1-r",
       "localTransform": [
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
-        6.199999809265137,
-        1.4000000357627869,
-        4.649999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "berthB1_r",
+      "mergeBoundary": "static:opaque",
       "nodeName": "berthB1_r",
       "nodePath": [
         0,
@@ -1171,46 +946,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
         0,
         0,
         0,
-        1.1200292706489563,
+        1,
         0,
-        6.199999809265137,
-        1.4000000357627869,
-        4.649999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.cut-hazard",
       "localTransform": [
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
         0,
-        0.800000011920929,
-        -5.900000095367432,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cut_hazard",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cut_hazard",
       "nodePath": [
         0,
@@ -1220,46 +995,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
         0,
-        0.800000011920929,
-        -5.900000095367432,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h0-lens",
       "localTransform": [
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         0,
-        -0.019999999552965164,
-        0,
+        -0.16260208934545517,
+        -0.24658876657485962,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "h0_lens",
+      "mergeBoundary": "static:opaque",
       "nodeName": "h0_lens",
       "nodePath": [
         0,
@@ -1270,46 +1045,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         5,
-        3.480000000447035,
-        -3.9000000953674316,
+        3.337397910654545,
+        -4.146588861942291,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h0-post",
       "localTransform": [
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         0,
-        -0.20000004023313522,
-        -0.7249999046325684,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "h0_post",
+      "mergeBoundary": "static:opaque",
       "nodeName": "h0_post",
       "nodePath": [
         0,
@@ -1320,46 +1095,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         5,
-        3.2999999597668648,
-        -4.625,
+        3.5,
+        -3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h0-shade",
       "localTransform": [
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
-        0.11999999172985554,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "h0_shade",
+      "mergeBoundary": "static:opaque",
       "nodeName": "h0_shade",
       "nodePath": [
         0,
@@ -1370,20 +1145,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         5,
-        3.6199999917298555,
+        3.5,
         -3.9000000953674316,
         1
       ]
@@ -1391,25 +1166,25 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h1-lens",
       "localTransform": [
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         0,
-        -0.019999999552965164,
-        0,
+        -0.16260208934545517,
+        -0.24658876657485962,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "h1_lens",
+      "mergeBoundary": "static:opaque",
       "nodeName": "h1_lens",
       "nodePath": [
         0,
@@ -1420,46 +1195,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         0,
         0,
         0,
-        0.25,
+        0.6965887546539307,
         0,
         5,
-        2.730000000447035,
-        3.9000000953674316,
+        2.587397910654545,
+        3.653411328792572,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h1-post",
       "localTransform": [
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         0,
-        -0.20000004023313522,
-        -0.7249999046325684,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "h1_post",
+      "mergeBoundary": "static:opaque",
       "nodeName": "h1_post",
       "nodePath": [
         0,
@@ -1470,46 +1245,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         0,
         0,
         0,
-        0.3251870349049568,
+        1,
         0,
         5,
-        2.5499999597668648,
-        3.1750001907348633,
+        2.75,
+        3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.h1-shade",
       "localTransform": [
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
-        0.11999999172985554,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "h1_shade",
+      "mergeBoundary": "static:opaque",
       "nodeName": "h1_shade",
       "nodePath": [
         0,
@@ -1520,20 +1295,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         0,
         0,
         0,
-        0.44999998807907104,
+        1,
         0,
         5,
-        2.8699999917298555,
+        2.75,
         3.9000000953674316,
         1
       ]
@@ -1541,80 +1316,30 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-body",
       "localTransform": [
-        3,
+        3.059999942779541,
         0,
         0,
         0,
         0,
-        3,
+        3.059999942779541,
         0,
         0,
         0,
         0,
-        3,
+        3.059999942779541,
         0,
         0,
-        0,
+        0.014894187450408936,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_body",
+      "mergeBoundary": "static:opaque",
       "nodeName": "held_pod_body",
       "nodePath": [
         0,
         10,
         0
-      ],
-      "parentId": "sf.render.illicit-transfer-frame.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.illicit-transfer-frame.body",
-      "worldTransform": [
-        2.990405120977123,
-        0,
-        -0.23974405581703806,
-        0,
-        0,
-        3,
-        0,
-        0,
-        0.23974405581703806,
-        0,
-        2.990405120977123,
-        0,
-        5,
-        1.600000023841858,
-        -3.9000000953674316,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-casts",
-      "localTransform": [
-        3.059999942779541,
-        0,
-        0,
-        0,
-        0,
-        3.059999942779541,
-        0,
-        0,
-        0,
-        0,
-        3.059999942779541,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_casts",
-      "nodeName": "held_pod_casts",
-      "nodePath": [
-        0,
-        10,
-        1
       ],
       "parentId": "sf.render.illicit-transfer-frame.root",
       "role": "immutable",
@@ -1633,6 +1358,56 @@
         3.0502131663592142,
         0,
         5,
+        1.6148942112922668,
+        -3.9000000953674316,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.illicit-transfer-frame.mesh.held-pod-casts",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "held_pod_casts",
+      "nodePath": [
+        0,
+        10,
+        1
+      ],
+      "parentId": "sf.render.illicit-transfer-frame.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.illicit-transfer-frame.body",
+      "worldTransform": [
+        0.9968017069923744,
+        0,
+        -0.07991468527234602,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
+        0,
+        5,
         1.600000023841858,
         -3.9000000953674316,
         1
@@ -1641,25 +1416,25 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-enda",
       "localTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
-        -2.9000000953674316,
+        0,
         0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_enda",
+      "mergeBoundary": "static:opaque",
       "nodeName": "held_pod_enda",
       "nodePath": [
         0,
@@ -1670,46 +1445,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.5948827549534037,
+        0.9968017069923744,
         0,
-        -0.1278634983410682,
+        -0.07991468527234602,
         0,
         0,
+        1,
+        0,
+        0,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
+        0,
+        5,
         1.600000023841858,
-        0,
-        0,
-        0.1278634983410682,
-        0,
-        1.5948827549534037,
-        0,
-        2.109274954659696,
-        1.600000023841858,
-        -3.6682475004563697,
+        -3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-endf",
       "localTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
-        2.9000000953674316,
+        0,
         0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_endf",
+      "mergeBoundary": "static:opaque",
       "nodeName": "held_pod_endf",
       "nodePath": [
         0,
@@ -1720,46 +1495,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.5948827549534037,
+        0.9968017069923744,
         0,
-        -0.1278634983410682,
+        -0.07991468527234602,
         0,
         0,
+        1,
+        0,
+        0,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
+        0,
+        5,
         1.600000023841858,
-        0,
-        0,
-        0.1278634983410682,
-        0,
-        1.5948827549534037,
-        0,
-        7.890725045340304,
-        1.600000023841858,
-        -4.131752690278494,
+        -3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-plate",
       "localTransform": [
-        0.6499999165534973,
+        1,
         0,
         0,
         0,
         0,
-        0.6499999165534973,
+        1,
         0,
         0,
         0,
         0,
-        0.6499999165534973,
+        1,
         0,
-        1.699999988079071,
-        0.20000001043081284,
-        1.5499999523162842,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_plate",
+      "mergeBoundary": "static:opaque",
       "nodeName": "held_pod_plate",
       "nodePath": [
         0,
@@ -1770,46 +1545,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        0.647921026365427,
+        0.9968017069923744,
         0,
-        -0.05194453875842391,
-        0,
-        0,
-        0.6499999165534973,
+        -0.07991468527234602,
         0,
         0,
-        0.05194453875842391,
+        1,
         0,
-        0.647921026365427,
         0,
-        6.818430648365741,
-        1.8000000342726707,
-        -2.490812461070792,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
+        0,
+        5,
+        1.600000023841858,
+        -3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-railp",
       "localTransform": [
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
-        1.559999942779541,
-        -1.4199999570846558,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_railp",
+      "mergeBoundary": "static:opaque",
       "nodeName": "held_pod_railp",
       "nodePath": [
         0,
@@ -1820,46 +1595,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        2.69136465641062,
+        0.9968017069923744,
         0,
-        -0.2157696540459634,
-        0,
-        0,
-        2.700000047683716,
+        -0.07991468527234602,
         0,
         0,
-        0.2157696540459634,
+        1,
         0,
-        2.69136465641062,
         0,
-        4.886521150342835,
-        3.159999966621399,
-        -5.315458476518515,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
+        0,
+        5,
+        1.600000023841858,
+        -3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.held-pod-rails",
       "localTransform": [
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
         0,
         0,
-        2.700000047683716,
+        1,
         0,
         0,
-        1.559999942779541,
-        1.4199999570846558,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "held_pod_rails",
+      "mergeBoundary": "static:opaque",
       "nodeName": "held_pod_rails",
       "nodePath": [
         0,
@@ -1870,38 +1645,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        2.69136465641062,
+        0.9968017069923744,
         0,
-        -0.2157696540459634,
-        0,
-        0,
-        2.700000047683716,
+        -0.07991468527234602,
         0,
         0,
-        0.2157696540459634,
+        1,
         0,
-        2.69136465641062,
         0,
-        5.113478849657165,
-        3.159999966621399,
-        -2.4845417142163484,
+        0.07991468527234602,
+        0,
+        0.9968017069923744,
+        0,
+        5,
+        1.600000023841858,
+        -3.9000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.spine",
       "localTransform": [
-        6,
+        1,
         0,
         0,
         0,
         0,
-        6,
+        1,
         0,
         0,
         0,
         0,
-        6,
+        1,
         0,
         0,
         0,
@@ -1909,7 +1684,7 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "spine",
+      "mergeBoundary": "static:opaque",
       "nodeName": "spine",
       "nodePath": [
         0,
@@ -1919,17 +1694,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        6,
+        1,
         0,
         0,
         0,
         0,
-        6,
+        1,
         0,
         0,
         0,
         0,
-        6,
+        1,
         0,
         0,
         0,
@@ -1940,25 +1715,25 @@
     {
       "id": "sf.render.illicit-transfer-frame.mesh.spine-patch-a",
       "localTransform": [
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
-        0.050000011920928955,
-        -2.4000000953674316,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "spine_patch_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "spine_patch_a",
       "nodePath": [
         0,
@@ -1968,46 +1743,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
-        0.050000011920928955,
-        -2.4000000953674316,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.illicit-transfer-frame.mesh.spine-patch-b",
       "localTransform": [
-        1.1749999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.1749999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.1749999523162842,
+        1,
         0,
         0,
-        -0.050000011920928955,
-        3.099999785423279,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "spine_patch_b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "spine_patch_b",
       "nodePath": [
         0,
@@ -2017,21 +1792,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.illicit-transfer-frame.body",
       "worldTransform": [
-        1.1749999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.1749999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.1749999523162842,
+        1,
         0,
         0,
-        -0.050000011920928955,
-        3.099999785423279,
+        0,
+        0,
         1
       ]
     },
@@ -2086,7 +1861,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "24e0e6935c8bf006078ae70a0a423e04b283fa1b97945c173af26bf9890fdd4b"
+      "sha256": "9a39ce7681b0af9b12d7a9c6144cb1c36f64074748a423319fba298073b8d017"
     },
     "sourceGlb": {
       "bytes": 26248,
@@ -2094,37 +1869,37 @@
       "uri": "place_illicit_transfer_frame.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 33064,
-    "sha256": "aa0ab3d22098c75b400b59a86e4eb998b8a7b7726b4f6f61a4333dbc484f0359",
+    "bytes": 29360,
+    "sha256": "2c3294d126c2148ca87054366f62b604574e58ce284e69fd4ec3dde022b020a3",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        3.493031282493656,
-        1.4624903139292729,
-        -0.05001454614347267
+        3.4929767805218086,
+        1.4626115142777718,
+        -0.050014495849609375
       ],
       "max": [
         8.186083883927424,
-        3.6999828992457253,
+        3.700031382650356,
         6
       ],
       "min": [
-        -1.2000213189401119,
-        -0.7750022713871796,
-        -6.100029092286945
+        -1.2001303228838065,
+        -0.7748083540948123,
+        -6.100028991699219
       ],
       "size": [
-        9.386105202867535,
-        4.474985170632905,
-        12.100029092286945
+        9.38621420681123,
+        4.474839736745168,
+        12.100028991699219
       ]
     },
     "hidden": [],
@@ -2150,7 +1925,7 @@
           1
         ],
         "name": "SOCKET_Berth_A",
-        "planIndex": 28,
+        "planIndex": 44,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2187,7 +1962,7 @@
           1
         ],
         "name": "SOCKET_Berth_B",
-        "planIndex": 29,
+        "planIndex": 45,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2206,17 +1981,12 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 21,
+      "hull": 12,
       "rubber": 1,
       "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
-      {
-        "allowTextures": false,
-        "planIndex": 2,
-        "role": "hull"
-      },
       {
         "allowTextures": false,
         "planIndex": 3,
@@ -2235,7 +2005,7 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": false,
@@ -2245,57 +2015,17 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 11,
-        "role": "warning"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 17,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 18,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 19,
+        "planIndex": 20,
         "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -2309,85 +2039,58 @@
       },
       {
         "allowTextures": false,
-        "planIndex": 25,
+        "planIndex": 32,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 26,
+        "planIndex": 33,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 27,
+        "planIndex": 34,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 30,
+        "planIndex": 39,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 40,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 31,
+        "planIndex": 41,
         "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 32,
-        "role": "rubber"
       }
     ],
-    "nodeCount": 33,
+    "nodeCount": 49,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          2.160000443458557,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          2.160000443458557,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          2.160000443458557,
+          6.050014495849609,
           0,
-          3.4000000953674316,
-          1.6200002506375313,
-          -3.9000004529953003,
+          2.7692050337791443,
+          1.3125177323818207,
+          -0.050014495849609375,
           1
         ],
-        "name": "berthA_a",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.160000205039978,
-          0,
-          0,
-          0,
-          0,
-          2.160000205039978,
-          0,
-          0,
-          0,
-          0,
-          2.160000205039978,
-          0,
-          6.59999942779541,
-          1.620000347495079,
-          -3.900000214576721,
-          1
-        ],
-        "name": "berthA_f",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -2397,24 +2100,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.5999999046325684,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.5999999046325684,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.5999999046325684,
+          6.050014495849609,
           0,
-          5,
-          3.200000047683716,
-          -5.900000095367432,
+          2.7692050337791443,
+          1.3125177323818207,
+          -0.050014495849609375,
           1
         ],
-        "name": "berthA_tie",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2424,24 +2127,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.1200292259454727,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292259454727,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292259454727,
+          6.050014495849609,
           0,
-          3.5999999046325684,
-          1.4000000804662704,
-          3.150000214576721,
+          2.7692050337791443,
+          1.3125177323818207,
+          -0.050014495849609375,
           1
         ],
-        "name": "berthB0_l",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2451,24 +2154,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.1200292706489563,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292706489563,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292706489563,
+          6.050014495849609,
           0,
-          3.5999999046325684,
-          1.4000000357627869,
-          4.649999976158142,
+          2.7692050337791443,
+          1.3125177323818207,
+          -0.050014495849609375,
           1
         ],
-        "name": "berthB0_r",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2478,24 +2181,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.1200292259454727,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292259454727,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292259454727,
+          6.050014495849609,
           0,
-          6.199999809265137,
-          1.4000000804662704,
-          3.150000214576721,
+          2.7692050337791443,
+          1.3125177323818207,
+          -0.050014495849609375,
           1
         ],
-        "name": "berthB1_l",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_4",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2505,106 +2208,25 @@
       {
         "canopy": false,
         "matrix": [
-          1.1200292706489563,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292706489563,
+          6.050014495849609,
           0,
           0,
           0,
           0,
-          1.1200292706489563,
+          6.050014495849609,
           0,
-          6.199999809265137,
-          1.4000000357627869,
-          4.649999976158142,
+          2.7692050337791443,
+          1.3125177323818207,
+          -0.050014495849609375,
           1
         ],
-        "name": "berthB1_r",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane1_5",
         "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.3000000715255737,
-          0,
-          0,
-          0,
-          0,
-          1.3000000715255737,
-          0,
-          0,
-          0,
-          0,
-          1.3000000715255737,
-          0,
-          4.899999737739563,
-          2.4000000953674316,
-          3.899999976158142,
-          1
-        ],
-        "name": "berthB_tie",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.550000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.550000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.550000011920929,
-          0,
-          0,
-          0.800000011920929,
-          -5.900000095367432,
-          1
-        ],
-        "name": "cut_hazard",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.990405120977123,
-          0,
-          -0.23974405581703806,
-          0,
-          0,
-          3,
-          0,
-          0,
-          0.23974405581703806,
-          0,
-          2.990405120977123,
-          0,
-          5,
-          1.600000023841858,
-          -3.9000000953674316,
-          1
-        ],
-        "name": "held_pod_body",
-        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2626,12 +2248,12 @@
           3.0502131663592142,
           0,
           5,
-          1.600000023841858,
+          1.6148942112922668,
           -3.9000000953674316,
           1
         ],
-        "name": "held_pod_casts",
-        "planIndex": 14,
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2640,159 +2262,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.5948827549534037,
+          3.0502131663592142,
           0,
-          -0.1278634983410682,
-          0,
-          0,
-          1.600000023841858,
+          -0.24453893236062385,
           0,
           0,
-          0.1278634983410682,
-          0,
-          1.5948827549534037,
-          0,
-          2.109274954659696,
-          1.600000023841858,
-          -3.6682475004563697,
-          1
-        ],
-        "name": "held_pod_enda",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.5948827549534037,
-          0,
-          -0.1278634983410682,
+          3.059999942779541,
           0,
           0,
-          1.600000023841858,
+          0.24453893236062385,
           0,
-          0,
-          0.1278634983410682,
-          0,
-          1.5948827549534037,
-          0,
-          7.890725045340304,
-          1.600000023841858,
-          -4.131752690278494,
-          1
-        ],
-        "name": "held_pod_endf",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.647921026365427,
-          0,
-          -0.05194453875842391,
-          0,
-          0,
-          0.6499999165534973,
-          0,
-          0,
-          0.05194453875842391,
-          0,
-          0.647921026365427,
-          0,
-          6.818430648365741,
-          1.8000000342726707,
-          -2.490812461070792,
-          1
-        ],
-        "name": "held_pod_plate",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.69136465641062,
-          0,
-          -0.2157696540459634,
-          0,
-          0,
-          2.700000047683716,
-          0,
-          0,
-          0.2157696540459634,
-          0,
-          2.69136465641062,
-          0,
-          4.886521150342835,
-          3.159999966621399,
-          -5.315458476518515,
-          1
-        ],
-        "name": "held_pod_railp",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.69136465641062,
-          0,
-          -0.2157696540459634,
-          0,
-          0,
-          2.700000047683716,
-          0,
-          0,
-          0.2157696540459634,
-          0,
-          2.69136465641062,
-          0,
-          5.113478849657165,
-          3.159999966621399,
-          -2.4845417142163484,
-          1
-        ],
-        "name": "held_pod_rails",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.25,
-          0,
-          0,
-          0,
-          0,
-          0.25,
-          0,
-          0,
-          0,
-          0,
-          0.25,
+          3.0502131663592142,
           0,
           5,
-          3.480000000447035,
+          1.6148942112922668,
           -3.9000000953674316,
           1
         ],
-        "name": "h0_lens",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2_1",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -2802,24 +2289,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.3251870349049568,
+          3.0502131663592142,
+          0,
+          -0.24453893236062385,
           0,
           0,
+          3.059999942779541,
           0,
           0,
-          0.3251870349049568,
+          0.24453893236062385,
           0,
-          0,
-          0,
-          0,
-          0.3251870349049568,
+          3.0502131663592142,
           0,
           5,
-          3.2999999597668648,
-          -4.625,
+          1.6148942112922668,
+          -3.9000000953674316,
           1
         ],
-        "name": "h0_post",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2_2",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -2829,24 +2316,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.44999998807907104,
+          3.0502131663592142,
+          0,
+          -0.24453893236062385,
           0,
           0,
+          3.059999942779541,
           0,
           0,
-          0.44999998807907104,
+          0.24453893236062385,
           0,
-          0,
-          0,
-          0,
-          0.44999998807907104,
+          3.0502131663592142,
           0,
           5,
-          3.6199999917298555,
+          1.6148942112922668,
           -3.9000000953674316,
           1
         ],
-        "name": "h0_shade",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane2_3",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -2856,160 +2343,160 @@
       {
         "canopy": false,
         "matrix": [
-          0.25,
+          0.6965887546539307,
           0,
           0,
           0,
           0,
-          0.25,
+          0.6965887546539307,
           0,
           0,
           0,
           0,
-          0.25,
-          0,
-          5,
-          2.730000000447035,
-          3.9000000953674316,
-          1
-        ],
-        "name": "h1_lens",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3251870349049568,
-          0,
-          0,
-          0,
-          0,
-          0.3251870349049568,
-          0,
-          0,
-          0,
-          0,
-          0.3251870349049568,
+          0.6965887546539307,
           0,
           5,
-          2.5499999597668648,
-          3.1750001907348633,
+          3.337397910654545,
+          -4.146588861942291,
           1
         ],
-        "name": "h1_post",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.44999998807907104,
-          0,
-          0,
-          0,
-          0,
-          0.44999998807907104,
-          0,
-          0,
-          0,
-          0,
-          0.44999998807907104,
-          0,
-          5,
-          2.8699999917298555,
-          3.9000000953674316,
-          1
-        ],
-        "name": "h1_shade",
-        "planIndex": 27,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6,
-          0,
-          0,
-          0,
-          0,
-          6,
-          0,
-          0,
-          0,
-          0,
-          6,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "spine",
-        "planIndex": 30,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          1.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          1.2999999523162842,
-          0,
-          0,
-          0.050000011920928955,
-          -2.4000000953674316,
-          1
-        ],
-        "name": "spine_patch_a",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.1749999523162842,
-          0,
-          0,
-          0,
-          0,
-          1.1749999523162842,
-          0,
-          0,
-          0,
-          0,
-          1.1749999523162842,
-          0,
-          0,
-          -0.050000011920928955,
-          3.099999785423279,
-          1
-        ],
-        "name": "spine_patch_b",
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane3",
         "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          5,
+          3.337397910654545,
+          -4.146588861942291,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane3_1",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          5,
+          3.337397910654545,
+          -4.146588861942291,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane3_2",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          5,
+          2.587397910654545,
+          3.653411328792572,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane4",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          5,
+          2.587397910654545,
+          3.653411328792572,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane4_1",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          0,
+          0,
+          0,
+          0.6965887546539307,
+          0,
+          5,
+          2.587397910654545,
+          3.653411328792572,
+          1
+        ],
+        "name": "rendersfrenderillicit-transfer-framestatic-opaque-lane4_2",
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3020,20 +2507,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_illicit_transfer_frame.glb"
   },
-  "runtimeHash": "90a25e243cba85ac73d627d99f132e156202b2c4383899fde6482ded1cf3c9dc",
+  "runtimeHash": "3bd0f88ad793a0ea4ea36e772c7fbce17f223edcc2e1ccf27d07cc00ca6039bd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8.186083883927424,
-          3.6999828992457253,
+          3.700031382650356,
           6
         ],
         "min": [
-          -1.2000213189401119,
-          -0.7750022713871796,
-          -6.100029092286945
+          -1.2001303228838065,
+          -0.7748083540948123,
+          -6.100028991699219
         ]
       },
       "id": "sf.render.illicit-transfer-frame.body",

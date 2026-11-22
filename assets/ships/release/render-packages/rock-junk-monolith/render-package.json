@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "635623b1d08054a2311424bf55dfaa6244829aafae7c5eccd58678bc235e1853",
+  "contentHash": "b0bd9dc196455b5fae944be0672990c8d85a6a967b70786b322bbc0f9b368b0e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2157,8 +2157,8 @@
       "uri": "place_rock_junk_monolith.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -3404,7 +3404,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_junk_monolith.glb"
   },
-  "runtimeHash": "6016155610acea865e7cdadbfceecf3ce22ed73c9319dafd6ed09a07b58155c5",
+  "runtimeHash": "68a2f45161b8775b278b1d224334272de2dd207a9c1f719c4997b0923732106c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

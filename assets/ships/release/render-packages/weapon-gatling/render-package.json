@@ -54,83 +54,83 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4c70e11529ca194d4c202cc28502194d62026a7d2097b1c79389b9a3a4a96e50",
+  "contentHash": "0fcb1e800a00ce76857f8fb4d2865d25efb350a31db8dc8c097608f57ef39b54",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          2.5299999713897705,
-          -0.1250190666178419,
-          -0.49998627263120027
+          2.979999941113769,
+          0.22482939758331927,
+          -0.07991867316803505
         ],
         "min": [
-          2.0299999713897705,
-          -0.3749809184809969,
-          -0.8000137392897286
+          2.0298847459918554,
+          -0.3748940969876317,
+          -0.7999877883069926
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7612f7843074e35e76c74c930bde67162589db0c5485b6b9d37502fd200e367b",
+      "geometryHash": "072b68e1b8e59cecd46a8bb9b5aced431a3a960a7300b35d2622eb65780e9ddf",
       "id": "sf.render.weapon-gatling.node.det-ammo-feed.primitive.0",
-      "indexCount": 324,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
+      "meshName": "render:sf.render.weapon-gatling.static-opaque-lane.1",
       "nodeId": "sf.render.weapon-gatling.node.det-ammo-feed",
       "primitiveIndex": 0,
-      "vertexCount": 179
+      "vertexCount": 203
     },
     {
       "bounds": {
         "max": [
           4.329999923706055,
-          -0.7900311527215235,
-          0.5749229258624119
+          -0.7899862575338005,
+          0.5748969865911417
         ],
         "min": [
-          1.8299999237060547,
-          -0.9099688949621924,
-          0.4250770443352657
+          1.829976914468205,
+          -0.9099862559864481,
+          0.42496611294840403
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d083bb2233a6afb65850789261a2e62027301da60c5a60e8382367882cff7c7",
-      "id": "sf.render.weapon-gatling.node.det-mount-rail.primitive.0",
+      "geometryHash": "1c73775f98de530f41b286523a11f87a8a236f97aefd83cb4718e0c6f4fb5d0c",
+      "id": "sf.render.weapon-gatling.node.det-ammo-feed.primitive.1",
       "indexCount": 324,
       "indexed": true,
       "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.weapon-gatling.node.det-mount-rail",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.weapon-gatling.static-opaque-lane.1",
+      "nodeId": "sf.render.weapon-gatling.node.det-ammo-feed",
+      "primitiveIndex": 1,
       "vertexCount": 179
     },
     {
       "bounds": {
         "max": [
-          2.9800000190734863,
-          0.22500077190361553,
-          -0.07998475385464576
+          1.8001151637011867,
+          0.49863123737072546,
+          0.4999661119813088
         ],
         "min": [
-          2.5799999237060547,
-          0.17499923405684895,
-          -0.28001532005511376
+          -0.20000001788139343,
+          -0.4998710539014491,
+          -0.49991866775230176
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3edce4341df3af91a9b1505dd621db39f58249cd91bf1c0703fa2eeec528bef1",
-      "id": "sf.render.weapon-gatling.node.det-scuff-plate.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "212af6df363c9b87888fe687193d2542954423930427c1b9c16602af78cb67de",
+      "id": "sf.render.weapon-gatling.node.det-ammo-feed.primitive.2",
+      "indexCount": 1056,
       "indexed": true,
-      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.weapon-gatling.node.det-scuff-plate",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "render:sf.render.weapon-gatling.static-opaque-lane.1",
+      "nodeId": "sf.render.weapon-gatling.node.det-ammo-feed",
+      "primitiveIndex": 2,
+      "vertexCount": 343
     },
     {
       "bounds": {
@@ -181,31 +181,6 @@
       "nodeId": "sf.render.weapon-gatling.node.gatling-coils-merged",
       "primitiveIndex": 0,
       "vertexCount": 1280
-    },
-    {
-      "bounds": {
-        "max": [
-          1.7999999523162842,
-          0.4986138953923248,
-          0.5000762888219725
-        ],
-        "min": [
-          -0.20000001788139343,
-          -0.5000127568005585,
-          -0.5000762888219725
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "86c8ee818caa3744a44ab6a6ad4635f5c17474c2f5713c90b09a418ed0db4173",
-      "id": "sf.render.weapon-gatling.node.gatling-housing.primitive.0",
-      "indexCount": 1056,
-      "indexed": true,
-      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
-      "materialPipelineKey": "opaque",
-      "meshName": "TEMP_castReceiver",
-      "nodeId": "sf.render.weapon-gatling.node.gatling-housing",
-      "primitiveIndex": 0,
-      "vertexCount": 343
     },
     {
       "bounds": {
@@ -452,25 +427,25 @@
     {
       "id": "sf.render.weapon-gatling.node.det-ammo-feed",
       "localTransform": [
-        0.25,
+        2.264999970793724,
         0,
         0,
         0,
         0,
-        0.25,
+        2.264999970793724,
         0,
         0,
         0,
         0,
-        0.25,
+        2.264999970793724,
         0,
-        2.2799999713897705,
-        -0.2499999925494194,
-        -0.6500000059604645,
+        2.0649999529123306,
+        -0.20567750930786133,
+        -0.11254540085792542,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_ammo_feed",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_ammo_feed",
       "nodePath": [
         0,
@@ -480,46 +455,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-gatling.body",
       "worldTransform": [
-        0.25,
+        2.264999970793724,
         0,
         0,
         0,
         0,
-        0.25,
+        2.264999970793724,
         0,
         0,
         0,
         0,
-        0.25,
+        2.264999970793724,
         0,
-        2.2799999713897705,
-        -0.2499999925494194,
-        -0.6500000059604645,
+        2.0649999529123306,
+        -0.20567750930786133,
+        -0.11254540085792542,
         1
       ]
     },
     {
       "id": "sf.render.weapon-gatling.node.det-mount-rail",
       "localTransform": [
-        1.25,
+        1,
         0,
         0,
         0,
         0,
-        1.25,
+        1,
         0,
         0,
         0,
         0,
-        1.25,
+        1,
         0,
-        3.0799999237060547,
-        -0.8500000238418579,
-        0.4999999850988388,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_mount_rail",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_mount_rail",
       "nodePath": [
         0,
@@ -529,46 +504,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-gatling.body",
       "worldTransform": [
-        1.25,
+        1,
         0,
         0,
         0,
         0,
-        1.25,
+        1,
         0,
         0,
         0,
         0,
-        1.25,
+        1,
         0,
-        3.0799999237060547,
-        -0.8500000238418579,
-        0.4999999850988388,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.weapon-gatling.node.det-scuff-plate",
       "localTransform": [
-        0.20000004768371582,
+        1,
         0,
         0,
         0,
         0,
-        0.20000004768371582,
+        1,
         0,
         0,
         0,
         0,
-        0.20000004768371582,
+        1,
         0,
-        2.7799999713897705,
-        0.20000000298023224,
-        -0.18000003695487976,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_scuff_plate",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_scuff_plate",
       "nodePath": [
         0,
@@ -578,21 +553,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-gatling.body",
       "worldTransform": [
-        0.20000004768371582,
+        1,
         0,
         0,
         0,
         0,
-        0.20000004768371582,
+        1,
         0,
         0,
         0,
         0,
-        0.20000004768371582,
+        1,
         0,
-        2.7799999713897705,
-        0.20000000298023224,
-        -0.18000003695487976,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -699,25 +674,25 @@
     {
       "id": "sf.render.weapon-gatling.node.gatling-housing",
       "localTransform": [
-        0.9999999850988388,
+        1,
         0,
         0,
         0,
         0,
-        0.9999999850988388,
+        1,
         0,
         0,
         0,
         0,
-        0.9999999850988388,
+        1,
         0,
-        0.7999999672174454,
-        -0.0006994307041168213,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "Gatling_Housing",
+      "mergeBoundary": "static:opaque",
       "nodeName": "Gatling_Housing",
       "nodePath": [
         0,
@@ -727,20 +702,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-gatling.body",
       "worldTransform": [
-        0.9999999850988388,
+        1,
         0,
         0,
         0,
         0,
-        0.9999999850988388,
+        1,
         0,
         0,
         0,
         0,
-        0.9999999850988388,
+        1,
         0,
-        0.7999999672174454,
-        -0.0006994307041168213,
+        0,
+        0,
         0,
         1
       ]
@@ -1481,7 +1456,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "7affae933174107019bf58a0a1dc425bf1123fa98d1c27e7a29f191134276065"
+      "sha256": "839726028586604f6c057e4cfa2a0524e78d3fc17cd814710e34af91a744a80e"
     },
     "sourceGlb": {
       "bytes": 3127508,
@@ -1489,37 +1464,37 @@
       "uri": "weapon_gatling.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3122372,
-    "sha256": "d6aa239c605f02f4c8e3393bcfff46f1bcfa60ba7d0f1282a0652a9b92ee4e5b",
+    "bytes": 3120628,
+    "sha256": "ec0dd8bb212502999ff4f73da3a09c8143747582598fdd59cb8eadb07030d5a0",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         2.2050000578165054,
-        -0.20567749978493377,
-        -0.11254540671365837
+        -0.20567750930786133,
+        -0.11254540085792542
       ],
       "max": [
         4.610000133514404,
-        0.4986138953923248,
-        0.5749229258624119
+        0.49863123737072546,
+        0.5748969865911417
       ],
       "min": [
         -0.20000001788139343,
-        -0.9099688949621924,
-        -0.8000137392897286
+        -0.9099862559864481,
+        -0.7999877883069926
       ],
       "size": [
         4.810000151395798,
-        1.4085827903545172,
-        1.3749366651521404
+        1.4086174933571736,
+        1.3748847748981343
       ]
     },
     "hidden": [],
@@ -1545,7 +1520,7 @@
           1
         ],
         "name": "HOOK_Spin",
-        "planIndex": 6,
+        "planIndex": 9,
         "tags": {},
         "userData": {
           "axis": [
@@ -1584,7 +1559,7 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 9,
+        "planIndex": 12,
         "tags": {},
         "userData": {
           "name": "HOOK_Emissive",
@@ -1618,7 +1593,7 @@
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 10,
+        "planIndex": 13,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1651,15 +1626,10 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "hull": 1,
-      "mechanical": 6,
+      "mechanical": 5,
       "service": 1
     },
     "materialProfiles": [
-      {
-        "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
       {
         "allowTextures": true,
         "planIndex": 3,
@@ -1677,79 +1647,53 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 10,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 11,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 19,
+        "planIndex": 22,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 20,
+        "planIndex": 23,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 24,
         "role": "service"
       }
     ],
-    "nodeCount": 22,
+    "nodeCount": 25,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          0.25,
+          2.264999970793724,
           0,
           0,
           0,
           0,
-          0.25,
+          2.264999970793724,
           0,
           0,
           0,
           0,
-          0.25,
+          2.264999970793724,
           0,
-          2.2799999713897705,
-          -0.2499999925494194,
-          -0.6500000059604645,
+          2.0649999529123306,
+          -0.20567750930786133,
+          -0.11254540085792542,
           1
         ],
-        "name": "DET_ammo_feed",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.25,
-          0,
-          0,
-          0,
-          0,
-          1.25,
-          0,
-          0,
-          0,
-          0,
-          1.25,
-          0,
-          3.0799999237060547,
-          -0.8500000238418579,
-          0.4999999850988388,
-          1
-        ],
-        "name": "DET_mount_rail",
+        "name": "rendersfrenderweapon-gatlingstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false
@@ -1758,24 +1702,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.20000004768371582,
+          2.264999970793724,
           0,
           0,
           0,
           0,
-          0.20000004768371582,
+          2.264999970793724,
           0,
           0,
           0,
           0,
-          0.20000004768371582,
+          2.264999970793724,
           0,
-          2.7799999713897705,
-          0.20000000298023224,
-          -0.18000003695487976,
+          2.0649999529123306,
+          -0.20567750930786133,
+          -0.11254540085792542,
           1
         ],
-        "name": "DET_scuff_plate",
+        "name": "rendersfrenderweapon-gatlingstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false
@@ -1784,24 +1728,24 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.264999970793724,
           0,
           0,
           0,
           0,
-          1,
+          2.264999970793724,
           0,
           0,
           0,
           0,
-          1,
+          2.264999970793724,
           0,
-          0.7999999672174454,
-          -0.0006994307041168213,
-          0,
+          2.0649999529123306,
+          -0.20567750930786133,
+          -0.11254540085792542,
           1
         ],
-        "name": "Gatling_Housing",
+        "name": "rendersfrenderweapon-gatlingstatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false
@@ -1828,7 +1772,7 @@
           1
         ],
         "name": "Gatling_Barrel_Cluster",
-        "planIndex": 7,
+        "planIndex": 10,
         "tags": {
           "canopy": false
         }
@@ -1854,7 +1798,7 @@
           1
         ],
         "name": "Gatling_Coils_Merged",
-        "planIndex": 8,
+        "planIndex": 11,
         "tags": {
           "canopy": false
         }
@@ -1880,7 +1824,7 @@
           1
         ],
         "name": "Remaster_Material_Mechanical_BrushedNickel",
-        "planIndex": 19,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1908,7 +1852,7 @@
           1
         ],
         "name": "Remaster_Material_Mechanical_ShadowEnamel",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1936,7 +1880,7 @@
           1
         ],
         "name": "Remaster_Material_Hull_ServiceOchre",
-        "planIndex": 21,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1948,20 +1892,20 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_gatling.glb"
   },
-  "runtimeHash": "d6c4a3763914c2b46d4cf698b7a7f10dfa9d336381704a3e23b704d7f4d297d1",
+  "runtimeHash": "d1e4eaaefe086e4672d4e18dbae4d4f0938ce5110151747172a3e6c32a13921d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4.610000133514404,
-          0.4986138953923248,
-          0.5749229258624119
+          0.49863123737072546,
+          0.5748969865911417
         ],
         "min": [
           -0.20000001788139343,
-          -0.9099688949621924,
-          -0.8000137392897286
+          -0.9099862559864481,
+          -0.7999877883069926
         ]
       },
       "id": "sf.render.weapon-gatling.body",

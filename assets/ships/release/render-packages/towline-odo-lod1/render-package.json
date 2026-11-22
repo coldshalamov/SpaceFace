@@ -202,7 +202,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "102b00293e0a01e64d073ca5e9f17f0fef8f80017da94ad61acb527711fb92fa",
+  "contentHash": "46baa842f1fa78b68345342dba9d9027acfa3ffeff8886154a23c1d600e1aa62",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-odo-lod1.node.lod1-motion-towline-winch-armor.dynamic",
@@ -1496,8 +1496,8 @@
       "uri": "towline_odo_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -2269,7 +2269,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_odo_lod1.glb"
   },
-  "runtimeHash": "02320a0c0a2a569693e7914ca36bfaa7baa86b0626669df9ff86c2a3d8038332",
+  "runtimeHash": "e84e8e9035ec1724d4cdbb46b3346c9d0c1cf012ed83f03b7d5ddba09900546b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

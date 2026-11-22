@@ -473,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6a1cb464c68379250d2295007d243420edb56578b962822e12fc15ef92e490c1",
+  "contentHash": "a640e0d179097999209c81a30297f65821d020e9f020cefac002f32423bc5160",
   "dynamicGroups": [
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -3496,8 +3496,8 @@
       "uri": "place_charon_colony_service_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -5334,7 +5334,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb"
   },
-  "runtimeHash": "acb87c39a2c3261c1cf60b36abce236abc9b74a18903cc3c2a4e29cd39892164",
+  "runtimeHash": "4fbb8d7e6b75f035e18e80fa320e87d35fde0fed465514f1e07ee2dc2a9ef3b3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

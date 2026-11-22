@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0662c3db10a25e3e448e43ce32fbab6ff5d1d8e4b253125e2fecf4f3248fb0b1",
+  "contentHash": "70c17de4cd9ee2eebf0aa93a595f45fc3743561e4dcfa327ace9fe84f6f2e39c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -62,24 +62,24 @@
     {
       "bounds": {
         "max": [
-          0.1999871846738835,
-          0.2800000011920929,
-          0.2800000011920929
+          0.1999548740828504,
+          0.2799873184781415,
+          0.2799873184781415
         ],
         "min": [
-          0.000012819370457550772,
-          -0.2800000011920929,
-          -0.2800000011920929
+          0.000012816062735510059,
+          -0.2799873184781415,
+          -0.2799873184781415
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08acdb6ea2a9d428aaf0e9ebb9d5130819a56acfdec2f71f31666f19417e8686",
+      "geometryHash": "414da8a32193155b6143b642c150aa95b9b8a5d22bf648befa933cd0bf763361",
       "id": "sf.render.engine-vector.node.hook-drive-core.primitive.0",
       "indexCount": 564,
       "indexed": true,
       "materialHash": "cf4b0549a85702865035317d9b43d92d594e85b0897d28b4b118e9b073325bd1",
       "materialPipelineKey": "opaque",
-      "meshName": "HOOK_DRIVE_CORE_Mesh",
+      "meshName": "render:sf.render.engine-vector.static-opaque-lane.1",
       "nodeId": "sf.render.engine-vector.node.hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 192
@@ -87,52 +87,27 @@
     {
       "bounds": {
         "max": [
-          0.44998932292140736,
-          0.41999998688697815,
-          0.41999998688697815
-        ],
-        "min": [
-          0.3500106889995216,
-          -0.41999998688697815,
-          -0.41999998688697815
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "25f41a1d6215ff0a9eaa3c17a3f4d03cb08f0b269f37bef84555d48bf9d02c8f",
-      "id": "sf.render.engine-vector.node.hook-drive-fan.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
-      "materialPipelineKey": "opaque",
-      "meshName": "HOOK_DRIVE_FAN_Mesh",
-      "nodeId": "sf.render.engine-vector.node.hook-drive-fan",
-      "primitiveIndex": 0,
-      "vertexCount": 232
-    },
-    {
-      "bounds": {
-        "max": [
           1.725000023841858,
-          0.2939275497746911,
-          0.2939275795770135
+          0.42002046074604715,
+          0.42002046074604715
         ],
         "min": [
-          0.9750000238418579,
-          -0.2939276093793359,
-          -0.2939275795770135
+          0.3500167056748299,
+          -0.42002046074604715,
+          -0.42002046074604715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a3be34941efb90c50088110638409af130f13151afef6447a0b82abc0fa75cf",
-      "id": "sf.render.engine-vector.node.hook-drive-plume.primitive.0",
-      "indexCount": 564,
+      "geometryHash": "bf560828d9ede3f08c0337431fd7ccd84286f99776fd6f6c90f690a92325050c",
+      "id": "sf.render.engine-vector.node.hook-drive-core.primitive.1",
+      "indexCount": 1128,
       "indexed": true,
       "materialHash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
       "materialPipelineKey": "opaque",
-      "meshName": "HOOK_DRIVE_PLUME_Mesh",
-      "nodeId": "sf.render.engine-vector.node.hook-drive-plume",
-      "primitiveIndex": 0,
-      "vertexCount": 192
+      "meshName": "render:sf.render.engine-vector.static-opaque-lane.1",
+      "nodeId": "sf.render.engine-vector.node.hook-drive-core",
+      "primitiveIndex": 1,
+      "vertexCount": 424
     },
     {
       "bounds": {
@@ -367,25 +342,25 @@
     {
       "id": "sf.render.engine-vector.node.hook-drive-core",
       "localTransform": [
-        0.2800000011920929,
+        0.8624936038895612,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        0.8624936038895612,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        0.8624936038895612,
         0,
-        0.10000000202217052,
+        0.8625064199522967,
         0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "HOOK_DRIVE_CORE",
+      "mergeBoundary": "static:opaque",
       "nodeName": "HOOK_DRIVE_CORE",
       "nodePath": [
         0,
@@ -395,19 +370,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        0.2800000011920929,
+        0.8624936038895612,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        0.8624936038895612,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        0.8624936038895612,
         0,
-        0.10000000202217052,
+        0.8625064199522967,
         0,
         0,
         1
@@ -416,25 +391,25 @@
     {
       "id": "sf.render.engine-vector.node.hook-drive-fan",
       "localTransform": [
-        0.41999998688697815,
+        1,
         0,
         0,
         0,
         0,
-        0.41999998688697815,
+        1,
         0,
         0,
         0,
         0,
-        0.41999998688697815,
+        1,
         0,
-        0.4000000059604645,
+        0,
         0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "HOOK_DRIVE_FAN",
+      "mergeBoundary": "static:opaque",
       "nodeName": "HOOK_DRIVE_FAN",
       "nodePath": [
         0,
@@ -444,19 +419,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        0.41999998688697815,
+        1,
         0,
         0,
         0,
         0,
-        0.41999998688697815,
+        1,
         0,
         0,
         0,
         0,
-        0.41999998688697815,
+        1,
         0,
-        0.4000000059604645,
+        0,
         0,
         0,
         1
@@ -465,25 +440,25 @@
     {
       "id": "sf.render.engine-vector.node.hook-drive-plume",
       "localTransform": [
-        0.375,
+        1,
         0,
         0,
         0,
         0,
-        0.375,
+        1,
         0,
         0,
         0,
         0,
-        0.375,
+        1,
         0,
-        1.350000023841858,
-        -2.9802322387695312e-8,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "HOOK_DRIVE_PLUME",
+      "mergeBoundary": "static:opaque",
       "nodeName": "HOOK_DRIVE_PLUME",
       "nodePath": [
         0,
@@ -493,20 +468,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        0.375,
+        1,
         0,
         0,
         0,
         0,
-        0.375,
+        1,
         0,
         0,
         0,
         0,
-        0.375,
+        1,
         0,
-        1.350000023841858,
-        -2.9802322387695312e-8,
+        0,
+        0,
         0,
         1
       ]
@@ -562,7 +537,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "c70fa1181200fe5849d0f7da95b87b0935419e3265dde2797f1d1a42f749edac"
+      "sha256": "3d04c65ba7ae4cd7b1cc751f54c7754477afba12d54181ada25927dce814e977"
     },
     "sourceGlb": {
       "bytes": 152416,
@@ -570,14 +545,14 @@
       "uri": "engine_vector.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 76340,
-    "sha256": "fc6529a1d35f3f7d27fd80b325d367b772a60191c15bcca63dcb483e2e38dc79",
+    "bytes": 74852,
+    "sha256": "0208f18627ae5be958f6a3160b492931e010666406bb4ca835af85bb77ec826f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -605,62 +580,22 @@
     },
     "hidden": [],
     "legacyPart": false,
-    "markers": [],
-    "materialProfileRoles": {
-      "accent": 4,
-      "hull": 1,
-      "mechanical": 1
-    },
-    "materialProfiles": [
+    "markers": [
       {
-        "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 3,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 4,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
-        "role": "accent"
-      }
-    ],
-    "nodeCount": 8,
-    "primitives": [
-      {
-        "canopy": false,
         "matrix": [
-          0.2800000011920929,
+          0.8624936038895612,
           0,
           0,
           0,
           0,
-          0.2800000011920929,
+          0.8624936038895612,
           0,
           0,
           0,
           0,
-          0.2800000011920929,
+          0.8624936038895612,
           0,
-          0.10000000202217052,
+          0.8625064199522967,
           0,
           0,
           1
@@ -668,70 +603,182 @@
         "name": "HOOK_DRIVE_CORE",
         "planIndex": 2,
         "tags": {
-          "canopy": false,
           "chamfered": true,
           "drive": "core",
-          "driveAnchorMatrix": [
-            0.2800000011920929,
-            0,
-            0,
-            0,
-            0,
-            0.2800000011920929,
-            0,
-            0,
-            0,
-            0,
-            0.2800000011920929,
-            0,
-            0.10000000202217052,
-            0,
-            0,
-            1
-          ],
           "tint": "hull"
+        },
+        "userData": {
+          "name": "HOOK_DRIVE_CORE",
+          "spaceface": {
+            "chamfered": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.engine-vector.node.hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spaceface_chamfered": true
         }
       },
       {
-        "canopy": false,
         "matrix": [
-          0.41999998688697815,
+          1,
           0,
           0,
           0,
           0,
-          0.41999998688697815,
+          1,
           0,
           0,
           0,
           0,
-          0.41999998688697815,
+          1,
           0,
-          0.4000000059604645,
+          0,
           0,
           0,
           1
         ],
         "name": "HOOK_DRIVE_FAN",
+        "planIndex": 5,
+        "tags": {
+          "chamfered": true,
+          "drive": "fan",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "HOOK_DRIVE_FAN",
+          "spaceface": {
+            "chamfered": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_DRIVE_FAN",
+            "recordIds": [
+              "sf.render.engine-vector.node.hook-drive-fan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spaceface_chamfered": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME",
+        "planIndex": 6,
+        "tags": {
+          "chamfered": true,
+          "drive": "plume",
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "HOOK_DRIVE_PLUME",
+          "spaceface": {
+            "chamfered": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_DRIVE_PLUME",
+            "recordIds": [
+              "sf.render.engine-vector.node.hook-drive-plume"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spaceface_chamfered": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.8624936038895612,
+          0,
+          0,
+          0,
+          0,
+          0.8624936038895612,
+          0,
+          0,
+          0,
+          0,
+          0.8624936038895612,
+          0,
+          0.8625064199522967,
+          0,
+          0,
+          1
+        ],
+        "name": "rendersfrenderengine-vectorstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "drive": "fan",
+          "drive": "core",
           "driveAnchorMatrix": [
-            0.41999998688697815,
+            0.8624936038895612,
             0,
             0,
             0,
             0,
-            0.41999998688697815,
+            0.8624936038895612,
             0,
             0,
             0,
             0,
-            0.41999998688697815,
+            0.8624936038895612,
             0,
-            0.4000000059604645,
+            0.8625064199522967,
             0,
             0,
             1
@@ -742,44 +789,44 @@
       {
         "canopy": false,
         "matrix": [
-          0.375,
+          0.8624936038895612,
           0,
           0,
           0,
           0,
-          0.375,
+          0.8624936038895612,
           0,
           0,
           0,
           0,
-          0.375,
+          0.8624936038895612,
           0,
-          1.350000023841858,
-          -2.9802322387695312e-8,
+          0.8625064199522967,
+          0,
           0,
           1
         ],
-        "name": "HOOK_DRIVE_PLUME",
+        "name": "rendersfrenderengine-vectorstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "drive": "plume",
+          "drive": "core",
           "driveAnchorMatrix": [
-            0.375,
+            0.8624936038895612,
             0,
             0,
             0,
             0,
-            0.375,
+            0.8624936038895612,
             0,
             0,
             0,
             0,
-            0.375,
+            0.8624936038895612,
             0,
-            1.350000023841858,
-            -2.9802322387695312e-8,
+            0.8625064199522967,
+            0,
             0,
             1
           ],
@@ -807,7 +854,7 @@
           1
         ],
         "name": "LOD0_ENGINE_VECTOR_MAIN",
-        "planIndex": 5,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -836,7 +883,7 @@
           1
         ],
         "name": "DET_heat_scorch_band",
-        "planIndex": 6,
+        "planIndex": 8,
         "tags": {
           "canopy": false
         }
@@ -862,7 +909,7 @@
           1
         ],
         "name": "DET_heat_streak",
-        "planIndex": 7,
+        "planIndex": 9,
         "tags": {
           "canopy": false
         }
@@ -872,7 +919,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "ecf9926eda35d98fcdf7607b1b9b70d88a476cd18bd328050d868b9574780864",
+  "runtimeHash": "5d3f37bb51e21aa682704cda2bb7784a753a532c08b36cd5d5f938fbb49b6ac1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

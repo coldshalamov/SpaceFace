@@ -6,282 +6,57 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c71caae245968db709372b86eaef36039e0ebcbdf7275bd72efcca2f4d31e537",
+  "contentHash": "f494c49f9f84624c5c0373ce4f806a3544d03e1f4a699c04b5da95e6d6011294",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.14856041967868805,
-          1.9175060009169713,
-          -0.7255551987733083
+          4,
+          2.50228356308404,
+          2.2308185539454577
         ],
         "min": [
-          -3.5538113117218018,
-          0.4778893674206598,
-          -1.0690474337492746
+          -3.608369933830159,
+          -2.502252807087336,
+          -2.2307336769312975
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66b7e689697233166f3224df6796bb3eecd7fdb7aa4736878f677011ca537e85",
+      "geometryHash": "9d6e3d75b3f953f43ea47d46692e765675cc622ddff61dca0bbdb1cf5494dc3e",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00.primitive.0",
-      "indexCount": 48,
+      "indexCount": 480,
       "indexed": true,
       "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
-      "meshName": "cab00",
+      "meshName": "render:sf.render.aftermath-frag-cable-bundle.static-opaque-lane.1",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
       "primitiveIndex": 0,
-      "vertexCount": 30
+      "vertexCount": 300
     },
     {
       "bounds": {
         "max": [
-          3.9731531143188477,
-          2.3305721049229904,
-          0.8154445107426322
+          -3.3984030454338576,
+          2.124343163970698,
+          1.6730634881997015
         ],
         "min": [
-          0.04168526828289032,
-          1.6346733803827957,
-          -1.0559231455769218
+          -3.9999825954437256,
+          -0.8906348648734004,
+          -1.4610585424320652
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6aae9a8af21b5141df47370cda3f9d9f329cb28ba6ce74759aaecb5e6da452d2",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab01.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab01",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab01",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          0.18822278082370758,
-          2.4663612577845577,
-          1.8001337306871914
-        ],
-        "min": [
-          -3.608157157897949,
-          1.2042998340199467,
-          -0.40375247172265283
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3401707af15f0b27acfe3e01bdd79fc26d77d2af6f57a671b3e69d71053f27b4",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab10.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab10",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab10",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          3.9830284118652344,
-          2.5022645165428834,
-          1.8652354646638405
-        ],
-        "min": [
-          0.04817213863134384,
-          0.8161377141967102,
-          1.33349488487687
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b9a3e979b5f5509247c619bf848bd74bed73a0af1c703d4f78a518e6906a25cf",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab11.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab11",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab11",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          0.16166940331459045,
-          1.2755881731851488,
-          2.217476632462763
-        ],
-        "min": [
-          -3.5524706840515137,
-          0.3959920222417921,
-          0.7488004304301508
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "624d34fc2080554475c97527de984caf91bba6e5fc93e173e2789b2c3a5939cc",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab20.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab20",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab20",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          4,
-          0.668753693391936,
-          2.230784188636325
-        ],
-        "min": [
-          0.004113249480724335,
-          -1.9431394436856677,
-          0.2672912667908446
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5656d91879ceb82ed039ec22a6ade93fececd583bb7a9b38a573e3ce2e6985ce",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab21.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab21",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab21",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          0.17941084504127502,
-          0.36722052686372775,
-          1.1227967980547056
-        ],
-        "min": [
-          -3.5918896198272705,
-          -1.2621718704001048,
-          -0.3624973240537749
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "aa6e77afdeae3968b65581fdfeb5596a02e48161f2ae71ee4a3c6537b11b70d5",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab30.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab30",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab30",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          3.979297161102295,
-          -0.9165796895584807,
-          0.002512060920825121
-        ],
-        "min": [
-          0.030287086963653564,
-          -2.5022337178626315,
-          -1.2707595670364107
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "33bbfbbd3e8d8592a5d0be72ab3d0054b406ac0842b6b66b8b5a0d5191a1a2ef",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab31.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab31",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab31",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          0.17844130098819733,
-          0.02773493083152001,
-          -0.02800952223741149
-        ],
-        "min": [
-          -3.575201988220215,
-          -0.49418037498327916,
-          -2.186924327633747
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8c5e0c2118b71e706e55e53831e910a8dc228203786e88d8bf8047ba4e0283cc",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab40.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab40",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab40",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          3.961453437805176,
-          0.2384436069806236,
-          -0.8225990935905307
-        ],
-        "min": [
-          0.058296333998441696,
-          -0.5224856077511925,
-          -2.230699320162979
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "6cf5971e2d035f661b36c2d676c0417606369096f7e15919c5c71b169cbc4e9c",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab41.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
-      "materialPipelineKey": "opaque",
-      "meshName": "cab41",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab41",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.3981619363090583,
-          2.1242562285644198,
-          1.6728599071502686
-        ],
-        "min": [
-          -3.999982547257226,
-          -0.8904900900108004,
-          -1.4612557888031006
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5e1b546ecbc26ad054210f15def38abd4a3dc8fb00181fd956624d9d3a75786d",
-      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar.primitive.0",
+      "geometryHash": "f0932d3d164894146cb658f4f1a934b7a95a321dc5107cfce84da56a1a48bd47",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00.primitive.1",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
-      "meshName": "cabCollar",
-      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.aftermath-frag-cable-bundle.static-opaque-lane.1",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
+      "primitiveIndex": 1,
       "vertexCount": 24
     }
   ],
@@ -358,25 +133,25 @@
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
       "localTransform": [
-        1.851185865700245,
+        3.999991297721863,
         0,
         0,
         0,
         0,
-        1.851185865700245,
+        3.999991297721863,
         0,
         0,
         0,
         0,
-        1.851185865700245,
+        3.999991297721863,
         0,
-        -1.7026254460215569,
-        1.1976976841688156,
-        -0.8973013162612915,
+        0.000008702278137207031,
+        0.00001537799835205078,
+        0.000042438507080078125,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab00",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab00",
       "nodePath": [
         0,
@@ -386,46 +161,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.851185865700245,
+        3.999991297721863,
         0,
         0,
         0,
         0,
-        1.851185865700245,
+        3.999991297721863,
         0,
         0,
         0,
         0,
-        1.851185865700245,
+        3.999991297721863,
         0,
-        -1.7026254460215569,
-        1.1976976841688156,
-        -0.8973013162612915,
+        0.000008702278137207031,
+        0.00001537799835205078,
+        0.000042438507080078125,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab01",
       "localTransform": [
-        1.9657339230179787,
+        1,
         0,
         0,
         0,
         0,
-        1.9657339230179787,
+        1,
         0,
         0,
         0,
         0,
-        1.9657339230179787,
+        1,
         0,
-        2.007419191300869,
-        1.982622742652893,
-        -0.12023931741714478,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab01",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab01",
       "nodePath": [
         0,
@@ -435,46 +210,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.9657339230179787,
+        1,
         0,
         0,
         0,
         0,
-        1.9657339230179787,
+        1,
         0,
         0,
         0,
         0,
-        1.9657339230179787,
+        1,
         0,
-        2.007419191300869,
-        1.982622742652893,
-        -0.12023931741714478,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab10",
       "localTransform": [
-        1.8981899693608284,
+        1,
         0,
         0,
         0,
         0,
-        1.8981899693608284,
+        1,
         0,
         0,
         0,
         0,
-        1.8981899693608284,
+        1,
         0,
-        -1.7099671885371208,
-        1.8353305459022522,
-        0.6981906294822693,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab10",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab10",
       "nodePath": [
         0,
@@ -484,46 +259,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.8981899693608284,
+        1,
         0,
         0,
         0,
         0,
-        1.8981899693608284,
+        1,
         0,
         0,
         0,
         0,
-        1.8981899693608284,
+        1,
         0,
-        -1.7099671885371208,
-        1.8353305459022522,
-        0.6981906294822693,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab11",
       "localTransform": [
-        1.9674281366169453,
+        1,
         0,
         0,
         0,
         0,
-        1.9674281366169453,
+        1,
         0,
         0,
         0,
         0,
-        1.9674281366169453,
+        1,
         0,
-        2.015600275248289,
-        1.6592011153697968,
-        1.5993651747703552,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab11",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab11",
       "nodePath": [
         0,
@@ -533,46 +308,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.9674281366169453,
+        1,
         0,
         0,
         0,
         0,
-        1.9674281366169453,
+        1,
         0,
         0,
         0,
         0,
-        1.9674281366169453,
+        1,
         0,
-        2.015600275248289,
-        1.6592011153697968,
-        1.5993651747703552,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab20",
       "localTransform": [
-        1.857070043683052,
+        1,
         0,
         0,
         0,
         0,
-        1.857070043683052,
+        1,
         0,
         0,
         0,
         0,
-        1.857070043683052,
+        1,
         0,
-        -1.6954006403684616,
-        0.8357900977134705,
-        1.483138531446457,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab20",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab20",
       "nodePath": [
         0,
@@ -582,46 +357,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.857070043683052,
+        1,
         0,
         0,
         0,
         0,
-        1.857070043683052,
+        1,
         0,
         0,
         0,
         0,
-        1.857070043683052,
+        1,
         0,
-        -1.6954006403684616,
-        0.8357900977134705,
-        1.483138531446457,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab21",
       "localTransform": [
-        1.9979433752596378,
+        1,
         0,
         0,
         0,
         0,
-        1.9979433752596378,
+        1,
         0,
         0,
         0,
         0,
-        1.9979433752596378,
+        1,
         0,
-        2.002056624740362,
-        -0.6371928751468658,
-        1.249037727713585,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab21",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab21",
       "nodePath": [
         0,
@@ -631,46 +406,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.9979433752596378,
+        1,
         0,
         0,
         0,
         0,
-        1.9979433752596378,
+        1,
         0,
         0,
         0,
         0,
-        1.9979433752596378,
+        1,
         0,
-        2.002056624740362,
-        -0.6371928751468658,
-        1.249037727713585,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab30",
       "localTransform": [
-        1.8856502324342728,
+        1,
         0,
         0,
         0,
         0,
-        1.8856502324342728,
+        1,
         0,
         0,
         0,
         0,
-        1.8856502324342728,
+        1,
         0,
-        -1.7062393873929977,
-        -0.4474756717681885,
-        0.3801497370004654,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab30",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab30",
       "nodePath": [
         0,
@@ -680,46 +455,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.8856502324342728,
+        1,
         0,
         0,
         0,
         0,
-        1.8856502324342728,
+        1,
         0,
         0,
         0,
         0,
-        1.8856502324342728,
+        1,
         0,
-        -1.7062393873929977,
-        -0.4474756717681885,
-        0.3801497370004654,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab31",
       "localTransform": [
-        1.9745050370693207,
+        1,
         0,
         0,
         0,
         0,
-        1.9745050370693207,
+        1,
         0,
         0,
         0,
         0,
-        1.9745050370693207,
+        1,
         0,
-        2.0047921240329742,
-        -1.709406703710556,
-        -0.6341237530577928,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab31",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab31",
       "nodePath": [
         0,
@@ -729,46 +504,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.9745050370693207,
+        1,
         0,
         0,
         0,
         0,
-        1.9745050370693207,
+        1,
         0,
         0,
         0,
         0,
-        1.9745050370693207,
+        1,
         0,
-        2.0047921240329742,
-        -1.709406703710556,
-        -0.6341237530577928,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab40",
       "localTransform": [
-        1.876821644604206,
+        1,
         0,
         0,
         0,
         0,
-        1.876821644604206,
+        1,
         0,
         0,
         0,
         0,
-        1.876821644604206,
+        1,
         0,
-        -1.6983803436160088,
-        -0.23322272207587957,
-        -1.1074669249355793,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab40",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab40",
       "nodePath": [
         0,
@@ -778,46 +553,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.876821644604206,
+        1,
         0,
         0,
         0,
         0,
-        1.876821644604206,
+        1,
         0,
         0,
         0,
         0,
-        1.876821644604206,
+        1,
         0,
-        -1.6983803436160088,
-        -0.23322272207587957,
-        -1.1074669249355793,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab41",
       "localTransform": [
-        1.951578551903367,
+        1,
         0,
         0,
         0,
         0,
-        1.951578551903367,
+        1,
         0,
         0,
         0,
         0,
-        1.951578551903367,
+        1,
         0,
-        2.0098748859018087,
-        -0.14202100038528442,
-        -1.5266492068767548,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cab41",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cab41",
       "nodePath": [
         0,
@@ -827,46 +602,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.951578551903367,
+        1,
         0,
         0,
         0,
         0,
-        1.951578551903367,
+        1,
         0,
         0,
         0,
         0,
-        1.951578551903367,
+        1,
         0,
-        2.0098748859018087,
-        -0.14202100038528442,
-        -1.5266492068767548,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar",
       "localTransform": [
-        1.5670578479766846,
+        1,
         0,
         0,
         0,
         0,
-        1.5670578479766846,
+        1,
         0,
         0,
         0,
         0,
-        1.5670578479766846,
+        1,
         0,
-        -3.699072241783142,
-        0.6168830692768097,
-        0.10580205917358398,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cabCollar",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cabCollar",
       "nodePath": [
         0,
@@ -876,21 +651,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1.5670578479766846,
+        1,
         0,
         0,
         0,
         0,
-        1.5670578479766846,
+        1,
         0,
         0,
         0,
         0,
-        1.5670578479766846,
+        1,
         0,
-        -3.699072241783142,
-        0.6168830692768097,
-        0.10580205917358398,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -945,7 +720,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "639c6fb492716ed5260433caf4812c371717965dcae8e772bc5e66f8d302f68b"
+      "sha256": "fec369af4a4fb0938702487c4ad5002e94a2545ec4362e8c4ce04987cd4af05b"
     },
     "sourceGlb": {
       "bytes": 97548,
@@ -959,47 +734,42 @@
     }
   },
   "render": {
-    "bytes": 99556,
-    "sha256": "fd0bfe90831473831b880595a069c6c24859455cc12cd239d80fbc8776075ad4",
+    "bytes": 86648,
+    "sha256": "d03f71a089dd1e40363fe9df69916bd956c7a18283d099e15fdd29ef9a23e6dc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000008726371387046683,
-        0.000015399340125954453,
-        0.00004243423667316115
+        0.000008702278137207031,
+        0.00001537799835205078,
+        0.000042438507080078125
       ],
       "max": [
         4,
-        2.5022645165428834,
-        2.230784188636325
+        2.50228356308404,
+        2.2308185539454577
       ],
       "min": [
-        -3.999982547257226,
-        -2.5022337178626315,
-        -2.230699320162979
+        -3.9999825954437256,
+        -2.502252807087336,
+        -2.2307336769312975
       ],
       "size": [
-        7.9999825472572255,
-        5.004498234405515,
-        4.461483508799304
+        7.999982595443726,
+        5.004536370171376,
+        4.461552230876755
       ]
     },
     "hidden": [],
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "mechanical": 11
+      "mechanical": 2
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
         "role": "mechanical"
       },
@@ -1007,98 +777,31 @@
         "allowTextures": true,
         "planIndex": 4,
         "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "mechanical"
       }
     ],
-    "nodeCount": 13,
+    "nodeCount": 15,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          1.851185865700245,
+          3.999991297721863,
           0,
           0,
           0,
           0,
-          1.851185865700245,
+          3.999991297721863,
           0,
           0,
           0,
           0,
-          1.851185865700245,
+          3.999991297721863,
           0,
-          -1.7026254460215569,
-          1.1976976841688156,
-          -0.8973013162612915,
+          0.000008702278137207031,
+          0.00001537799835205078,
+          0.000042438507080078125,
           1
         ],
-        "name": "cab00",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.9657339230179787,
-          0,
-          0,
-          0,
-          0,
-          1.9657339230179787,
-          0,
-          0,
-          0,
-          0,
-          1.9657339230179787,
-          0,
-          2.007419191300869,
-          1.982622742652893,
-          -0.12023931741714478,
-          1
-        ],
-        "name": "cab01",
+        "name": "rendersfrenderaftermath-frag-cable-bundlestatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1108,241 +811,25 @@
       {
         "canopy": false,
         "matrix": [
-          1.8981899693608284,
+          3.999991297721863,
           0,
           0,
           0,
           0,
-          1.8981899693608284,
+          3.999991297721863,
           0,
           0,
           0,
           0,
-          1.8981899693608284,
+          3.999991297721863,
           0,
-          -1.7099671885371208,
-          1.8353305459022522,
-          0.6981906294822693,
+          0.000008702278137207031,
+          0.00001537799835205078,
+          0.000042438507080078125,
           1
         ],
-        "name": "cab10",
+        "name": "rendersfrenderaftermath-frag-cable-bundlestatic-opaque-lane1_1",
         "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.9674281366169453,
-          0,
-          0,
-          0,
-          0,
-          1.9674281366169453,
-          0,
-          0,
-          0,
-          0,
-          1.9674281366169453,
-          0,
-          2.015600275248289,
-          1.6592011153697968,
-          1.5993651747703552,
-          1
-        ],
-        "name": "cab11",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.857070043683052,
-          0,
-          0,
-          0,
-          0,
-          1.857070043683052,
-          0,
-          0,
-          0,
-          0,
-          1.857070043683052,
-          0,
-          -1.6954006403684616,
-          0.8357900977134705,
-          1.483138531446457,
-          1
-        ],
-        "name": "cab20",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.9979433752596378,
-          0,
-          0,
-          0,
-          0,
-          1.9979433752596378,
-          0,
-          0,
-          0,
-          0,
-          1.9979433752596378,
-          0,
-          2.002056624740362,
-          -0.6371928751468658,
-          1.249037727713585,
-          1
-        ],
-        "name": "cab21",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.8856502324342728,
-          0,
-          0,
-          0,
-          0,
-          1.8856502324342728,
-          0,
-          0,
-          0,
-          0,
-          1.8856502324342728,
-          0,
-          -1.7062393873929977,
-          -0.4474756717681885,
-          0.3801497370004654,
-          1
-        ],
-        "name": "cab30",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.9745050370693207,
-          0,
-          0,
-          0,
-          0,
-          1.9745050370693207,
-          0,
-          0,
-          0,
-          0,
-          1.9745050370693207,
-          0,
-          2.0047921240329742,
-          -1.709406703710556,
-          -0.6341237530577928,
-          1
-        ],
-        "name": "cab31",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.876821644604206,
-          0,
-          0,
-          0,
-          0,
-          1.876821644604206,
-          0,
-          0,
-          0,
-          0,
-          1.876821644604206,
-          0,
-          -1.6983803436160088,
-          -0.23322272207587957,
-          -1.1074669249355793,
-          1
-        ],
-        "name": "cab40",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.951578551903367,
-          0,
-          0,
-          0,
-          0,
-          1.951578551903367,
-          0,
-          0,
-          0,
-          0,
-          1.951578551903367,
-          0,
-          2.0098748859018087,
-          -0.14202100038528442,
-          -1.5266492068767548,
-          1
-        ],
-        "name": "cab41",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.5670578479766846,
-          0,
-          0,
-          0,
-          0,
-          1.5670578479766846,
-          0,
-          0,
-          0,
-          0,
-          1.5670578479766846,
-          0,
-          -3.699072241783142,
-          0.6168830692768097,
-          0.10580205917358398,
-          1
-        ],
-        "name": "cabCollar",
-        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1353,20 +840,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
   },
-  "runtimeHash": "2043dcf72783abb6f21eec61146e4d9442349c6c3645bef083b52d6fcf5ac66c",
+  "runtimeHash": "c838331dbf4849c644716ccbc2dc4089eb68bd237e1a7b38b716ab7318fffd62",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4,
-          2.5022645165428834,
-          2.230784188636325
+          2.50228356308404,
+          2.2308185539454577
         ],
         "min": [
-          -3.999982547257226,
-          -2.5022337178626315,
-          -2.230699320162979
+          -3.9999825954437256,
+          -2.502252807087336,
+          -2.2307336769312975
         ]
       },
       "id": "sf.render.aftermath-frag-cable-bundle.body",

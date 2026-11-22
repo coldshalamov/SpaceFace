@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "16457a234bb8fed381a40b6d95b6d84163c5b21b893fe54d4e09e4e7fb027147",
+  "contentHash": "b4ab5fefb9364c268b50fb1550648da85358092068ef7c91dc7c55cdb317f909",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -130,777 +130,177 @@
     {
       "bounds": {
         "max": [
-          -4.699999809265137,
-          5.209989173268182,
-          0.1499679775682175
+          7.299783318582721,
+          5.209892670214076,
+          1.9395123142185735
         ],
         "min": [
-          -7.300000190734863,
-          5.1100105215560365,
-          -0.1499679775682175
+          -7.299783318582721,
+          2.2495972510423483,
+          -0.15039521469771416
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1414b3b8c3569051ae116436e9b90465d3b46075fa5b55ecaf934c87adb21e9",
+      "geometryHash": "0df2fe119e91ea1e07c98d783dc0be3160cd1dc4255a46a67aafa23ec699d190",
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.0",
-      "indexCount": 36,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
       "nodeId": "sf.render.passenger-platform.mesh.cglow0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 240
     },
     {
       "bounds": {
         "max": [
-          -0.7000000476837158,
-          5.209989164100196,
-          0.14996795006425837
+          6.621051667836543,
+          5.299739162111412,
+          1.5400860621967223
         ],
         "min": [
-          -3.299999952316284,
-          5.110010530724023,
-          -0.14996795006425837
+          -6.621051667836543,
+          0.00026102862345123157,
+          -1.6895046845912045
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1414b3b8c3569051ae116436e9b90465d3b46075fa5b55ecaf934c87adb21e9",
-      "id": "sf.render.passenger-platform.mesh.cglow1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.passenger-platform.mesh.cglow1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.299999952316284,
-          5.209989164100196,
-          0.14996795006425837
-        ],
-        "min": [
-          0.7000000476837158,
-          5.110010530724023,
-          -0.14996795006425837
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e1414b3b8c3569051ae116436e9b90465d3b46075fa5b55ecaf934c87adb21e9",
-      "id": "sf.render.passenger-platform.mesh.cglow2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.passenger-platform.mesh.cglow2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          7.300000190734863,
-          5.209989173268182,
-          0.1499679775682175
-        ],
-        "min": [
-          4.699999809265137,
-          5.1100105215560365,
-          -0.1499679775682175
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e1414b3b8c3569051ae116436e9b90465d3b46075fa5b55ecaf934c87adb21e9",
-      "id": "sf.render.passenger-platform.mesh.cglow3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.passenger-platform.mesh.cglow3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.921997736752348,
-          5.300000190734863,
-          -1.5100833337496957
-        ],
-        "min": [
-          -6.078002263247652,
-          2.25,
-          -1.68991671393402
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "24a44f123d5cc7c3b67a357e70c7eedebc82ca6a2d655cbc23c65384914a703c",
-      "id": "sf.render.passenger-platform.mesh.cpost0.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "997580633fad1f8eaf211c14b878b887bf6e05df8659bcae9172912bd44b57ee",
+      "id": "sf.render.passenger-platform.mesh.cglow0.primitive.1",
+      "indexCount": 720,
       "indexed": true,
       "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.020",
-      "nodeId": "sf.render.passenger-platform.mesh.cpost0",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.921997736752348,
-          5.300000190734863,
-          -1.5100833337496957
-        ],
-        "min": [
-          -2.0780022632476522,
-          2.25,
-          -1.68991671393402
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "24a44f123d5cc7c3b67a357e70c7eedebc82ca6a2d655cbc23c65384914a703c",
-      "id": "sf.render.passenger-platform.mesh.cpost1.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.passenger-platform.mesh.cpost1",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          2.0780022632476522,
-          5.300000190734863,
-          -1.5100833337496957
-        ],
-        "min": [
-          1.921997736752348,
-          2.25,
-          -1.68991671393402
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "24a44f123d5cc7c3b67a357e70c7eedebc82ca6a2d655cbc23c65384914a703c",
-      "id": "sf.render.passenger-platform.mesh.cpost2.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.passenger-platform.mesh.cpost2",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          6.078002263247652,
-          5.300000190734863,
-          -1.5100833337496957
-        ],
-        "min": [
-          5.921997736752348,
-          2.25,
-          -1.68991671393402
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "24a44f123d5cc7c3b67a357e70c7eedebc82ca6a2d655cbc23c65384914a703c",
-      "id": "sf.render.passenger-platform.mesh.cpost3.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
-      "nodeId": "sf.render.passenger-platform.mesh.cpost3",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
+      "nodeId": "sf.render.passenger-platform.mesh.cglow0",
+      "primitiveIndex": 1,
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
           8,
-          2.250007629627369,
+          2.2495972510423483,
           2.00030518509476
         ],
         "min": [
           -8,
-          1.749992370372631,
+          1.7505585840908424,
           -2.00030518509476
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34a0391be3f8b43030aa74d368cedc8ca0098ae0f4bc8742ea6a6fd6c63460e5",
-      "id": "sf.render.passenger-platform.mesh.deck.primitive.0",
+      "geometryHash": "931c5cb097d979172ca88a320f181c23d9cd512e02858d6d0eb98771824a90ce",
+      "id": "sf.render.passenger-platform.mesh.cglow0.primitive.2",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.passenger-platform.mesh.deck",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
+      "nodeId": "sf.render.passenger-platform.mesh.cglow0",
+      "primitiveIndex": 2,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          8.503823587767616,
-          5.769937837608101,
-          1.5
+          -7.360332041383099,
+          4.999925325019215,
+          0.7998290963469344
         ],
         "min": [
-          8.29617564929293,
-          5.5300623531267625,
-          -1.5
+          -7.440412610248115,
+          4.199852080596473,
+          -0.7998290963469344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa9ce867c26410cee4266be7960e247b841663dba805ee4ae43f723a41c34ba3",
-      "id": "sf.render.passenger-platform.mesh.glintel.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
-      "nodeId": "sf.render.passenger-platform.mesh.glintel",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          8.503970079529394,
-          5.650000095367432,
-          -1.380050046991035
-        ],
-        "min": [
-          8.296029157531153,
-          2.25,
-          -1.619949953008965
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0a6eb4f673128127aa87afee5241de022e65f1f9e24584375605ccd81222dec0",
-      "id": "sf.render.passenger-platform.mesh.gpost-p.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.014",
-      "nodeId": "sf.render.passenger-platform.mesh.gpost-p",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          8.503970079529394,
-          5.650000095367432,
-          1.619949953008965
-        ],
-        "min": [
-          8.296029157531153,
-          2.25,
-          1.380050046991035
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0a6eb4f673128127aa87afee5241de022e65f1f9e24584375605ccd81222dec0",
-      "id": "sf.render.passenger-platform.mesh.gpost-s.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.012",
-      "nodeId": "sf.render.passenger-platform.mesh.gpost-s",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          8.475001908536106,
-          5.550033574831272,
-          0.800000011920929
-        ],
-        "min": [
-          8.324997328524441,
-          4.949966425168728,
-          -0.800000011920929
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5fd9199866c77d3a9bfa326f9326539e72261d9136fba374a0b825bf7541a1e1",
-      "id": "sf.render.passenger-platform.mesh.gsign.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.015",
-      "nodeId": "sf.render.passenger-platform.mesh.gsign",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -5.899999618530273,
-          2.3499893026203202,
-          1.9399900099477867
-        ],
-        "min": [
-          -6.5,
-          2.250010602012248,
-          1.7600100377359291
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a082393199490258e4893fdaf8c744beda010d014de5cb57162850c6abfad57e",
-      "id": "sf.render.passenger-platform.mesh.guide0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.012",
-      "nodeId": "sf.render.passenger-platform.mesh.guide0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.4000000953674316,
-          2.3499892628923793,
-          1.9399899384302168
-        ],
-        "min": [
-          -4,
-          2.250010641740189,
-          1.760010109253499
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a082393199490258e4893fdaf8c744beda010d014de5cb57162850c6abfad57e",
-      "id": "sf.render.passenger-platform.mesh.guide1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.passenger-platform.mesh.guide1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.9000000357627869,
-          2.349989267858372,
-          1.9399899473699131
-        ],
-        "min": [
-          -1.5,
-          2.2500106367741965,
-          1.7600101003138027
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a082393199490258e4893fdaf8c744beda010d014de5cb57162850c6abfad57e",
-      "id": "sf.render.passenger-platform.mesh.guide2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.passenger-platform.mesh.guide2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5999999046325684,
-          2.349989267858372,
-          1.9399899473699131
-        ],
-        "min": [
-          0.9999999403953552,
-          2.2500106367741965,
-          1.7600101003138027
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a082393199490258e4893fdaf8c744beda010d014de5cb57162850c6abfad57e",
-      "id": "sf.render.passenger-platform.mesh.guide3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.passenger-platform.mesh.guide3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          4.099999904632568,
-          2.3499892628923793,
-          1.9399899384302168
-        ],
-        "min": [
-          3.5,
-          2.250010641740189,
-          1.760010109253499
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a082393199490258e4893fdaf8c744beda010d014de5cb57162850c6abfad57e",
-      "id": "sf.render.passenger-platform.mesh.guide4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.passenger-platform.mesh.guide4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.600000381469727,
-          2.3499893026203202,
-          1.9399900099477867
-        ],
-        "min": [
-          6,
-          2.250010602012248,
-          1.7600100377359291
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a082393199490258e4893fdaf8c744beda010d014de5cb57162850c6abfad57e",
-      "id": "sf.render.passenger-platform.mesh.guide5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.passenger-platform.mesh.guide5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.378765221106601,
-          1.75,
-          -1.259965795427529
-        ],
-        "min": [
-          -6.621234778893399,
-          0,
-          -1.5400341568887552
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg0.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.013",
-      "nodeId": "sf.render.passenger-platform.mesh.leg0",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.378765221106601,
-          1.75,
-          1.5400341568887552
-        ],
-        "min": [
-          -6.621234778893399,
-          0,
-          1.259965795427529
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg0b.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.021",
-      "nodeId": "sf.render.passenger-platform.mesh.leg0b",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.078765268790317,
-          1.75,
-          -1.259965795427529
-        ],
-        "min": [
-          -2.3212348265771148,
-          0,
-          -1.5400341568887552
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg1.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.passenger-platform.mesh.leg1",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.078765268790317,
-          1.75,
-          1.5400341568887552
-        ],
-        "min": [
-          -2.3212348265771148,
-          0,
-          1.259965795427529
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg1b.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.passenger-platform.mesh.leg1b",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          2.3212348265771148,
-          1.75,
-          -1.259965795427529
-        ],
-        "min": [
-          2.078765268790317,
-          0,
-          -1.5400341568887552
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg2.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.passenger-platform.mesh.leg2",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          2.3212348265771148,
-          1.75,
-          1.5400341568887552
-        ],
-        "min": [
-          2.078765268790317,
-          0,
-          1.259965795427529
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg2b.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.passenger-platform.mesh.leg2b",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          6.621234778893399,
-          1.75,
-          -1.259965795427529
-        ],
-        "min": [
-          6.378765221106601,
-          0,
-          -1.5400341568887552
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg3.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.passenger-platform.mesh.leg3",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          6.621234778893399,
-          1.75,
-          1.5400341568887552
-        ],
-        "min": [
-          6.378765221106601,
-          0,
-          1.259965795427529
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5279da77800a9a423207f66aa4ed109738d2943ed0e8583dd127d40342604bec",
-      "id": "sf.render.passenger-platform.mesh.leg3b.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.passenger-platform.mesh.leg3b",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -7.359959810338276,
-          5.000060947612894,
-          0.800000011920929
-        ],
-        "min": [
-          -7.440040380396587,
-          4.199938861652242,
-          -0.800000011920929
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fd0d980511b97ec0f37624be57805a0da9e18c458a832f9996b2f946ae3f417a",
-      "id": "sf.render.passenger-platform.mesh.plate.primitive.0",
+      "geometryHash": "7a67189b1aacb48fe70776dd17fc9de3b76b41afd6b0434d323b68ce8d9f319d",
+      "id": "sf.render.passenger-platform.mesh.cglow0.primitive.3",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.passenger-platform.mesh.plate",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
+      "nodeId": "sf.render.passenger-platform.mesh.cglow0",
+      "primitiveIndex": 3,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          7.843301296234131,
-          3.39947800431176,
-          -1.85021187625224
+          7.843745231482894,
+          5.299739162111412,
+          0.5400555436872463
         ],
         "min": [
-          -7.843301296234131,
-          2.2505218526370925,
-          -1.9497880760640443
+          -7.843745231482894,
+          2.25057384334558,
+          -1.9492782372508928
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e023a63cfead02d1248899b93752bfa6b5721546d9fc8379816921df0082f015",
-      "id": "sf.render.passenger-platform.mesh.rail.primitive.0",
-      "indexCount": 180,
+      "geometryHash": "87d31ff54f4bd10a392f41944cb931d21c2a1474126ea41d4f4cc2c6d68d35c5",
+      "id": "sf.render.passenger-platform.mesh.cglow0.primitive.4",
+      "indexCount": 300,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.passenger-platform.mesh.rail",
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.1",
+      "nodeId": "sf.render.passenger-platform.mesh.cglow0",
+      "primitiveIndex": 4,
+      "vertexCount": 180
+    },
+    {
+      "bounds": {
+        "max": [
+          8.503985342189383,
+          5.769938230514526,
+          1.6198891734685446
+        ],
+        "min": [
+          8.296013894871164,
+          2.25,
+          -1.6198891734685446
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4575305e71cf7d1ca2da12b084715d6a4436fb8c8f92674ebfef5c8bb93c8db2",
+      "id": "sf.render.passenger-platform.mesh.glintel.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "materialPipelineKey": "opaque",
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.2",
+      "nodeId": "sf.render.passenger-platform.mesh.glintel",
       "primitiveIndex": 0,
       "vertexCount": 108
     },
     {
       "bounds": {
         "max": [
-          -7.365355461383828,
-          5.300000190734863,
-          -0.46000395687860035
+          8.474981059763806,
+          5.550150223689589,
+          0.7999273669706235
         ],
         "min": [
-          -7.434644729351035,
-          5,
-          -0.539996072923722
+          8.32501817729674,
+          4.950030135650727,
+          -0.7999273669706235
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00821b2cbc3328c5a7583d26ea0eb78f69003583c0e401fe4fa77e96f3ec246f",
-      "id": "sf.render.passenger-platform.mesh.sign-hang-p.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "94e76710005c0acdc8f3766be3244b2e74fb13a302e8432a3ca014ff3a40a02a",
+      "id": "sf.render.passenger-platform.mesh.glintel.primitive.1",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.015",
-      "nodeId": "sf.render.passenger-platform.mesh.sign-hang-p",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -7.365355461383828,
-          5.300000190734863,
-          0.539996072923722
-        ],
-        "min": [
-          -7.434644729351035,
-          5,
-          0.46000395687860035
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "00821b2cbc3328c5a7583d26ea0eb78f69003583c0e401fe4fa77e96f3ec246f",
-      "id": "sf.render.passenger-platform.mesh.sign-hang-s.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.018",
-      "nodeId": "sf.render.passenger-platform.mesh.sign-hang-s",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "meshName": "render:sf.render.passenger-platform.static-opaque-lane.2",
+      "nodeId": "sf.render.passenger-platform.mesh.glintel",
+      "primitiveIndex": 1,
+      "vertexCount": 24
     }
   ],
   "hlods": [],
@@ -1010,25 +410,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.cglow0",
       "localTransform": [
-        1.3000001907348633,
+        8,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        8,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        8,
         0,
-        -6,
-        5.159999847412109,
+        0,
+        2.6500000953674316,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cglow0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cglow0",
       "nodePath": [
         0,
@@ -1038,20 +438,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.3000001907348633,
+        8,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        8,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        8,
         0,
-        -6,
-        5.159999847412109,
+        0,
+        2.6500000953674316,
         0,
         1
       ]
@@ -1059,25 +459,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.cglow1",
       "localTransform": [
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
-        -2,
-        5.159999847412109,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cglow1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cglow1",
       "nodePath": [
         0,
@@ -1087,20 +487,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
-        -2,
-        5.159999847412109,
+        0,
+        0,
         0,
         1
       ]
@@ -1108,25 +508,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.cglow2",
       "localTransform": [
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
-        2,
-        5.159999847412109,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cglow2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cglow2",
       "nodePath": [
         0,
@@ -1136,20 +536,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        1.2999999523162842,
+        1,
         0,
-        2,
-        5.159999847412109,
+        0,
+        0,
         0,
         1
       ]
@@ -1157,25 +557,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.cglow3",
       "localTransform": [
-        1.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        1,
         0,
-        6,
-        5.159999847412109,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cglow3",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cglow3",
       "nodePath": [
         0,
@@ -1185,20 +585,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        1.3000001907348633,
+        1,
         0,
-        6,
-        5.159999847412109,
+        0,
+        0,
         0,
         1
       ]
@@ -1206,25 +606,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.cpost0",
       "localTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        -6,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cpost0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cpost0",
       "nodePath": [
         0,
@@ -1234,46 +634,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        -6,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.cpost1",
       "localTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        -2,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cpost1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cpost1",
       "nodePath": [
         0,
@@ -1283,46 +683,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        -2,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.cpost2",
       "localTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        2,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cpost2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cpost2",
       "nodePath": [
         0,
@@ -1332,46 +732,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        2,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.cpost3",
       "localTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        6,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cpost3",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cpost3",
       "nodePath": [
         0,
@@ -1381,46 +781,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
         0,
         0,
         0,
-        1.5250000953674316,
+        1,
         0,
-        6,
-        3.7750000953674316,
-        -1.600000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.deck",
       "localTransform": [
-        8,
+        1,
         0,
         0,
         0,
         0,
-        8,
+        1,
         0,
         0,
         0,
         0,
-        8,
+        1,
         0,
         0,
-        2,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "deck",
+      "mergeBoundary": "static:opaque",
       "nodeName": "deck",
       "nodePath": [
         0,
@@ -1430,20 +830,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        8,
+        1,
         0,
         0,
         0,
         0,
-        8,
+        1,
         0,
         0,
         0,
         0,
-        8,
+        1,
         0,
         0,
-        2,
+        0,
         0,
         1
       ]
@@ -1451,25 +851,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.glintel",
       "localTransform": [
-        1.5,
+        1.7599691152572632,
         0,
         0,
         0,
         0,
-        1.5,
+        1.7599691152572632,
         0,
         0,
         0,
         0,
-        1.5,
+        1.7599691152572632,
         0,
         0,
-        3.4000000953674316,
+        1.7599691152572632,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "glintel",
+      "mergeBoundary": "static:opaque",
       "nodeName": "glintel",
       "nodePath": [
         0,
@@ -1480,20 +880,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.5,
+        1.7599691152572632,
         0,
         0,
         0,
         0,
-        1.5,
+        1.7599691152572632,
         0,
         0,
         0,
         0,
-        1.5,
+        1.7599691152572632,
         0,
         8.399999618530273,
-        5.650000095367432,
+        4.009969115257263,
         0,
         1
       ]
@@ -1501,25 +901,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.gpost-p",
       "localTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
-        1.7000000476837158,
-        -1.5,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gpost_p",
+      "mergeBoundary": "static:opaque",
       "nodeName": "gpost_p",
       "nodePath": [
         0,
@@ -1530,46 +930,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         8.399999618530273,
-        3.950000047683716,
-        -1.5,
+        2.25,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.gpost-s",
       "localTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
-        1.7000000476837158,
-        1.5,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gpost_s",
+      "mergeBoundary": "static:opaque",
       "nodeName": "gpost_s",
       "nodePath": [
         0,
@@ -1580,46 +980,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         0,
         0,
         0,
-        1.7000000476837158,
+        1,
         0,
         8.399999618530273,
-        3.950000047683716,
-        1.5,
+        2.25,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.gsign",
       "localTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
-        3,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gsign",
+      "mergeBoundary": "static:opaque",
       "nodeName": "gsign",
       "nodePath": [
         0,
@@ -1630,20 +1030,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         8.399999618530273,
-        5.25,
+        2.25,
         0,
         1
       ]
@@ -1651,25 +1051,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.guide0",
       "localTransform": [
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
-        -6.199999809265137,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "guide0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "guide0",
       "nodePath": [
         0,
@@ -1679,46 +1079,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
-        -6.199999809265137,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.guide1",
       "localTransform": [
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
-        -3.700000047683716,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "guide1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "guide1",
       "nodePath": [
         0,
@@ -1728,46 +1128,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
-        -3.700000047683716,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.guide2",
       "localTransform": [
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
-        -1.2000000178813934,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "guide2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "guide2",
       "nodePath": [
         0,
@@ -1777,46 +1177,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
-        -1.2000000178813934,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.guide3",
       "localTransform": [
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
-        1.2999999225139618,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "guide3",
+      "mergeBoundary": "static:opaque",
       "nodeName": "guide3",
       "nodePath": [
         0,
@@ -1826,46 +1226,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
         0,
         0,
         0,
-        0.29999998211860657,
+        1,
         0,
-        1.2999999225139618,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.guide4",
       "localTransform": [
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
-        3.799999952316284,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "guide4",
+      "mergeBoundary": "static:opaque",
       "nodeName": "guide4",
       "nodePath": [
         0,
@@ -1875,46 +1275,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
         0,
         0,
         0,
-        0.2999999523162842,
+        1,
         0,
-        3.799999952316284,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.guide5",
       "localTransform": [
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
-        6.300000190734863,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "guide5",
+      "mergeBoundary": "static:opaque",
       "nodeName": "guide5",
       "nodePath": [
         0,
@@ -1924,46 +1324,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
         0,
         0,
         0,
-        0.3000001907348633,
+        1,
         0,
-        6.300000190734863,
-        2.299999952316284,
-        1.850000023841858,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg0",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -6.5,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg0",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg0",
       "nodePath": [
         0,
@@ -1973,46 +1373,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -6.5,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg0b",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -6.5,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg0b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg0b",
       "nodePath": [
         0,
@@ -2022,46 +1422,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -6.5,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg1",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -2.200000047683716,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg1",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg1",
       "nodePath": [
         0,
@@ -2071,46 +1471,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -2.200000047683716,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg1b",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -2.200000047683716,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg1b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg1b",
       "nodePath": [
         0,
@@ -2120,46 +1520,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        -2.200000047683716,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg2",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        2.200000047683716,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg2",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg2",
       "nodePath": [
         0,
@@ -2169,46 +1569,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        2.200000047683716,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg2b",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        2.200000047683716,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg2b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg2b",
       "nodePath": [
         0,
@@ -2218,46 +1618,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        2.200000047683716,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg3",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        6.5,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg3",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg3",
       "nodePath": [
         0,
@@ -2267,46 +1667,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        6.5,
-        0.875,
-        -1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.leg3b",
       "localTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        6.5,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "leg3b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "leg3b",
       "nodePath": [
         0,
@@ -2316,46 +1716,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
         0,
         0,
         0,
-        0.875,
+        1,
         0,
-        6.5,
-        0.875,
-        1.399999976158142,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.plate",
       "localTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
-        -7.400000095367432,
-        4.599999904632568,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "plate",
+      "mergeBoundary": "static:opaque",
       "nodeName": "plate",
       "nodePath": [
         0,
@@ -2365,20 +1765,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.800000011920929,
+        1,
         0,
-        -7.400000095367432,
-        4.599999904632568,
+        0,
+        0,
         0,
         1
       ]
@@ -2386,25 +1786,25 @@
     {
       "id": "sf.render.passenger-platform.mesh.rail",
       "localTransform": [
-        7.843301296234131,
+        1,
         0,
         0,
         0,
         0,
-        7.843301296234131,
+        1,
         0,
         0,
         0,
         0,
-        7.843301296234131,
+        1,
         0,
         0,
-        2.8249999284744263,
-        -1.899999976158142,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "rail",
+      "mergeBoundary": "static:opaque",
       "nodeName": "rail",
       "nodePath": [
         0,
@@ -2414,46 +1814,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        7.843301296234131,
+        1,
         0,
         0,
         0,
         0,
-        7.843301296234131,
+        1,
         0,
         0,
         0,
         0,
-        7.843301296234131,
+        1,
         0,
         0,
-        2.8249999284744263,
-        -1.899999976158142,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.sign-hang-p",
       "localTransform": [
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
-        -7.400000095367432,
-        5.150000095367432,
-        -0.5000000149011612,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "sign_hang_p",
+      "mergeBoundary": "static:opaque",
       "nodeName": "sign_hang_p",
       "nodePath": [
         0,
@@ -2463,46 +1863,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
-        -7.400000095367432,
-        5.150000095367432,
-        -0.5000000149011612,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.passenger-platform.mesh.sign-hang-s",
       "localTransform": [
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
-        -7.400000095367432,
-        5.150000095367432,
-        0.5000000149011612,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "sign_hang_s",
+      "mergeBoundary": "static:opaque",
       "nodeName": "sign_hang_s",
       "nodePath": [
         0,
@@ -2512,21 +1912,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.passenger-platform.body",
       "worldTransform": [
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
         0,
         0,
         0,
-        0.15000009536743164,
+        1,
         0,
-        -7.400000095367432,
-        5.150000095367432,
-        0.5000000149011612,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -2581,7 +1981,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a7741484df78b45e9c8d398c4e38d93f90c07e5157aba9e6de3931108c586fc1"
+      "sha256": "8f4410a62e61fa2afd9ae1365e35a3618d82aa9bba751bcb015d48e23e26b5df"
     },
     "sourceGlb": {
       "bytes": 23812,
@@ -2589,36 +1989,36 @@
       "uri": "place_passenger_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 29448,
-    "sha256": "94649463685ab36ec906435b2405202e695a0596d62f97a8047ed81a7f95c923",
+    "bytes": 25304,
+    "sha256": "9ce68e97e25fcc68906a80f6800b39f8f97044789b990ace79493e277fe2d0a4",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.25198503976469677,
-        2.8849689188040504,
+        0.25199267109469137,
+        2.885099629568989,
         0
       ],
       "max": [
-        8.503970079529394,
-        5.769937837608101,
+        8.503985342189383,
+        5.769938230514526,
         2.00030518509476
       ],
       "min": [
         -8,
-        0,
+        0.00026102862345123157,
         -2.00030518509476
       ],
       "size": [
-        16.503970079529395,
-        5.769937837608101,
+        16.50398534218938,
+        5.769677201891075,
         4.00061037018952
       ]
     },
@@ -2645,7 +2045,7 @@
           1
         ],
         "name": "SOCKET_Gate",
-        "planIndex": 36,
+        "planIndex": 43,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2682,7 +2082,7 @@
           1
         ],
         "name": "SOCKET_Shuttle_Side",
-        "planIndex": 37,
+        "planIndex": 44,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2702,8 +2102,8 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 20,
-      "signal": 11
+      "hull": 5,
+      "signal": 2
     },
     "materialProfiles": [
       {
@@ -2713,23 +2113,23 @@
       },
       {
         "allowTextures": false,
-        "planIndex": 3,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 4,
         "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "signal"
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -2738,136 +2138,16 @@
       },
       {
         "allowTextures": false,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 10,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 11,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 12,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 17,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 18,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 19,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 20,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 21,
         "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 22,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 23,
-        "role": "signal"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 24,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 25,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 26,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 27,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 28,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 29,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 30,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 31,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 32,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 33,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 34,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 35,
-        "role": "hull"
       }
     ],
-    "nodeCount": 38,
+    "nodeCount": 45,
     "primitives": [
       {
         "canopy": true,
@@ -2899,51 +2179,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.3000001907348633,
+          8,
           0,
           0,
           0,
           0,
-          1.3000001907348633,
+          8,
           0,
           0,
           0,
           0,
-          1.3000001907348633,
-          0,
-          -6,
-          5.159999847412109,
-          0,
-          1
-        ],
-        "name": "cglow0",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.2999999523162842,
+          8,
           0,
           0,
-          0,
-          0,
-          1.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          1.2999999523162842,
-          0,
-          -2,
-          5.159999847412109,
+          2.6500000953674316,
           0,
           1
         ],
-        "name": "cglow1",
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2953,24 +2206,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.2999999523162842,
+          8,
           0,
           0,
           0,
           0,
-          1.2999999523162842,
+          8,
           0,
           0,
           0,
           0,
-          1.2999999523162842,
+          8,
           0,
-          2,
-          5.159999847412109,
+          0,
+          2.6500000953674316,
           0,
           1
         ],
-        "name": "cglow2",
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_1",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2980,24 +2233,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.3000001907348633,
+          8,
           0,
           0,
           0,
           0,
-          1.3000001907348633,
+          8,
           0,
           0,
           0,
           0,
-          1.3000001907348633,
+          8,
           0,
-          6,
-          5.159999847412109,
+          0,
+          2.6500000953674316,
           0,
           1
         ],
-        "name": "cglow3",
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_2",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -3007,24 +2260,51 @@
       {
         "canopy": false,
         "matrix": [
-          1.5250000953674316,
+          8,
           0,
           0,
           0,
           0,
-          1.5250000953674316,
+          8,
           0,
           0,
           0,
           0,
-          1.5250000953674316,
+          8,
           0,
-          -6,
-          3.7750000953674316,
-          -1.600000023841858,
+          0,
+          2.6500000953674316,
+          0,
           1
         ],
-        "name": "cpost0",
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_3",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8,
+          0,
+          0,
+          0,
+          0,
+          8,
+          0,
+          0,
+          0,
+          0,
+          8,
+          0,
+          0,
+          2.6500000953674316,
+          0,
+          1
+        ],
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane1_4",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -3034,294 +2314,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.5250000953674316,
+          1.7599691152572632,
           0,
           0,
           0,
           0,
-          1.5250000953674316,
+          1.7599691152572632,
           0,
           0,
           0,
           0,
-          1.5250000953674316,
-          0,
-          -2,
-          3.7750000953674316,
-          -1.600000023841858,
-          1
-        ],
-        "name": "cpost1",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.5250000953674316,
-          0,
-          0,
-          0,
-          0,
-          1.5250000953674316,
-          0,
-          0,
-          0,
-          0,
-          1.5250000953674316,
-          0,
-          2,
-          3.7750000953674316,
-          -1.600000023841858,
-          1
-        ],
-        "name": "cpost2",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.5250000953674316,
-          0,
-          0,
-          0,
-          0,
-          1.5250000953674316,
-          0,
-          0,
-          0,
-          0,
-          1.5250000953674316,
-          0,
-          6,
-          3.7750000953674316,
-          -1.600000023841858,
-          1
-        ],
-        "name": "cpost3",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          8,
-          0,
-          0,
-          0,
-          0,
-          8,
-          0,
-          0,
-          0,
-          0,
-          8,
-          0,
-          0,
-          2,
-          0,
-          1
-        ],
-        "name": "deck",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.5,
-          0,
-          0,
-          0,
-          0,
-          1.5,
-          0,
-          0,
-          0,
-          0,
-          1.5,
+          1.7599691152572632,
           0,
           8.399999618530273,
-          5.650000095367432,
+          4.009969115257263,
           0,
           1
         ],
-        "name": "glintel",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          8.399999618530273,
-          3.950000047683716,
-          -1.5,
-          1
-        ],
-        "name": "gpost_p",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          8.399999618530273,
-          3.950000047683716,
-          1.5,
-          1
-        ],
-        "name": "gpost_s",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.800000011920929,
-          0,
-          8.399999618530273,
-          5.25,
-          0,
-          1
-        ],
-        "name": "gsign",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3000001907348633,
-          0,
-          0,
-          0,
-          0,
-          0.3000001907348633,
-          0,
-          0,
-          0,
-          0,
-          0.3000001907348633,
-          0,
-          -6.199999809265137,
-          2.299999952316284,
-          1.850000023841858,
-          1
-        ],
-        "name": "guide0",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          0.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          0.2999999523162842,
-          0,
-          -3.700000047683716,
-          2.299999952316284,
-          1.850000023841858,
-          1
-        ],
-        "name": "guide1",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.29999998211860657,
-          0,
-          0,
-          0,
-          0,
-          0.29999998211860657,
-          0,
-          0,
-          0,
-          0,
-          0.29999998211860657,
-          0,
-          -1.2000000178813934,
-          2.299999952316284,
-          1.850000023841858,
-          1
-        ],
-        "name": "guide2",
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane2",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -3331,403 +2341,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.29999998211860657,
+          1.7599691152572632,
           0,
           0,
           0,
           0,
-          0.29999998211860657,
+          1.7599691152572632,
           0,
           0,
           0,
           0,
-          0.29999998211860657,
+          1.7599691152572632,
           0,
-          1.2999999225139618,
-          2.299999952316284,
-          1.850000023841858,
+          8.399999618530273,
+          4.009969115257263,
+          0,
           1
         ],
-        "name": "guide3",
+        "name": "rendersfrenderpassenger-platformstatic-opaque-lane2_1",
         "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          0.2999999523162842,
-          0,
-          0,
-          0,
-          0,
-          0.2999999523162842,
-          0,
-          3.799999952316284,
-          2.299999952316284,
-          1.850000023841858,
-          1
-        ],
-        "name": "guide4",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3000001907348633,
-          0,
-          0,
-          0,
-          0,
-          0.3000001907348633,
-          0,
-          0,
-          0,
-          0,
-          0.3000001907348633,
-          0,
-          6.300000190734863,
-          2.299999952316284,
-          1.850000023841858,
-          1
-        ],
-        "name": "guide5",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          -6.5,
-          0.875,
-          -1.399999976158142,
-          1
-        ],
-        "name": "leg0",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          -6.5,
-          0.875,
-          1.399999976158142,
-          1
-        ],
-        "name": "leg0b",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          -2.200000047683716,
-          0.875,
-          -1.399999976158142,
-          1
-        ],
-        "name": "leg1",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          -2.200000047683716,
-          0.875,
-          1.399999976158142,
-          1
-        ],
-        "name": "leg1b",
-        "planIndex": 27,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          2.200000047683716,
-          0.875,
-          -1.399999976158142,
-          1
-        ],
-        "name": "leg2",
-        "planIndex": 28,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          2.200000047683716,
-          0.875,
-          1.399999976158142,
-          1
-        ],
-        "name": "leg2b",
-        "planIndex": 29,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          6.5,
-          0.875,
-          -1.399999976158142,
-          1
-        ],
-        "name": "leg3",
-        "planIndex": 30,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          0,
-          0,
-          0,
-          0.875,
-          0,
-          6.5,
-          0.875,
-          1.399999976158142,
-          1
-        ],
-        "name": "leg3b",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.800000011920929,
-          0,
-          -7.400000095367432,
-          4.599999904632568,
-          0,
-          1
-        ],
-        "name": "plate",
-        "planIndex": 32,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          7.843301296234131,
-          0,
-          0,
-          0,
-          0,
-          7.843301296234131,
-          0,
-          0,
-          0,
-          0,
-          7.843301296234131,
-          0,
-          0,
-          2.8249999284744263,
-          -1.899999976158142,
-          1
-        ],
-        "name": "rail",
-        "planIndex": 33,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.15000009536743164,
-          0,
-          0,
-          0,
-          0,
-          0.15000009536743164,
-          0,
-          0,
-          0,
-          0,
-          0.15000009536743164,
-          0,
-          -7.400000095367432,
-          5.150000095367432,
-          -0.5000000149011612,
-          1
-        ],
-        "name": "sign_hang_p",
-        "planIndex": 34,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.15000009536743164,
-          0,
-          0,
-          0,
-          0,
-          0.15000009536743164,
-          0,
-          0,
-          0,
-          0,
-          0.15000009536743164,
-          0,
-          -7.400000095367432,
-          5.150000095367432,
-          0.5000000149011612,
-          1
-        ],
-        "name": "sign_hang_s",
-        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3738,19 +2370,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_passenger_platform.glb"
   },
-  "runtimeHash": "c935fa006fd7270deefcba680c03795a841137936f93281d78c4de806f6e2c93",
+  "runtimeHash": "d1ae83a539649fb100561985a9c894a1a685acdcbb27e200ffc4620216df4536",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.503970079529394,
-          5.769937837608101,
+          8.503985342189383,
+          5.769938230514526,
           2.00030518509476
         ],
         "min": [
           -8,
-          0,
+          0.00026102862345123157,
           -2.00030518509476
         ]
       },

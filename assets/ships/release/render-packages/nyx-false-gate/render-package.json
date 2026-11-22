@@ -6,30 +6,30 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "787f0af66c55ca6c9804976717196e98d6b9c28d02dfccb754ccb44f0815f8e9",
+  "contentHash": "4c4d4b14149c9b40cd5672a3b6f12fbae0203ed9f44cfb4cffdb9a31f5557670",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1,
-          0.04504531998657186,
-          1
+          1.0000509965349553,
+          0.04497451842182283,
+          1.0000509965349553
         ],
         "min": [
-          -1,
-          -0.04504531998657186,
-          -1
+          -1.0000509965349553,
+          -0.04497451842182283,
+          -1.0000509965349553
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37b56f11d57e03817e01f1124959f287dfdda735c52639703e837a487a6cd8b8",
+      "geometryHash": "92810a706e32083be5965dda9944a0d4814206f1ebe4174a3c606d687c709e53",
       "id": "sf.render.nyx-false-gate.mesh.falsegatering.primitive.0",
       "indexCount": 768,
       "indexed": true,
       "materialHash": "5f145baa3e32bcb4ece76fc4cc1f51b97dbad2a521542a54ae49e610f22aa72b",
       "materialPipelineKey": "opaque",
-      "meshName": "FalseGateRing",
+      "meshName": "render:sf.render.nyx-false-gate.static-opaque-lane.1",
       "nodeId": "sf.render.nyx-false-gate.mesh.falsegatering",
       "primitiveIndex": 0,
       "vertexCount": 499
@@ -49,14 +49,14 @@
       },
       "drawMode": 4,
       "geometryHash": "57f127bdc1834a2d446618b3163c714040f332ba3832bfea7248dc98f2b1b15a",
-      "id": "sf.render.nyx-false-gate.mesh.weldeddiameterbar.primitive.0",
+      "id": "sf.render.nyx-false-gate.mesh.falsegatering.primitive.1",
       "indexCount": 108,
       "indexed": true,
       "materialHash": "75bcc54ae37d72fe920614c863036500fee999ea72470166674c9efa9846ebff",
       "materialPipelineKey": "opaque",
-      "meshName": "WeldedDiameterBar",
-      "nodeId": "sf.render.nyx-false-gate.mesh.weldeddiameterbar",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.nyx-false-gate.static-opaque-lane.1",
+      "nodeId": "sf.render.nyx-false-gate.mesh.falsegatering",
+      "primitiveIndex": 1,
       "vertexCount": 56
     }
   ],
@@ -83,17 +83,17 @@
     {
       "id": "sf.render.nyx-false-gate.mesh.falsegatering",
       "localTransform": [
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
@@ -101,7 +101,7 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "FalseGateRing",
+      "mergeBoundary": "static:opaque",
       "nodeName": "FalseGateRing",
       "nodePath": [
         0,
@@ -111,17 +111,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.nyx-false-gate.body",
       "worldTransform": [
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
@@ -132,17 +132,17 @@
     {
       "id": "sf.render.nyx-false-gate.mesh.weldeddiameterbar",
       "localTransform": [
-        1.090000033378601,
+        1,
         0,
         0,
         0,
         0,
-        1.090000033378601,
+        1,
         0,
         0,
         0,
         0,
-        1.090000033378601,
+        1,
         0,
         0,
         0,
@@ -150,7 +150,7 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "WeldedDiameterBar",
+      "mergeBoundary": "static:opaque",
       "nodeName": "WeldedDiameterBar",
       "nodePath": [
         0,
@@ -160,17 +160,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.nyx-false-gate.body",
       "worldTransform": [
-        1.090000033378601,
+        1,
         0,
         0,
         0,
         0,
-        1.090000033378601,
+        1,
         0,
         0,
         0,
         0,
-        1.090000033378601,
+        1,
         0,
         0,
         0,
@@ -229,7 +229,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "3e915744950124326611a5c60e508ad42668cf5bf974dc84f2161f56fa2a6039"
+      "sha256": "a2895c717fa9ec86d43a0790a692993d9dbac21982e7cc577e4414e5285c6383"
     },
     "sourceGlb": {
       "bytes": 22796,
@@ -237,14 +237,14 @@
       "uri": "place_nyx_false_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 7308,
-    "sha256": "a591f1877997786417829470b52e1d124849e73613408d08b7e5a96803a2a9a9",
+    "sha256": "7f003b7a9c9a7cf791f44b75ef9ac088b7adb319852282ed2f3dda728c07fa8d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -257,17 +257,17 @@
       "max": [
         1.090000033378601,
         0.08994903684364566,
-        1
+        1.0000509965349553
       ],
       "min": [
         -1.090000033378601,
         -0.08994903684364566,
-        -1
+        -1.0000509965349553
       ],
       "size": [
         2.180000066757202,
         0.17989807368729133,
-        2
+        2.0001019930699107
       ]
     },
     "hidden": [],
@@ -279,39 +279,39 @@
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 2,
+        "planIndex": 3,
         "role": "hull"
       },
       {
         "allowTextures": false,
-        "planIndex": 3,
+        "planIndex": 4,
         "role": "hull"
       }
     ],
-    "nodeCount": 4,
+    "nodeCount": 6,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.090000033378601,
           0,
           0,
           0,
           0,
-          1,
+          1.090000033378601,
           0,
           0,
           0,
           0,
-          1,
+          1.090000033378601,
           0,
           0,
           0,
           0,
           1
         ],
-        "name": "FalseGateRing",
-        "planIndex": 2,
+        "name": "rendersfrendernyx-false-gatestatic-opaque-lane1",
+        "planIndex": 3,
         "tags": {
           "canopy": false
         }
@@ -336,8 +336,8 @@
           0,
           1
         ],
-        "name": "WeldedDiameterBar",
-        "planIndex": 3,
+        "name": "rendersfrendernyx-false-gatestatic-opaque-lane1_1",
+        "planIndex": 4,
         "tags": {
           "canopy": false
         }
@@ -347,7 +347,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nyx_false_gate.glb"
   },
-  "runtimeHash": "827b6ac7cbc409746914b46c8562761ffe979a5c730a677c33dc17feb5fd91c0",
+  "runtimeHash": "0219a6e700c3aba6dc7a2f0051c6163aea84849b693e61d3beab27e97785967c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -355,12 +355,12 @@
         "max": [
           1.090000033378601,
           0.08994903684364566,
-          1
+          1.0000509965349553
         ],
         "min": [
           -1.090000033378601,
           -0.08994903684364566,
-          -1
+          -1.0000509965349553
         ]
       },
       "id": "sf.render.nyx-false-gate.body",

@@ -6,83 +6,33 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "183bbefce287d8c04d06b19fa5efad16b40a4ab1d82dc7326dba06d82a266623",
+  "contentHash": "d29cb7e1b0d79ad1db014b2ae335a334e9a42083c813fd65d209a7043ab66ad2",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.200030521490163,
+          0.2800134323166947,
           0.41200000047683716,
-          -0.48500930792201147
+          0.28001435246101086
         ],
         "min": [
-          -0.200030521490163,
+          -0.2800134323166947,
           -0.3880000114440918,
-          -0.5149906920779885
+          -0.5150050386392182
         ]
       },
       "drawMode": 4,
-      "geometryHash": "129b31a835c58c09b44f429187b33547ab62536ec25b93c38a8d383a2363e043",
+      "geometryHash": "80f67dca07dd8b79901c1937a62f59fbea8d0df601236026800df2cac8dcf088",
       "id": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band.primitive.0",
-      "indexCount": 324,
+      "indexCount": 972,
       "indexed": true,
       "materialHash": "1d739f6420c92758909885f17539d21bec8c99c3b7187f06ff50689fe4d5f631",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
+      "meshName": "render:sf.render.engine-plasma-ring.static-opaque-lane.1",
       "nodeId": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band",
       "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          0.2800000011920929,
-          0.33438841488653354,
-          0.2800000011920929
-        ],
-        "min": [
-          -0.2800000011920929,
-          0.2896116575927145,
-          -0.2800000011920929
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "09d1fc15f9a4934684feb81cd31a52092ba629643984eb11d589fa8a1022edab",
-      "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "1d739f6420c92758909885f17539d21bec8c99c3b7187f06ff50689fe4d5f631",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          0.18999146137373032,
-          0.41200000047683716,
-          0.23999145839349809
-        ],
-        "min": [
-          0.11000855054719863,
-          -0.18800000846385956,
-          0.1600085475669664
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "952e9ff5506ac21d504b3beed377fb7468a21ce100dc0a2a94c724ea1fa35122",
-      "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "1d739f6420c92758909885f17539d21bec8c99c3b7187f06ff50689fe4d5f631",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
-      "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 288
     },
     {
       "bounds": {
@@ -290,11 +240,11 @@
         0,
         0,
         0.01199999451637268,
-        -0.5,
+        -0.1174953430891037,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_corporate_polish_band",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_corporate_polish_band",
       "nodePath": [
         0,
@@ -318,32 +268,32 @@
         0,
         0,
         0.01199999451637268,
-        -0.5,
+        -0.1174953430891037,
         1
       ]
     },
     {
       "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
       "localTransform": [
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
         0,
-        0.312000036239624,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_fusion_coil_ring",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_fusion_coil_ring",
       "nodePath": [
         0,
@@ -353,20 +303,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.2800000011920929,
+        1,
         0,
         0,
-        0.312000036239624,
+        0,
         0,
         1
       ]
@@ -374,25 +324,25 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
       "localTransform": [
-        0.30000000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.30000000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.30000000447034836,
+        1,
         0,
-        0.15000000596046448,
-        0.1119999960064888,
-        0.20000000298023224,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "DET_lattice_strut_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "DET_lattice_strut_a",
       "nodePath": [
         0,
@@ -402,21 +352,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        0.30000000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.30000000447034836,
+        1,
         0,
         0,
         0,
         0,
-        0.30000000447034836,
+        1,
         0,
-        0.15000000596046448,
-        0.1119999960064888,
-        0.20000000298023224,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -765,7 +715,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "fb28c9933925e4e7f6b401c37df28cc0a1d5f81e5152472f3f978d2d9bf781bf"
+      "sha256": "920299ae7fa944c95c35fd4c255cd2027cec94b9ce2330f60df398e41da3f13f"
     },
     "sourceGlb": {
       "bytes": 70128,
@@ -773,14 +723,14 @@
       "uri": "engine_plasma_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 60996,
-    "sha256": "f091295c16bba49baa49c6348dea6c79c24c1d915478a9933f33859bd67668f3",
+    "bytes": 58564,
+    "sha256": "014d5c7fbfd95cd7aa18511607049ca9b12c50c6bc1a7832cc645f763347db7f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -810,22 +760,12 @@
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "accent": 9
+      "accent": 7
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 3,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 4,
         "role": "accent"
       },
       {
@@ -878,63 +818,11 @@
           0,
           0,
           0.01199999451637268,
-          -0.5,
+          -0.1174953430891037,
           1
         ],
         "name": "DET_corporate_polish_band",
         "planIndex": 2,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.2800000011920929,
-          0,
-          0,
-          0,
-          0,
-          0.2800000011920929,
-          0,
-          0,
-          0.312000036239624,
-          0,
-          1
-        ],
-        "name": "DET_fusion_coil_ring",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.30000000447034836,
-          0,
-          0,
-          0,
-          0,
-          0.30000000447034836,
-          0,
-          0,
-          0,
-          0,
-          0.30000000447034836,
-          0,
-          0.15000000596046448,
-          0.1119999960064888,
-          0.20000000298023224,
-          1
-        ],
-        "name": "DET_lattice_strut_a",
-        "planIndex": 4,
         "tags": {
           "canopy": false
         }
@@ -1160,7 +1048,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
-  "runtimeHash": "da8418f6e20471fcf706da163fd4d339b9b5fdae3bca3740ce76b7c8472b09b6",
+  "runtimeHash": "bbb124d6bacde802624dab4af3eed3ae1ec2e3fb03fa0a9f27aad1893d5ea086",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

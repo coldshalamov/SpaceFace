@@ -53,230 +53,130 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0cad8487f037cad887c0bc989f68f73302565cbbb16b1bd2e79c91f13f69f43a",
+  "contentHash": "658d97e5875a097fa799728b22e568f7992e9cc32407fd3942c03abf075c8c72",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          2.342415121120573,
-          7.051770210266113,
-          -0.04347608477475451
+          2.8001205366442212,
+          7.051911787119597,
+          1.8002422848296076
         ],
         "min": [
-          0.2575850517328968,
-          0.44822967052459717,
-          -1.6565239219307681
+          -2.8001205366442212,
+          0.00013885326916351914,
+          -1.8002422848296076
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e54b515ac0841d6712450147940698d091b4eaa619fb8eef105eef7dd35a6f32",
+      "geometryHash": "a590a1e7af454acdc5edc15f7b6cd0020ca59947dae55a50364d2b07870cd873",
       "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.0",
-      "indexCount": 60,
+      "indexCount": 228,
       "indexed": true,
       "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
       "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 144
     },
     {
       "bounds": {
         "max": [
-          2.342415185408349,
-          7.0517706871032715,
-          1.6565240245312678
+          1.532941572087606,
+          7.200009346008301,
+          1.3997856066772874
         ],
         "min": [
-          0.25758492784047604,
-          0.4482295513153076,
-          0.04347604177889941
+          -2.472174532725243,
+          0.6496587109472203,
+          -1.3997856066772874
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05ca0453f30b24250c10e455061a0a728fbe595dc6c7c6d8d0f6dc20d9dfe150",
-      "id": "sf.render.salvage-clamp.mesh.aframe-s.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.salvage-clamp.mesh.aframe-s",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          0.7000183459206137,
-          7.200009349539067,
-          0.550000011920929
-        ],
-        "min": [
-          0.09998171070379885,
-          6.89999103193066,
-          -0.550000011920929
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bb4a74b281de86c1c94c91211138f6bf3606413524a52f130b5589377f37bba3",
-      "id": "sf.render.salvage-clamp.mesh.apex-cap.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "313f4b3f7b46d66ef349b1304b950442db53c87d0dce500118db8478741e5e85",
+      "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.1",
+      "indexCount": 432,
       "indexed": true,
       "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
-      "nodeId": "sf.render.salvage-clamp.mesh.apex-cap",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
+      "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
+      "primitiveIndex": 1,
+      "vertexCount": 224
     },
     {
       "bounds": {
         "max": [
-          0.4686188706519071,
-          6.853194236755371,
-          0.1124874628048215
+          0.6499593163097741,
+          6.904693145494326,
+          0.1933617979555785
         ],
         "min": [
-          -1.5186188825728362,
-          2.846806526184082,
-          -0.1124874628048215
+          -1.4454893043758787,
+          2.3791481560703547,
+          -0.44517159392954775
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05d12c5cd3706833a8b5e1d2121212d7e228f23afd259163f6c589caea767ad4",
-      "id": "sf.render.salvage-clamp.mesh.brace.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.salvage-clamp.mesh.brace",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          0.545470823903696,
-          6.620707035064697,
-          -0.2048781496452562
-        ],
-        "min": [
-          -1.4454708596664827,
-          2.379293203353882,
-          -0.4451218116117247
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a650b5d07c115f4fc81b417526e827cbb42a2dff256e5e4633c63572ed27639d",
-      "id": "sf.render.salvage-clamp.mesh.cable-a.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "b1e1917e77ac18ac888ea738d8cd617fdc4798e1bc371b79b6884b99ba3f6dd2",
+      "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.2",
+      "indexCount": 180,
       "indexed": true,
       "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.salvage-clamp.mesh.cable-a",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
+      "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
+      "primitiveIndex": 2,
+      "vertexCount": 108
     },
     {
       "bounds": {
         "max": [
-          0.6497881660041736,
-          6.904482364654541,
-          -0.10671472002542623
+          1.8942864320170936,
+          4.6957543331677005,
+          1.1822535839772614
         ],
         "min": [
-          0.3702118149223401,
-          4.895517826080322,
-          -0.19328529189550273
+          -0.09448360581920313,
+          2.4041972980782367,
+          -1.1822535839772614
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26fffd3968ee3e5d3039091f7d3dbb7a4ce97e096bcdc46005d205a00edc9772",
-      "id": "sf.render.salvage-clamp.mesh.drop-a.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "3646dc73acca58585c3df7d20dcfe1cadeaedb29f2a954fc426f2a8293c4abb4",
+      "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.3",
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.salvage-clamp.mesh.drop-a",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.1",
+      "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
+      "primitiveIndex": 3,
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          0.6497881660041736,
-          6.904482364654541,
-          0.19328529189550273
+          0.6000213655107541,
+          7.2999852538306875,
+          0.20002135955028968
         ],
         "min": [
-          0.3702118149223401,
-          4.895517826080322,
-          0.10671472002542623
+          0.1999786464101748,
+          7.21999166407996,
+          -0.20002135955028968
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26fffd3968ee3e5d3039091f7d3dbb7a4ce97e096bcdc46005d205a00edc9772",
-      "id": "sf.render.salvage-clamp.mesh.drop-b.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
-      "nodeId": "sf.render.salvage-clamp.mesh.drop-b",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          0.9328273114611785,
-          5.049947983421783,
-          0.7500001192092896
-        ],
-        "min": [
-          0.2671727362225373,
-          4.350051635108491,
-          -0.7500001192092896
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2f1df11c84dc22d1b6a6db34727525142c6fd2d8fe432866375a4a8ca99bc068",
-      "id": "sf.render.salvage-clamp.mesh.hinge.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
-      "nodeId": "sf.render.salvage-clamp.mesh.hinge",
-      "primitiveIndex": 0,
-      "vertexCount": 60
-    },
-    {
-      "bounds": {
-        "max": [
-          0.6000000089406967,
-          7.29999166566865,
-          0.20000000298023224
-        ],
-        "min": [
-          0.20000000298023224,
-          7.220008754842119,
-          -0.20000000298023224
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d56f12076ecbf53b8477800c54720cd24fe6e2153f61b5ae188928c752725300",
+      "geometryHash": "35b58f2bba760d8c5c2ebba2b605170ef3c07a44f7edaebb31217822c6699f67",
       "id": "sf.render.salvage-clamp.mesh.hood-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.2",
       "nodeId": "sf.render.salvage-clamp.mesh.hood-lens",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -285,226 +185,26 @@
       "bounds": {
         "max": [
           0.75,
-          7.474984181769051,
+          7.475001273067657,
           0.3499999940395355
         ],
         "min": [
           0.050000011920928955,
-          7.3250162287579395,
+          7.325022638578411,
           -0.3499999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ec4846f1aacbcd7874beb6c95dedd5628fa146f66e5409c3917f5a31d896845",
-      "id": "sf.render.salvage-clamp.mesh.hood-shade.primitive.0",
+      "geometryHash": "e1f6f3049a8c7cd250ecc3ea12e8cbcebe365cfbacddd76db1c36782aa05df00",
+      "id": "sf.render.salvage-clamp.mesh.hood-lens.primitive.1",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
-      "nodeId": "sf.render.salvage-clamp.mesh.hood-shade",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.salvage-clamp.static-opaque-lane.2",
+      "nodeId": "sf.render.salvage-clamp.mesh.hood-lens",
+      "primitiveIndex": 1,
       "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8944106363778732,
-          4.695906639099121,
-          -0.2577835576602012
-        ],
-        "min": [
-          -0.09441063190752486,
-          2.4040935039520264,
-          -1.1822164995602578
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4946f2966fc9b42419587056ef51801275b15b1ba4c94898105055bff7896ca6",
-      "id": "sf.render.salvage-clamp.mesh.jaw-p.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.salvage-clamp.mesh.jaw-p",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8944106363778732,
-          4.695906639099121,
-          1.1822164995602578
-        ],
-        "min": [
-          -0.09441063190752486,
-          2.4040935039520264,
-          0.2577835576602012
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "868dae8d50c90e40db7dc19dc3e25bed59643a45dc14eda680e2ec52079bb898",
-      "id": "sf.render.salvage-clamp.mesh.jaw-s.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.salvage-clamp.mesh.jaw-s",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.799999952316284,
-          0.49986113865135395,
-          1.800128147083799
-        ],
-        "min": [
-          -2.799999952316284,
-          0.00013886559780526553,
-          -1.800128147083799
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "68780a2da5c0c3c472ba47dba15c5a8ec388f8850c473474fafed9ba41e4ddc6",
-      "id": "sf.render.salvage-clamp.mesh.skid.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.salvage-clamp.mesh.skid",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5329291820526123,
-          2.935670289164675,
-          -0.3490767963804746
-        ],
-        "min": [
-          -0.032929182052612305,
-          2.1643296154678935,
-          -0.7509232572637057
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fd9ff3dccc21a5f6714c848c240d672a75dd208401c9c09e7294ddfad18b4cf7",
-      "id": "sf.render.salvage-clamp.mesh.tooth-p.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
-      "nodeId": "sf.render.salvage-clamp.mesh.tooth-p",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5329291820526123,
-          2.935670289164675,
-          0.7509232572637057
-        ],
-        "min": [
-          -0.032929182052612305,
-          2.1643296154678935,
-          0.3490767963804746
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cf5dea439d46530c4986c98b44ae63766ff8accd9834490f036bdfc6d1935e2b",
-      "id": "sf.render.salvage-clamp.mesh.tooth-s.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.salvage-clamp.mesh.tooth-s",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.6999938694759238,
-          1.4000625577299517,
-          1.600000023841858
-        ],
-        "min": [
-          -2.1000060828403604,
-          0.49993741842819045,
-          -1.600000023841858
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "25a7fccb64b8e25afdb58e6e5aa76f99444b33d028bc9e3f22b0eaf6abe2eafc",
-      "id": "sf.render.salvage-clamp.mesh.winch-stand-a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.salvage-clamp.mesh.winch-stand-a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.6999938992782461,
-          1.4000625577299517,
-          1.600000023841858
-        ],
-        "min": [
-          -1.1000061126426828,
-          0.49993741842819045,
-          -1.600000023841858
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "25a7fccb64b8e25afdb58e6e5aa76f99444b33d028bc9e3f22b0eaf6abe2eafc",
-      "id": "sf.render.salvage-clamp.mesh.winch-stand-b.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.salvage-clamp.mesh.winch-stand-b",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.3276219787066168,
-          2.8500642915409715,
-          1.4000003337860107
-        ],
-        "min": [
-          -2.4723778842027,
-          0.6499355892497387,
-          -1.4000003337860107
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5651391d85fe51d03f21f9351d10c90f18b2b3eb4acec64c4596764266017e76",
-      "id": "sf.render.salvage-clamp.mesh.winch.primitive.0",
-      "indexCount": 156,
-      "indexed": true,
-      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.salvage-clamp.mesh.winch",
-      "primitiveIndex": 0,
-      "vertexCount": 56
     }
   ],
   "hlods": [],
@@ -551,25 +251,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.aframe-p",
       "localTransform": [
-        3.301770269870758,
+        3.5999352463695686,
         0,
         0,
         0,
         0,
-        3.301770269870758,
+        3.5999352463695686,
         0,
         0,
         0,
         0,
-        3.301770269870758,
+        3.5999352463695686,
         0,
-        1.300000086426735,
-        3.7499999403953552,
-        -0.8500000033527613,
+        0,
+        3.600074099638732,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "aframe_p",
+      "mergeBoundary": "static:opaque",
       "nodeName": "aframe_p",
       "nodePath": [
         0,
@@ -579,46 +279,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        3.301770269870758,
+        3.5999352463695686,
         0,
         0,
         0,
         0,
-        3.301770269870758,
+        3.5999352463695686,
         0,
         0,
         0,
         0,
-        3.301770269870758,
+        3.5999352463695686,
         0,
-        1.300000086426735,
-        3.7499999403953552,
-        -0.8500000033527613,
+        0,
+        3.600074099638732,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.aframe-s",
       "localTransform": [
-        3.301770567893982,
+        1,
         0,
         0,
         0,
         0,
-        3.301770567893982,
+        1,
         0,
         0,
         0,
         0,
-        3.301770567893982,
+        1,
         0,
-        1.3000000566244125,
-        3.7500001192092896,
-        0.8500000331550837,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "aframe_s",
+      "mergeBoundary": "static:opaque",
       "nodeName": "aframe_s",
       "nodePath": [
         0,
@@ -628,46 +328,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        3.301770567893982,
+        1,
         0,
         0,
         0,
         0,
-        3.301770567893982,
+        1,
         0,
         0,
         0,
         0,
-        3.301770567893982,
+        1,
         0,
-        1.3000000566244125,
-        3.7500001192092896,
-        0.8500000331550837,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.apex-cap",
       "localTransform": [
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
-        0.40000002831220627,
-        7.050000190734863,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "apex_cap",
+      "mergeBoundary": "static:opaque",
       "nodeName": "apex_cap",
       "nodePath": [
         0,
@@ -677,20 +377,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
         0,
         0,
         0,
-        0.550000011920929,
+        1,
         0,
-        0.40000002831220627,
-        7.050000190734863,
+        0,
+        0,
         0,
         1
       ]
@@ -698,25 +398,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.brace",
       "localTransform": [
-        2.0031938552856445,
+        1,
         0,
         0,
         0,
         0,
-        2.0031938552856445,
+        1,
         0,
         0,
         0,
         0,
-        2.0031938552856445,
+        1,
         0,
-        -0.5250000059604645,
-        4.850000381469727,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "brace",
+      "mergeBoundary": "static:opaque",
       "nodeName": "brace",
       "nodePath": [
         0,
@@ -726,20 +426,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        2.0031938552856445,
+        1,
         0,
         0,
         0,
         0,
-        2.0031938552856445,
+        1,
         0,
         0,
         0,
         0,
-        2.0031938552856445,
+        1,
         0,
-        -0.5250000059604645,
-        4.850000381469727,
+        0,
+        0,
         0,
         1
       ]
@@ -747,25 +447,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.cable-a",
       "localTransform": [
-        2.1207069158554077,
+        1,
         0,
         0,
         0,
         0,
-        2.1207069158554077,
+        1,
         0,
         0,
         0,
         0,
-        2.1207069158554077,
+        1,
         0,
-        -0.45000001788139343,
-        4.5000001192092896,
-        -0.32499998062849045,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "cable_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "cable_a",
       "nodePath": [
         0,
@@ -775,46 +475,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        2.1207069158554077,
+        1,
         0,
         0,
         0,
         0,
-        2.1207069158554077,
+        1,
         0,
         0,
         0,
         0,
-        2.1207069158554077,
+        1,
         0,
-        -0.45000001788139343,
-        4.5000001192092896,
-        -0.32499998062849045,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.drop-a",
       "localTransform": [
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
-        0.5099999904632568,
-        5.900000095367432,
-        -0.15000000596046448,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "drop_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "drop_a",
       "nodePath": [
         0,
@@ -824,46 +524,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
-        0.5099999904632568,
-        5.900000095367432,
-        -0.15000000596046448,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.drop-b",
       "localTransform": [
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
-        0.5099999904632568,
-        5.900000095367432,
-        0.15000000596046448,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "drop_b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "drop_b",
       "nodePath": [
         0,
@@ -873,46 +573,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
         0,
         0,
         0,
-        1.0044822692871094,
+        1,
         0,
-        0.5099999904632568,
-        5.900000095367432,
-        0.15000000596046448,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.hinge",
       "localTransform": [
-        0.7500001192092896,
+        1,
         0,
         0,
         0,
         0,
-        0.7500001192092896,
+        1,
         0,
         0,
         0,
         0,
-        0.7500001192092896,
+        1,
         0,
-        0.6000000238418579,
-        4.699999809265137,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hinge",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hinge",
       "nodePath": [
         0,
@@ -922,20 +622,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.7500001192092896,
+        1,
         0,
         0,
         0,
         0,
-        0.7500001192092896,
+        1,
         0,
         0,
         0,
         0,
-        0.7500001192092896,
+        1,
         0,
-        0.6000000238418579,
-        4.699999809265137,
+        0,
+        0,
         0,
         1
       ]
@@ -943,25 +643,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.hood-lens",
       "localTransform": [
-        0.20000000298023224,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        0.20000000298023224,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        0.20000000298023224,
+        0.3499999940395355,
         0,
         0,
-        -0.019999999552965164,
+        0.06749625876545906,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hood_lens",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hood_lens",
       "nodePath": [
         0,
@@ -972,20 +672,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.20000000298023224,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        0.20000000298023224,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        0.20000000298023224,
+        0.3499999940395355,
         0,
         0.4000000059604645,
-        7.2600002102553844,
+        7.347496468573809,
         0,
         1
       ]
@@ -993,25 +693,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.hood-shade",
       "localTransform": [
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
-        0.11999999545514584,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "hood_shade",
+      "mergeBoundary": "static:opaque",
       "nodeName": "hood_shade",
       "nodePath": [
         0,
@@ -1022,20 +722,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0,
         0,
         0,
-        0.3499999940395355,
+        1,
         0,
         0.4000000059604645,
-        7.4000002052634954,
+        7.28000020980835,
         0,
         1
       ]
@@ -1043,25 +743,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.jaw-p",
       "localTransform": [
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
-        0.9000000022351742,
-        3.5500000715255737,
-        -0.7200000286102295,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "jaw_p",
+      "mergeBoundary": "static:opaque",
       "nodeName": "jaw_p",
       "nodePath": [
         0,
@@ -1071,46 +771,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
-        0.9000000022351742,
-        3.5500000715255737,
-        -0.7200000286102295,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.jaw-s",
       "localTransform": [
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
-        0.9000000022351742,
-        3.5500000715255737,
-        0.7200000286102295,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "jaw_s",
+      "mergeBoundary": "static:opaque",
       "nodeName": "jaw_s",
       "nodePath": [
         0,
@@ -1120,46 +820,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
         0,
         0,
         0,
-        1.1459065675735474,
+        1,
         0,
-        0.9000000022351742,
-        3.5500000715255737,
-        0.7200000286102295,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.skid",
       "localTransform": [
-        2.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        2.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        2.799999952316284,
+        1,
         0,
         0,
-        0.2500000021245796,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "skid",
+      "mergeBoundary": "static:opaque",
       "nodeName": "skid",
       "nodePath": [
         0,
@@ -1169,20 +869,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        2.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        2.799999952316284,
+        1,
         0,
         0,
         0,
         0,
-        2.799999952316284,
+        1,
         0,
         0,
-        0.2500000021245796,
+        0,
         0,
         1
       ]
@@ -1190,25 +890,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.tooth-p",
       "localTransform": [
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
-        0.75,
-        2.549999952316284,
-        -0.5500000268220901,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tooth_p",
+      "mergeBoundary": "static:opaque",
       "nodeName": "tooth_p",
       "nodePath": [
         0,
@@ -1218,46 +918,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
-        0.75,
-        2.549999952316284,
-        -0.5500000268220901,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.tooth-s",
       "localTransform": [
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
-        0.75,
-        2.549999952316284,
-        0.5500000268220901,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tooth_s",
+      "mergeBoundary": "static:opaque",
       "nodeName": "tooth_s",
       "nodePath": [
         0,
@@ -1267,46 +967,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
         0,
         0,
         0,
-        0.7829291820526123,
+        1,
         0,
-        0.75,
-        2.549999952316284,
-        0.5500000268220901,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.salvage-clamp.mesh.winch",
       "localTransform": [
-        1.4000003337860107,
+        1,
         0,
         0,
         0,
         0,
-        1.4000003337860107,
+        1,
         0,
         0,
         0,
         0,
-        1.4000003337860107,
+        1,
         0,
-        -1.3999999314546585,
-        1.7499999403953552,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "winch",
+      "mergeBoundary": "static:opaque",
       "nodeName": "winch",
       "nodePath": [
         0,
@@ -1316,20 +1016,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.4000003337860107,
+        1,
         0,
         0,
         0,
         0,
-        1.4000003337860107,
+        1,
         0,
         0,
         0,
         0,
-        1.4000003337860107,
+        1,
         0,
-        -1.3999999314546585,
-        1.7499999403953552,
+        0,
+        0,
         0,
         1
       ]
@@ -1337,25 +1037,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.winch-stand-a",
       "localTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
-        -1.899999976158142,
-        0.949999988079071,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "winch_stand_a",
+      "mergeBoundary": "static:opaque",
       "nodeName": "winch_stand_a",
       "nodePath": [
         0,
@@ -1365,20 +1065,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
-        -1.899999976158142,
-        0.949999988079071,
+        0,
+        0,
         0,
         1
       ]
@@ -1386,25 +1086,25 @@
     {
       "id": "sf.render.salvage-clamp.mesh.winch-stand-b",
       "localTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
-        -0.9000000059604645,
-        0.949999988079071,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "winch_stand_b",
+      "mergeBoundary": "static:opaque",
       "nodeName": "winch_stand_b",
       "nodePath": [
         0,
@@ -1414,20 +1114,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.salvage-clamp.body",
       "worldTransform": [
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
         0,
         0,
         0,
-        1.600000023841858,
+        1,
         0,
-        -0.9000000059604645,
-        0.949999988079071,
+        0,
+        0,
         0,
         1
       ]
@@ -1483,7 +1183,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a93a8258bb4f91911a7b95d91a46c218fa76d808a0005d299b69f4873e069907"
+      "sha256": "81db8994aab8f3d5e5be9a5e90016a715c448f01b55eaed13f1fcaa1ea681cf8"
     },
     "sourceGlb": {
       "bytes": 22308,
@@ -1491,37 +1191,37 @@
       "uri": "place_salvage_clamp.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 27648,
-    "sha256": "62e383f48bf5caf373d4d5530afd8a04ea24cd14c0349e91fc7d1f3669eeadc3",
+    "bytes": 18900,
+    "sha256": "02e5328c13c7da816bc6e0b05b43df9580cbf6206416a1264a590353f6edc9b5",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        3.7375615236834285,
+        3.7375700631684103,
         0
       ],
       "max": [
-        2.799999952316284,
-        7.474984181769051,
-        1.800128147083799
+        2.8001205366442212,
+        7.475001273067657,
+        1.8002422848296076
       ],
       "min": [
-        -2.799999952316284,
-        0.00013886559780526553,
-        -1.800128147083799
+        -2.8001205366442212,
+        0.00013885326916351914,
+        -1.8002422848296076
       ],
       "size": [
-        5.599999904632568,
-        7.474845316171246,
-        3.600256294167598
+        5.6002410732884425,
+        7.474862419798494,
+        3.600484569659215
       ]
     },
     "hidden": [],
@@ -1547,7 +1247,7 @@
           1
         ],
         "name": "SOCKET_Jaw",
-        "planIndex": 17,
+        "planIndex": 23,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1566,19 +1266,14 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
-      "mechanical": 3,
-      "rubber": 2,
+      "hull": 3,
+      "mechanical": 1,
+      "rubber": 1,
       "signal": 1
     },
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 2,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 3,
         "role": "hull"
       },
@@ -1590,129 +1285,47 @@
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
-        "planIndex": 8,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 9,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 10,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 12,
+        "planIndex": 17,
         "role": "signal"
       },
       {
         "allowTextures": false,
-        "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 14,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 15,
-        "role": "rubber"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 19,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 20,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 22,
         "role": "hull"
       }
     ],
-    "nodeCount": 23,
+    "nodeCount": 29,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          3.301770269870758,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          3.301770269870758,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          3.301770269870758,
+          3.5999352463695686,
           0,
-          1.300000086426735,
-          3.7499999403953552,
-          -0.8500000033527613,
+          0,
+          3.600074099638732,
+          0,
           1
         ],
-        "name": "aframe_p",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.301770567893982,
-          0,
-          0,
-          0,
-          0,
-          3.301770567893982,
-          0,
-          0,
-          0,
-          0,
-          3.301770567893982,
-          0,
-          1.3000000566244125,
-          3.7500001192092896,
-          0.8500000331550837,
-          1
-        ],
-        "name": "aframe_s",
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1722,24 +1335,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.550000011920929,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          0.550000011920929,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          0.550000011920929,
+          3.5999352463695686,
           0,
-          0.40000002831220627,
-          7.050000190734863,
+          0,
+          3.600074099638732,
           0,
           1
         ],
-        "name": "apex_cap",
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1749,24 +1362,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.0031938552856445,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          2.0031938552856445,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          2.0031938552856445,
+          3.5999352463695686,
           0,
-          -0.5250000059604645,
-          4.850000381469727,
+          0,
+          3.600074099638732,
           0,
           1
         ],
-        "name": "brace",
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1776,24 +1389,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.1207069158554077,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          2.1207069158554077,
+          3.5999352463695686,
           0,
           0,
           0,
           0,
-          2.1207069158554077,
+          3.5999352463695686,
           0,
-          -0.45000001788139343,
-          4.5000001192092896,
-          -0.32499998062849045,
+          0,
+          3.600074099638732,
+          0,
           1
         ],
-        "name": "cable_a",
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1803,106 +1416,25 @@
       {
         "canopy": false,
         "matrix": [
-          1.0044822692871094,
+          0.3499999940395355,
           0,
           0,
           0,
           0,
-          1.0044822692871094,
+          0.3499999940395355,
           0,
           0,
           0,
           0,
-          1.0044822692871094,
-          0,
-          0.5099999904632568,
-          5.900000095367432,
-          -0.15000000596046448,
-          1
-        ],
-        "name": "drop_a",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.0044822692871094,
-          0,
-          0,
-          0,
-          0,
-          1.0044822692871094,
-          0,
-          0,
-          0,
-          0,
-          1.0044822692871094,
-          0,
-          0.5099999904632568,
-          5.900000095367432,
-          0.15000000596046448,
-          1
-        ],
-        "name": "drop_b",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.7500001192092896,
-          0,
-          0,
-          0,
-          0,
-          0.7500001192092896,
-          0,
-          0,
-          0,
-          0,
-          0.7500001192092896,
-          0,
-          0.6000000238418579,
-          4.699999809265137,
-          0,
-          1
-        ],
-        "name": "hinge",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.20000000298023224,
-          0,
-          0,
-          0,
-          0,
-          0.20000000298023224,
-          0,
-          0,
-          0,
-          0,
-          0.20000000298023224,
+          0.3499999940395355,
           0,
           0.4000000059604645,
-          7.2600002102553844,
+          7.347496468573809,
           0,
           1
         ],
-        "name": "hood_lens",
-        "planIndex": 12,
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane2",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1924,228 +1456,12 @@
           0.3499999940395355,
           0,
           0.4000000059604645,
-          7.4000002052634954,
+          7.347496468573809,
           0,
           1
         ],
-        "name": "hood_shade",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.1459065675735474,
-          0,
-          0,
-          0,
-          0,
-          1.1459065675735474,
-          0,
-          0,
-          0,
-          0,
-          1.1459065675735474,
-          0,
-          0.9000000022351742,
-          3.5500000715255737,
-          -0.7200000286102295,
-          1
-        ],
-        "name": "jaw_p",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.1459065675735474,
-          0,
-          0,
-          0,
-          0,
-          1.1459065675735474,
-          0,
-          0,
-          0,
-          0,
-          1.1459065675735474,
-          0,
-          0.9000000022351742,
-          3.5500000715255737,
-          0.7200000286102295,
-          1
-        ],
-        "name": "jaw_s",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          2.799999952316284,
-          0,
-          0,
-          0,
-          0,
-          2.799999952316284,
-          0,
-          0,
-          0.2500000021245796,
-          0,
-          1
-        ],
-        "name": "skid",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.7829291820526123,
-          0,
-          0,
-          0,
-          0,
-          0.7829291820526123,
-          0,
-          0,
-          0,
-          0,
-          0.7829291820526123,
-          0,
-          0.75,
-          2.549999952316284,
-          -0.5500000268220901,
-          1
-        ],
-        "name": "tooth_p",
+        "name": "rendersfrendersalvage-clampstatic-opaque-lane2_1",
         "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.7829291820526123,
-          0,
-          0,
-          0,
-          0,
-          0.7829291820526123,
-          0,
-          0,
-          0,
-          0,
-          0.7829291820526123,
-          0,
-          0.75,
-          2.549999952316284,
-          0.5500000268220901,
-          1
-        ],
-        "name": "tooth_s",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.4000003337860107,
-          0,
-          0,
-          0,
-          0,
-          1.4000003337860107,
-          0,
-          0,
-          0,
-          0,
-          1.4000003337860107,
-          0,
-          -1.3999999314546585,
-          1.7499999403953552,
-          0,
-          1
-        ],
-        "name": "winch",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.600000023841858,
-          0,
-          0,
-          0,
-          0,
-          1.600000023841858,
-          0,
-          0,
-          0,
-          0,
-          1.600000023841858,
-          0,
-          -1.899999976158142,
-          0.949999988079071,
-          0,
-          1
-        ],
-        "name": "winch_stand_a",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.600000023841858,
-          0,
-          0,
-          0,
-          0,
-          1.600000023841858,
-          0,
-          0,
-          0,
-          0,
-          1.600000023841858,
-          0,
-          -0.9000000059604645,
-          0.949999988079071,
-          0,
-          1
-        ],
-        "name": "winch_stand_b",
-        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2156,20 +1472,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
   },
-  "runtimeHash": "46e49e7a880c9f49d6f6c16a9aa74790833457c4632aa394d8b59e1bf978d06b",
+  "runtimeHash": "e03ded95e9a202cb6f01a4b2b8fd0a44cad8321ef7e2313f0e76ca4d31874044",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          2.799999952316284,
-          7.474984181769051,
-          1.800128147083799
+          2.8001205366442212,
+          7.475001273067657,
+          1.8002422848296076
         ],
         "min": [
-          -2.799999952316284,
-          0.00013886559780526553,
-          -1.800128147083799
+          -2.8001205366442212,
+          0.00013885326916351914,
+          -1.8002422848296076
         ]
       },
       "id": "sf.render.salvage-clamp.body",

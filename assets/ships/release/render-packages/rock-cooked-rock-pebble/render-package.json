@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "503b1ebcfa238fb11116d951de56b1d71e4efc79b03ddb2d49a171b00dec8d43",
+  "contentHash": "79e7a91bbe0e77d4ff4b81a7d3e35038e0affd7b68bbc8baac34cf5cbbccc4e1",
   "dynamicGroups": [
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard.dynamic",
@@ -1182,8 +1182,8 @@
       "uri": "place_rock_cooked_rock_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -2154,7 +2154,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_cooked_rock_pebble.glb"
   },
-  "runtimeHash": "e74bfc74c9b4afcbad17c1edc3490a0957deb316b1ea7e63067cf177f372436c",
+  "runtimeHash": "4b4eb361d4669cb9b41543fc47dea413f7c1f79e7d05f370f42cc00afa594b62",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
