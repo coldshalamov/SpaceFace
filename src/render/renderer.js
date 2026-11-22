@@ -52,6 +52,14 @@ import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from '.
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { createOpaqueStateSort } from './opaqueStateSort.js';
 import { frameCostFixOn } from './frameCostSwitches.js';
+import { createFrameTaskScheduler } from '../core/frameTaskScheduler.js';
+// Per-frame budget for render work that only has to be recent (see _ensureFrameTasks).
+const FRAME_TASK_BUDGET_MS = 2;
+// Sliced residency passes: while one is in flight the service keeps a 30 Hz drain.
+const RESIDENCY_SLICED_PASS_FIELDS = ['_reconcileIter', '_residencyPollIter', '_residentReattachIter',
+  '_cacheLeaseIter', '_holdExemptWarmIter', '_holdExemptDegradeIter', '_arrivalReserveIter',
+  '_holdExemptKickIter', '_protectedFirstFlightDrainIter', '_holdExemptEnqueueIter', '_arrivalRosterIter',
+  '_sectorExitCleanupIter', '_holdExemptCollectIter', '_despawnDisposeIter', '_warmDisposeIter'];
 import {
   _bandArgsFor,
   _residencyLookDelta,
@@ -33074,6 +33082,48 @@ export const render = {
     }
   },
 
+  _ensureFrameTasks() {
+    if (this._frameTasks) return this._frameTasks;
+    const tasks = createFrameTaskScheduler({ name: 'render', budgetMs: FRAME_TASK_BUDGET_MS });
+    tasks.register('activity-frame', () => {
+      if (!this.state) return;
+      this._activityFrameIndexVersion = entityIndexVersion(this.state);
+      this._activityFrameListLen = this.state.entityList ? this.state.entityList.length : -1;
+      tryPresentedCall(this, 'activity-frame', () => {
+        publishActivityFrame(this, getActivityFrame(this.state));
+      });
+      this._activityFrameTick = Number.isInteger(this.state.tick) ? this.state.tick : -1;
+      if (this.state.render) this.state.render.activityFrame = this._activityFrame;
+    }, { hz: 10, priority: 2 });
+    tasks.register('residency-service', (elapsedSeconds, nowMs) => {
+      this._residencyServiceAtMs = nowMs;
+      tryPresentedCall(this, 'residency-service', () => {
+        serviceRenderMeshResidency(this, Math.min(0.25, elapsedSeconds));
+      });
+    }, { hz: 10, priority: 1 });
+    this._frameTasks = tasks;
+    return tasks;
+  },
+
+  // What the residency service owes the very next frame. A queued mesh build (a body that just
+  // spawned), a corpse waiting for disposal, a sector seam or first-flight hold and a banked
+  // reconcile are frame-exact work: 2. A sliced pass already in flight (poll, reconcile, reattach)
+  // keeps draining at 30 Hz: 1. Otherwise the service is only its slow self-healing poll: 0.
+  _residencyServiceUrgency() {
+    const builds = this._meshBuildQueue;
+    if (builds && (this._meshBuildQueueHead | 0) < builds.length) return 2;
+    const dead = this._despawnDisposeQueue;
+    if (dead && (this._despawnDisposeHead | 0) < dead.length) return 2;
+    if (this._meshReconcileDirty || this._seamDeferredDrain === true
+        || this._sectorHandoffStreamHoldS > 0 || this._sessionRecookKeepGpu === true
+        || (this._meshReleasePending && this._meshReleasePending.size > 0)
+        || holdFirstFlightStreaming(this.state)) return 2;
+    for (let i = 0; i < RESIDENCY_SLICED_PASS_FIELDS.length; i++) {
+      if (this[RESIDENCY_SLICED_PASS_FIELDS[i]]) return 1;
+    }
+    return 0;
+  },
+
   prepareFrame(alpha, frameDt, presentationFrame = null, cameraFrameDt = frameDt) {
     // One drawn-world clock sample per frame; every decoration reads it (presentedClock.js).
     const sfState = this.state;
@@ -33559,7 +33609,31 @@ export const render = {
     // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full
     // event-recovery scan and redundant presentation rebinding during ordinary settled flight.
     const activityTick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : -1;
-    if (this.state && this.state.mode !== 'flight' && !this._openingFirstPicturePrepared) {
+    // Budgeted frame tasks (2026-11-21): in steady flight the activity publish and the mesh
+    // residency service only have to be RECENT, not per-frame. They run on a ~2 ms-per-frame budget
+    // (most overdue first; a starving job still runs), so their cost is bounded at any frame rate.
+    // Membership changes still request the publish for the very next frame. ?rfx=-frameTasks
+    // restores the every-frame path.
+    const budgetedTasks = this.state && this.state.mode === 'flight'
+      && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt)
+      && frameCostFixOn('frameTasks');
+    if (budgetedTasks) {
+      const tasks = this._ensureFrameTasks();
+      const indexVersion = entityIndexVersion(this.state);
+      const listLen = this.state.entityList ? this.state.entityList.length : -1;
+      // A membership change used to reclassify on the very next frame; in a fight a shot spawns or
+      // dies every frame, so that was every frame. The classification only orders mesh builds and
+      // names runway rows (live-glass visibility is measured per row in syncEntityViews), so a
+      // changed roster is served at the job's own rate; only a missing frame is asked for at once.
+      void indexVersion; void listLen;
+      if (this._activityFrame == null) tasks.request('activity-frame');
+      const urgency = this._residencyServiceUrgency();
+      if (urgency === 2 || (urgency === 1
+          && performance.now() - (this._residencyServiceAtMs || 0) >= 33)) {
+        tasks.request('residency-service');
+      }
+      tasks.run(FRAME_TASK_BUDGET_MS);
+    } else if (this.state && this.state.mode !== 'flight' && !this._openingFirstPicturePrepared) {
       // Loading may replace the entity table while retaining IDs and a saved tick. Classification
       // is a flight authority; publishing it here would turn optional restored actors into false
       // startup blockers before their authored admission queue can run.
@@ -33584,9 +33658,11 @@ export const render = {
       this._activityFrameTick = activityTick;
       if (this.state && this.state.render) this.state.render.activityFrame = this._activityFrame;
     }
-    tryPresentedCall(this, 'residency-service', () => {
-      serviceRenderMeshResidency(this, frameDt);
-    });
+    if (!budgetedTasks) {
+      tryPresentedCall(this, 'residency-service', () => {
+        serviceRenderMeshResidency(this, frameDt);
+      });
+    }
     const holdLoadingGpu = this.state && this.state.mode === 'loading';
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
       && this.state && ((holdLoadingGpu && this.state.render?.openingGraphPublicationFrozen === true)
