@@ -19,6 +19,7 @@
 // closed" exactly like a step throw does, so presentationRunner's existing
 // failure surface is the whole error path.
 
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 import {
   createReadModel,
   applySpawnInfos,
@@ -319,6 +320,26 @@ function applyLaneSaveStorageOps(ops, relayFallback = null, failedWrites = null,
  *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
  * Returns { lane, sab, domainProfile, warnings[] }.
  */
+// Changed-notifications whose payload is the full newest value for one ship: within one reply only
+// the last copy per ship carries information.
+const COALESCED_SHIP_EVENTS = new Set(['ship:statsChanged', 'ship:cargoCapChanged', 'ship:slotsChanged']);
+const _coalesceSeen = new Set();
+const _coalesceSkip = new Set();
+export function coalescedEventSkips(events) {
+  _coalesceSeen.clear();
+  _coalesceSkip.clear();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i];
+    if (!ev || !COALESCED_SHIP_EVENTS.has(ev.t)) continue;
+    const id = ev.p && (ev.p.shipId ?? ev.p.id);
+    if (id == null) continue;
+    const key = ev.t + '|' + id;
+    if (_coalesceSeen.has(key)) _coalesceSkip.add(i);
+    else _coalesceSeen.add(key);
+  }
+  return _coalesceSkip.size ? _coalesceSkip : null;
+}
+
 export function resolveSimLaneFlags(search) {
   let params = null;
   try {
@@ -1040,9 +1061,12 @@ export function createSimLaneRuntime({
     if (workerPumpRequested && pendingSteps > 0) armWorkerPumpAckWake();
   }
 
-  function applyClockReply(msg) {
+  function applyClockReply(msg, resume = null, sliceBudgetMs = 0) {
       try {
-        applyTickReplyTimed(msg);
+        // A parked reply is not applied yet: its ACK, command watermark and directive flush wait
+        // for the slice that finishes it.
+        const parked = applyTickReplyTimed(msg, resume, sliceBudgetMs);
+        if (parked) return parked;
         if (Number.isSafeInteger(msg.clockSequence)) {
           workerClockLastReceivedSequence = Math.max(workerClockLastReceivedSequence, msg.clockSequence);
           workerClockAckPending = {
@@ -1072,6 +1096,7 @@ export function createSimLaneRuntime({
         failLane(`sim worker clock reply apply failed: ${(error && error.message) || error}`,
           error && error.stack ? String(error.stack) : null);
       }
+      return null;
   }
 
   // NO-FREEZE step 3: reliable replies apply in arrival order under a per-frame budget. One reply
@@ -1089,6 +1114,38 @@ export function createSimLaneRuntime({
   let replyCosmeticShed = 0;
   let replyFrameCounter = 0;
   let replyBudgetWindowAtMs = -Infinity;
+  // Event-granular budget (frame engineer, 2026-11-22). One reply's events used to replay as one
+  // block however long its listeners took (100-228 ms seen at run start). In live flight the
+  // replay now stops once REPLY_APPLY_BUDGET_MS is spent and the rest of that reply's events run
+  // on the following frames, in order, before any later reply is applied. ?rfx=-replySlice
+  // restores whole-reply application.
+  const REPLY_PARKED_MAX_MS = 400;
+  let parkedReply = null;
+  let replySlicesParked = 0;
+  let replySlicesResumed = 0;
+  let replySliceMaxParkedMs = 0;
+  let replyFramePumpAtMs = -Infinity;
+  function replySliceBudgetMs(parked) {
+    if (!frameCostFixOn('replySlice')) return 0;
+    if (!state || state.mode !== 'flight' || laneClosed) return 0;
+    // Only while presented frames are really arriving: a headless run, a hidden tab or a test
+    // that delivers a reply by hand has no next frame to finish it on, so it applies whole.
+    if (nowMs() - replyFramePumpAtMs > 500) return 0;
+    // Far behind (a long backlog, or this reply has been open too long): finish whole and catch up.
+    if (replyQueue.length > REPLY_QUEUE_BOUND) return 0;
+    if (parked && nowMs() - parked.parkedAtMs > REPLY_PARKED_MAX_MS) return 0;
+    return REPLY_APPLY_BUDGET_MS;
+  }
+  function resumeParkedReply() {
+    const parked = parkedReply;
+    parkedReply = null;
+    replySlicesResumed++;
+    const started = nowMs();
+    parkedReply = applyClockReply(parked.msg, parked, replySliceBudgetMs(parked));
+    const done = nowMs();
+    replyBudgetSpentMs += Math.max(0.01, done - started);
+    if (!parkedReply && done - parked.parkedAtMs > replySliceMaxParkedMs) replySliceMaxParkedMs = done - parked.parkedAtMs;
+  }
   function shedStaleCosmetics(msg, now) {
     if (!Array.isArray(msg.events) || !msg.events.length) return;
     if (now - (msg.__laneArrivedAtMs || now) < REPLY_COSMETIC_STALE_MS) return;
@@ -1104,7 +1161,18 @@ export function createSimLaneRuntime({
     const windowNow = nowMs();
     if (windowNow - replyBudgetWindowAtMs >= 16) { replyBudgetWindowAtMs = windowNow; replyBudgetSpentMs = 0; }
     let appliedThisCall = 0;
-    while (replyQueue.length && !laneClosed) {
+    if (parkedReply && !laneClosed) {
+      // The open reply's remaining events come first; nothing later applies until it is done.
+      // One slice per frame boundary (or per fresh budget window between frames).
+      if (!frameBoundary && replyBudgetSpentMs >= REPLY_APPLY_BUDGET_MS
+          && replyQueue.length <= REPLY_QUEUE_BOUND) {
+        armReplyDrainTimer();
+        return;
+      }
+      resumeParkedReply();
+      appliedThisCall++;
+    }
+    while (replyQueue.length && !laneClosed && !parkedReply) {
       // With no backlog the arriving reply applies now (one reply per message task, as before);
       // a backlog drains only inside the budget, at least one reply per frame.
       const noBacklog = replyQueue.length === 1 && appliedThisCall === 0;
@@ -1117,13 +1185,15 @@ export function createSimLaneRuntime({
       const msg = replyQueue.shift();
       const started = nowMs();
       shedStaleCosmetics(msg, started);
-      applyClockReply(msg);
+      parkedReply = applyClockReply(msg, null, replySliceBudgetMs(null));
       replyBudgetSpentMs += Math.max(0.01, nowMs() - started);
     }
-    if (replyQueue.length && replyDrainTimer === null && !laneClosed) {
-      // Not presenting (no rAF)? A timer turn is a frame boundary too.
-      replyDrainTimer = setTimeout(() => { replyDrainTimer = null; drainClockReplies(true); }, 16);
-    }
+    if (replyQueue.length || parkedReply) armReplyDrainTimer();
+  }
+  function armReplyDrainTimer() {
+    if (replyDrainTimer !== null || laneClosed) return;
+    // Not presenting (no rAF)? A timer turn is a frame boundary too.
+    replyDrainTimer = setTimeout(() => { replyDrainTimer = null; drainClockReplies(true); }, 16);
   }
 
   function releaseFlight(msg, flight) {
@@ -1436,7 +1506,34 @@ export function createSimLaneRuntime({
     }
   }
 
-  function applyTickReply(msg) {
+  // A reply whose event replay may pause between events and continue on a later frame: every
+  // event was emitted in live flight and none is a lifecycle boundary whose listeners expect the
+  // whole reply in one task.
+  const REPLY_SLICE_WHOLE_EVENT = /^(sector:|save:|game:|mode:|run:|settings:|world:|session:)/;
+  function replyEventsSliceable(events) {
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i];
+      if (!ev || typeof ev.t !== 'string') continue;
+      if ((typeof ev.m === 'string' && ev.m !== 'flight') || REPLY_SLICE_WHOLE_EVENT.test(ev.t)) return false;
+    }
+    return true;
+  }
+
+  // Returns null when the reply is fully applied, or a parked record when the event replay ran out
+  // of sliceBudgetMs: the caller resumes it with applyTickReply(msg, parked, budget) before any
+  // later reply is touched, so events stay in order and still see exactly their own reply's rows.
+  function applyTickReply(msg, resume = null, sliceBudgetMs = 0) {
+    let journalLo = -1;
+    let journalHi = -1;
+    let rebuildApplied = false;
+    let phaseStart = 0;
+    let mirrorDone = 0;
+    let reconcileDone = 0;
+    if (resume) {
+      journalLo = resume.journalLo;
+      journalHi = resume.journalHi;
+      phaseStart = mirrorDone = reconcileDone = nowMs();
+    } else {
     replyCount++;
     // Keep the worker's own completed-boundary costs beside its liveness counters. Main-thread
     // frame timings cannot distinguish a slow authoritative step from a slow mirror/pack.
@@ -1492,10 +1589,7 @@ export function createSimLaneRuntime({
       }
     }
 
-    let journalLo = -1;
-    let journalHi = -1;
-    let rebuildApplied = false;
-    const phaseStart = nowMs();
+    phaseStart = nowMs();
     if (msg.journalFullRebuild === true && msg.pack) {
       rebuildApplied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
@@ -1528,9 +1622,10 @@ export function createSimLaneRuntime({
     applyLaneAuxDelta(msg);
     applyDomainUpdates(msg.domainUpdates);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
-    const mirrorDone = nowMs();
+    mirrorDone = nowMs();
     reconcileEntities();
-    const reconcileDone = nowMs();
+    reconcileDone = nowMs();
+    }
 
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
     // suppressed — otherwise a forwarded type would echo right back.
@@ -1539,12 +1634,38 @@ export function createSimLaneRuntime({
       // stationHandoffDiagnostics). The per-reply array churn stays off the
       // production hot path unless a dev realm or the explicit
       // window.__SF_DEBUG_LANE__ latch asks for it.
-      if (typeof window !== 'undefined' && (IS_DEV || window.__SF_DEBUG_LANE__ === true)) {
+      if (!resume && typeof window !== 'undefined' && (IS_DEV || window.__SF_DEBUG_LANE__ === true)) {
         const log = window.__SF_LANE_APPLIED || (window.__SF_LANE_APPLIED = []);
         for (const ev of msg.events) { if (ev && typeof ev.t === 'string') log.push(ev.t); }
         if (log.length > 96) log.splice(0, log.length - 96);
       }
-      for (const ev of msg.events) {
+      // One reply can carry the same "changed" notification for one ship dozens of times (run
+      // start: 80 x ship:statsChanged / cargoCapChanged / slotsChanged). Each carries the full
+      // newest value, so only the LAST one per (type, ship) is replayed; nothing else is dropped
+      // or reordered. ?rfx=-replyCoalesce replays every copy.
+      const skip = resume ? resume.skip
+        : (msg.events.length > 8 && frameCostFixOn('replyCoalesce') ? coalescedEventSkips(msg.events) : null);
+      const sliceStartedAtMs = sliceBudgetMs > 0 ? nowMs() : 0;
+      const sliceFirstIndex = resume ? resume.index : 0;
+      for (let evIndex = sliceFirstIndex; evIndex < msg.events.length; evIndex++) {
+        const ev = msg.events[evIndex];
+        if (skip && skip.has(evIndex)) continue;
+        // Event-granular budget: at least one event has replayed in this slice, the time is spent
+        // and more remain. Park the rest for the next frame instead of blocking this one.
+        if (sliceBudgetMs > 0 && evIndex > sliceFirstIndex
+            && nowMs() - sliceStartedAtMs >= sliceBudgetMs) {
+          if (msg.__laneSliceable === undefined) msg.__laneSliceable = replyEventsSliceable(msg.events);
+          if (msg.__laneSliceable === true) {
+            replySlicesParked++;
+            workerLastReplyWork.applyEventsMs = Math.max(0, nowMs() - reconcileDone);
+            return {
+              msg, index: evIndex, journalLo, journalHi,
+              // The coalesce set is shared scratch: a parked reply keeps its own copy.
+              skip: skip && !resume ? new Set(skip) : skip,
+              parkedAtMs: resume ? resume.parkedAtMs : nowMs(),
+            };
+          }
+        }
         if (ev && typeof ev.t === 'string') {
           const eventStartedAtMs = nowMs();
           try {
@@ -1609,8 +1730,10 @@ export function createSimLaneRuntime({
         }
       }
     }
-    workerLastReplyWork.applyFoldMs = Math.max(0, mirrorDone - phaseStart);
-    workerLastReplyWork.applyReconcileMs = Math.max(0, reconcileDone - mirrorDone);
+    if (!resume) {
+      workerLastReplyWork.applyFoldMs = Math.max(0, mirrorDone - phaseStart);
+      workerLastReplyWork.applyReconcileMs = Math.max(0, reconcileDone - mirrorDone);
+    }
     workerLastReplyWork.applyEventsMs = Math.max(0, nowMs() - reconcileDone);
 
     if (Array.isArray(msg.rpcAcks) && msg.rpcAcks.length) {
@@ -1723,6 +1846,7 @@ export function createSimLaneRuntime({
         rebuildGeneration: msg.journalRebuildGeneration || 0,
       });
     }
+    return null;
   }
 
   function completedRecordCount(record) {
@@ -2135,10 +2259,12 @@ export function createSimLaneRuntime({
     }, FREEZE_SAMPLE_MS);
   }
 
-  function applyTickReplyTimed(msg) {
+  function applyTickReplyTimed(msg, resume = null, sliceBudgetMs = 0) {
     const started = nowMs();
+    let parked = null;
     try {
-      applyTickReply(msg);
+      parked = applyTickReply(msg, resume, sliceBudgetMs);
+      return parked;
     } finally {
       workerApplyMs = Math.max(0, nowMs() - started);
       if (workerApplyMs > workerApplyMaxMs) {
@@ -2695,6 +2821,7 @@ export function createSimLaneRuntime({
       advanceResult.stepCap = effectiveStepCap;
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
+      replyFramePumpAtMs = nowMs();
       drainClockReplies(true);
       sampleLaneUiFold();
       flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
@@ -2737,6 +2864,7 @@ export function createSimLaneRuntime({
       // Worker-local presentation frames do not call advance(), but they still
       // own the main→worker UI boundary. Keep modal depth and screen-stack
       // admission in sync before flushing the frame's cursor/clock command.
+      replyFramePumpAtMs = nowMs();
       drainClockReplies(true);
       sampleLaneUiFold();
       flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
@@ -2959,6 +3087,7 @@ export function createSimLaneRuntime({
           } catch (_) { return null; }
         })(),
         replyQueue: { pending: replyQueue.length, max: replyQueueMax, cosmeticShed: replyCosmeticShed },
+        replySlices: { parked: replySlicesParked, resumed: replySlicesResumed, open: parkedReply != null, maxOpenMs: replySliceMaxParkedMs },
         msSinceLastAppliedReply: lastAppliedAtMs >= 0
           ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
         postedDirectives,
@@ -3111,6 +3240,12 @@ export function createSimLaneRuntime({
     if (replyDrainTimer !== null) {
       clearTimeout(replyDrainTimer);
       replyDrainTimer = null;
+    }
+    if (parkedReply) {
+      // A reply left open by the event budget finishes whole on teardown: no event is dropped.
+      const parked = parkedReply;
+      parkedReply = null;
+      try { applyTickReplyTimed(parked.msg, parked, 0); } catch (_) { /* teardown */ }
     }
     poseFeed.active = false;
     setActivePoseFeed(null);
