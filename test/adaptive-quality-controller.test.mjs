@@ -149,13 +149,14 @@ test('a borderline sustained miss parks at a shallow band instead of grinding to
   assert.equal(borderline.getScale(), 1, 'a ~1.25x miss never reaches even the first band');
 });
 
-test('raster relief raises the adaptive floor — Auto never presents below 0.67 combined', () => {
-  // Coordinator decision 2026-11-20: Auto may scale the 3D scene to 0.67 with the CAS upscale.
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.67,
-    'no relief: Auto may go down to the 0.67 combined floor');
-  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.6, 0.8) - 0.67 / 0.8) < 1e-9,
-    'hitch relief 0.8 raises the content floor so the product stays at 0.67');
-  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.6), 1,
+test('raster relief raises the adaptive floor — Auto never presents below 0.5 combined', () => {
+  // Director ruling 2026-11-21: the GPU budget governor may use 0.5-1.0 with the CAS upscale.
+  assert.equal(adaptiveFloorForCombinedScale(0.5, 1), 0.5,
+    'no relief: Auto may go down to the 0.5 combined floor');
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.6, 'a tier floor above the combined floor wins');
+  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.5, 0.8) - 0.5 / 0.8) < 1e-9,
+    'hitch relief 0.8 raises the content floor so the product stays at 0.5');
+  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.5), 1,
     'deep relief already at the floor holds content at native');
 
   const controller = createAdaptiveResolution({ floor: 0.5 });
@@ -195,11 +196,11 @@ test('Manual adaptive resolution keeps its tier floor without changing the saved
 
   video.qualityMode = 'auto';
   syncPolicy();
-  // Auto's combined floor is 0.67 of native (coordinator decision 2026-11-20): with this preset's
-  // automatic render scale the content floor is 0.67 / renderScale, and the controller may step
+  // Auto's combined floor is 0.5 of native (director ruling 2026-11-21): with this preset's
+  // automatic render scale the content floor is at least 0.5 / renderScale, and the controller may step
   // toward it on a GPU-bound frame (no CPU sample here = GPU-bound by default).
   const floor = renderer._adaptiveFloorForRelief();
-  assert.ok(Math.abs(floor - Math.min(1, 0.67 / video.renderScale)) < 1e-9, `floor ${floor}`);
+  assert.ok(floor >= Math.min(1, 0.5 / video.renderScale) - 1e-9 && floor <= 1, `floor ${floor}`);
   feed(controller, 0.026, 130, slowFlight);
   assert.ok(controller.getScale() >= floor, 'Auto never presents below its combined floor');
 });

@@ -18,6 +18,7 @@ import { autoPresentationCapFor, normalizeFrameCap, resolveFrameCap } from '../r
 import { shouldSkipFlightDraw, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
+import { noteFrameRatePresent } from './frameRateLog.js';
 import { setFocusPausePlate } from '../render/focusPausePlate.js';
 import { createTimeEffects, readTimeEffectsRequests } from './timeEffects.js';
 
@@ -1526,7 +1527,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // picture is unchanged (bloom, Nocturne and particles all stay); the cap only stops the loop
       // from presenting frames it cannot finish. A Manual preset or any explicit frame cap wins.
       _frameCapArgs.cap = normalizeFrameCap(video.frameCap)
-        || autoPresentationCapFor(state.render && state.render.gpu, video);
+        || autoPresentationCapFor(state.render && state.render.gpu, video, state.render);
       _frameCapArgs.vsync = video.vsync !== false;
       _frameCapArgs.displayHz = displayHz;
       const effectiveCap = restoring
@@ -1557,6 +1558,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           renderedSnapshot = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt);
           presentationMs = diagnostics.lastPresentMs;
           completedPresentation = true;
+          // One line every ten live seconds for the launch log (the owner's real frame rate).
+          noteFrameRatePresent(state, now);
         } catch (error) {
           presentationError = error;
           presentationMs = diagnostics.lastPresentMs || 0;
@@ -1677,6 +1680,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         if (perf && typeof perf.recordFrameCallback === 'function') {
           perf.recordFrameCallback(measureNow() - callbackStart);
+        }
+        // Main-thread time of a callback that presented: the Auto cadence governor's input
+        // (cap-skipped callbacks are short and would hide the real frame cost).
+        if (completedPresentation && state && state.render) {
+          state.render.lastPresentedCallbackMs = measureNow() - callbackStart;
         }
         // E10 frame truth: one preallocated ring row per presented frame. Every probe
         // read here already exists; a missing one records as 0 and never aborts the loop.

@@ -383,6 +383,8 @@ import {
 import {
   detectGpu,
   createAdaptiveResolution,
+  createGpuBudgetResolution,
+  createAutoPresentationGovernor,
   shouldSuggestIntegratedPreset,
   applyAutoQualityPreset,
   INTEGRATED_PRESET_SUGGESTION,
@@ -10585,6 +10587,8 @@ export const render = {
               const glRestored = this.renderer.getContext && this.renderer.getContext();
               this._gpuTimers = createGpuTimers(glRestored);
               state.render.gpuTimers = this._gpuTimers;
+              // The resolution governor re-arms on the new timer set (it latches per set).
+              this._gpuDrsArmed = undefined;
             } catch (timerErr) {
               if (typeof console !== 'undefined') console.warn('[render] gpu timers recreate failed:', timerErr);
               this._gpuTimers = null;
@@ -11865,6 +11869,15 @@ export const render = {
       const pr = renderer.getPixelRatio() || 1;
       console.log('[render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d',
         gpu.renderer, gpu.tier, pr.toFixed(2), drawSize.x | 0, drawSize.y | 0);
+      // The two extensions the smooth-frame work leans on, stated once per boot on every backend:
+      // without parallel compile a first-use link blocks; without timer queries the GPU budget
+      // governor has no signal and the frame-time controller runs instead.
+      const parallelCompile = !!(renderer.extensions && renderer.extensions.has
+        && renderer.extensions.has('KHR_parallel_shader_compile'));
+      const timerCap = this._gpuTimers && this._gpuTimers.getCapability ? this._gpuTimers.getCapability() : null;
+      state.render.gpuCapabilities = { parallelCompile, timerQueries: !!(timerCap && timerCap.available) };
+      console.log('[render] parallel shader compile: %s | GPU timer queries: %s',
+        parallelCompile ? 'yes' : 'NO', timerCap && timerCap.available ? 'yes' : 'NO');
     } catch (_) { /* logging is best-effort */ }
 
     // Per-tier floor for how far dynamic resolution may back off. Software rendering will never be
@@ -11880,6 +11893,27 @@ export const render = {
       initialScale: gpu.software === true ? dynFloor : 1,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
     });
+    // GPU frame budget (adaptiveQuality.js createGpuBudgetResolution): where async GPU timer queries
+    // exist, the scene's internal resolution follows measured GPU time directly (about 12 ms a
+    // frame, 0.5-1.0, CAS upscale), whatever the main thread is doing. The frame-time controller
+    // above stays as the fallback for contexts with no timer extension. ?rfx=-gpuBudget turns the
+    // governor off. A scale change only moves the post chain's content sub-rect: no reallocation.
+    this._gpuBudget = createGpuBudgetResolution({
+      floor: dynFloor,
+      apply: (s) => {
+        this.state.render.dynResScale = s;
+        if (this._adaptive) this._adaptive.syncScale(s);
+        if (this.bloom && typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(s);
+        else this._applySize();
+      },
+    });
+    this._gpuBudgetSeq = -1;
+    this._gpuBudgetDriving = false;
+    // Auto presentation cadence for integrated GPUs: 60 while the frame holds it, a steady 30 when
+    // it cannot (adaptiveQuality.js createAutoPresentationGovernor; read by presentationRunner).
+    this._presentGovernor = createAutoPresentationGovernor();
+    this._presentGovernorAt = 0;
+    state.render.autoPresentCap = this._presentGovernor.getCap();
     this._adaptiveSample = { eligible: false, targetMs: 1000 / 60 };
     // Auto quality adapts internal resolution on every GPU class; manual settings keep their
     // explicit dynamicResolution choice. The preallocated bloom pool changes content scale without
@@ -27150,6 +27184,9 @@ export const render = {
     const eligible = adaptiveResolutionEnabledForSettings(gpu, vd) === true
       && adaptiveResolutionEligibleForState(this.state, globalThis.document?.visibilityState)
       && this._sectorPostTransition?.active !== true
+      // While the GPU budget governor is holding GPU time with resolution, shedding bloom depth
+      // and post effects on frame time would only take picture away: that time is the main thread's.
+      && this._gpuBudgetDriving !== true
       && !this._contextLost;
     const sequence = presentationFrame?.sequence ?? present;
     const lifecycle = presentationFrame?.lifecycleGeneration;
@@ -33458,11 +33495,64 @@ export const render = {
           }
         }
       }
-      tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
+      // GPU budget governor: drives the scale from the same-frame GPU total whenever the timer
+      // queries are delivering; otherwise the frame-time controller below runs as before.
+      const budget = this._gpuBudget;
+      let budgetDriving = false;
+      let gpuFrameMs = null;
+      if (budget && frameCostFixOn('gpuBudget')) {
+        const drsOn = this._adaptive.isEnabled?.() === true;
+        if (budget.isEnabled() !== drsOn) {
+          budget.syncScale(adaptiveState.render.dynResScale);
+          budget.setEnabled(drsOn);
+        }
+        if (drsOn && eligible && this._gpuDrsArmed === true && this._gpuDrsStaleFrames < 30
+            && typeof gpuTimers.frameTotalSeq === 'function') {
+          const seq = gpuTimers.frameTotalSeq();
+          if (seq > 0) {
+            budgetDriving = true;
+            gpuFrameMs = gpuTimers.frameTotalMs();
+            const fresh = seq !== this._gpuBudgetSeq;
+            this._gpuBudgetSeq = seq;
+            const sampleMs = fresh ? gpuFrameMs : null;
+            const sampleFrameId = gpuTimers.frameTotalFrameId();
+            const nextFrameId = ((this._perfFrameOrigin && this._perfFrameOrigin.renderFrameId) || 0) + 1;
+            tryPresentedCall(this, 'gpu-budget', () => {
+              budget.setFloor(this._adaptiveFloorForRelief());
+              budget.syncScale(adaptiveState.render.dynResScale);
+              budget.update(frameDt, sampleMs, sampleFrameId, nextFrameId);
+            });
+          }
+        }
+      }
+      else if (budget && budget.isEnabled()) {
+        // Switched off live (measurement harness): hand native resolution back to the old controller.
+        budget.setEnabled(false);
+      }
+      this._gpuBudgetDriving = budgetDriving;
+      if (!budgetDriving) {
+        tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
+      }
+      // Presentation cadence: one sample per presented live frame (main-thread time of the last
+      // presented callback, GPU time once resolution has nothing left to give).
+      const presentGovernor = this._presentGovernor;
+      if (presentGovernor && adaptiveState.render) {
+        const nowMs = performance.now();
+        const sinceS = this._presentGovernorAt > 0 ? (nowMs - this._presentGovernorAt) / 1000 : 0;
+        this._presentGovernorAt = nowMs;
+        if (eligible) {
+          const atFloor = budgetDriving ? budget.atFloor()
+            : !(Number(adaptiveState.render.dynResScale) > (this._adaptiveFloorForRelief() + 1e-3));
+          presentGovernor.update(sinceS, Number(adaptiveState.render.lastPresentedCallbackMs),
+            gpuFrameMs, atFloor);
+        }
+        adaptiveState.render.autoPresentCap = presentGovernor.getCap();
+      }
       if (adaptiveState.render) {
-        adaptiveState.render.dynResBound = this._adaptive.getBound?.().bound;
+        adaptiveState.render.dynResBound = budgetDriving ? 'gpu-budget' : this._adaptive.getBound?.().bound;
         adaptiveState.render.dynResEligible = eligible;
         adaptiveState.render.dynResEnabled = this._adaptive.isEnabled?.() ?? null;
+        adaptiveState.render.gpuFrameMs = gpuFrameMs;
       }
     }
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies

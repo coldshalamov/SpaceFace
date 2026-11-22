@@ -116,6 +116,13 @@ export function createGpuTimers(gl) {
   let status = cap.available ? 'available' : 'unavailable';
   let lastDisjoint = false;
   let lastInvalidation = null;
+  // Same-frame GPU total for the resolution governor: every pass of one render frame summed,
+  // published when the first pass of a later frame completes (queries complete in issue order).
+  let frameAccumId = 0;
+  let frameAccumMs = 0;
+  let frameTotalMsValue = 0;
+  let frameTotalId = 0;
+  let frameTotalSeqValue = 0;
   let activeSlot = null;
   let nextQueryId = 1;
   let submissionsPaused = false;
@@ -285,6 +292,17 @@ export function createGpuTimers(gl) {
       const ms = ns / 1e6;
       const ring = rings[slot.label] || (rings[slot.label] = createRing());
       sampleRing(ring, ms);
+      const frameId = slot.origin ? slot.origin.renderFrameId : 0;
+      if (frameId !== frameAccumId) {
+        if (frameAccumId > 0 && frameAccumMs > 0) {
+          frameTotalMsValue = frameAccumMs;
+          frameTotalId = frameAccumId;
+          frameTotalSeqValue++;
+        }
+        frameAccumId = frameId;
+        frameAccumMs = 0;
+      }
+      frameAccumMs += ms;
       pushTerminal(slot, 'completed', { elapsedMs: ms });
       if (!lastInvalidation) status = 'ok';
     }
@@ -381,6 +399,8 @@ export function createGpuTimers(gl) {
       slot.query = null;
       pushTerminal(slot, 'reset', { reason: 'unresolved query at capture reset' });
     }
+    frameAccumId = 0;
+    frameAccumMs = 0;
   }
 
   /**
@@ -529,6 +549,11 @@ export function createGpuTimers(gl) {
   function completedCount() {
     return queryCounts.completed;
   }
+  // Allocation-free reads of the newest complete frame: the sum of every timed pass of one render
+  // frame, that frame's id, and a counter that moves once per published frame.
+  function frameTotalMs() { return frameTotalMsValue; }
+  function frameTotalFrameId() { return frameTotalId; }
+  function frameTotalSeq() { return frameTotalSeqValue; }
 
   return {
     begin,
@@ -536,6 +561,9 @@ export function createGpuTimers(gl) {
     poll,
     lastMs,
     completedCount,
+    frameTotalMs,
+    frameTotalFrameId,
+    frameTotalSeq,
     reset,
     abandon,
     dispose,
