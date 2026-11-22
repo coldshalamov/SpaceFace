@@ -4,6 +4,9 @@
 //   npm run check:smooth                 five routes, about 75 s each plus load
 //   npm run check:smooth -- --quick      Swarm round 6 in his room only, about 45 s plus load
 //   npm run check:smooth -- --routes=swarm-r6,adventure-helios [--seconds=60] [--cap=60] [--trace]
+//   npm run check:smooth -- --routes=swarm-r2 --profile     also a per-function main-thread profile,
+//       live world only, in ms per presented frame (<evidence>/profile.txt). A profiled run carries
+//       the sampler's own cost: it finds owners, it is not a scoreboard row (history marks it).
 //
 // Each route runs scripts/probe-smooth-electron.mjs under the machine's game lock: his one-file sim
 // worker, a 1920x1080 drawing buffer, his saved video settings, a window that never takes focus,
@@ -58,7 +61,8 @@ for (const name of names) {
   const out = join(SMOOTH, `${STAMP}-${name}`);
   console.log(`[smooth] ${route.label}: ${SECONDS} s of dense input (waiting for the game lock)...`);
   const run = spawnSync(process.execPath, ['scripts/fleet/game-lock.mjs', 'run', '--', process.execPath, 'scripts/probe-smooth-electron.mjs',
-    ...route.args, `--seconds=${SECONDS}`, `--cap=${CAP}`, ...(argv.trace === true ? ['--trace'] : []), `--out=${out}`],
+    ...route.args, `--seconds=${SECONDS}`, `--cap=${CAP}`, ...(argv.trace === true ? ['--trace'] : []),
+    ...(argv.profile ? [`--profile${argv.profile === true ? '' : `=${argv.profile}`}`] : []), ...(argv['profile-interval'] ? [`--profile-interval=${argv['profile-interval']}`] : []), `--out=${out}`],
   { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', // The wait for the game lock can be long (first come, first served); it is not part of the run budget.
     timeout: (SECONDS + 900) * 1000 + 4 * 3600 * 1000 });
   const text = `${run.stdout || ''}${run.stderr || ''}`;
@@ -177,9 +181,20 @@ for (const r of results) {
   if (lt) lines.push(`   longest main-thread task ${lt.ms} ms: ${lt.owner.kind}: ${String(lt.owner.what).slice(0, 120)}`);
   if (rep.timerHoles && rep.timerHoles.length) lines.push(`   a 50 ms timer on the main thread went unserved (timers starve while frames and worker messages run): ${rep.timerHoles.slice(0, 4).map((h) => `${h.ms} ms at ${(h.at / 1000).toFixed(1)} s`).join(', ')}`);
 }
+for (const r of results) {
+  const pr = r.report && r.report.profile; if (!pr) continue;
+  lines.push('');
+  if (!pr.ok) { lines.push(`PROFILE (${r.label}): not made: ${pr.why}`); continue; }
+  const b = pr.buckets; const n = (v) => String(v.toFixed(2)).padStart(8);
+  lines.push(`PROFILE (${r.label}), main thread, live world only, ms per presented frame: all ${b.all.frames} frames | ${b.made30.frames} that made 30 | ${b.three.frames} at 3 refreshes | ${b.long.frames} at 4+`);
+  lines.push(`   busy ${b.all.busyMs} | ${b.made30.busyMs} | ${b.three.busyMs} | ${b.long.busyMs}    idle ${b.all.idleMs} | ${b.made30.idleMs} | ${b.three.idleMs} | ${b.long.idleMs}    full tables: ${join(r.out, 'profile.txt').replace(ROOT, '').replace(/\\/g, '/')}`);
+  lines.push(`   ${'all'.padStart(8)}${'made30'.padStart(8)}${'3'.padStart(8)}${'4+'.padStart(8)}  by entry point, then self time by file, then by function`);
+  for (const row of [...pr.entryPoints.slice(0, 6), ...pr.byFile.slice(0, 10), ...pr.self.slice(0, 22)]) lines.push(`   ${n(row.all)}${n(row.made30)}${n(row.three)}${n(row.long)}  ${row.fn}`);
+}
 lines.push('');
 lines.push(`MILESTONE 1 (locked 30): ${results.some((r) => !r.m1) || m1Failed ? 'NOT MET' : 'MET'}    SHIP BAR (60): ${failed ? 'NOT MET' : 'MET'}`);
 if (results.some((r) => r.report && r.report.machine && r.report.machine.otherLoadFraction > 0.4)) lines.push('LOADED: other work was using more than 40 % of the machine during at least one route. Worst case, not a verdict.');
+if (results.some((r) => r.report && r.report.profiled)) lines.push('PROFILED RUN: the sampler was on. Use it to find owners; judge the bars on a run without --profile.');
 lines.push(failed ? 'IS IT SMOOTH: NO' : 'IS IT SMOOTH: YES');
 console.log(lines.join('\n'));
 try { writeFileSync(join(SMOOTH, `${STAMP}-summary.txt`), lines.join('\n')); } catch (_) { /* evidence only */ }
@@ -195,7 +210,7 @@ for (const r of results) {
       world: rep.world.speed, worst10s: rep.world.worst10s, stepP50: rep.worker.stepP50, stepP95: rep.worker.stepP95,
       longestTask: rep.longTasks.longestMs, tasksOver50: rep.longTasks.over50, freezeLog: rep.freeze.logEntries, dataAge: rep.freeze.dataAgeMaxMs,
       gpu: rep.gpu && rep.gpu.passes ? Object.fromEntries(Object.entries(rep.gpu.passes).map(([k, v]) => [k, v.avg])) : null,
-      ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loaded: rep.machine.otherLoadFraction > 0.4, loadS: rep.loadS });
+      profiled: rep.profiled === true, ships: rep.fight.shipsMedian, calls: rep.fight.drawCallsMedian, otherLoad: rep.machine.otherLoadFraction, loaded: rep.machine.otherLoadFraction > 0.4, loadS: rep.loadS });
   }
   appendFileSync(join(SMOOTH, 'history.jsonl'), `${JSON.stringify(row)}\n`);
 }

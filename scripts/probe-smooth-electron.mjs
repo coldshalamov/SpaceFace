@@ -23,7 +23,13 @@
 //
 //   node scripts/fleet/game-lock.mjs run -- node scripts/probe-smooth-electron.mjs \
 //     --route=swarm|adventure [--round=6] [--arena=helios_core] [--hull=ship_hornet] \
-//     [--sector=sector_helios_prime] [--seed=4242] [--seconds=60] [--cap=60] [--trace] --out=<dir>
+//     [--sector=sector_helios_prime] [--seed=4242] [--seconds=60] [--cap=60] [--trace] [--profile] --out=<dir>
+//
+// --profile: a sampling CPU profile of the main thread across the judged window, counted only while
+// the world is live, written as <out>/profile.txt (+ profile.json, main.cpuprofile): self, by-file,
+// inclusive and entry-point tables in ms per presented frame, for all frames and split by display
+// refreshes taken (scripts/lib/smoothProfile.mjs). The sampler costs a few percent, so a profiled
+// run is for finding owners, not for the scoreboard.
 //
 // Writes <out>/report.json (+ frames.json, loaf.json, samples.json). npm run check:smooth judges.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -47,6 +53,8 @@ const SECONDS = Number(argv.seconds || 60);
 const LIFT_CAP = Number(argv.cap ?? 60);
 const SEGMENT_S = Number(argv.segment || 10);
 const TRACE = argv.trace === true;
+const PROFILE = argv.profile === true || (typeof argv.profile === 'string' && argv.profile !== '0');
+const PROFILE_INTERVAL_US = Math.max(100, Number(argv['profile-interval'] || 500));
 const WANT = { w: 1536, h: 864, dpr: 1.25 };
 const TRANSITION_S = 3;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/smooth/adhoc-${ROUTE}`));
@@ -58,6 +66,7 @@ const { loadPlaywright } = await import('./lib/load-playwright.mjs');
 const { installCspSafePlaywrightPolling } = await import('./lib/playwrightCspPolling.mjs');
 const { installFirstLightPromptHandler } = await import('./player-truth/routes.mjs');
 const { createHand, PRESS_THROUGH_SCREENS } = await import('./lib/playHand.mjs');
+const { summarizeSmoothProfile, formatSmoothProfile, SMOOTH_PROFILE_SYNC_FN } = await import('./lib/smoothProfile.mjs');
 const { _electron: electron } = await loadPlaywright();
 
 // His video settings, read-only. Only the settings profile is copied; saves are never touched.
@@ -146,7 +155,7 @@ try {
   // ---- recorder: installed BEFORE the run is launched ----
   await page.evaluate(() => {
     const N = 90000;
-    const R = { n: 0, t: new Float64Array(N), pres: new Uint32Array(N), flags: new Uint8Array(N), cb: new Float32Array(N),
+    const R = { n: 0, t: new Float64Array(N), tn: new Float64Array(N), scr: new Uint8Array(N), pres: new Uint32Array(N), flags: new Uint8Array(N), cb: new Float32Array(N),
       rnd: new Float32Array(N), ui: new Float32Array(N), sim: new Float64Array(N), seg: 0, callsMax: 0, loaf: [], tasks: [], samples: [], on: true, sample: {}, loafOk: null };
     window.__sm = R;
     const S = window.SF.state;
@@ -157,6 +166,8 @@ try {
       const i = R.n;
       if (i < N) {
         R.t[i] = now;
+        R.tn[i] = performance.now(); // when this callback really ran (the profile is attributed on this clock)
+        R.scr[i] = Math.min(255, (S.ui && S.ui.screenStack && S.ui.screenStack.length) || 0);
         R.pres[i] = (S.render && S.render.worldSubmittedFrames) | 0;
         R.flags[i] = (live() ? 1 : 0) | (R.seg << 1);
         R.sim[i] = S.simTime || 0;
@@ -312,6 +323,26 @@ try {
   };
   await page.evaluate(() => { window.__SF_POSE_AGE__ && window.__SF_POSE_AGE__.reset(); try { window.SF.state.perfRuntime.setHitchAttributionEnabled(true); } catch (_) {} });
   const freezeBefore = await page.evaluate(() => (window.__SF_FREEZE_LOG__ || []).length).catch(() => 0);
+  // ---- optional main-thread profile: started before the judged window (the start itself can hitch) ----
+  const profSyncs = [];
+  const profSync = async () => {
+    // A named 12 ms spin at a known performance.now(): the samples that land in it tie the profiler's clock to the page's.
+    // Through the debugger protocol directly: it is not subject to the page's script policy.
+    const r = await cdp.send('Runtime.evaluate', { returnByValue: true, expression: `(function ${SMOOTH_PROFILE_SYNC_FN}() { const a = performance.now(); let x = 0; while (performance.now() - a < 12) x += Math.sqrt(x + 1); return { a, b: performance.now() }; })()` }).catch(() => null);
+    if (r && r.result && r.result.value) profSyncs.push(r.result.value);
+  };
+  let profiling = false;
+  if (PROFILE) {
+    try {
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.setSamplingInterval', { interval: PROFILE_INTERVAL_US });
+      await cdp.send('Profiler.start');
+      profiling = true;
+      await sleep(400);
+      await profSync();
+      await sleep(200);
+    } catch (e) { report.notes.push(`profile could not start: ${String(e).slice(0, 120)}`); }
+  }
   const cpu0 = cpuTimes();
   await app.evaluate(({ app: a }) => a.getAppMetrics().length).catch(() => 0);
   const judgedEnd = Date.now() + SECONDS * 1000;
@@ -378,6 +409,13 @@ try {
   }
   await setSeg(0, ownerCap);
   await playing;
+  let cpuProfile = null;
+  if (profiling) {
+    await profSync();
+    await sleep(100);
+    try { cpuProfile = (await cdp.send('Profiler.stop')).profile; } catch (e) { report.notes.push(`profile could not stop: ${String(e).slice(0, 120)}`); }
+    await cdp.send('Profiler.disable').catch(() => {});
+  }
   const cpu1 = cpuTimes();
   const appCpu = await app.evaluate(({ app: a }) => a.getAppMetrics().map((m) => ({ type: m.type, cpu: m.cpu && m.cpu.percentCPUUsage }))).catch(() => []);
   report.relaunches = relaunches;
@@ -409,7 +447,7 @@ try {
   const raw = await page.evaluate(() => {
     const R = window.__sm; R.on = false; clearInterval(R.timer);
     const n = R.n;
-    return { n, t: Array.from(R.t.subarray(0, n)), pres: Array.from(R.pres.subarray(0, n)), flags: Array.from(R.flags.subarray(0, n)),
+    return { n, t: Array.from(R.t.subarray(0, n)), tn: Array.from(R.tn.subarray(0, n)), scr: Array.from(R.scr.subarray(0, n)), pres: Array.from(R.pres.subarray(0, n)), flags: Array.from(R.flags.subarray(0, n)),
       cb: Array.from(R.cb.subarray(0, n)).map((x) => +x.toFixed(2)), rnd: Array.from(R.rnd.subarray(0, n)).map((x) => +x.toFixed(2)),
       ui: Array.from(R.ui.subarray(0, n)).map((x) => +x.toFixed(2)), sim: Array.from(R.sim.subarray(0, n)), callsMax: R.callsMax, loaf: R.loaf, loafOk: R.loafOk, tasks: R.tasks, samples: R.samples };
   });
@@ -473,7 +511,7 @@ try {
         // interval would count the whole pause. Use the longest gap between animation callbacks instead.
         let ms = t[i] - t[prev];
         if (edge) { ms = 0; for (let k = prev + 1; k <= i; k++) ms = Math.max(ms, t[k] - t[k - 1]); }
-        frames.push({ at: +t[prev].toFixed(1), ms: +ms.toFixed(2), mode: seg === 2 ? 'lift' : 'asis', kind, cb: raw.cb[i] });
+        frames.push({ at: +t[prev].toFixed(1), ms: +ms.toFixed(2), mode: seg === 2 ? 'lift' : 'asis', kind, cb: raw.cb[i], i0: prev, i1: i });
       }
     }
     prev = i;
@@ -617,6 +655,23 @@ try {
     report.gameFrameRateLog = readFileSync(join(launch.userDataDir, 'frame-rate-log.jsonl'), 'utf8').split(/\r?\n/).filter(Boolean)
       .map((l) => JSON.parse(l)).filter((r) => r.fps != null).map((r) => ({ fps: r.fps, p50: r.p50, p95: r.p95, worst: r.worst, world: r.world, cap: r.cap }));
   } catch (_) { report.gameFrameRateLog = null; }
+  if (PROFILE) {
+    // ---- per-function tables, live world only, ms per presented frame ----
+    let prof = { ok: false, why: 'the profiler returned nothing' };
+    if (cpuProfile) {
+      try {
+        prof = summarizeSmoothProfile({ profile: cpuProfile, syncs: profSyncs, ticks: { tn: raw.tn, flags, scr: raw.scr }, liveAt, frames,
+          refreshMs: 1000 / (Number(report.config.displayHz) || 60) });
+      } catch (e) { prof = { ok: false, why: String((e && e.stack) || e).slice(0, 300) }; }
+      try { writeFileSync(join(OUT, 'main.cpuprofile'), JSON.stringify(cpuProfile)); } catch (_) { /* evidence only */ }
+    }
+    const title = `${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}, ${SECONDS} s, sampled every ${PROFILE_INTERVAL_US} us`;
+    writeFileSync(join(OUT, 'profile.json'), JSON.stringify(prof, null, 1));
+    writeFileSync(join(OUT, 'profile.txt'), formatSmoothProfile(prof, { title }));
+    report.profiled = true;
+    report.profile = prof.ok ? { ok: true, file: 'profile.txt', clock: prof.clock, buckets: prof.buckets, entryPoints: prof.entryPoints.slice(0, 8), byFile: prof.byFile.slice(0, 14), self: prof.self.slice(0, 30) } : { ok: false, why: prof.why };
+    console.log(prof.ok ? `smooth probe profile: ${prof.buckets.all.frames} live frames, busy ${prof.buckets.all.busyMs} of ${prof.buckets.all.intervalMs} ms per frame (idle ${prof.buckets.all.idleMs}); tables in ${join(OUT, 'profile.txt')}` : `smooth probe profile NOT MADE: ${prof.why}`);
+  }
   writeFileSync(join(OUT, 'frames.json'), JSON.stringify(frames));
   writeFileSync(join(OUT, 'loaf.json'), JSON.stringify({ ok: raw.loafOk, frames: raw.loaf, tasks: raw.tasks }));
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(raw.samples));
