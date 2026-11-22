@@ -8,7 +8,14 @@ import {
 } from '../src/render/adaptiveQuality.js';
 
 // A GPU whose frame costs fixed + pixel * scale^2 ms, measured two frames late.
-function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2, costAt = null } = {}) {
+// Deterministic noise: single GPU frames at one scale spread about a third either way in the game.
+function noiseSource(seed) {
+  let x = seed >>> 0;
+  return () => { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; return x / 4294967296; };
+}
+
+function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2, costAt = null, noise = 0, seed = 7 } = {}) {
+  const rand = noiseSource(seed);
   const applied = [];
   const governor = createGpuBudgetResolution({ floor, apply: (s) => applied.push(s) });
   const cost = { fixed, pixel };
@@ -21,7 +28,7 @@ function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2, costAt
     const ready = pipeline.length > latency ? pipeline.shift() : null;
     governor.update(1 / fps, ready ? ready.ms : null, ready ? ready.frame : 0, frame);
     const s = governor.getScale();
-    pipeline.push({ frame, ms: costAt ? costAt(s) : cost.fixed + cost.pixel * s * s });
+    pipeline.push({ frame, ms: (costAt ? costAt(s) : cost.fixed + cost.pixel * s * s) * (1 + noise * (rand() * 2 - 1)) });
     return s;
   };
   const run = (seconds) => { const n = Math.round(seconds * fps); for (let i = 0; i < n; i++) step(); };
@@ -29,8 +36,10 @@ function rig({ fixed = 1, pixel = 40, fps = 30, floor = 0.5, latency = 2, costAt
   return { governor, applied, cost, run, gpuMs, clock: () => clock };
 }
 
-test('an over-budget GPU frame reaches the budget within half a second, in one or two decisions', () => {
+test('an over-budget GPU frame loses most of its excess within half a second and is on budget within one', () => {
   const r = rig({ fixed: 1, pixel: 40, fps: 30 });
+  r.run(0.5);
+  assert.ok(r.gpuMs() <= 41 * 0.45, `GPU ${r.gpuMs().toFixed(1)} ms after 0.5 s at scale ${r.governor.getScale()}`);
   r.run(0.5);
   assert.ok(r.gpuMs() <= GPU_FRAME_BUDGET_MS * 1.08, `GPU ${r.gpuMs().toFixed(1)} ms at scale ${r.governor.getScale()}`);
   assert.ok(r.applied.length <= 2, `changes ${r.applied.join(',')}`);
@@ -88,10 +97,11 @@ test('samples rendered at the old scale are ignored after a change', () => {
   const g = createGpuBudgetResolution({ floor: 0.5, apply: (s) => applied.push(s) });
   g.update(0.033, 30, 1, 3);
   g.update(0.033, 30, 2, 4);
-  g.update(0.033, 30, 3, 5); // third sample: drop, valid from frame 5
+  g.update(0.033, 30, 3, 5);
+  g.update(0.033, 30, 4, 6); // fourth sample (over budget for 0.13 s): drop, valid from frame 6
   assert.equal(applied.length, 1);
   const scale = g.getScale();
-  for (let i = 0; i < 6; i++) g.update(0.033, 30, 4, 6 + i); // stale frame-4 totals keep arriving
+  for (let i = 0; i < 20; i++) g.update(0.033, 30, 5, 7 + i); // stale frame-5 totals keep arriving
   assert.equal(g.getScale(), scale, 'stale samples did not drive a second drop');
 });
 
@@ -106,6 +116,33 @@ test('a pass the main thread feeds slowly stops the descent where pixels stop pa
   for (let i = 0; i < 600; i++) { r.run(0.1); frames++; if (r.governor.atFloor()) atFloorFrames++; }
   assert.ok(r.governor.getScale() >= 0.6 && r.governor.getScale() < 1, `scale ${r.governor.getScale()}`);
   assert.ok(atFloorFrames / frames < 0.1, `share of time at the floor: ${(atFloorFrames / frames).toFixed(2)}`);
+});
+
+test('noisy GPU samples: reaches the right scale, stays there, and never parks at native', () => {
+  for (const seed of [3, 11, 29, 71]) {
+    const r = rig({ fixed: 1, pixel: 34, fps: 20, noise: 0.35, seed });
+    r.run(4);
+    const settled = r.applied.length;
+    assert.ok(r.governor.getScale() <= 0.7, `seed ${seed}: scale after 4 s ${r.governor.getScale()}`);
+    let nativeFrames = 0;
+    let frames = 0;
+    for (let i = 0; i < 1200; i++) { r.run(0.1); frames++; if (r.governor.getScale() > 0.95) nativeFrames++; }
+    assert.ok(nativeFrames / frames < 0.02, `seed ${seed}: share of two minutes at native ${(nativeFrames / frames).toFixed(2)}`);
+    assert.ok(r.applied.length - settled <= 24, `seed ${seed}: changes in two minutes ${r.applied.length - settled}`);
+    assert.ok(r.governor.getScale() >= 0.5 && r.governor.getScale() <= 0.7, `seed ${seed}: final scale ${r.governor.getScale()}`);
+  }
+});
+
+test('noisy samples on a pass the main thread feeds slowly: not the floor, not native', () => {
+  for (const seed of [5, 13, 47]) {
+    const r = rig({ fps: 10, latency: 1, noise: 0.35, seed, costAt: (s) => Math.max(35, 66 * s * s) });
+    let floorFrames = 0;
+    let nativeFrames = 0;
+    let frames = 0;
+    for (let i = 0; i < 1200; i++) { r.run(0.1); frames++; if (r.governor.atFloor()) floorFrames++; if (r.governor.getScale() > 0.95) nativeFrames++; }
+    assert.ok(floorFrames / frames < 0.15, `seed ${seed}: share at the floor ${(floorFrames / frames).toFixed(2)}`);
+    assert.ok(nativeFrames / frames < 0.1, `seed ${seed}: share at native ${(nativeFrames / frames).toFixed(2)}`);
+  }
 });
 
 function runCadence(governor, seconds, { workMs, gpuMs = null, atFloor = false, gpuBound = false }) {

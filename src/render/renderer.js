@@ -27194,7 +27194,7 @@ export const render = {
       && this._sectorPostTransition?.active !== true
       // While the GPU budget governor is holding GPU time with resolution, shedding bloom depth
       // and post effects on frame time would only take picture away: that time is the main thread's.
-      && this._gpuBudgetDriving !== true
+      && !(this._gpuBudgetDriving === true && frameCostFixOn('hitchGate'))
       && !this._contextLost;
     const sequence = presentationFrame?.sequence ?? present;
     const lifecycle = presentationFrame?.lifecycleGeneration;

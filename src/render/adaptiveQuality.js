@@ -805,7 +805,7 @@ export function createAdaptiveResolution(opts = {}) {
 //   under budget  -> climb one band at a time, only after the predicted cost of the higher band
 //                    has stayed under the budget with margin for upHoldS
 //   deadband      -> between those two nothing moves, so the picture does not pump
-//   no benefit    -> if a drop bought under 40 % of the GPU time the pixel model promised (below
+//   no benefit    -> if a drop bought under half of the GPU time the pixel model promised (below
 //                    that scale the frame is bound by geometry or draw submission, not pixels), the
 //                    previous scale is restored and further drops wait out a doubling hold. The
 //                    timer measures the span of the pass on the GPU, so a pass the main thread
@@ -827,14 +827,27 @@ export function createGpuBudgetResolution(opts = {}) {
   const smoothS = clamp(Number(opts.smoothS) || 0.15, 0.02, 2);
   const upHoldS = clamp(Number(opts.upHoldS) || 2, 0.2, 60);
   const minSamples = Math.max(1, Math.floor(Number(opts.minSamples) || 3));
+  const judgeSamples = Math.max(minSamples, Math.floor(Number(opts.judgeSamples) || 4));
+  const confirmSamples = Math.max(judgeSamples, Math.floor(Number(opts.confirmSamples) || 12));
+  const chainSamples = Math.max(minSamples, Math.floor(Number(opts.chainSamples) || 8));
+  const quickShare = clamp(Number(opts.quickShare) || 0.2, 0.01, 0.9);
+  const overHoldS = clamp(Number(opts.overHoldS) || 0.12, 0, 5);
   const maxDropStep = clamp(Number(opts.maxDropStep) || 0.6, 0.3, 0.95);
-  const benefitShare = clamp(Number(opts.benefitShare) || 0.4, 0.05, 0.9);
+  const benefitShare = clamp(Number(opts.benefitShare) || 0.5, 0.05, 0.9);
   const noBenefitHoldS = clamp(Number(opts.noBenefitHoldS) || 15, 1, 600);
   const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
 
   let enabled = true;
   let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
+  // The decision value is the median of the last five samples at the current scale: single GPU
+  // frames at one scale spread by a third either way (measured in the Foundry), and a mean follows
+  // every spike. (The name is historical: it was an exponential mean.)
   let emaMs = null;
+  const SAMPLE_WINDOW = 5;
+  const sampleWindow = new Float64Array(SAMPLE_WINDOW);
+  const sortScratch = new Float64Array(SAMPLE_WINDOW);
+  let overS = 0;            // how long the median has been over budget
+  let sumMs = 0;            // sum of the samples at the current scale (for the confirming mean)
   let samples = 0;          // valid samples since the last scale change
   let sinceSampleS = 0;
   let validFromFrameId = 0; // samples from frames before this were rendered at another scale
@@ -856,6 +869,8 @@ export function createGpuBudgetResolution(opts = {}) {
     scale = s;
     samples = 0;
     emaMs = null;
+    overS = 0;
+    sumMs = 0;
     upTimer = 0;
     validFromFrameId = Number.isFinite(frameId) ? frameId : 0;
     lastReason = reason;
@@ -863,10 +878,21 @@ export function createGpuBudgetResolution(opts = {}) {
     return true;
   }
 
+  function medianOfWindow() {
+    const n = Math.min(samples, SAMPLE_WINDOW);
+    for (let i = 0; i < n; i++) {
+      const v = sampleWindow[i];
+      let j = i - 1;
+      while (j >= 0 && sortScratch[j] > v) { sortScratch[j + 1] = sortScratch[j]; j--; }
+      sortScratch[j + 1] = v;
+    }
+    return n % 2 === 1 ? sortScratch[(n - 1) >> 1] : (sortScratch[n / 2 - 1] + sortScratch[n / 2]) / 2;
+  }
+
   function predicted(atScale) {
-    // cost(s) = fixed + pixel * s^2, with the learned fixed part.
-    const pixelMs = Math.max(0, emaMs - fixedMs);
-    return fixedMs + pixelMs * (atScale * atScale) / (scale * scale);
+    // Pure pixel model: it overstates the cost of a higher scale when part of the frame is not
+    // pixel work, so a climb is only ever late, never early.
+    return emaMs * (atScale * atScale) / (scale * scale);
   }
 
   return {
@@ -885,7 +911,7 @@ export function createGpuBudgetResolution(opts = {}) {
     syncScale(value) {
       const next = Number(value);
       const s = clamp(Number.isFinite(next) ? next : 1, floor, 1);
-      if (Math.abs(s - scale) > 1e-3) { scale = s; samples = 0; emaMs = null; pending = null; }
+      if (Math.abs(s - scale) > 1e-3) { scale = s; samples = 0; sumMs = 0; overS = 0; emaMs = null; pending = null; }
     },
     setFloor(nextFloor) {
       floor = clamp(Number(nextFloor) || floor, 0.2, 1);
@@ -909,44 +935,52 @@ export function createGpuBudgetResolution(opts = {}) {
       if (gpuMs == null || !Number.isFinite(ms) || ms <= 0) return scale;
       if (Number.isFinite(sampleFrameId) && sampleFrameId < validFromFrameId) return scale; // old scale
       const sampleMs = Math.min(ms, maxAcceptedMs);
-      const alpha = emaMs == null ? 1 : 1 - Math.exp(-Math.max(sinceSampleS, 0.004) / smoothS);
-      emaMs = emaMs == null ? sampleMs : emaMs + (sampleMs - emaMs) * alpha;
+      const sampleGapS = Math.max(sinceSampleS, 0.004);
+      sampleWindow[samples % SAMPLE_WINDOW] = sampleMs;
       sinceSampleS = 0;
       samples++;
+      emaMs = medianOfWindow();
+      sumMs += sampleMs;
+      overS = emaMs > budgetMs * downRatio ? overS + sampleGapS : 0;
       if (samples < minSamples) return scale;
 
       if (pending) {
-        // Judge the last drop against what the pixel model promised.
+        // A drop is judged twice against what the pixel count promised. Quickly (a median of four
+        // samples) to catch a drop that bought nothing at all; then on the mean of twelve, which
+        // sees through the frame-to-frame spread, to catch one that bought under half. Either way
+        // the previous scale comes back and further drops wait out a doubling hold: below that
+        // scale the frame is bound by something other than pixels (geometry, draw submission), so
+        // a lower scale would only cost sharpness.
+        if (samples < judgeSamples) return scale;
         const promised = pending.fromMs * (1 - (scale * scale) / (pending.fromScale * pending.fromScale));
-        const got = pending.fromMs - emaMs;
-        const denom = pending.fromScale * pending.fromScale - scale * scale;
-        if (denom > 1e-6) {
-          const pixelAtOne = Math.max(0, got / denom);
-          fixedMs = clamp(emaMs - pixelAtOne * scale * scale, 0, emaMs);
-        }
-        const fromScale = pending.fromScale;
-        const fromMs = pending.fromMs;
-        pending = null;
-        // Only a drop big enough to stand out of the measurement noise is judged (15 % promised).
-        if (promised > fromMs * 0.15 && got < promised * benefitShare) {
-          // The GPU time did not move as pixels would: below this scale the frame is bound by
-          // something else (geometry, draw submission), so the lower scale only costs sharpness.
+        const judged = promised > pending.fromMs * 0.2; // smaller steps drown in the noise
+        const confirm = samples >= confirmSamples;
+        const got = pending.fromMs - (confirm ? sumMs / samples : emaMs);
+        if (judged && got < promised * (confirm ? benefitShare : quickShare)) {
+          const fromScale = pending.fromScale;
+          pending = null;
           dropHoldS = noBenefitHoldS * (2 ** Math.min(noBenefitStreak, 3));
           noBenefitStreak++;
           set(fromScale, currentFrameId, 'no-benefit');
           return scale;
         }
-        noBenefitStreak = 0;
+        if (confirm || !judged) {
+          pending = null;
+          if (judged) noBenefitStreak = 0;
+        }
       }
 
-      if (emaMs > budgetMs * downRatio && scale > floor + 1e-3 && dropHoldS <= 0) {
+      // A second drop waits for a steadier reading of the scale the first one landed on.
+      const settledForDrop = lastReason !== 'over-budget' || samples >= chainSamples;
+      if (emaMs > budgetMs * downRatio && overS >= overHoldS && settledForDrop
+          && scale > floor + 1e-3 && dropHoldS <= 0) {
         // Pure pixel model (cost ~ scale^2), at most a 0.6x step per decision: each step is then
         // large enough to be judged, and the descent stops at the scale where pixels stop being
         // the cost instead of running to the floor for nothing.
         const wanted = Math.max(scale * Math.sqrt((budgetMs * aimRatio) / emaMs), scale * maxDropStep);
         const next = clamp(Math.min(snapDown(wanted), scale - band), floor, 1);
         const fromScale = scale;
-        const fromMs = emaMs;
+        const fromMs = samples >= chainSamples ? sumMs / samples : emaMs;
         if (sinceUpS < 3) upHold = Math.min(upHold * 2, 30); // the climb was premature
         if (set(next, currentFrameId, 'over-budget')) {
           pendingBox.fromScale = fromScale;
