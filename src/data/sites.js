@@ -47,8 +47,12 @@ export const NEIGHBOUR_RULES = Object.freeze({
   liftPerTrade: 0.1,
   maxTrades: 3,
   plainShare: 0.5,            // a neighbour with no machine that reads rock (a fort, a relay)
-  // Contacts at which one machine counts as fully seated.
-  fullSeat: Object.freeze({ extractor: 6, gasTap: 2 }),
+  // What one machine needs around it to count as fully seated. An extractor is graded on VEIN:
+  // five vein cells is a full seat and plain rock counts a fifth, because any extractor in a
+  // one-cell tunnel touches six cells of plain rock for free (so does the stock layout a claim
+  // from the belt view drops in). Reaching a vein and seating against it without digging it out
+  // is the skill the grade is for.
+  fullSeat: Object.freeze({ extractorVein: 5, plainRockWorth: 0.2, gasTap: 2 }),
   grades: Object.freeze([
     Object.freeze({ id: 'A', min: 0.8 }),
     Object.freeze({ id: 'B', min: 0.6 }),

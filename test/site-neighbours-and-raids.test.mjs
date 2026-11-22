@@ -63,8 +63,10 @@ const stockOf = (h, site) => {
 
 test('seating: a machine is graded on the share of useful rock it touches', () => {
   const ext = { id: 'm1', defId: 'sm_extractor', mode: null };
-  assert.equal(machineSeating(ext, { solid: 6, ores: {} }), 1, 'six contacts is a full seat');
-  assert.equal(machineSeating(ext, { solid: 3, ores: {} }), 0.5);
+  assert.equal(machineSeating(ext, { solid: 7, matrix: 2, ores: { cmdty_ore_iron: 5 } }), 1, 'five vein cells is a full seat');
+  assert.equal(machineSeating(ext, { solid: 6, matrix: 4, basalt: 2, ores: {} }), 0.24,
+    'six cells of plain rock, which any tunnel gives for free, is a poor seat');
+  assert.equal(machineSeating(ext, { solid: 6, matrix: 4, ores: { cmdty_ore_iron: 2 } }), 0.56);
   assert.equal(machineSeating({ id: 'c', defId: 'sm_massline_core' }, { solid: 8, ores: {} }), null, 'a Core reads no rock');
   const smelt = { id: 'm2', defId: 'sm_refinery', mode: 'sr_smelt_iron' };
   assert.equal(machineSeating(smelt, { solid: 4, ores: { cmdty_ore_iron: 4 } }), 1, 'four matched faces');
@@ -73,7 +75,7 @@ test('seating: a machine is graded on the share of useful rock it touches', () =
   assert.equal(machineSeating(smelt, { solid: 5, ores: {} }), 0, 'rock the recipe cannot use is no seat');
   assert.deepEqual([1, 0.8, 0.79, 0.6, 0.35, 0.1].map(seatingGrade), ['A', 'A', 'B', 'B', 'C', 'D']);
   const whole = siteSeating({ machines: [ext, smelt, { id: 'c', defId: 'sm_massline_core' }] },
-    { m1: { solid: 6, ores: {} }, m2: { solid: 2, ores: { cmdty_ore_iron: 2 } } });
+    { m1: { solid: 5, ores: { cmdty_ore_copper: 5 } }, m2: { solid: 2, ores: { cmdty_ore_iron: 2 } } });
   assert.equal(whole.counted, 2);
   assert.equal(whole.share, 0.75);
   assert.equal(whole.grade, 'B');
@@ -149,13 +151,13 @@ test('a mixed pair of rocks out-produces the same two rocks unlinked', () => {
   const shown = (r) => r.h.sys.sectorNetworkProjection('sec_core_alpha').sites.find((s) => s.siteId === r.mine.id).report;
   const perMin = (rep) => rep.makes.reduce((s, m) => s + m.perMin, 0);
   assert.ok(perMin(shown(alone)) > 0);
-  assert.ok(Math.abs(perMin(shown(joined)) / perMin(shown(alone)) - joined.lift.mult) < 0.01,
+  assert.ok(Math.abs(perMin(shown(joined)) / perMin(shown(alone)) - joined.lift.mult) < 0.004,
     `card shows ${perMin(shown(joined))} linked against ${perMin(shown(alone))} alone`);
   assert.equal(alone.lift.mult, 1);
-  assert.ok(joined.lift.mult > 1.02, `the smelter next door lifts the mine (${joined.lift.mult})`);
+  assert.ok(joined.lift.mult >= 1.01, `the smelter next door lifts the mine (${joined.lift.mult})`);
   assert.ok(alone.made > 0, 'the mine makes something on its own');
   const ratio = joined.made / alone.made;
-  assert.ok(Math.abs(ratio - joined.lift.mult) < 0.03,
+  assert.ok(Math.abs(ratio - joined.lift.mult) < 0.004,
     `linked output ${joined.made} / alone ${alone.made} = ${ratio.toFixed(3)}, rule says ${joined.lift.mult}`);
   // The lift is derived, never saved: a reload reads the same number from the same rocks.
   const data = JSON.parse(JSON.stringify(joined.h.sys.serialize()));

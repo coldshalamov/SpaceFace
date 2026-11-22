@@ -5,8 +5,9 @@
 // this file existed reads the same as one made after.
 //
 // Two questions, the ones the belt view and the rover's way out both ask:
-//   1. How well was this rock dug?  `siteSeating`: the share of the rock each machine could be
-//      touching that it does touch. Careless digging lowers it for good; packed fill buys it back.
+//   1. How well was this rock dug?  `siteSeating`: how close each machine's seat is to a perfect
+//      one (an extractor against vein on every side, a smelter against its ore or ice, a gas tap
+//      on two pockets). Digging a vein out lowers it for good; packed fill only buys back plain rock.
 //   2. What do its neighbours do for it?  `neighbourLift`: every rock of ANOTHER trade joined to
 //      this one by a cargo or power line speeds its machines, by more the better that neighbour
 //      was dug. A belt of five identical extractor rocks earns nothing here; a mixed, well-dug
@@ -24,7 +25,9 @@ export function machineSeating(machine, profile) {
   const def = machine && SITE_MACHINE_BY_ID.get(machine.defId);
   if (!def || !profile) return null;
   if (def.id === 'sm_extractor') {
-    return clamp01((profile.solid || 0) / NEIGHBOUR_RULES.fullSeat.extractor);
+    const veins = Object.values(profile.ores || {}).reduce((n, q) => n + (Number(q) || 0), 0);
+    const plain = (profile.matrix || 0) + (profile.basalt || 0);
+    return round3(clamp01((veins + plain * NEIGHBOUR_RULES.fullSeat.plainRockWorth) / NEIGHBOUR_RULES.fullSeat.extractorVein));
   }
   if (def.id === 'sm_gas_tap') {
     const gas = (profile.gas || 0) + (profile.vented || 0) * CONTACT_YIELD.ventedGasFraction;

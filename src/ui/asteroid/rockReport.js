@@ -47,7 +47,7 @@ export function rockReportLines(report, { nameOf = () => 'a rock', raidPressure 
 
   const seat = report.seating || {};
   add('dug', 'Dug', seat.grade
-    ? `grade ${seat.grade}. Its machines touch ${pct(seat.share)} of the rock they could`
+    ? `grade ${seat.grade}. Its machines are seated ${pct(seat.share)} as well as they could be${seat.grade === 'A' ? '' : ': vein beside an extractor, its ore or ice beside a smelter'}`
     : 'No machine here reads the rock yet', seat.grade === 'A' ? 'good' : (seat.grade === 'D' ? 'warn' : ''));
 
   const lift = report.lift || { rows: [], linked: 0 };

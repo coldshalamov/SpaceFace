@@ -269,7 +269,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     rigBtn.addEventListener('click', () => activateTool('commission'));
     const refBtn = el('button', 'fb-action-btn', 'Claim with a smelter');
     refBtn.type = 'button';
-    refBtn.addEventListener('click', () => runSiteOp(sys.commissionFieldAsteroid(vm.selectedAsteroid.id, 'refinery'), 'Claimed, with a smelter running.'));
+    refBtn.addEventListener('click', () => runSiteOp(sys.commissionFieldAsteroid(vm.selectedAsteroid.id, 'refinery'), 'Claimed with a smelter; the rover can dig it a better seat.'));
     const bpBtn = el('button', 'fb-action-btn', 'Dig a starter pocket');
     bpBtn.type = 'button';
     bpBtn.addEventListener('click', () => runSiteOp(sys.applySiteBlueprint(vm.selectedAsteroid.id, 'bp_starter_pocket', null, null, 0), 'Starter pocket dug.'));

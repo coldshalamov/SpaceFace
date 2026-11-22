@@ -585,7 +585,7 @@ export function createFieldBuildMode(ctx) {
         setTool('commission');
         return;
       }
-      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Claimed and mining.');
+      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Claimed and mining; the rover can dig it a better seat.');
       return;
     }
     if (toolId === 'turret' || toolId === 'sensor' || toolId === 'solar_sail') {
