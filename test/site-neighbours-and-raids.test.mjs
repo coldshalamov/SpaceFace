@@ -144,6 +144,13 @@ test('a mixed pair of rocks out-produces the same two rocks unlinked', () => {
   };
   const alone = run(false);
   const joined = run(true);
+  // The number a player READS moves too: the rock card's "Makes" comes from the supply ledger,
+  // and the ledger carries the same multiplier the tick applies.
+  const shown = (r) => r.h.sys.sectorNetworkProjection('sec_core_alpha').sites.find((s) => s.siteId === r.mine.id).report;
+  const perMin = (rep) => rep.makes.reduce((s, m) => s + m.perMin, 0);
+  assert.ok(perMin(shown(alone)) > 0);
+  assert.ok(Math.abs(perMin(shown(joined)) / perMin(shown(alone)) - joined.lift.mult) < 0.01,
+    `card shows ${perMin(shown(joined))} linked against ${perMin(shown(alone))} alone`);
   assert.equal(alone.lift.mult, 1);
   assert.ok(joined.lift.mult > 1.02, `the smelter next door lifts the mine (${joined.lift.mult})`);
   assert.ok(alone.made > 0, 'the mine makes something on its own');

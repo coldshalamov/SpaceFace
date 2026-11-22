@@ -418,12 +418,12 @@ export const SITE_BALANCE = {
 };
 
 export const SITE_SPECIALIZATIONS = Object.freeze({
-  fabrication: Object.freeze({ id: 'fabrication', label: 'Fabrication Works', tag: 'FAB', tone: 'gold' }),
-  smelting: Object.freeze({ id: 'smelting', label: 'Refining Foundry', tag: 'SMELT', tone: 'amber' }),
-  powerhouse: Object.freeze({ id: 'powerhouse', label: 'Power Relay Hub', tag: 'PWR', tone: 'cyan' }),
-  bastion: Object.freeze({ id: 'bastion', label: 'Fortified Bastion', tag: 'DEF', tone: 'mint' }),
-  extraction: Object.freeze({ id: 'extraction', label: 'Extraction Rig', tag: 'EXT', tone: 'rust' }),
-  outpost: Object.freeze({ id: 'outpost', label: 'Anchored Claim', tag: 'OUTPOST', tone: 'muted' }),
+  fabrication: Object.freeze({ id: 'fabrication', label: 'Fabricating', tag: 'FAB', tone: 'gold' }),
+  smelting: Object.freeze({ id: 'smelting', label: 'Smelting', tag: 'SMELT', tone: 'amber' }),
+  powerhouse: Object.freeze({ id: 'powerhouse', label: 'Power', tag: 'PWR', tone: 'cyan' }),
+  bastion: Object.freeze({ id: 'bastion', label: 'Guard post', tag: 'DEF', tone: 'mint' }),
+  extraction: Object.freeze({ id: 'extraction', label: 'Mining', tag: 'EXT', tone: 'rust' }),
+  outpost: Object.freeze({ id: 'outpost', label: 'Bare claim', tag: 'OUTPOST', tone: 'muted' }),
 });
 
 /**

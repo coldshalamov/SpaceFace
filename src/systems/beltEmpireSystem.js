@@ -442,6 +442,11 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
 
       let siteGenMw = 0;
       let siteDrawMw = 0;
+      // Good neighbours speed every machine in the rock (NEIGHBOUR_RULES). The ledger carries the
+      // same multiplier the tick applies, so the rock card, the supply tab and the balancer all
+      // show the rate the rock really runs at once a line is drawn.
+      const neighbourMult = typeof sitesSys.neighbourLift === 'function'
+        ? (Number(sitesSys.neighbourLift(site).mult) || 1) : 1;
       const produces = new Set();
       const consumes = new Set();
       const prodByGood = {};
@@ -491,9 +496,9 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
         if (rec) {
           const procMult = Math.max(0.25, cap.processMultiplier || 1);
           const inputSum = Math.max(1, Object.values(rec.inputs || {}).reduce((s, q) => s + q, 0));
-          const batchesPerMin = rec.inputRatePerMin
+          const batchesPerMin = (rec.inputRatePerMin
             ? ((rec.inputRatePerMin / inputSum) * procMult * ratio)
-            : ((60 / Math.max(1, rec.buildS || 60)) * procMult * ratio);
+            : ((60 / Math.max(1, rec.buildS || 60)) * procMult * ratio)) * neighbourMult;
           for (const [inGood, qty] of Object.entries(rec.inputs || {})) {
             const cRate = qty * batchesPerMin;
             const row = ensureGoodRow(inGood);
@@ -513,7 +518,7 @@ export function computeSectorSupplyMatrix(sitesSys, sectorId = null) {
         } else if (cap.outputsPerMin) {
           for (const [outGood, baseRate] of Object.entries(cap.outputsPerMin)) {
             if (!COMMODITY_BY_ID.has(outGood)) continue;
-            const pRate = baseRate * (1 + mods.extractorYieldMult) * ratio;
+            const pRate = baseRate * (1 + mods.extractorYieldMult) * ratio * neighbourMult;
             const row = ensureGoodRow(outGood);
             row.prodPerMin = round3(row.prodPerMin + pRate);
             prodByGood[outGood] = round3((prodByGood[outGood] || 0) + pRate);

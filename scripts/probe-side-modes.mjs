@@ -537,6 +537,19 @@ async function fillWork(page, shot) {
   if (first) { await page.mouse.click(first.x, first.y); await page.waitForTimeout(1200); }
   b.linkedCard = await cardText();
   await shot('05m-linked-rock-card');
+  // Hold for the raiders: two claims and nothing guarding them. They test the belt every three minutes.
+  b.raidSeen = await page.waitForFunction(() => /Raiders took/.test(window.SF.state.sites?.empire?.raidStatus?.lastMessage || ''),
+    null, { timeout: 230000 }).then(() => true).catch(() => false);
+  b.raidStatus = await page.evaluate(() => window.SF.state.sites?.empire?.raidStatus || null);
+  b.raidNews = await page.evaluate(() => {
+    const st = window.SF.state;
+    const hit = JSON.stringify([st.worldNews || null, st.news || null, st.ui?.worldNews || null]).match(/Raiders took[^"]*/);
+    return hit ? hit[0] : null;
+  });
+  b.topBar = await page.evaluate(() => [...document.querySelectorAll('.fb-crest-stat')].map((n) => (n.textContent || '').trim()).join(' | '));
+  if (first) { await page.mouse.click(first.x, first.y); await page.waitForTimeout(1200); }
+  b.raidedCard = (await cardText()).slice(0, 700);
+  await shot('05o-after-a-raid');
   await page.mouse.click(700, 760).catch(() => {});
   b.charterTab = await tab('charter');
   await page.waitForTimeout(800);

@@ -156,6 +156,17 @@ function constructionAccess(field, machines, start, excluded = -1) {
   return reachable;
 }
 
+const NEIGHBOUR_SEAT_CACHE = new Map();
+const listLen = (list) => (Array.isArray(list) ? list.length : 0);
+function seatingStamp(site) {
+  const falls = site.structure && Array.isArray(site.structure.falls) ? site.structure.falls.length : 0;
+  return [
+    site.boreSeed, site.asteroidId, listLen(site.cleared), listLen(site.drillRubble), listLen(site.drillFill),
+    listLen(site.drillVented), falls,
+    (Array.isArray(site.machines) ? site.machines : []).map((m) => `${m.defId}@${m.col},${m.row}:${m.mode || ''}`).join('|'),
+  ].join('#');
+}
+
 export const asteroidSiteReadMethods = {
   /** How well this rock was dug: the share of useful rock its machines touch. Pure read. */
   siteSeating(site) {
@@ -180,12 +191,21 @@ export const asteroidSiteReadMethods = {
   _seatingShareOf(other) {
     const rt = this._rt && this._rt.get(other.id);
     if (rt && rt.field && !rt.fieldDirty && !rt.geoDirty) return siteSeating(other, rt.geo).share;
+    // Rebuilding a rock costs about 2 ms and the rover board re-reads its claim on every change,
+    // so a neighbour's answer is kept until that neighbour's digging or machines change. This is
+    // the display side only: the sim's owner never comes through here.
+    const stamp = seatingStamp(other);
+    const kept = NEIGHBOUR_SEAT_CACHE.get(other.id);
+    if (kept && kept.stamp === stamp) return kept.share;
     const field = this._rockField(other);
     const geo = {};
     for (const m of Array.isArray(other.machines) ? other.machines : []) {
       geo[m.id] = contactProfile(field, m.col, m.row, COLS, ROWS);
     }
-    return siteSeating(other, geo).share;
+    const share = siteSeating(other, geo).share;
+    if (NEIGHBOUR_SEAT_CACHE.size >= 128) NEIGHBOUR_SEAT_CACHE.delete(NEIGHBOUR_SEAT_CACHE.keys().next().value);
+    NEIGHBOUR_SEAT_CACHE.set(other.id, { stamp, share });
+    return share;
   },
 
   /** The rock as this claim knows it: generated from the seed, then every saved list applied. */

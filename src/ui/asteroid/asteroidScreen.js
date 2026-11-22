@@ -3411,7 +3411,12 @@ export const asteroidScreen = {
         if (ctx.screenManager) ctx.screenManager.popScreen();
         // The rock's line rides the haul card. It is not also a flight notice: the flight glass
         // keeps prose off the cockpit by rule, and the target card names a claim there instead.
-        if (total > 0) showSummary(yields, parting);
+        // With nothing hauled the card still shows, once, whenever the rock's summary has changed
+        // since the pilot last read it: the work done inside is summed up at the door.
+        const seen = state.ui ? (state.ui.rockPartings || (state.ui.rockPartings = {})) : {};
+        const changed = !!parting && seen[currentSiteId] !== parting;
+        if (total > 0 || changed) showSummary(yields, parting);
+        if (parting && currentSiteId) seen[currentSiteId] = parting;
         if (state.ui) state.ui.lastRockParting = parting;
         setTimeout(() => {
           if (fade) {
@@ -3440,7 +3445,8 @@ export const asteroidScreen = {
       box.className = 'ast-summary-box';
       const t = document.createElement('div');
       t.className = 'title';
-      t.textContent = 'Extraction report';
+      const hauled = Object.values(yields || {}).some((q) => q > 0);
+      t.textContent = hauled ? 'Extraction report' : 'Your claim';
       box.appendChild(t);
       for (const [goodId, qty] of Object.entries(yields).filter(([, q]) => q > 0)) {
         const row = document.createElement('div');
@@ -3467,8 +3473,8 @@ export const asteroidScreen = {
       // The report's one verb is the kit's primary key. It mounts on #ui-root, outside
       // `.ast-screen`, so the old summary chrome does not paint it.
       closeBtn.className = 'fh-key fh-key--primary';
-      closeBtn.textContent = 'Close extraction report';
-      closeBtn.setAttribute('aria-label', 'Close extraction report');
+      closeBtn.textContent = hauled ? 'Close extraction report' : 'Back to the ship';
+      closeBtn.setAttribute('aria-label', hauled ? 'Close extraction report' : 'Close and return to the ship');
       closeBtn.style.alignSelf = 'center';
       closeBtn.style.minWidth = '10rem';
       const close = () => {
