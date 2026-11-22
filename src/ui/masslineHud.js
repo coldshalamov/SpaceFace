@@ -366,27 +366,35 @@ export function placeBracketWords(mark, hull, label, viewport, hudObstacles = []
 
 const EMPTY_FLIGHT_OBSTACLES = Object.freeze([]);
 const BRACKET_WORD_MEASUREMENTS = new WeakMap();
+const BRACKET_SHARED_SIZES = new Map();
 
 function bracketWordSize(element, text, viewport, lifted) {
   const portraitTouch = typeof document !== 'undefined'
     && document.documentElement?.dataset?.sfMobileFlight === '1' && viewport.h > viewport.w;
   const limit = Math.max(94, Math.min(viewport.w - 16, portraitTouch ? 160 : Infinity));
-  const key = `${text}\u0000${limit}\u0000${element?.className || ''}`;
+  const className = element?.className || '';
+  const key = `${text}\u0000${limit}\u0000${className}`;
+  const normKey = `${text.replace(/\d+/g, (m) => '0'.repeat(m.length))}\u0000${limit}\u0000${className}`;
+  const sharedKey = `${className}\u0000${limit}\u0000${normKey}`;
   const previous = element && BRACKET_WORD_MEASUREMENTS.get(element);
-  if (previous?.key === key) return previous.size;
+  if (previous?.lastKey === key) return previous.lastSize;
+  if (previous && previous.limit !== limit) {
+    previous.byNorm?.clear();
+    previous.limit = limit;
+  }
   const estimated = estimateCaptionWidth(text);
   if (element) {
     const bindingEnd = lifted ? text.indexOf(' · ') : -1;
     if (bindingEnd > 0 && (element.textContent !== text || !element.querySelector('kbd'))) {
-      const key = document.createElement('kbd');
-      key.textContent = text.slice(0, bindingEnd);
+      const kbd = document.createElement('kbd');
+      kbd.textContent = text.slice(0, bindingEnd);
       const separator = document.createElement('span');
       separator.className = 'ml2-visor-separator';
       separator.textContent = ' · ';
       const verb = document.createElement('span');
       verb.className = 'ml2-visor-verb';
       verb.textContent = text.slice(bindingEnd + 3);
-      element.replaceChildren(key, separator, verb);
+      element.replaceChildren(kbd, separator, verb);
     } else if (bindingEnd <= 0 && element.textContent !== text) element.textContent = text;
     setStyle(element, 'display', 'block');
     setStyle(element, 'boxSizing', 'border-box');
@@ -394,13 +402,40 @@ function bracketWordSize(element, text, viewport, lifted) {
     setStyle(element, 'whiteSpace', 'normal');
     setStyle(element, 'overflowWrap', 'anywhere');
   }
-  // A new string/orientation is measured once; moving the world mark never forces a DOM read.
-  const rect = element?.getBoundingClientRect?.();
+  const cachedByNorm = previous?.byNorm?.get(normKey) || (element ? BRACKET_SHARED_SIZES.get(sharedKey) : null);
+  if (cachedByNorm) {
+    if (element) {
+      let entry = previous;
+      if (!entry || !entry.byNorm) {
+        entry = { lastKey: key, lastSize: cachedByNorm, limit, byNorm: new Map() };
+      }
+      entry.byNorm.set(normKey, cachedByNorm);
+      entry.lastKey = key;
+      entry.lastSize = cachedByNorm;
+      entry.limit = limit;
+      BRACKET_WORD_MEASUREMENTS.set(element, entry);
+    }
+    return cachedByNorm;
+  }
+  // Estimate dimensions mathematically so target acquisition never forces a synchronous DOM layout read mid-frame.
   const size = {
-    w: rect?.width > 0 ? Math.min(limit, rect.width + 2) : Math.min(limit, estimated),
-    h: rect?.height > 0 ? rect.height + 2 : Math.max(30, Math.ceil(estimated / limit) * 16 + 14),
+    w: Math.min(limit, estimated),
+    h: Math.max(30, Math.ceil(estimated / limit) * 16 + 14),
   };
-  if (element) BRACKET_WORD_MEASUREMENTS.set(element, { key, size });
+  if (element) {
+    let entry = previous;
+    if (!entry || !entry.byNorm) {
+      entry = { lastKey: key, lastSize: size, limit, byNorm: new Map() };
+    }
+    entry.byNorm.set(normKey, size);
+    if (entry.byNorm.size > 64) entry.byNorm.delete(entry.byNorm.keys().next().value);
+    BRACKET_SHARED_SIZES.set(sharedKey, size);
+    if (BRACKET_SHARED_SIZES.size > 128) BRACKET_SHARED_SIZES.delete(BRACKET_SHARED_SIZES.keys().next().value);
+    entry.lastKey = key;
+    entry.lastSize = size;
+    entry.limit = limit;
+    BRACKET_WORD_MEASUREMENTS.set(element, entry);
+  }
   return size;
 }
 
@@ -427,16 +462,29 @@ function pointUnderHud(x, y, rects, pad = 16) {
   return false;
 }
 
+// Cached world-prompt elements: the dock alert and the expanded floor-pad quote are re-validated
+// live (isConnected plus the class/attribute the selector asks for) and re-resolved through their
+// stable mounts while absent — the two document queries ran on every line-strain preview tick.
+let alertsHostEl = null;
+let floorpadsHostEl = null;
+let promptDockEl = null;
+let promptPadEl = null;
+
 /** Shared world-prompt priority gate (HUD-2 Item 7): Dock > Floor-shop pad > Line latch.
  *  Never show two world prompts on screen at the same time. */
 function higherWorldPromptActive() {
-  if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return false;
-  const dock = document.querySelector('#alerts .sf-alert--dock');
-  if (dock && !dock.hidden && dock.isConnected !== false) {
-    const disp = dock.style?.display;
-    if (disp !== 'none') return true;
+  if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return false;
+  if (!(promptDockEl && promptDockEl.isConnected && promptDockEl.classList?.contains('sf-alert--dock'))) {
+    if (!alertsHostEl || !alertsHostEl.isConnected) alertsHostEl = document.getElementById('alerts') || null;
+    promptDockEl = alertsHostEl?.querySelector?.('.sf-alert--dock') || null;
   }
-  const pad = document.querySelector('#sf-floorpads .sf-fp[data-floor-quote]');
+  const dock = promptDockEl;
+  if (dock && !dock.hidden && dock.style?.display !== 'none') return true;
+  if (!(promptPadEl && promptPadEl.isConnected && promptPadEl.hasAttribute?.('data-floor-quote'))) {
+    if (!floorpadsHostEl || !floorpadsHostEl.isConnected) floorpadsHostEl = document.getElementById('sf-floorpads') || null;
+    promptPadEl = floorpadsHostEl?.querySelector?.('.sf-fp[data-floor-quote]') || null;
+  }
+  const pad = promptPadEl;
   if (pad && !pad.hidden && pad.style?.display !== 'none' && !pad.classList?.contains?.('sf-fp--far')) {
     return true;
   }

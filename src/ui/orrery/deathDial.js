@@ -176,17 +176,36 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
   const pointBlank = dirKey === 'CONTACT';
   let frame = 0;
   let drawn = false;
+  // The ResizeObserver below delivers the host's size and the caption's measured height after
+  // each layout, so a settled redraw performs zero layout reads (the old `host.clientWidth` +
+  // write-then-read `cap.offsetHeight` pair forced one per draw). The direct reads only remain
+  // for hosts with no observer (partial DOMs, tests) — and only when the applied width changed.
+  let hostW = 0;
+  let hostH = 0;
+  let hostMeasured = false;
+  let capH = 180;
+  let capWApplied = -1;
 
   function draw() {
     frame = 0;
-    const W = host.clientWidth || 0;
-    const H = host.clientHeight || 0;
+    if (ro) {
+      // The observer always fires once on observe(); wait for its entry rather than reading.
+      if (!hostMeasured) return;
+    } else {
+      hostW = host.clientWidth || 0;
+      hostH = host.clientHeight || 0;
+    }
+    const W = hostW;
+    const H = hostH;
     if (W < 260 || H < 300) return;
     // the caption always sits under the dial; the dial takes what is left, with room round it for
     // the compass words and the blade's tail
     const capW = Math.min(520, W);
-    cap.style.width = `${capW}px`;
-    const capH = cap.offsetHeight || 180;
+    if (capW !== capWApplied) {
+      cap.style.width = `${capW}px`;
+      capWApplied = capW;
+      if (!ro) capH = cap.offsetHeight || 180;
+    }
     const room = H - capH - 24;
     const Rc = Math.max(90, Math.min(290, W / 2 - 58, room / 2 - 58));
     const cx = W / 2;
@@ -323,8 +342,23 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
     if (typeof raf !== 'function') { draw(); return; }
     frame = raf(draw);
   };
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
-  if (ro) ro.observe(host);
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+    // Cache the measured boxes the browser just laid out. The caption's own width write makes
+    // its height arrive one entry later; the following draw then converges (all rise delays).
+    for (const entry of entries || []) {
+      const box = entry.borderBoxSize?.[0] || entry.contentRect;
+      const w = box?.inlineSize ?? box?.width ?? 0;
+      const h = box?.blockSize ?? box?.height ?? 0;
+      if (entry.target === host) {
+        if (w !== hostW || h !== hostH) { hostW = w; hostH = h; }
+        hostMeasured = true;
+      } else if (entry.target === cap && h > 0) {
+        capH = h;
+      }
+    }
+    schedule();
+  }) : null;
+  if (ro) { ro.observe(host); ro.observe(cap); }
   if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(schedule);
   schedule();
 

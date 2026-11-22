@@ -161,6 +161,24 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   let lastRepickX = null;
   let lastRepickY = null;
   let previewTextKey = '';
+  // The massline preview elements live under the persistent #sf-ml2 mount. Keep each found
+  // element while it stays connected — the document queries ran on every hovered-entity frame.
+  let ml2ThrowCueEl = null;
+  let ml2LatchCueEl = null;
+  function ml2ThrowCueElement() {
+    if (typeof document === 'undefined') return null;
+    if (ml2ThrowCueEl && ml2ThrowCueEl.isConnected
+        && ml2ThrowCueEl.getAttribute?.('data-throw-cue') === '1') return ml2ThrowCueEl;
+    ml2ThrowCueEl = document.querySelector?.('#sf-ml2 .ml2-preview[data-throw-cue="1"]') || null;
+    return ml2ThrowCueEl;
+  }
+  function ml2LatchCueElement() {
+    if (typeof document === 'undefined') return null;
+    if (ml2LatchCueEl && ml2LatchCueEl.isConnected
+        && ml2LatchCueEl.hasAttribute?.('data-target-id')) return ml2LatchCueEl;
+    ml2LatchCueEl = document.querySelector?.('#sf-ml2 .ml2-preview[data-target-id]') || null;
+    return ml2LatchCueEl;
+  }
 
   let tag = null;
   if (hudRoot && typeof document !== 'undefined') {
@@ -590,15 +608,14 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     // vitals here, and keep the ordinary hint if the cue is hidden by another HUD message.
     const tether = state.player && state.player.tether;
     const heldHere = isAdventureFlight(state) && tether?.active && tether.targetId === entity.id;
-    const throwCue = heldHere && typeof document !== 'undefined'
-      ? document.querySelector?.('#sf-ml2 .ml2-preview[data-throw-cue="1"]') : null;
+    const throwCue = heldHere ? ml2ThrowCueElement() : null;
     const heldThrowShown = throwCue && throwCue.style.display !== 'none'
       && throwCue.textContent === throwActionCue(state);
     const disabledRaider = entity.data?.onboardingRaid === true && entity.data?.ai?.passive === true;
     const desktopVisor = isAdventureFlight(state) && document.body?.dataset?.hudSkin === 'orrery'
       && document.documentElement?.dataset?.sfMobileFlight !== '1';
     const latchCue = (disabledRaider || desktopVisor) && !rawHint.sling
-      ? document.querySelector?.('#sf-ml2 .ml2-preview[data-target-id]') : null;
+      ? ml2LatchCueElement() : null;
     const duplicateLatch = latchCue && latchCue.style.display !== 'none' && latchCue.dataset.targetId === String(entity.id)
       && (latchCue.textContent === rawHint.text || (rawHint.lineText && latchCue.textContent === rawHint.lineText)
         || latchCue.classList.contains('ml2-visor-latch') && !rawHint.beam);

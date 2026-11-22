@@ -30,6 +30,7 @@
 // While the loading shell owns the screen every write is an invalidation nobody can see, so a step
 // stands down until it lifts — the task stays queued and resumes on the next frame.
 
+import { afterLayout } from '../hudAvoidRects.js';
 import { loadingShellVisible } from '../../localization/idleWarmPolicy.js';
 
 export const TYPE_GOVERNOR = Object.freeze({
@@ -212,7 +213,15 @@ export function installTypeGovernor(doc = globalThis.document) {
   };
   const pump = () => {
     stats.queueVisible = visible.length; stats.queueHidden = hidden.length;
-    if (visible.length && !frame) frame = win.requestAnimationFrame(() => { frame = 0; run(visible, cfg.visibleBudgetMs); pump(); });
+    // The measure reads computed styles. Inside the animation-frame callback that made the browser
+    // restyle the whole page on the spot (about 10 ms a slice while a screen opened over a fight);
+    // after the frame's own style and layout pass the same reads are already computed.
+    if (visible.length && !frame) {
+      let ran = false;
+      const slice = () => { if (ran) return; ran = true; frame = 0; run(visible, cfg.visibleBudgetMs); pump(); };
+      // A window that is not rendering never reaches the post-layout slot: the timer covers it.
+      frame = win.requestAnimationFrame(() => { if (!afterLayout(doc, slice)) slice(); else win.setTimeout(slice, 300); });
+    }
     if (!visible.length && hidden.length && !idle) {
       // No forced idle timeout: the prewarm backlog must wait for a genuinely idle slice. A
       // timed-out rIC still fires on a busy main thread, which put every queued measure back on

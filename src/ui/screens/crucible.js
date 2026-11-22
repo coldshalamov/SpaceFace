@@ -1588,9 +1588,12 @@ export const crucibleScreen = {
             ? `${face} is locked — ${earn} to open it.`
             : `${face} is locked.`;
           // The refusal reads in the body too: one horizontal shake, then it is over.
+          // Re-adding on the next animation frame restarts it without a synchronous layout
+          // read (`void offsetWidth`) inside the click handler.
           card.classList.remove('is-denied');
-          void card.offsetWidth;
-          card.classList.add('is-denied');
+          const redenyCard = () => { if (card.isConnected !== false) card.classList.add('is-denied'); };
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(redenyCard);
+          else setTimeout(redenyCard, 16);
           cue('deny');
           return;
         }
@@ -1657,9 +1660,11 @@ export const crucibleScreen = {
           if (hullLocked) {
             hullSentence.dataset.kind = 'earn';
             hullSentence.textContent = `${choice.name} is earned, not picked — ${choice.earnText || 'a Swarm run proves it first.'}`;
+            // The shake restarts on the next animation frame — no synchronous layout read.
             button.classList.remove('is-denied');
-            void button.offsetWidth;
-            button.classList.add('is-denied');
+            const redenyButton = () => { if (button.isConnected !== false) button.classList.add('is-denied'); };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(redenyButton);
+            else setTimeout(redenyButton, 16);
             cue('deny');
             return;
           }
