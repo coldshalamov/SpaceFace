@@ -27,7 +27,7 @@ import {
 } from '../presentation/causalVfxGrammar.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
 import { installWorldFeelSeams } from './worldFeelSeams.js';
-import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
+import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallForRun, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -1046,6 +1046,12 @@ export function payoffCaption(event, payload) {
   if (event === 'achievement:unlocked') return name ? `Achievement: ${name}.` : 'Achievement unlocked.';
   if (event === 'career:ladder:completed') return 'Rank attained.';
   return null;
+}
+
+/** Research is an Adventure payoff. A Swarm fight does not say it. Achievements still do. */
+export function payoffCaptionForRun(state, event, payload) {
+  if (event === 'tech:researched' && isSwarmGlass(state)) return null;
+  return payoffCaption(event, payload);
 }
 
 export const DEATH_CAPTION = 'Ship lost.';
@@ -3011,7 +3017,7 @@ export const audio = {
     // player is inside the radius; the sting is the wanted-alert, not a menu click, once.
     bus.on('distress:call', (p) => playAdmittedEarCue(
       this,
-      distressCallCue(p),
+      distressCallForRun(p, { swarm: isSwarmGlass(this.state) }),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     // mines:detonated had no listener. The blast is the ear; hull damage stays
@@ -3194,7 +3200,7 @@ export const audio = {
     // hull swell reads over whatever was playing.
     bus.on('tech:researched', (p) => {
       this.play('sfx_tech_researched', { gain: 0.6, captionOwned: true });
-      this._emitNamedCaption(payoffCaption('tech:researched', p));
+      this._emitNamedCaption(payoffCaptionForRun(this.state, 'tech:researched', p));
     });
     bus.on('ship:purchased', (p) => {
       this._duckMusic();

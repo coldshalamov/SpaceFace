@@ -1265,15 +1265,39 @@ function applyDistanceSpeech(el, distanceText) {
   return spoken;
 }
 
+/**
+ * Captions a Swarm fight already shows another way, or that narrate a moment the player
+ * just saw. Adventure (glass off) keeps every one. Admission is the presentation-caption
+ * handler below — one door, this list.
+ */
+export const SWARM_QUIET_CAPTIONS = Object.freeze([
+  'Ship lost.',
+  'Swing threat detected.',
+  'Line strain.',
+  'Target destroyed.',
+]);
+const SWARM_QUIET_CAPTION_SET = new Set(SWARM_QUIET_CAPTIONS);
+
+export function swarmDeniesCaption(state, text) {
+  return isSwarmGlass(state) && SWARM_QUIET_CAPTION_SET.has(String(text || '').trim());
+}
+
+/** Adventure death recovery. A Swarm death goes to Run Over and does not say this. */
+export function deathRecoverySubtitle(state) {
+  return isSwarmGlass(state) ? '' : 'Emergency recovery online…';
+}
+
 /** The first cargo:changed that fills an empty hold, once per profile. Does not open the panel. */
 export function noteFirstCargoLanding(state, { wasEmpty = false, cargo = null, bindingLabel = '' } = {}) {
   if (!state || !state.player || !wasEmpty || !cargoOccupied(cargo)) return '';
   const gameplay = state.settings && state.settings.gameplay;
   if (gameplay && gameplay.tutorialHints === false) return '';
   if (!shouldShowFirstUseHint(state.player.hints, 'firstCargoManifest')) return '';
+  // A Swarm fight has no cargo manifest. Refuse before the hint is spent so Adventure
+  // can still teach it later. Info receipts otherwise pass the glass as "system".
+  if (isSwarmGlass(state)) return '';
   const key = String(bindingLabel || '').trim();
   const line = key ? `Cargo aboard. Manifest ${key}.` : 'Cargo aboard. Open the manifest.';
-  // state is passed so a live Swarm round (no open-world notices) refuses it and the hint stays unspent.
   if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow(), state }).admit) return '';
   state.player.hints = markFirstUseHint(state.player.hints, 'firstCargoManifest');
   return line;
@@ -3391,8 +3415,14 @@ export function createHud(ctx, alerts) {
   deathBanner.setAttribute('role', 'alert');
   deathBanner.innerHTML = '<div class="sf-death__big">SHIP DESTROYED</div><div class="sf-death__sub">Emergency recovery online…</div>';
   root.appendChild(deathBanner);
+  const deathSub = deathBanner.querySelector('.sf-death__sub');
   let deathHideTimer = 0;
   on('player:death', () => {
+    const recovery = deathRecoverySubtitle(state);
+    if (deathSub) {
+      deathSub.textContent = recovery;
+      deathSub.hidden = !recovery;
+    }
     clearTimeout(deathHideTimer);
     deathBanner.hidden = false;
     deathBanner.removeAttribute('aria-hidden');
@@ -3464,6 +3494,8 @@ export function createHud(ctx, alerts) {
   const releaseCaptionFlush = () => { captionFlushedThisFrame = false; };
   on('presentation:caption', (p) => {
     if (!p || !p.text) return;
+    // Swarm deny-list: robotic narration and the death line that repeats SHIP DESTROYED.
+    if (swarmDeniesCaption(state, p.text)) return;
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
     externalCaptionsStale = true;

@@ -58,6 +58,15 @@ export function distressCallCue(payload) {
   };
 }
 
+/**
+ * Civilian mayday is Adventure radio. A Swarm fight does not play it or caption it.
+ * `swarm` is the live-run answer from isSwarmGlass — this module does not grow a second check.
+ */
+export function distressCallForRun(payload, { swarm = false } = {}) {
+  if (swarm) return null;
+  return distressCallCue(payload);
+}
+
 /** The mine's own detonation. Damage already stings the hull; this is the blast. */
 export function mineDetonationCue(payload) {
   if (!payload || payload.mineId == null) return null;
