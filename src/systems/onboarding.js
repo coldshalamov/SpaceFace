@@ -103,6 +103,20 @@ import {
 const FIRST_USE_HINT_DISPLAY_S = 7;
 // A queued tip older than this is dropped unseen: it is shown when relevant or not at all.
 const FIRST_USE_HINT_STALE_S = 20;
+
+// "Return fire." is for a gun pointed at the pilot: a rock that bumped the hull, a hazard cloud or
+// the pilot's own thrown mass is not a fight (the first throw used to end on "Return fire.").
+const RETURN_FIRE_ORIGINS = new Set(['weapon', 'bomb', 'missile']);
+const RETURN_FIRE_ATTACKERS = new Set(['ship', 'drone', 'turret']);
+export function damageIsHostileFire(state, p) {
+  if (!state || !p) return false;
+  const kind = p.origin && p.origin.kind;
+  if (kind && !RETURN_FIRE_ORIGINS.has(kind)) return false;
+  const id = p.attackerId != null ? p.attackerId : p.sourceId;
+  if (id == null || id === state.playerId) return false;
+  const attacker = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+  return !!(attacker && RETURN_FIRE_ATTACKERS.has(attacker.type));
+}
 import {
   RESCUE_GATE,
   RESCUE_ORDER,
@@ -732,6 +746,13 @@ export const onboarding = {
     // Objective completion hooks (real events verified against the systems).
     this._unsubs.push(bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
+      // A pilot who has docked knows how: the approach tip ("Dock.") is spent, and a tip held from
+      // the flight before this berth belongs to that flight (see _drainHintQueue).
+      if (this.state && this.state.player) {
+        if (!this.state.player.hints) this.state.player.hints = {};
+        this.state.player.hints.firstStation = true;
+      }
+      this._dockEpoch = (this._dockEpoch || 0) + 1;
       this._creditEarlyBerth();
       this._retireArrivedBerthCourse(p);
       this._onBeatEvent('dock:docked', p);
@@ -820,6 +841,7 @@ export const onboarding = {
     // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
     // profile, through the same first-use voice.
     this._unsubs.push(bus.on('dock:undocked', () => {
+      this._dockEpoch = (this._dockEpoch || 0) + 1;
       this._onUndockedFromChoice();
       this._maybeSpeakFitFelt();
     }));
@@ -853,11 +875,12 @@ export const onboarding = {
     // settings.gameplay.tutorialHints is not explicitly false, including players who
     // skipped the staged tutorial.
 
-    // First enemy encounter: triggered when the player first takes damage from a hostile.
+    // First enemy encounter: triggered when the player first takes fire from another hull.
     this._unsubs.push(bus.on('combat:damage', (p) => {
       if (!p) return;
       const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
       if (!hitPlayer) return;
+      if (!damageIsHostileFire(this.state, p)) return;
       this._showHint('firstCombat', firstUseLine('firstCombat'), {
         ...p,
         entityId: p.attackerId != null ? p.attackerId : p.sourceId,
@@ -1358,7 +1381,7 @@ export const onboarding = {
       || now < this._firstUseHintUntilS)) {
       if (!this._deferredHints) this._deferredHints = new Map();
       if (this._deferredHints.size < 12 && !this._deferredHints.has(key)) {
-        this._deferredHints.set(key, { text, payload, queuedAtS: now });
+        this._deferredHints.set(key, { text, payload, queuedAtS: now, dockEpoch: this._dockEpoch || 0 });
       }
       return;
     }
@@ -1383,6 +1406,10 @@ export const onboarding = {
       // A tip held past its moment is history, not help (a burst of stale tips used to drain at the
       // first dock). Drop it unseen, so it speaks the next time its situation comes round.
       if (Number.isFinite(rec.queuedAtS) && now - rec.queuedAtS > FIRST_USE_HINT_STALE_S) continue;
+      // Sim time stands still at a berth, so age alone cannot see a dock or an undock: a station tip
+      // ("Pick a service above") used to speak in open space after undocking, and a flight tip held
+      // over a dock spoke on the way out. Either side of a berth is a different moment; drop it.
+      if ((rec.dockEpoch || 0) !== (this._dockEpoch || 0)) continue;
       // Seen keys and hints whose settings/venue gate changed while queued are skipped;
       // the first hint that can speak claims the HUD window and leaves the tail queued.
       const before = this._firstUseHintUntilS;
@@ -2540,6 +2567,8 @@ export const onboarding = {
     if (ob.missingThree) ob.missingThree.active = false;
     if (ob.raid) ob.raid.active = false;
     if (ob.claimed) ob.claimed.active = false;
+    // Read by isOpeningSettling: the first job keeps the harbour calm for a few minutes of flight.
+    if (ob.finished !== true && ob.active === true) ob.finishedAt = this.state.simTime || 0;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
     // Captions live only for the tutorial's lifetime.

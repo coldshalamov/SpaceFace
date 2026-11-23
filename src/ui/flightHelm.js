@@ -89,8 +89,12 @@ export function resolveBerthOffer(state, { fight = false, dockInRange = false } 
   // neither is a timed run. A station the pilot picked is an answer to their own question and
   // stays offered.
   if (!offer.chosen && (fight || activeRaceMission(state))) return null;
-  // The opening asks one thing at a time: the loose rock first, then the berth.
-  if (!offer.chosen && openingHoldsBerthOffer(state)) return null;
+  // The opening asks one thing at a time: the loose rock first, then the berth. Only a station the
+  // pilot targeted themselves lifts the hold: the opening's 47-A contract also names Helios, and the
+  // rock's own marker sits near enough to the berth to match it, so "chosen" alone showed the chip
+  // from the first frame and the LATCHED banner printed over it.
+  if (openingHoldsBerthOffer(state)
+    && !(state.player && offer.station && state.player.targetId === offer.station.id)) return null;
   return offer;
 }
 

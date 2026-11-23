@@ -101,3 +101,29 @@ test('teardown discards contextual hints tied to the previous world', () => {
   assert.equal(owner._deferredHints, null);
   assert.equal(owner._firstUseHintUntilS, -Infinity);
 });
+
+test('a tip held across a berth is dropped: a station tip never speaks in open space after undocking', () => {
+  const { owner, state, shown, setRailOwnsVoice } = fixture();
+  // Docked: the rail owns the voice, so the berth tip waits.
+  owner._dockEpoch = 1;
+  owner._showHint('firstHub', "Pick a service above. Undock when you're ready.");
+  // Sim time stands still at the berth; the pilot undocks a few seconds of sim later.
+  owner._dockEpoch = 2;
+  state.simTime = 3;
+  setRailOwnsVoice(false);
+  owner._drainHintQueue();
+  assert.deepEqual(shown, [], 'the berth tip belongs to the berth, not to the flight after it');
+  assert.deepEqual(state.player.hints, {}, 'the dropped tip is not marked seen, so the next berth can say it');
+  owner._showHint('firstCombat', 'Return fire.');
+  assert.deepEqual(shown, ['firstCombat'], 'a tip raised in this flight still speaks');
+});
+
+test('Return fire is for hostile fire, not a rock that bumped the hull', async () => {
+  const { damageIsHostileFire } = await import('../src/systems/onboarding.js');
+  const state = { playerId: 1, entities: new Map([[2, { id: 2, type: 'asteroid' }], [3, { id: 3, type: 'ship' }]]) };
+  assert.equal(damageIsHostileFire(state, { attackerId: 2, origin: { kind: 'collision' } }), false, 'a rock collision is not a fight');
+  assert.equal(damageIsHostileFire(state, { attackerId: 3, origin: { kind: 'collision' } }), false, 'a hull bump is not a fight');
+  assert.equal(damageIsHostileFire(state, { attackerId: 1, origin: { kind: 'thrown_mass' } }), false, 'the pilot\'s own throw is not a fight');
+  assert.equal(damageIsHostileFire(state, { attackerId: 3, origin: { kind: 'weapon' } }), true, 'a ship firing on the pilot is');
+  assert.equal(damageIsHostileFire(state, { attackerId: 3 }), true, 'a ship hit with no origin recorded still counts');
+});
