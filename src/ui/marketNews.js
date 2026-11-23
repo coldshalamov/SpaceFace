@@ -22,6 +22,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
+import { stationLiveEvents } from '../economy/marketModel.js';
 import { deedsFor, markNoted, wasNoted } from '../systems/deedRecord.js';
 import { deedLine } from '../data/deedPhrases.js';
 import {

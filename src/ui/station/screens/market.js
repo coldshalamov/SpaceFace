@@ -2230,7 +2230,7 @@ export function createMarketScreen(ctx) {
   }
 
   // The hold arc under the total: what the hold looks like after this trade fills.
-  function syncHoldArc(state, def) {
+  function syncHoldArc(state, def, commodityId) {
     const total = tradeEl.querySelector('.so-trade-total');
     if (!total || typeof document === 'undefined' || typeof document.createElement !== 'function') return;
     const cargo = state && state.player && state.player.cargo;
@@ -2260,12 +2260,12 @@ export function createMarketScreen(ctx) {
       const shadow = (cargo.slots || []).map((s) => ({ ...s }));
       const amount = Math.max(0, Math.floor(Number(qty) || 0));
       if (mode === 'buy' && amount > 0) {
-        fillSlots(shadow, cargo.slotCount || 0, r.id, amount, unitsPerSlotFor(state, r.id));
+        fillSlots(shadow, cargo.slotCount || 0, commodityId, amount, unitsPerSlotFor(state, commodityId));
       } else if (amount > 0) {
         let left = amount;
         for (let i = shadow.length - 1; i >= 0 && left > 0; i--) {
           const s = shadow[i];
-          if (!s || s.commodityId !== r.id) continue;
+          if (!s || s.commodityId !== commodityId) continue;
           const take = Math.min(left, s.qty);
           s.qty -= take;
           left -= take;
@@ -2389,7 +2389,7 @@ export function createMarketScreen(ctx) {
       const noteEl = tradeEl.querySelector('.sx-trade__note');
       noteEl.textContent = note;
       noteEl.hidden = !note;
-      syncHoldArc(state, r.def);
+      syncHoldArc(state, r.def, r.id);
       for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
       syncKeys(tradeEl);
       return;
@@ -2417,7 +2417,7 @@ export function createMarketScreen(ctx) {
     lastVerbMode = mode;
     const tradeTotal = tradeEl.querySelector('[data-trade-total]');
     if (tradeTotal) setTradeTotal(tradeTotal, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
-    syncHoldArc(state, def);
+    syncHoldArc(state, def, r.id);
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
