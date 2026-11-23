@@ -43,7 +43,9 @@ test('a tracked objective in another sector names the route instead of a false l
 
   state.world.currentSectorId = HELIOS;
   const local = flightDestinationSurface(state, resolveFlightObjectiveCommand(state));
-  assert.match(local.line, /11\.4k u/);
+  // Tests follow df01ea648d: plain units everywhere — a distance reads "km", never the internal
+  // world-unit shorthand "11.4k u".
+  assert.match(local.line, /11\.4 km/);
   assert.doesNotMatch(local.line, /Plot route|Next jump/);
   assert.deepEqual(resolveRadarObjective(state).waypointPos, waypoint.pos);
 });
@@ -55,7 +57,8 @@ test('an explicitly selected local course owns the display without changing trac
   assert.equal(command.owner, 'navigation');
   const destination = flightDestinationSurface(state, command);
   assert.match(destination.line, /Ceres worksite/);
-  assert.match(destination.line, /100 u/);
+  // Tests follow df01ea648d: a hundred world units prints as plain metres.
+  assert.match(destination.line, /100 m/);
   assert.doesNotMatch(destination.line, /Helios Prime|47a/);
   assert.equal(state.ui.trackedMissionId, '47a');
   assert.equal(state.nav.waypoint, waypoint);
