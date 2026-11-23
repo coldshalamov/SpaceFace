@@ -268,7 +268,9 @@ function launchEquipmentSummary(ctx, rows, offers, starterOnly = false) {
   const borrow = offers.some(offer => offer.borrowAvailable);
   const canChooseStarter = offers.some(offer => offer.startingEquipment && offer.available);
   const credits = ctx.state.run.credits;
-  const currency = ctx.state.run.telemetry?.zeroScrapOpening ? 'Scrap' : 'cr';
+  // Swarm has one money word (04_SWARM.md §5): Scrap — on every Bench visit, not only the
+  // zero-Scrap opening. Non-swarm Rearm keeps credits.
+  const currency = ctx.state.run.ruleset === 'swarm' ? 'Scrap' : 'cr';
   const available = canChooseStarter ? 'One free starting gun available' : borrow ? 'Free gun loan available'
     : starterOnly ? '' : Number.isFinite(price) ? `Guns from ${price} Scrap` : 'No gun within budget';
   const armed = fitted.length ? fitted.join(', ') : mounts.length ? 'No guns fitted' : '';
@@ -397,7 +399,8 @@ function shortNum(value) {
   return String(Math.round(value * 10) / 10);
 }
 
-/** A spare's option label. Weapon spares carry their authored figures; anything else stays bare. */
+/** A spare's option label. Weapon spares carry their authored figures in the scales' own plain
+ * words — fire and impact — never dps/impulse jargon; anything else stays bare. */
 function spareOptionLabel(spare) {
   const base = spare.name || prettyDefId(spare.defId);
   const def = spare && WEAPON_DEF_BY_ID.get(spare.defId);
@@ -405,8 +408,8 @@ function spareOptionLabel(spare) {
   const impulse = finiteNum(def && def.impulsePerHit);
   if (dps == null && impulse == null) return base;
   const parts = [];
-  if (dps != null) parts.push(`${shortNum(dps)} dps`);
-  if (impulse != null) parts.push(`impulse ${shortNum(impulse)}`);
+  if (dps != null) parts.push(`fire ${shortNum(dps)}`);
+  if (impulse != null) parts.push(`impact ${shortNum(impulse)}`);
   return `${base} — ${parts.join(' · ')}`;
 }
 
@@ -437,10 +440,10 @@ export function weaponSpareContrast(spares) {
     if (entry.impulse > shove.impulse) shove = entry;
   }
   if (fire === shove) {
-    return `${fire.name} leads sustained fire (${shortNum(fire.dps)} dps) and shove (impulse ${shortNum(fire.impulse)}).`;
+    return `${fire.name} hits hardest (fire ${shortNum(fire.dps)}) and pushes hardest (impact ${shortNum(fire.impulse)}).`;
   }
-  return `Most sustained fire: ${fire.name} (${shortNum(fire.dps)} dps). `
-    + `Hardest shove: ${shove.name} (impulse ${shortNum(shove.impulse)}).`;
+  return `${fire.name} hits hardest (fire ${shortNum(fire.dps)}). `
+    + `${shove.name} pushes hardest (impact ${shortNum(shove.impulse)}).`;
 }
 
 /**
@@ -566,11 +569,19 @@ function offerCompare(offer, best = {}) {
   return root;
 }
 
-/** One refit row, in words. `options` is every spare that legally fits this hardpoint. */
+/** The plain slot word the row is headed with — 'Gun 2', 'Shield 3' — never 'Hardpoint N'. */
+const SLOT_LABEL_WORD = Object.freeze({
+  weapon: 'Gun', shield: 'Shield', engine: 'Engine', utility: 'Utility', thruster: 'Thruster',
+});
+function slotLabel(row, slotIndex) {
+  return `${SLOT_LABEL_WORD[row && row.slotType] || 'Slot'} ${slotIndex + 1}`;
+}
+
+/** One refit row, in words. `options` is every spare that legally fits this slot. */
 export function refitRowLines(row) {
   if (!row) return null;
   const slotIndex = Number.isInteger(row.slotIndex) ? row.slotIndex : 0;
-  const label = `Hardpoint ${slotIndex + 1}`;
+  const label = slotLabel(row, slotIndex);
   // What kind of hardpoint it is: the reason a spare does or does not go in it.
   const slotWord = SLOT_WORD[row.slotType] || null;
   const slotTag = slotWord ? `${slotWord}${row.slotSize ? ' ' + row.slotSize : ''}` : '';
@@ -624,11 +635,13 @@ export function extractionPreviewLines(run) {
   // Swarm counts rounds everywhere else on screen (the armory, the launch key, the results hero).
   const unit = run.ruleset === 'swarm' ? 'round' : 'wave';
   const banked = securedBountyOf(run);
-  // Swarm's Bench speaks in rounds, points and Scrap only (04_SWARM.md section 5, R18): no
-  // salvage, hangar bounty or campaign-credit ledger words.
+  // Swarm's Bench speaks in rounds and Scrap only (04_SWARM.md section 5, R18): no points,
+  // salvage, hangar bounty or campaign-credit ledger words. A cash-out window only opens on a
+  // cleared boss round, so the whole purse banks — the preview names what lands in the hangar.
   if (run.ruleset === 'swarm') {
+    const payout = banked + salvage;
     return {
-      secured: `Ends the run at round ${wave} with ${score} points on the board.`,
+      secured: `Ends the run at round ${wave} and banks ${payout} Scrap.`,
       risk: `Fly on to round ${wave + 1}. Death ends the run where it falls.`,
       amounts: banked > 0 ? `${banked} Scrap is already safe.` : '',
     };
@@ -2011,7 +2024,7 @@ export const crucibleDraftScreen = {
       slots: rows.map((row) => row.slotType),
       filled: rows.map((row) => !!row.defId),
       target: slot,
-      label: slot >= 0 ? `Hardpoint ${slot + 1}` : '',
+      label: slot >= 0 ? slotLabel(rows[slot] || {}, slot) : '',
       sub: lines.slot,
     });
     parts.compare.textContent = '';
@@ -2021,6 +2034,7 @@ export const crucibleDraftScreen = {
     r.el.classList.toggle('is-unavailable', !offer.available);
     if (this._visualArmory) this._visualArmory.show(offer, lines, {
       hullId, rows, armed, receipt, generation, credits: r.credits,
+      scrap: context.state?.run?.ruleset === 'swarm',
     });
     // The demo word: a fitting the reading is on can fly one round for free — the showcase half
     // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
@@ -2309,7 +2323,7 @@ export const crucibleRefitScreen = {
     h.id = 'sf-crucible-refit-title';
     title.appendChild(h);
     title.appendChild(el('p', 'k-t-emph k-62 sf-cru-sub',
-      'Strip a hardpoint, or choose any spare the run has earned and fit it.'));
+      'Strip a fitting, or choose any spare the run has earned and fit it.'));
     rootEl.appendChild(title);
     // The owner's word on a refused fit or strip, under the title where the eye starts.
     const note = el('p', 'k-sentence sf-cru-note', '');
@@ -2332,7 +2346,7 @@ export const crucibleRefitScreen = {
     const stage = el('section', 'k-stage k-stage--scroll sf-cru-stage orr-refit-stage');
     const rows = el('ul', 'k-rows sf-cru-rows');
     rows.style.setProperty('--k-row-cols', 'minmax(0, 1fr) auto');
-    rows.setAttribute('aria-label', 'Hardpoints');
+    rows.setAttribute('aria-label', 'Loadout slots');
     stage.appendChild(rows);
     this._rows = rows;
     rootEl.appendChild(stage);

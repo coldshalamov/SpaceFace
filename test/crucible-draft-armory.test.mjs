@@ -470,7 +470,7 @@ test('round-one launch summary follows the owner from empty mounts to a fitted g
     assert.equal(m.screen._skip.dataset.label, 'Launch round 1');
     assert.equal(m.screen._skip.getAttribute('aria-describedby'), summary.id);
     assert.match(summary.textContent, /Hornet · No guns fitted · 2 empty weapon slots/);
-    assert.match(summary.textContent, /Turning & braking \d+\/10 · 64 cr left · Guns from 18 Scrap · Tether and throw debris to fight/);
+    assert.match(summary.textContent, /Turning & braking \d+\/10 · 64 Scrap left · Guns from 18 Scrap · Tether and throw debris to fight/);
     assert.deepEqual(m.picks(), []);
 
     ownedShip.fittings[0] = buy.defId;
@@ -481,7 +481,7 @@ test('round-one launch summary follows the owner from empty mounts to a fitted g
     buy.purchased = true;
     m.screen.refresh(m.ctx);
     assert.match(summary.textContent, /Hornet · Autocannon S · 1 empty weapon slot/);
-    assert.match(summary.textContent, /46 cr left/);
+    assert.match(summary.textContent, /46 Scrap left/);
     assert.doesNotMatch(summary.textContent, /No guns fitted|Tether and throw/);
   } finally { m.restore(); }
 });

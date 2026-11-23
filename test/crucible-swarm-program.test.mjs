@@ -614,8 +614,9 @@ test('a catalog gun carries its figures; a stake tile carries its yield', () => 
   const gun = WEAPONS.find((w) => Number.isFinite(w.dps) && Number.isFinite(w.impulsePerHit));
   assert.ok(gun, 'a figured gun exists to shelf');
   const blurb = catalogBlurbFor(gun);
-  assert.ok(blurb.includes('dps'), 'sustained fire reads on the row');
-  assert.ok(blurb.includes('impulse'), 'shove reads on the row');
+  assert.ok(blurb.includes('fire'), 'sustained fire reads on the row');
+  assert.ok(blurb.includes('impact'), 'shove reads on the row');
+  assert.ok(!/\bdps\b|impulse/i.test(blurb), 'no jargon on the row');
   const rig = MODULES.find((m) => m.slotType === 'utility');
   assert.equal(catalogBlurbFor(rig).includes('dps'), false, 'a rig keeps its sentence');
   for (const stake of SWARM_STAKES) {

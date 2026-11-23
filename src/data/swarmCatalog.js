@@ -104,13 +104,14 @@ export function catalogBlurbFor(def) {
   const size = typeof def.size === 'string' ? ` ${def.size}` : '';
   const base = swarmFightReason(def) || `${catalogVerbFor(def)}${size} for the bay that takes it.`;
   if (def.slotType !== 'weapon') return base;
-  if (/dps|impulse/i.test(base)) return base;
+  // The scales' own plain words — fire and impact — never dps/impulse jargon on a Bench card.
+  if (/fire|impact|dps|impulse/i.test(base)) return base;
   const dps = Number.isFinite(def.dps) ? def.dps : null;
   const impulse = Number.isFinite(def.impulsePerHit) ? def.impulsePerHit : null;
   if (dps == null && impulse == null) return base;
   const figures = [
-    dps != null ? `${Math.round(dps * 10) / 10} dps` : '',
-    impulse != null ? `impulse ${Math.round(impulse * 10) / 10}` : '',
+    dps != null ? `fire ${Math.round(dps * 10) / 10}` : '',
+    impulse != null ? `impact ${Math.round(impulse * 10) / 10}` : '',
   ].filter(Boolean).join(' · ');
   return `${base} ${figures}.`;
 }

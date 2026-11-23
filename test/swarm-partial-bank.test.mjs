@@ -231,14 +231,14 @@ test('the foot words and the extract preview price the seat and name the banked 
     kind: 'survival', phase: 'refit', ruleset: 'swarm', wave: 10,
     score: 3040, credits: 212, telemetry: {},
   };
-  // Swarm's Bench speaks Scrap, rounds and points only — no salvage, hangar bounty or
+  // Swarm's Bench speaks Scrap and rounds only — no points, salvage, hangar bounty or
   // campaign-credit ledger words (superseded by design/overhaul/04_SWARM.md section 5, R18).
   const lines = refitFootLines(run);
   assert.equal(lines.bank, 'Bank 106 Scrap, keep flying');
   assert.match(lines.bankNote, /106 Scrap is safe even if you die/);
   assert.match(lines.bankNote, /106 Scrap stays in your purse/);
   assert.equal(lines.extract, 'Cash out — end the run here');
-  assert.match(lines.extractNote, /round 10 with 3040 points/);
+  assert.match(lines.extractNote, /round 10 and banks 212 Scrap/);
   assert.match(lines.primaryNote, /round 11/);
   for (const text of [lines.bank, lines.bankNote, lines.extractNote, lines.primaryNote]) {
     assert.doesNotMatch(text, /\bcr\b|salvage|hangar|campaign credits/i, text);

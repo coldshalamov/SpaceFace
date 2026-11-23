@@ -78,7 +78,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         body.remove();
       }
     },
-    show(offer, lines, { hullId = '', rows = [], armed = true, receipt = null, generation = null, credits } = {}) {
+    show(offer, lines, { hullId = '', rows = [], armed = true, receipt = null, generation = null, credits, scrap = false } = {}) {
       if (disposed) return;
       const offerKey = JSON.stringify([offer.kind, offer.id ?? offer.defId ?? offer.hullId, offer._ownedIndex]);
       if (offerKey !== lastOffer) {
@@ -158,15 +158,17 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         ? lines.slot : '';
       fitline.hidden = !fitline.textContent;
       const price = Math.max(0, Number(offer.price) || 0);
+      // Swarm's Bench says Scrap everywhere — the wallet, the price note and the buy word.
+      const moneyWord = scrap ? 'Scrap' : 'cr';
       afterPurchase.textContent = offer.available && !offer.purchased && price > 0 && Number.isFinite(credits) && credits >= price
-        ? `${(credits - price).toLocaleString('en-US')} cr left after purchase.` : '';
+        ? `${(credits - price).toLocaleString('en-US')} ${moneyWord} left after purchase.` : '';
       afterPurchase.hidden = !afterPurchase.textContent;
       buy.disabled = !offer.available || !!offer.purchased || !armed;
       buy.setAttribute('aria-disabled', String(buy.disabled));
       const purchasedWord = status && status !== 'Fitted' ? status : 'Already fitted';
       buy.textContent = offer.purchased ? purchasedWord : !offer.available ? 'Unavailable' : !armed ? 'Select an item to prepare'
         : offer.startingEquipment ? 'Fit free'
-          : `${offer.kind === 'hull' ? (Number.isInteger(offer._ownedIndex) ? 'Switch ship' : 'Buy & fly') : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} cr`;
+          : `${offer.kind === 'hull' ? (Number.isInteger(offer._ownedIndex) ? 'Switch ship' : 'Buy & fly') : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} ${moneyWord}`;
       buy.setAttribute('aria-label', `${buy.textContent}: ${lines.name}`);
       refusal.textContent = offer.purchased
         ? status === 'In spares' ? '' : status === 'Purchased' ? 'Already purchased this visit.' : 'This item is part of your current build.'

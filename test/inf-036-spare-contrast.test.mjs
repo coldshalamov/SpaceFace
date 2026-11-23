@@ -36,17 +36,18 @@ function compiledDamage(weaponId) {
   return describeAttackMetrics(result.spec).payloadTotal;
 }
 
-test('INF-036: split leaders read as sustained fire versus shove, with the defs’ numbers', () => {
+test('INF-036: split leaders read as hitting versus pushing, with the defs’ numbers', () => {
+  // The plain comparison the packet asked for — 'hits hardest', 'pushes hardest' — no dps/impulse jargon.
   const text = weaponSpareContrast([spare(PLASMA, 1), spare(RAILGUN, 2)]);
-  assert.match(text, /Most sustained fire: .*Plasma.*102 dps/);
-  assert.match(text, /Hardest shove: .*Railgun.*impulse 168/);
-  assert.doesNotMatch(text, /range|homing|heat/i, 'no capability beyond the two axes');
+  assert.match(text, /Plasma.*hits hardest \(fire 102\)/);
+  assert.match(text, /Railgun.*pushes hardest \(impact 168\)/);
+  assert.doesNotMatch(text, /range|homing|heat|dps|impulse/i, 'no capability beyond the two axes, no jargon');
 });
 
 test('INF-036: one spare leading both says so plainly', () => {
   // Pulse Laser M leads Pulse Laser S on both axes since the ROW 482 pulse rebalance.
   const text = weaponSpareContrast([spare(PULSE_M, 1), spare(PULSE, 2)]);
-  assert.match(text, /Pulse Laser M leads sustained fire \(72 dps\) and shove \(impulse 126\)/);
+  assert.match(text, /Pulse Laser M hits hardest \(fire 72\) and pushes hardest \(impact 126\)/);
 });
 
 test('INF-036: no comparison where there is none', () => {
@@ -60,11 +61,11 @@ test('INF-036: no comparison where there is none', () => {
     'fitted rows still carry the arsenalIdentity sentence');
 });
 
-test('INF-036: option labels carry the figures, mod spares stay bare', () => {
+test('INF-036: option labels carry the figures in plain words, mod spares stay bare', () => {
   const lines = refitRowLines({ slotIndex: 0, defId: null, name: null, spares: [spare(PULSE, 1), spare(AUTO, 2)] });
-  assert.match(lines.options[0].label, /27\.5 dps/);
-  assert.match(lines.options[0].label, /impulse 84/);
-  assert.match(lines.options[1].label, /31 dps/);
+  assert.match(lines.options[0].label, /fire 55/);
+  assert.match(lines.options[0].label, /impact 84/);
+  assert.match(lines.options[1].label, /fire 31/);
   assert.ok(lines.contrast && lines.contrast.length > 0, 'the row carries the contrast');
   const modLines = refitRowLines({
     slotIndex: 1, defId: null, name: null,
