@@ -866,7 +866,7 @@ export const crucibleScreen = {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'of-crucible-door');
     rootEl.dataset.kReady = '0';
-    rootEl.dataset.stamp = 'CRUCIBLE / SURVIVAL';
+    rootEl.dataset.stamp = 'SWARM / SURVIVAL';
     rootEl.setAttribute('data-fh-register', 'poster');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
@@ -3214,8 +3214,8 @@ export function resultTitle(result) {
 }
 
 export function resultStamp(result) {
-  if (result && result.outcome === 'victory') return 'CRUCIBLE / ARENA CLEARED';
-  return 'CRUCIBLE / FLIGHT RECORD';
+  if (result && result.outcome === 'victory') return 'SWARM / ARENA CLEARED';
+  return 'SWARM / FLIGHT RECORD';
 }
 
 /**

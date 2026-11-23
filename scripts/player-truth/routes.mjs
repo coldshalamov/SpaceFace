@@ -986,7 +986,7 @@ function prepText(value) {
 
 /**
  * Name painted on a preparation screen that is not the swarm armory.
- * The draft stamp stays "CRUCIBLE / REARM" on the Armory screen too, so the heading wins.
+ * The draft stamp stays "SWARM / REARM" on the Armory screen too, so the heading wins.
  */
 export function preparationScreenName(snap) {
   const title = prepText(snap && snap.title);

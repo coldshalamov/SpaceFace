@@ -986,7 +986,7 @@ export const crucibleDraftScreen = {
     injectOrreryScreens();
     rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
-    rootEl.dataset.stamp = 'CRUCIBLE / REARM';
+    rootEl.dataset.stamp = 'SWARM / REARM';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-draft-title');
@@ -2299,7 +2299,7 @@ export const crucibleRefitScreen = {
     injectCrucibleRefitLayouts(rootEl.ownerDocument || document);
     rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
-    rootEl.dataset.stamp = 'CRUCIBLE / REFIT';
+    rootEl.dataset.stamp = 'SWARM / REFIT';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-refit-title');

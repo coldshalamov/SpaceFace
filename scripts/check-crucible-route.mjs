@@ -946,7 +946,7 @@ async function main() {
     null, { timeout: 30000 },
   );
   const resultsView = await page.evaluate(() => {
-    const root = document.querySelector('#screens [data-stamp="CRUCIBLE / FLIGHT RECORD"]')
+    const root = document.querySelector('#screens [data-stamp="SWARM / FLIGHT RECORD"]')
       || document.querySelector('#screens .sf-crucible-results');
     const owner = window.SF.registry.get('survivalResults');
     return {

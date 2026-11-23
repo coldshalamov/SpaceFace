@@ -605,8 +605,8 @@ test('score credited before the first flight input fails', async () => {
 });
 
 test('preparation names a Rearm screen in about 30s and keeps waiting on the armory', async () => {
-  const rearm = { visible: true, title: 'Rearm', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'CRUCIBLE / REARM', top: 'crucibleDraft', launch: false };
-  const armory = { visible: true, title: 'Armory', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'CRUCIBLE / REARM', top: 'crucibleDraft', launch: false };
+  const rearm = { visible: true, title: 'Rearm', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'SWARM / REARM', top: 'crucibleDraft', launch: false };
+  const armory = { visible: true, title: 'Armory', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'SWARM / REARM', top: 'crucibleDraft', launch: false };
   const opening = { visible: true, title: 'Armory', sub: 'Fit out before round 1 — the purse is already open.', top: 'crucibleDraft', mode: 'flight', phase: 'draft', launch: false };
   assert.equal(classifyPreparationScreen(rearm).status, 'unexpected');
   assert.equal(classifyPreparationScreen(rearm).name, 'REARM');

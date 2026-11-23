@@ -650,15 +650,16 @@ test('a clear and a death are not the same plate with a different word', () => {
   assert.equal(resultTitle(victory), 'Arena Cleared');
   assert.equal(resultTitle(defeat), 'Run Over');
   assert.equal(resultTitle(null), 'Run Over');
-  assert.equal(resultStamp(victory), 'CRUCIBLE / ARENA CLEARED');
-  assert.equal(resultStamp(defeat), 'CRUCIBLE / FLIGHT RECORD');
+  // Plain words, design/overhaul/08_INTERFACE.md §5: the mode is Swarm, never its old name.
+  assert.equal(resultStamp(victory), 'SWARM / ARENA CLEARED');
+  assert.equal(resultStamp(defeat), 'SWARM / FLIGHT RECORD');
 
   // 'aborted' is published BOTH when the player leaves and when the arena fails to build a wave,
   // and nothing published tells them apart. So the title stays neutral: "Run Abandoned" over the
   // headline "The arena could not build wave 4" would be the biggest text on the screen calling
   // the player a quitter for someone else's data regression.
   assert.equal(resultTitle(aborted), 'Run Ended');
-  assert.equal(resultStamp(aborted), 'CRUCIBLE / FLIGHT RECORD');
+  assert.equal(resultStamp(aborted), 'SWARM / FLIGHT RECORD');
   assert.equal(resultTitle(aborted).includes('Abandon'), false);
 
   // A clear leads with the build that got you there and carries no kill chain at all; a death
@@ -824,7 +825,7 @@ test('a wave-6 death plate explains every link of the kill', () => {
   const { lines, stamp } = mountResults(WAVE_6_DEATH);
   const text = lines.join('\n');
 
-  assert.equal(stamp, 'CRUCIBLE / FLIGHT RECORD');
+  assert.equal(stamp, 'SWARM / FLIGHT RECORD');
   assert.equal(lines[0], 'Run Over');
   assert.equal(lines[1], WAVE_6_DEATH.headline, 'the owner\'s sentence is reproduced verbatim');
 
@@ -869,7 +870,7 @@ test('a victory plate leads with the build and carries no kill chain', () => {
   });
   const text = lines.join('\n');
 
-  assert.equal(stamp, 'CRUCIBLE / ARENA CLEARED');
+  assert.equal(stamp, 'SWARM / ARENA CLEARED');
   assert.equal(lines[0], 'Arena Cleared');
   assert.equal(lines[1], 'All 10 waves cleared. The arena is empty.');
   assert.equal(lines[2], 'What you built', 'the clear leads with the build that got you there');
