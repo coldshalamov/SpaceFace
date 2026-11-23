@@ -37,7 +37,7 @@
 #sf-touch-overlay .mf-pause:hover .mf-r-edge { stroke:rgb(var(--mf-bone) / .82); }
 #sf-touch-overlay .mf-pause svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-touch-overlay .mf-pause:active .mf-r-edge { stroke:var(--mf-phos); }
-#sf-touch-overlay .mf-pause-word { position:relative; z-index:2; font:600 12px/1 var(--mf-face); font-stretch:100%; text-transform:uppercase; color:rgb(var(--mf-bone) / .92); margin-bottom:12px; pointer-events:none; }
+#sf-touch-overlay .mf-pause-word { position:relative; z-index:2; font:600 11px/1 var(--mf-face); font-stretch:100%; text-transform:uppercase; color:rgb(var(--mf-bone) / .92); margin-bottom:13px; pointer-events:none; }
 /* ---- powers handle (the wheel opens from here) ---- */
 #sf-touch-overlay .mf-edge { position:absolute; right:var(--sf-safe-right,0px); bottom:calc(18px + 100px * var(--mf-scale) + 78px + var(--sf-safe-bottom,0px)); width:calc(48px * var(--mf-scale)); height:calc(110px * var(--mf-scale)); min-width:44px; padding:0; border:0; background:none; pointer-events:auto; touch-action:none; color:rgb(var(--mf-bone)); z-index:6; }
 #sf-touch-overlay .mf-edge::before { content:''; position:absolute; inset:-8px -2px -8px -18px; }
@@ -71,8 +71,8 @@
 /* TETHER: a ring instrument; latched, a bead of ice orbits it (data in motion) */
 #sf-touch-overlay .mf-tether { left:0; bottom:0; width:calc(66px * var(--mf-scale)); height:calc(66px * var(--mf-scale)); }
 /* the smaller ring still holds its whole word */
-#sf-touch-overlay .mf-tether { padding-bottom:7px; }
-#sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:0; font-size:12px; font-stretch:100%; }
+#sf-touch-overlay .mf-tether { padding-bottom:11px; }
+#sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:0; font-size:11px; font-stretch:100%; }
 #sf-touch-overlay .mf-tether > svg:not([class]) { width:calc(22px * var(--mf-scale)); height:calc(22px * var(--mf-scale)); }
 #sf-touch-overlay .mf-ring-art { position:absolute; inset:0; width:100%; height:100%; overflow:visible; z-index:0; }
 #sf-touch-overlay .mf-pulse { transform-origin:40px 40px; animation:mf-orbit 2.6s linear infinite; animation-play-state:paused; opacity:0; }
