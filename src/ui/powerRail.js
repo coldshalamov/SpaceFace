@@ -529,7 +529,7 @@ export function readRailModel(state, nowS) {
       state: 'armed',
       detonate: true,
       running: true,
-      live: blastLive || true,
+      live: blastLive || undefined,
       name: 'Detonate',
       why: 'Charge armed — press again to detonate',
     }
@@ -781,7 +781,7 @@ function slotMarkup(slot, label) {
   const spoken = slot.answer != null || name === slot.power ? name : `${slot.power} · ${name}`;
   const described = spoken
     ? `${spoken}${label ? `, key ${label}` : ''}, ${slot.state}`
-    : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
+    : `${label ? `key ${label}` : 'no key set'}, ${slot.state}`;
   return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
     + ` data-live="${slot.live === true ? 'true' : 'false'}"`
     + ` data-band="${slot.band}" tabindex="-1" aria-label="${escapeRailText(described + (slot.description ? '. ' + slot.description : ''))}" title="${escapeRailText(slot.description || described)}">`
