@@ -154,7 +154,8 @@ test('Gameplay: assists, autosave and cameras return; difficulty, scheme and bin
   assert.equal(settings.gameplay.targetAssistStrength, DEFAULTS.gameplay.targetAssistStrength);
   assert.equal(settings.gameplay.pursuitSlotAssist, false);
   assert.equal(settings.gameplay.difficulty, 'standard', 'a non-Ironman difficulty returns to Standard');
-  assert.equal(settings.gameplay.racingDistance, 58);
+  // Tests follow 02bfb40466: the shipped racing rig sits 80 back, 42 up, looking 24 ahead.
+  assert.equal(settings.gameplay.racingDistance, 80);
   assert.equal(settings.gameplay.velocityVectoring, true);
   assert.equal(settings.controls.flightMode, DEFAULTS.controls.flightMode);
   assert.equal(settings.gameplay.controlScheme, 'classic', 'the control scheme is a Controls row and stays');
