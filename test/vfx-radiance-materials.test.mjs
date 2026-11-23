@@ -25,7 +25,8 @@ test('shield shell lifts core and seam-current RGB only, gated on heat', () => {
 test('energy bolt boosts the hot fold, keeps flicker and alpha authored', () => {
   const pool = new EnergyBoltPool(null, { capacity: 2 });
   try {
-    assert.match(pool.material.fragmentShader, /body \* vIntensity \* \(1\.0 \+ 0\.25 \* core\)/);
+    // Tests follow 4ec2bc3793: the bolt's HDR lift is this term; flicker and alpha stay authored.
+    assert.match(pool.material.fragmentShader, /body \* vIntensity \* \(1\.45 \+ 0\.35 \* core\)/);
     assert.match(pool.material.fragmentShader, /uBoltFlicker/);
     assert.match(pool.material.fragmentShader, /hot\*\(1\.0-\.65\*channel\)\*1\.9/);
   } finally { pool.dispose(); }
@@ -55,7 +56,10 @@ test('transient impulse ridge and combustion fire carry the local boost; smoke d
   const combustion = createTransientVfxMaterial('combustion', 1);
   const smoke = createTransientVfxMaterial('smoke', 1);
   try {
-    assert.match(sheet.fragmentShader, /\*1\.06\*ridge\*transport/);
+    // Tests follow 4ec2bc3793: an impulse is a closed event volume, not the old folded-sheet boost.
+    assert.equal(sheet.userData.spacefaceTransientTechnique, 'closed-folded-event-volumes');
+    assert.match(sheet.fragmentShader, /sfEventSurface/);
+    assert.doesNotMatch(sheet.fragmentShader, /\*1\.06\*ridge\*transport/);
     assert.match(combustion.fragmentShader, /vSpriteColor\*3\.5\*pow\(interfaceHeat,1\.35\)/);
     assert.match(combustion.fragmentShader, /\)\*4\.75,peak\*\.72/);
     assert.equal(smoke.fragmentShader, combustion.fragmentShader,
@@ -83,7 +87,9 @@ test('field volume transports material and bounds emission without reciprocal-al
   // The previous reciprocal coverage gain bleached the carrier to grey in the non-bloom path.
   // This structural guard supplements (does not replace) the living-vfx pixel sequence capture.
   assert.match(SURFACE_FRAGMENT, /sfLivingFilm\(uv,flow\*rate,phase\)/);
-  assert.match(SURFACE_FRAGMENT, /min\(3\.0,hot\*3\.2\)/);
+  // Tests follow 4ec2bc3793: emission is capped at min(2.6, hot*2.35) so a hot fold
+  // cannot bleach the carrier white. The old min(3.0, hot*3.2) cap is retired.
+  assert.match(SURFACE_FRAGMENT, /min\(2\.6,hot\*2\.35\)/);
   assert.match(SURFACE_FRAGMENT, /alpha=edge\*tips\*reveal\*vTint\.a\*vFront\*fracture\*density/);
   assert.doesNotMatch(SURFACE_FRAGMENT, /1\.0\/max\(0\.22,absorbed\)/);
 });
