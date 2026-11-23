@@ -290,8 +290,12 @@ check('active objective owns attention without suppressing combat/mining targeti
     'authored scenario dialogue must bypass the onboarding gate without globally promoting story chatter');
   assert.match(onboardingSrc, /_retireTutorialPanel\(\)/,
     'story transition must retire the tutorial/lore panel');
-  assert.match(onboardingSrc, /const demoteObjectiveCopy = !!\(this\.state\.nav/,
+  // The yield rule lives in _beatPanelYields(): the panel demotes its copy whenever an onboarding
+  // waypoint (the HUD tracker's line) or a player-chosen course owns the objective.
+  assert.match(onboardingSrc, /const demoteObjectiveCopy = this\._beatPanelYields\(\)/,
     'all B0-B5 tutorial verbs must yield persistent ownership to the HUD tracker');
+  assert.match(onboardingSrc, /_beatPanelYields\(\) \{[\s\S]{0,400}waypoint\?\.onboarding/,
+    'the panel yields to the onboarding waypoint that feeds the HUD tracker');
   assert.doesNotMatch(onboardingSrc, /title\.setAttribute\('aria-live'/,
     'hidden tutorial verb copy must not remain an assistive live region');
   assert.doesNotMatch(onboardingSrc, /_ensureStoryPanel/,
@@ -329,17 +333,18 @@ check('inter-beat silence gate is ≥4s and preserves the authored thesis-first 
   assert.match(onboardingSrc,
     /now - gateFromS < SILENCE_S/,
     'advance must require ≥SILENCE_S of text silence since the gate baseline');
-  // The full first-hour table is authored as literals in onboarding.js (thesis-first route,
-  // 2026-09-18): the tether attach leads, raid + claimed carry the thesis spine.
-  const beatsBlock = onboardingSrc.match(/const BEATS = \[([\s\S]*?)\n\];/);
+  // The full first-hour table is authored as literals in onboarding.js. Demo route (2026-11-23):
+  // rope the loose rock and throw it, dock at Helios, then the story (raid, claimed, seam, the
+  // sample dock), then the flight and gun drills and the job choice.
+  const beatsBlock = onboardingSrc.match(/const BEATS = \[([\s\S]*?)\r?\n\];/);
   assert.ok(beatsBlock, 'BEATS table must exist');
   assert.doesNotMatch(beatsBlock[1], /\.\.\.FLIGHT_DRILL_BEATS/,
     'the route table is authored inline, not spread from the drill module');
   const keys = [...beatsBlock[1].matchAll(/key:\s*'([a-z_]+)'/g)].map((m) => m[1]);
   assert.deepEqual(keys, [
-    'tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst',
-    'disengage', 'seam', 'dock', 'choice',
-  ], 'twelve first-hour beats must stay in the authored thesis-first order');
+    'tether', 'berth', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus',
+    'burst', 'disengage', 'choice',
+  ], 'the thirteen first-hour beats must stay in the authored order: rope, berth, story, drills, choice');
 });
 
 check('story/missions yield the opening channel to the tutorial (no parallel cold-start voice)', 'SOURCE', () => {
