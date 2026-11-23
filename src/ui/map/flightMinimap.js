@@ -160,6 +160,62 @@ function createHatchPattern(ctx, doc, strokeColor, spacing = 7, lineWidth = 1.15
   return typeof ctx.createPattern === 'function' ? ctx.createPattern(c, 'repeat') : null;
 }
 
+// Cluster-count labels ('2'..'99+') as pre-rendered glyph sprites, the way a game HUD keeps a
+// glyph atlas: stroked canvas text re-shaped every repaint cost the scope ~1.7 ms a frame in a
+// round-6 Swarm fight (one font parse + stroke + fill per cluster). A sprite is drawn once per
+// (text, colour, font) and blitted after; until the page fonts settle the label draws directly so
+// a fallback face is never frozen into the cache. ?rfx=-minimapGlyphs restores direct text.
+const COUNT_GLYPH_PAD = 2;
+function createCountGlyphCache(doc, dpr) {
+  const sprites = new Map();
+  const scale = dpr > 0 ? dpr : 1;
+  const direct = (ctx, text, x, y, color, font) => {
+    ctx.save();
+    ctx.font = font;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = 'rgba(4, 11, 18, 0.92)';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  };
+  return function drawCount(ctx, text, x, y, color, font) {
+    const fonts = doc && doc.fonts;
+    const settled = !fonts || fonts.status === 'loaded';
+    if (!settled || !frameCostFixOn('minimapGlyphs') || !doc || typeof doc.createElement !== 'function') {
+      direct(ctx, text, x, y, color, font);
+      return;
+    }
+    const key = `${text}|${color}|${font}`;
+    let sprite = sprites.get(key);
+    if (sprite === undefined) {
+      sprite = null;
+      const c = doc.createElement('canvas');
+      const g = c.getContext && c.getContext('2d');
+      if (g && typeof g.measureText === 'function') {
+        g.font = font;
+        const m = g.measureText(text);
+        const w = Math.ceil((m.width || text.length * 7) + COUNT_GLYPH_PAD * 2);
+        const h = 11 + COUNT_GLYPH_PAD * 2 + 2;
+        c.width = Math.max(1, Math.ceil(w * scale));
+        c.height = Math.max(1, Math.ceil(h * scale));
+        g.setTransform(scale, 0, 0, scale, 0, 0);
+        direct(g, text, COUNT_GLYPH_PAD, h / 2, color, font);
+        sprite = { c, w, h };
+      }
+      if (sprites.size > 256) sprites.clear();
+      sprites.set(key, sprite);
+    }
+    if (!sprite) { direct(ctx, text, x, y, color, font); return; }
+    // Seat on whole device pixels so the blit is 1:1 and the glyph stays as crisp as direct text.
+    const left = Math.round((x - COUNT_GLYPH_PAD) * scale) / scale;
+    const top = Math.round((y - sprite.h / 2) * scale) / scale;
+    ctx.drawImage(sprite.c, left, top, sprite.w, sprite.h);
+  };
+}
+
 // Pre-rendered soft radial halo sprites (geometry/gradient blit, never shadowBlur).
 function createHaloCache(doc, dpr) {
   const sprites = new Map();
@@ -569,6 +625,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   const hitFlashes = [];
   const hoverTargets = [];
   const drawHalo = createHaloCache(doc, dpr);
+  const drawCountGlyph = createCountGlyphCache(doc, dpr);
 
   let dangerHatch = null;
   let fieldHatch = null;
@@ -1475,16 +1532,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     const drawClusterCount = (x, y, count, color) => {
       if (!(count > 1)) return;
       const text = count > 99 ? '99+' : String(count);
-      ctx.save();
-      ctx.font = canvasFont(700, 11, 'data');
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 2.6;
-      ctx.strokeStyle = 'rgba(4, 11, 18, 0.92)';
-      ctx.strokeText(text, x + 7, y - 6);
-      ctx.fillStyle = color;
-      ctx.fillText(text, x + 7, y - 6);
-      ctx.restore();
+      drawCountGlyph(ctx, text, x + 7, y - 6, color, canvasFont(700, 11, 'data'));
     };
 
     hoverTargets.length = 0;
