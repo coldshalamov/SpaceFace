@@ -62,7 +62,9 @@ test('concourse shows 4 doors at Helios without player industry and 5 doors when
   const helios = resolveStationIdentity(state, 'station_helios');
   assert.equal(hasWorksAtStation(state, 'station_helios', helios), false);
   const doors4 = buildConcourseDoors(state, 'station_helios', helios);
-  assert.deepEqual(doors4.map((d) => d.label), ['Market', 'Jobs', 'Shipyard', 'People']);
+  // Tests follow f791a472da: the station is four places in one order everywhere — the hub's
+  // doors and the bar inside every door both read 1 Jobs, 2 Market, 3 Shipyard, 4 People.
+  assert.deepEqual(doors4.map((d) => d.label), ['Jobs', 'Market', 'Shipyard', 'People']);
   for (const d of doors4) {
     assert.ok(d.summary && d.summary.length > 5, `${d.label} has a live one-line summary`);
   }
@@ -72,7 +74,7 @@ test('concourse shows 4 doors at Helios without player industry and 5 doors when
   assert.equal(hasWorksAtStation(state, 'station_ceres', ceres), true);
   state.player.cargo.items.cmdty_ore_iron = 40;
   const doors5 = buildConcourseDoors(state, 'station_ceres', ceres);
-  assert.deepEqual(doors5.map((d) => d.label), ['Market', 'Jobs', 'Shipyard', 'People', 'Works']);
+  assert.deepEqual(doors5.map((d) => d.label), ['Jobs', 'Market', 'Shipyard', 'People', 'Works']);
   assert.match(doors5[4].summary, /40 ore waiting/i);
 });
 
