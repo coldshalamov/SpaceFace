@@ -381,11 +381,14 @@ body.sf-swarm-hud #hud > .sf-leftcontext > .sf-crun {
     transform: none !important;
     align-items: flex-end;
   }
+  /* Receipts seat below a full stack of standing lamps (#alerts grows down from 102 px in 40 px
+     steps): late rounds light HULL CRITICAL and SHIELDS LOW together, and since lamps no longer
+     hide receipts the old 164 px seat drew the receipt over the second lamp. */
   html:not([data-sf-mobile-flight="1"]) body.sf-swarm-hud #toasts {
     position: fixed !important;
     left: auto !important;
     right: 18px !important;
-    top: 164px !important;
+    top: 228px !important;
     bottom: auto !important;
     width: 300px !important;
     transform: none !important;
