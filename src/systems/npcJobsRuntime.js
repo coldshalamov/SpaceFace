@@ -709,6 +709,26 @@ function crewKindLabel(kind) {
   return { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', surveyor: 'Surveyor', patrol: 'Patrol' }[kind] || 'Worker';
 }
 
+/**
+ * A spoken place name for the route stop a worker is holding at. Authored route marks carry their
+ * catalogue id as the label (`helios_seam_ore_face`), which is not English: the bark said the raw
+ * id aloud. Name the thing the stop IS — a station's name, the ore face — and only humanise an
+ * unknown snake_case id, so no bark ever reads a debug key.
+ */
+function routeHoldPlaceName(waypoint) {
+  const ref = typeof waypoint?.targetRef === 'string' ? waypoint.targetRef : '';
+  if (ref.startsWith('dest:')) {
+    const station = STATION_NAME_BY_ID.get(ref.slice(5));
+    if (station) return station;
+  }
+  if (ref.startsWith('field:') || /\bore\b|ore_face|seam/.test(ref)) return 'the ore face';
+  const label = typeof waypoint?.label === 'string' ? waypoint.label.trim() : '';
+  if (!label) return null;
+  if (!label.includes('_')) return label;
+  const words = label.replace(/_/g, ' ').trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : null;
+}
+
 function isTugJob(entry, entity) {
   return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.HAULER
     && occupationalRole(entity, entry) === 'tug';
@@ -7243,7 +7263,7 @@ export const npcJobsRuntime = {
       if (best) { px = best.pos.x; pz = best.pos.z; }
       entry.routeHold = {
         threatId: threat.id, x: px, z: pz,
-        label: best && typeof best.label === 'string' ? best.label : null,
+        label: best ? routeHoldPlaceName(best) : null,
         since: now,
       };
     }

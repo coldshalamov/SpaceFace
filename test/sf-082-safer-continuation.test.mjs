@@ -191,3 +191,32 @@ test('a route threat with no safe earlier stop hunkers in place', () => {
   assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE);
   remove(sim, pirate);
 });
+
+// DEMO-FIX-ADV-1 item 6: the hold cry speaks a place, never an authored mark id. The Helios seam
+// miner's route marks are labelled with their catalogue ids (`helios_seam_ore_face`), so the bark
+// used to read 'holding at helios_seam_ore_face until it clears'.
+test('the hold cry names the stop in words, never a raw route mark id', () => {
+  const sim = boot();
+  const e = sim.spawn({ type: 'ship', team: 2, pos: { x: 600, z: 0 }, vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 8 });
+  e.data = { worldRecordId: 'rec-h3', sectorId: 'sector_a', cargoManifest: { lines: [{ itemId: 'ore_iron', qty: 4 }], totalQty: 4 } };
+  const jobId = sim.helpers.npcJobs.assign(e, haulerSpec({ route: [
+    { id: 'helios_seam_ore_face', pos: { x: 0, z: 0 }, label: 'helios_seam_ore_face', targetRef: 'field:slot:helios_seam_ore_face' },
+    { id: 'helios_seam_pad', pos: { x: 2000, z: 0 }, label: 'helios_seam_pad', targetRef: 'dest:station_helios' },
+  ] }));
+  const entry = sim.registry.get('npcJobsRuntime')._byId()[jobId];
+  entry.job.phase = NPC_JOB_PHASE.TRANSIT;
+  entry.job.routeIndex = 0;
+  entry.job.progress = 0.3;
+  const toasts = [];
+  sim.bus.on('toast', (p) => toasts.push(p.text || ''));
+
+  const pirate = hostile(sim, e.pos.x + 300, 0);
+  steps(sim, 12);
+  pirate.pos.x = 1900; pirate.pos.z = 60;
+  steps(sim, 30);
+  assert.ok(entry.routeHold, 'the fallback hold is chosen');
+  const cry = toasts.find((t) => t.includes("Lane's still hot"));
+  assert.ok(cry, 'the hold cry goes out');
+  assert.doesNotMatch(cry, /helios_seam_ore_face/, 'the bark never reads a raw mark id aloud');
+  assert.match(cry, /holding at the ore face/);
+});

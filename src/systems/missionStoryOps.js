@@ -11,6 +11,7 @@ import { furnaceSettlementFromMission } from '../story/campaign47a/campaignRecei
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import { proxyOuterRadiusWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
@@ -2096,6 +2097,28 @@ export const missionStoryOps = {
     return true;
   },
 
+  /** The station a docked hull is alongside: the one the UI names, else the nearest station body.
+   *  Used to keep the dock-variant Skim casualties outside the station's own hull. */
+  _nearestStationTo(pos) {
+    const state = this.state;
+    if (!pos || !state) return null;
+    const dockedId = state.ui && state.ui.dockedStationId;
+    const byStationId = state.entityIndex && state.entityIndex.byStationId;
+    if (dockedId && byStationId && typeof byStationId.get === 'function') {
+      const named = byStationId.get(dockedId);
+      if (named && named.alive !== false && named.type === 'station' && named.pos) return named;
+    }
+    let best = null;
+    let bestD = Infinity;
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || entity.type !== 'station' || !entity.pos) continue;
+      if (dockedId && !(entity.data && entity.data.stationId === dockedId)) continue;
+      const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
+      if (d < bestD) { bestD = d; best = entity; }
+    }
+    return best;
+  },
+
   /** The ambush site's receipt: the escort wrecks and the cargo drone stay behind as
    *  salvageable hulls (§34.7 — "the ambush site keeps its escort wrecks"). Deterministic
    *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
@@ -2115,15 +2138,36 @@ export const missionStoryOps = {
     // three sit 44-93 m ahead and 27-61 m either side of the flight line (seen, and never in the
     // ship's path). It used to be a ring 140-210 m out at seeded bearings, so the Skim usually
     // landed off screen and read as a line of all-caps text.
+    //
+    // That close fan is only honest in the LANE variant, where the ship is in open space. In the
+    // DOCK variant the hull is berthed at the station, so the same fan put three 40,000-mass
+    // wrecks inside a size-L hub's own hull (its proxy reaches ~0.9 of a 90 m dock radius). The
+    // dock variant keeps the old outward ring instead: the wrecks are casualties left around the
+    // berth, at a range that clears the station whatever hull it is.
+    const docked = where === 'dock';
     const vx = Number(player.vel && player.vel.x) || 0;
     const vz = Number(player.vel && player.vel.z) || 0;
     const heading = Math.hypot(vx, vz) > 5 ? Math.atan2(vz, vx) : (Number.isFinite(player.rot) ? player.rot : 0);
     const rows = [
-      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 60, spread: -0.65 },
-      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 75, spread: 0.6 },
-      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 80, spread: 0.45 },
+      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 60, ringR: 140, spread: -0.65 },
+      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 75, ringR: 175, spread: 0.6 },
+      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 80, ringR: 210, spread: 0.45 },
     ];
-    const blast = where === 'lane' && this.bus && typeof this.bus.emit === 'function';
+    const blast = !docked && this.bus && typeof this.bus.emit === 'function';
+    // The berth a dock-variant Skim leaves its casualties around: the station the ship is berthed
+    // at, else the nearest one. Its hull extent (proxy reach, or its authored dock radius when the
+    // resolved proxy is a smaller measured skin) plus a margin is the ring's floor.
+    const dockStation = docked ? this._nearestStationTo(player.pos) : null;
+    let dockClearR = 0;
+    if (dockStation) {
+      const hullR = Math.max(
+        proxyOuterRadiusWu(resolveCollisionProxyManifest(dockStation), dockStation),
+        Number(dockStation.data && dockStation.data.dockRadius) || 0,
+        Number(dockStation.radius) || 0,
+      );
+      dockClearR = hullR + 60;
+    }
+    const ringCentre = dockStation ? dockStation.pos : player.pos;
     const hasLiveWreck = (row) => {
       const label = `${row.name} — WRECK`;
       for (const entity of entities.values()) {
@@ -2139,9 +2183,21 @@ export const missionStoryOps = {
     rows.forEach((row, idx) => {
       // An uncertain prior spawn must not mint another copy of the same one-alloy wreck.
       if (hasLiveWreck(row)) return;
-      const angle = heading + row.spread + (((hash32(seed, 4747, idx) % 21) - 10) / 100);
-      const dist = row.r + (hash32(seed, 4751, idx) % 20);
-      const at = { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist };
+      let angle;
+      let dist;
+      let from;
+      if (docked) {
+        // A seeded bearing around the berth station, outside its own hull: a casualty ring off the
+        // dock, never the three blasts the lane variant plays in front of a moving ship.
+        angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
+        dist = Math.max(row.ringR + (hash32(seed, 4751, idx) % 30), dockClearR);
+        from = ringCentre;
+      } else {
+        angle = heading + row.spread + (((hash32(seed, 4747, idx) % 21) - 10) / 100);
+        dist = row.r + (hash32(seed, 4751, idx) % 20);
+        from = player.pos;
+      }
+      const at = { x: from.x + Math.cos(angle) * dist, z: from.z + Math.sin(angle) * dist };
       // The kill itself, where the wreck will lie (a presentation receipt: no damage, no owner).
       if (blast) this.bus.emit('environment:detonated', { pos: { x: at.x, z: at.z }, radius: 22, source: 'campaign47aSkim' });
       try {
