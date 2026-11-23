@@ -30,7 +30,7 @@ import { gamepadGlyphForAction } from '../bindings.js';
 import { SLICES } from '../contextWheel.js';
 import { BINDINGS } from '../bindings.js';
 import { isSwarmControls } from '../../data/swarmControls.js';
-import { contextActionAllowed, contextHelpRows, contextUiAllowed, inputContextFor } from '../../data/inputContexts.js';
+import { MOVE_CARD_ACTIONS, contextActionAllowed, contextHelpRows, contextUiAllowed, inputContextFor } from '../../data/inputContexts.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -178,7 +178,7 @@ const GAMEPAD_STATIC_TEXT = Object.freeze({
 // Two different reasons a row can name no button. A player who cleared a binding chose that; a
 // verb the game ships with no default button at all is on the context wheel under G18-02 — the
 // sheet says where it lives instead of calling it a gap.
-const UNBOUND_BY_PLAYER = 'unbound — Settings → Controls';
+const UNBOUND_BY_PLAYER = 'Not set — Settings → Controls';
 // Pad actions that are wheel slices (the wheel itself keeps its hold-Y seat).
 const WHEEL_SLICE_PAD_ACTIONS = Object.freeze(new Set([
   'mine', 'brake', 'countermeasure', 'travelBurn', 'cycleBomb', 'scanPulse', 'siteBeam',
@@ -373,8 +373,13 @@ export function controlSections(state) {
     : context === 'station' ? 'Station now'
       : context === 'map' ? 'Map now' : 'Flight now';
   // A wheel-only verb still needs a card row (the low-hull flee): it names the wheel.
+  // The card shows each verb's first key only (W, not 'W ↑'), so the Move row reads WASD. Only a
+  // wheel slice with no key seat names the wheel; an unbound movement pair (yaw in helm assist,
+  // strafe in pilot) drops out of the Move row instead of printing a wheel fallback.
+  const firstKey = (action) => String(resolveActionLabel(state, action, { sep: '\n' }) || '').split('\n')[0];
   const contextCard = contextHelpRows(state,
-    (action) => resolveActionLabel(state, action, { sep: ' ' }) || `${wheelKey} wheel`)
+    (action) => firstKey(action)
+      || (WHEEL_SLICE_ACTIONS.has(action) && !MOVE_CARD_ACTIONS.includes(action) ? `${wheelKey} wheel` : ''))
     .map(([keys, verb]) => [verb, null, keys]);
   // X5 final review: the long reference is checked by the same gates. A refused row says so
   // instead of teaching a key that does nothing where the player is.

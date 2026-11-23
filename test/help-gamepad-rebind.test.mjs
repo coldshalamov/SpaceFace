@@ -83,7 +83,7 @@ test('a deliberately unbound action names itself instead of printing a phantom b
   const map = resolveGamepadBindings(padState({ fire: [] }).settings);
   assert.deepEqual(map.fire, [], 'explicit empty list stays an unbind');
   const rows = gamepadControlRows(map);
-  assert.equal(rows[2][2], 'unbound — Settings → Controls');
+  assert.equal(rows[2][2], 'Not set — Settings → Controls');
   // A wheel slice keeps naming the wheel — unbinding its (empty) seat changes nothing.
   assert.deepEqual(map.countermeasure, []);
   assert.match(rows[10][2], /context wheel/);

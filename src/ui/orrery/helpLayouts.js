@@ -153,7 +153,7 @@ ${H} .orr-hreg__row { position:relative; display:grid; grid-template-columns:min
 ${H} .orr-hreg__row::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
 ${H} .orr-hreg__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.3; color:rgb(${BONE} / .92); }
 ${H} .orr-hreg__row .orr-hkey { justify-self:end; max-width:210px; }
-/* ui-polish-436: a long verb list (Pull · Shove · Pin · Bomb · Rig) wrapped to leave "Rig" alone on its own line */
+/* ui-polish-436: a long verb list (Pull · Shove · Pin · Bomb · Plow) wrapped to leave "Plow" alone on its own line */
 ${H} .orr-hreg__name { text-wrap:balance; }
 ${H} .orr-hreg__row.is-echo::before { width:20px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(143 203 255 / .8); }
 ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
@@ -172,6 +172,10 @@ ${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
 ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
+/* the shared MORE chip seats itself on the scroller's bottom rim, which in this narrow register is the last
+   visible row: it sat on top of "Map · M" and touched the rebind note. The rail's bright scroll segment and the
+   fold already say the list goes on, so the register keeps those and drops the chip (Settings does the same). */
+${H} .orr-hreg .orr-extent--foot { display:none !important; }
 
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
 ${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 16vw, 340px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);

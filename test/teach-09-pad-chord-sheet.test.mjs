@@ -146,7 +146,7 @@ test('an unbound button says so, and the retired burst verb leaves no phantom ro
   // is the game's gap; saying "unbound — Settings" there blames the player's profile.
   const cleared = byLabel(gamepadControlRows(
     resolveGamepadBindings(padState({ countermeasure: [] }).settings)));
-  assert.equal(cleared.get('Countermeasure'), 'unbound — Settings → Controls',
+  assert.equal(cleared.get('Countermeasure'), 'Not set — Settings → Controls',
     'a binding the player cleared is their choice and says so');
 
   // The hull burst is a boost upgrade now (owner principle 2026-09-30): no pad verb, so the sheet

@@ -245,5 +245,7 @@ test('without a resolver the card prints action ids, never blanks', () => {
   const rows = contextHelpRows(state());
   const move = rows.find(([, verb]) => verb === 'Move');
   assert.ok(move);
-  assert.equal(move[0], 'forward yawLeft reverse yawRight');
+  // The Move row lists yaw AND strafe: each scheme binds A/D to one pair, and the live resolver
+  // drops the unbound pair, so the card reads WASD in pilot, classic and helm assist alike.
+  assert.equal(move[0], 'forward yawLeft strafeLeft reverse yawRight strafeRight');
 });

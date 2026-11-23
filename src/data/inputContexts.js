@@ -201,13 +201,17 @@ export function contextStockBindings(state) {
 // (live keys come from the caller's resolver) or a fixed interface key (text, because those are
 // not rebindable). A saved rebind therefore moves the card, and an action the context refuses is
 // dropped instead of being taught.
+// The Move row names the keys that move the ship in every scheme: W/S thrust, and A/D as either
+// yaw (pilot, classic) or strafe (helm assist). Whichever pair a scheme leaves unbound drops out,
+// so the row reads WASD everywhere instead of printing a wheel fallback for the unbound pair.
+export const MOVE_CARD_ACTIONS = Object.freeze(['forward', 'yawLeft', 'strafeLeft', 'reverse', 'yawRight', 'strafeRight']);
 const CARD_SPECS = Object.freeze({
   flight: Object.freeze([
-    Object.freeze({ actions: Object.freeze(['forward', 'yawLeft', 'reverse', 'yawRight']), verb: 'Move' }),
+    Object.freeze({ actions: MOVE_CARD_ACTIONS, verb: 'Move' }),
     Object.freeze({ fixed: 'Mouse', verb: 'Aim' }),
     Object.freeze({ actions: Object.freeze(['fire']), verb: 'Fire' }),
     Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line — fire / release' }),
-    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Rig' }),
+    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Plow' }),
     Object.freeze({ actions: Object.freeze(['boost']), verb: 'Boost' }),
     Object.freeze({ actions: Object.freeze(['contextWheel']), verb: 'Wheel — hold · aim · release' }),
     Object.freeze({ fixed: 'Tab / Backspace', verb: 'Target · clear' }),
@@ -216,11 +220,11 @@ const CARD_SPECS = Object.freeze({
     Object.freeze({ fixed: 'Esc', verb: 'Pause' }),
   ]),
   combat: Object.freeze([
-    Object.freeze({ actions: Object.freeze(['forward', 'yawLeft', 'reverse', 'yawRight']), verb: 'Move' }),
+    Object.freeze({ actions: MOVE_CARD_ACTIONS, verb: 'Move' }),
     Object.freeze({ fixed: 'Mouse', verb: 'Aim' }),
     Object.freeze({ actions: Object.freeze(['fire']), verb: 'Fire' }),
     Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line — fire / release' }),
-    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Rig' }),
+    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Plow' }),
     Object.freeze({ actions: Object.freeze(['boost']), verb: 'Boost' }),
     Object.freeze({ actions: Object.freeze(['contextWheel']), verb: 'Wheel — hold · aim · release' }),
     Object.freeze({ fixed: 'Tab / Backspace', verb: 'Target · clear' }),
