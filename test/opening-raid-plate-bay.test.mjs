@@ -91,11 +91,13 @@ test('seed 4242: legacy profile and the unpaid endings leave the bay empty', () 
 });
 
 test('a full salvage bay receives the plate value once, without invented cargo or lost rewards', () => {
+  // Slot law (7592bb895f): the bay is a slot bag, not a volume meter. With the floor bay cap
+  // of 600 the bag has 32 slots, so a full bay is 32 full stacks — 640 iron at 20 a slot.
   const row = drive({ hauler: 1, raiders: 0,
-    player: { salvageBay: { items: { cmdty_ore_iron: 600 }, usedVolume: 600 } } });
+    player: { salvageBay: { items: { cmdty_ore_iron: 640 }, usedVolume: 640 } } });
   assert.equal(plateQty(row.state), 0);
-  assert.equal(row.state.player.salvageBay.usedVolume, 600);
-  assert.equal(row.state.player.salvageBay.items.cmdty_ore_iron, 600);
+  assert.equal(row.state.player.salvageBay.usedVolume, 640);
+  assert.equal(row.state.player.salvageBay.items.cmdty_ore_iron, 640);
   assert.deepEqual(row.logs.filter((entry) => entry.event === 'grant'), [
     { event: 'grant', amount: 250, reason: 'convoy:guard' },
     { event: 'grant', amount: 65, reason: 'convoy:plate_overflow' },
@@ -107,7 +109,7 @@ test('a full salvage bay receives the plate value once, without invented cargo o
 
 test('overflow settlement values the plate through the active commodity content', () => {
   const row = drive({ hauler: 1, raiders: 0,
-    player: { salvageBay: { items: {}, usedVolume: 600 } },
+    player: { salvageBay: { items: { cmdty_ore_iron: 640 }, usedVolume: 640 } },
     content: { commodities: { [PLATE]: { basePrice: 200, volPerU: 0.7, massPerU: 1, legality: 'legal' } } },
   });
   assert.equal(row.logs.find((entry) => entry.reason === 'convoy:plate_overflow').amount, 120);
