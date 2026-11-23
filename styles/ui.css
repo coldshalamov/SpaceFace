@@ -90,6 +90,12 @@
    patch locally; the class of bug is worth closing once rather than per component. */
 [hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); font-variant-numeric: tabular-nums; }
+/* A game, not a web page: dragging the mouse in flight or double-clicking a HUD number must never
+   paint the browser's blue text selection over the instruments, and no image or label can be
+   dragged off as a ghost. Only places a player types into keep selection. */
+html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+img, svg, canvas { -webkit-user-drag: none; }
+input, textarea, [contenteditable="true"], [contenteditable=""] { -webkit-user-select: text; user-select: text; }
 #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
 /* Combat stick alone replaces the native target pointer with a centered DOM sight. */
 body.sf-flight-cursor, body.sf-flight-cursor * { cursor: none !important; }
