@@ -36,11 +36,11 @@ test('both surfaces stay modal: locked, dialog-announced, and the pad back respe
   assert.deepEqual(crucibleDraftScreen.data, { locked: true });
   const source = readFileSync(new URL('../src/ui/screens/crucibleDraft.js', import.meta.url), 'utf8');
   assert.ok(source.includes("rootEl.setAttribute('aria-modal', 'true')"), 'both surfaces announce the modal');
-  // The pad cancel path in the shared UI layer pops only unlocked screens — the lock above is
-  // what keeps an accidental B from abandoning the run.
+  // Pad B pops only an unlocked screen. lockedNow is screenManager.locked() or the
+  // screen's own data.locked, so a paused Crucible refit does not leave the run.
   const inputSource = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
-  assert.match(inputSource, /if \(!screenManager\.locked \|\| !screenManager\.locked\(\)\) screenManager\.popScreen\(\)/,
-    'pad cancel must respect the locked screen');
+  assert.match(inputSource, /else if \(!lockedNow\) screenManager\.popScreen\(\)/,
+    'pad cancel pops only when the screen is not locked');
 });
 
 test('the refit rebuild restores focus and the chosen spare instead of resetting them', () => {

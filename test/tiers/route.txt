@@ -77,4 +77,4 @@ test/mercies-radio.test.mjs
 # Boot -> New Game -> flight: the six invariants (menu, launch, pilot, hull, world, controls).
 npm run check:playable
 # Station screen walk over the real station module: every destination tab, two viewports.
-node scripts/ui-bench.mjs --shot=station,station-dock,station-market,station-shipworks,station-shipworks-impound,station-shipworks-ransom,station-industry,station-contracts,station-factions,station-bar,station-bar-story-buyer,station-factions-treaty,station-ledger --viewports=960x540,1920x1080 --walk
+node scripts/ui-bench.mjs --shot=station,station-dock,station-hub,station-market,station-shipworks,station-shipworks-impound,station-shipworks-ransom,station-industry,station-contracts,station-factions,station-bar,station-bar-story-buyer,station-factions-treaty,station-ledger,station-law-desk --viewports=960x540,1920x1080 --walk
