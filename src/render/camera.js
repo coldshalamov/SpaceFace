@@ -735,6 +735,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     return finiteOr(c.zoom, DEFAULT_ZOOM);
   }
   let _dynamicZoom = resolveBaseZoom();
+  // Last manual request seen by follow(). Manual zoom (wheel/pinch/keys/level) must feel
+  // StarCraft-instant: when the requested base moves, the displayed distance carries the
+  // same ratio immediately, so the ease below only handles AUTOMATIC drift (speed,
+  // context, boost) and never lags the player's own hand. Direct state.camera.zoom
+  // writes (mobile pinch, swarm level sets) ride the same path — no setZoom bypass.
+  let _lastBaseZoom = _dynamicZoom;
   let _speedZoomFactor = SPEED_ZOOM_MIN;
   let _speedZoomSpeedEma = 0;
   let _boostZoomFactor = 1;
@@ -846,6 +852,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     const pz = _playerLocalScratch.z;
     c.focus.set(px, 0, pz);
     _dynamicZoom = resolveBaseZoom();
+    _lastBaseZoom = _dynamicZoom;
     _dynamicNear = 1;
     if (cam.near !== 1) {
       cam.near = 1;
@@ -1520,6 +1527,21 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // chaseClose forces a tighter accessibility/profile choice; otherwise honor the exact c.zoom
       // selection, whose fresh-run schema default is the R1 144-WU recovery frame.
       const baseZoom = resolveBaseZoom();
+      // Manual-zoom fast path (StarCraft contract): the base only moves on explicit player
+      // input, so carry its ratio straight onto the displayed distance. The ease below
+      // then only settles AUTOMATIC drift (speed/context/boost) instead of lagging the hand.
+      if (Number.isFinite(baseZoom) && baseZoom > 0
+        && Number.isFinite(_lastBaseZoom) && _lastBaseZoom > 0
+        && baseZoom !== _lastBaseZoom) {
+        const manualRatio = baseZoom / _lastBaseZoom;
+        if (Number.isFinite(manualRatio) && manualRatio > 0) {
+          _dynamicZoom = Math.max(
+            CAMERA_ZOOM_MIN,
+            Math.min(COMPOSITION_ZOOM_MAX, _dynamicZoom * manualRatio),
+          );
+        }
+      }
+      _lastBaseZoom = baseZoom;
       let targetZoom = baseZoom;
       if (p && p.pos) {
         // The speed-zoom target follows a smoothed speed (SPEED_ZOOM_SPEED_SMOOTHING_S) so the

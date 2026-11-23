@@ -156,8 +156,13 @@ export function collectSmoothCensus() {
   out.detail = [];
   for (const row of out.byRoot.slice(0, 7)) {
     const mine = C.draws.filter((d) => d.root === row.key);
-    const firstRoot = mine.length ? mine[0].rootId : 0;
+    // The root of this kind with the most draws in the window's last frame (the first root seen is
+    // often off screen in that frame and listed nothing).
     const lastF = mine.length ? mine[mine.length - 1].f : 0;
+    const perRoot = new Map();
+    for (const d of mine) if (d.f === lastF) perRoot.set(d.rootId, (perRoot.get(d.rootId) || 0) + 1);
+    let firstRoot = mine.length ? mine[0].rootId : 0; let most = -1;
+    for (const [id, n] of perRoot) if (n > most) { most = n; firstRoot = id; }
     const one = mine.filter((d) => d.rootId === firstRoot && d.f === lastF);
     out.detail.push({ root: row.key, instancesInWindow: new Set(mine.map((d) => d.rootId)).size, drawsInOne: one.length,
       draws: one.map((d) => ({ obj: d.obj, parent: d.par, mat: `${d.matType} "${d.matName}"#${d.mat}`, prog: d.prog, geo: d.geo, tris: d.tris, moves: d.mau })) });
@@ -220,7 +225,7 @@ export function collectSmoothCensus() {
       const sample = ud.initialShipLodSample || null;
       const ent = sample && sample.entity;
       out.ships.push({ name: String(root.name || '').replace(/_DirectAuthoredAdmission_AuthoredAssetBoundary$/, ''), hull: (ent && ent.data && (ent.data.defId || ent.data.shipId)) || '',
-        tier: ud.wholeShipLodActiveLevel || (ud.lod && ud.lod.level) || '?', family: ud.wholeShipLodFamilyInstalled === true, selectorPx: sample && Number.isFinite(sample.px) ? Math.round(sample.px) : null,
+        tier: ud.wholeShipLodActiveLevel || ud.inFileShipTierLevel || (ud.lod && ud.lod.level) || '?', family: ud.wholeShipLodFamilyInstalled === true, inFile: ud.inFileShipTiers === true, selectorPx: sample && Number.isFinite(sample.px) ? Math.round(sample.px) : null,
         entityRadius: ent ? +Number(ent.radius).toFixed(1) : null, onScreenPx: Number.isFinite(minX) ? [Math.round(maxX - minX), Math.round(maxY - minY)] : null,
         onGlass: Number.isFinite(minX) && maxX > 0 && minX < W && maxY > 0 && minY < H, meshes, tris,
         draws: C.draws.filter((d) => d.rootId === root.id && d.f === lastFrame).length });
@@ -255,7 +260,7 @@ export function formatSmoothCensus(c, { title = '' } = {}) {
   if (c.ships && c.ships.length) {
     L.push(''); L.push('SHIPS: the size the detail-tier selector was given, against the size on screen (CSS px; selector thresholds: lower tier under 240, lowest under 110)');
     L.push(`${'selector'.padStart(9)}${'on screen'.padStart(12)}${'radius'.padStart(8)}${'tier'.padStart(7)}${'draws'.padStart(7)}${'meshes'.padStart(8)}${'tris'.padStart(8)}  ship`);
-    for (const x of c.ships) L.push(`${String(x.selectorPx ?? '-').padStart(9)}${String(x.onScreenPx ? x.onScreenPx.join('x') : '-').padStart(12)}${String(x.entityRadius ?? '-').padStart(8)}${String(x.tier).padStart(7)}${String(x.draws).padStart(7)}${String(x.meshes).padStart(8)}${String(x.tris).padStart(8)}  ${x.name} ${x.hull}${x.family ? ' (tier family installed)' : ' (no tier family)'}${x.onGlass ? '' : ' (off screen)'}`);
+    for (const x of c.ships) L.push(`${String(x.selectorPx ?? '-').padStart(9)}${String(x.onScreenPx ? x.onScreenPx.join('x') : '-').padStart(12)}${String(x.entityRadius ?? '-').padStart(8)}${String(x.tier).padStart(7)}${String(x.draws).padStart(7)}${String(x.meshes).padStart(8)}${String(x.tris).padStart(8)}  ${x.name} ${x.hull}${x.inFile ? ' (in-file tiers)' : x.family ? ' (tier family installed)' : ' (no tier family)'}${x.onGlass ? '' : ' (off screen)'}`);
   }
   if (c.shipsError) L.push(`ships census failed: ${c.shipsError}`);
   table('BY RENDER TARGET / SCENE', c.byTarget);
