@@ -436,8 +436,12 @@ export function consequenceScalesSvg(m, state, { compact = false } = {}) {
   out += `<text class="orr-ct-scale__key" x="0" y="${P.keyY}">STANDING</text>`;
   // the reading runs the way the gauge does: the loss outside the left end, the gain outside the right
   if (compact) {
-    if (loss > 0) out += `<text class="orr-ct-scale__word" x="${P.labelL}" y="${P.labelY}" text-anchor="end"><tspan class="orr-ct-scale__lossword">−${loss}</tspan></text>`;
-    if (gain > 0) out += `<text class="orr-ct-scale__word" x="${P.labelR}" y="${P.labelY}" text-anchor="start"><tspan class="orr-ct-scale__gain">+${gain}</tspan></text>`;
+    // a bare "−3 ⌒ +4" read as a code: the reading names both outcomes in one line right of the
+    // arc (the left of the arc belongs to the STANDING key)
+    const parts = [];
+    if (gain > 0) parts.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan><tspan class="orr-ct-scale__end"> IF DONE</tspan>`);
+    if (loss > 0) parts.push(`${parts.length ? '<tspan class="orr-ct-scale__end"> · </tspan>' : ''}<tspan class="orr-ct-scale__lossword">−${loss}</tspan><tspan class="orr-ct-scale__end"> IF FAILED</tspan>`);
+    if (parts.length) out += `<text class="orr-ct-scale__word" x="${P.labelR}" y="${P.labelY}" text-anchor="start">${parts.join('')}</text>`;
     if (!loss && !gain) out += `<text class="orr-ct-scale__word" x="${P.cx}" y="${P.flatY}" text-anchor="middle">NO CHANGE</text>`;
   } else {
     out += `<text class="orr-ct-scale__end" x="${P.labelL}" y="${P.labelY}" text-anchor="end">${loss > 0 ? `<tspan class="orr-ct-scale__lossword">−${loss}</tspan><tspan> · ON FAILURE</tspan>` : 'ON FAILURE'}</text>`;
@@ -510,15 +514,18 @@ export function missionDossierHtml(m, state, options = {}) {
       // the collateral term always holds its line, so the commit key never moves between missions
       + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure', { cls: 'sx-term--threat' }) : termRow('Collateral', 'None', '', { cls: 'sx-term--none' }))
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
-      + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
-      + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')
+      // plain words (R18): a follow-up is "another job after this one", a featured day is a bonus
+      + (missionOffersFollowUp(m) ? termRow('Next', 'Another job follows this one') : '')
+      + (m.featured ? termRow('Bonus', `Pays ×${m.featured.rewardMult}`, `+${m.featured.repBonus} standing`) : '')
       + book4MissionChips(m, state).map((chip) => termRow(chip.label || 'Note', escapeHtml(chip.text || ''))).join('')
-      + termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)),
+      // a ready job needs no readiness line ("Route clear · Ship and account ready" read as a
+      // checklist); a warning says what to check, and a blocker is named under the Accept key
+      + (readiness.canAccept && readiness.warning ? termRow('Check', escapeHtml(readiness.detail)) : ''),
     readiness,
     clausesHtml: clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join(''),
     focusAccept,
     action: { id: mid(m), ready, focus: focusAccept && ready,
-      readyLabel: 'Accept', blockedLabel: 'Resolve Readiness', aria: acceptAria, reason: readiness.detail },
+      readyLabel: 'Accept', blockedLabel: 'Not ready yet', aria: acceptAria, reason: readiness.detail },
   }));
 }
 
@@ -663,16 +670,45 @@ export function createContractsScreen(ctx) {
     try {
       if (typeof window === 'undefined' || window.innerHeight > 800) { boardEl.style.maxHeight = ''; return; }
       boardEl.style.maxHeight = '';
-      const top = boardEl.getBoundingClientRect().top;
-      const limit = top + boardEl.clientHeight;
+      // Layout boxes, not painted ones: the arrival rise slides each row up from below, and its
+      // transform made a list that fits read as overflowing (scrollHeight, getBoundingClientRect),
+      // so the last row was hidden behind MORE with the column half empty. A list that fits
+      // keeps every row.
       const rows = [...boardEl.querySelectorAll('.sx-ct__rows .sx-ct-row, .sx-decision .sx-ct-row')];
+      if (!rows.length) return;
+      // A row's top inside the board's padding box, from offsetTop (which no transform moves).
+      const layoutTop = (node) => {
+        let y = 0;
+        let n = node;
+        while (n && n !== boardEl && !n.contains(boardEl)) { y += n.offsetTop; n = n.offsetParent; }
+        if (!n || n === boardEl) return y;
+        let a = 0;
+        for (let m = boardEl; m && m !== n; m = m.offsetParent) a += m.offsetTop;
+        return y - a - boardEl.clientTop;
+      };
+      const limit = boardEl.clientHeight;
+      const last = rows[rows.length - 1];
+      if (layoutTop(last) + last.offsetHeight <= limit + 1) return;
       let cut = 0;
       for (const row of rows) {
-        const r = row.getBoundingClientRect();
-        if (r.bottom <= limit - 2) cut = r.bottom;
-        else { if (cut) boardEl.style.maxHeight = `${Math.round(Math.min(cut, r.top) - top)}px`; return; }
+        const t = layoutTop(row);
+        const b = t + row.offsetHeight;
+        if (b <= limit - 2) cut = b;
+        else { if (cut) boardEl.style.maxHeight = `${Math.round(Math.min(cut, t))}px`; return; }
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
+  }
+  // The window is fitted to the column it stands in: a render while the door was still settling
+  // (head and foot not yet at their final size) cut the list a row early for the whole visit.
+  {
+    const hangEl = el.querySelector('.sx-ct__hang');
+    if (hangEl && typeof ResizeObserver === 'function' && typeof requestAnimationFrame === 'function') {
+      let fitFrame = 0;
+      new ResizeObserver(() => {
+        if (fitFrame) return;
+        fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitLadderWindow(); });
+      }).observe(hangEl);
+    }
   }
 
   function renderBoard(state) {
@@ -753,7 +789,9 @@ export function createContractsScreen(ctx) {
         const r = risk(m);
         const filing = finalDispositionPresentation(m);
         const firstHour = firstHourBoardOfferPresentation(state, m);
-        const destTag = firstHour ? firstHourOfferDestinationTag(state, m) : '';
+        // The one recommended job needs only its word: its title already names where it goes (the
+        // tag ran "RECOMMENDED → TETHYS TRADE HUB · TETH…" off the row). Choice rows keep theirs.
+        const destTag = firstHour && firstHour.kind !== 'recommended' ? firstHourOfferDestinationTag(state, m) : '';
         // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise a
         // featured day's premium mark outranks the best-next pick. Never more than one, never a reorder.
         const badge = firstHour ? firstHour.label
@@ -777,7 +815,12 @@ export function createContractsScreen(ctx) {
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
           `</button>` +
-          (optionsByMission.get(id) || []).map((e) => optionHtml(e, true, m.title || typeLabel(m.type, m))).join('') +
+          // A dispatch option that only names its own job is that job's Accept again: a second
+          // row ("DISPATCH THIS JOB · risk 2 · Forge Foundry · 9 min") read as a stray line on
+          // the list. Only an option that changes something beyond the job keeps a sub-row.
+          (optionsByMission.get(id) || [])
+            .filter(({ option }) => String(option.label || '').trim().toLowerCase() !== String(m.title || typeLabel(m.type, m)).trim().toLowerCase())
+            .map((e) => optionHtml(e, true, m.title || typeLabel(m.type, m))).join('') +
           `</li>`
         );
       }).join('') +
@@ -1512,6 +1555,9 @@ export function createContractsScreen(ctx) {
     renderBoard(state);
     renderDossier(state);
     renderActive(state);
+    // The ladder window is measured again once YOURS has its rows: measured before them, a short
+    // screen cut the posted list a row early and left the column's foot empty under MORE.
+    fitLadderWindow();
   }
 
   function applyShowOptions(options = {}) {

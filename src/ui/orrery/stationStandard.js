@@ -1768,6 +1768,16 @@ ${PA} .sx-mkt.orr-market .sx-mkt__quote > p.k-empty { display:none !important; }
 ${PA} .sx-mkt.orr-market .so-route-disclosure:has(> .sx-mkt__pulse) { display:none !important; }
 ${PA} .sx-mkt.orr-market .sx-mkt-cause { font-family:${UI} !important; font-size:13px !important; color:rgb(${BONE} / .78) !important; }
 ${PA} .sx-mkt.orr-market .sx-mkt-row__stock { white-space:nowrap !important; }
+/* 601-719 tall desktops (1366x650) set the quantity beside the total, and the stepper's width
+   pushed TOTAL COST off the right of the glass. The slim door head leaves the height, so the
+   console stacks as it does at 720+: quantity, total, Buy / Sell. */
+@media (min-width:1101px) and (min-height:461px) and (max-height:719px) {
+  ${PA} .sx-mkt.orr-market .sx-trade {
+    grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
+    grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important;
+    justify-content:stretch !important; justify-items:start !important; row-gap:6px !important;
+  }
+}
 
 /* ==== THE BAY IS THE PICTURE (hub) ===========================================================
    On the hub every reading sits on its own plate (hero, Service strip, doors), so the berth does
@@ -1793,6 +1803,66 @@ ${PA} .sx-ct__rows .sx-ct-row .sx-ct-row__title > .sx-ct-row__type {
   font-size:12px !important; letter-spacing:.08em !important; opacity:.7 !important;
 }
 ${PA} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:normal !important; }
+/* The route card's caption is one line in the label voice: "1 JUMP · TO TETHYS JUNCTION". Its
+   number was a 24-26px display numeral that hung off the card's left edge like a stray "1". */
+${PA} :is(.sx-dossier .orr-route__caption, .sx-ct-tether__caption) {
+  font-family:${UI} !important; font-stretch:100% !important; font-size:12px !important; font-weight:700 !important;
+  letter-spacing:.08em !important; gap:6px !important; color:rgb(${BONE} / .72) !important;
+}
+${PA} :is(.sx-dossier .orr-route__caption, .sx-ct-tether__caption) > .orr-route__jumps {
+  font-family:${UI} !important; font-stretch:100% !important; font-size:12px !important; font-weight:700 !important;
+  letter-spacing:0 !important; line-height:inherit !important; color:#f4f7f5 !important;
+}
+${PA} :is(.sx-dossier .orr-route__caption, .sx-ct-tether__caption) > .orr-route__via {
+  font-family:${UI} !important; font-stretch:100% !important; font-size:12px !important; font-weight:700 !important; letter-spacing:.08em !important;
+}
+
+/* ==== A RECEIPT IS A TOAST (2026-11-23) ======================================================
+   "Job taken", "Part fitted", "Hull repaired": the receipt used to take its own row at the head of
+   the foot, which pushed Back, the four places and Undock down under the frame's edge for its 3.6 s,
+   exactly when the player wants Undock. It now stands on its own small plate above the foot's
+   right end (over Undock's column), never in the foot's flow, and clicks pass through it. */
+${PA} .sxb-ops.sxb-ops > .sx-comms.sx-comms { display:contents !important; }
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt {
+  position:absolute !important; z-index:6 !important; order:0 !important; flex:none !important;
+  top:auto !important; left:auto !important; right:0 !important; bottom:calc(100% + 12px) !important;
+  width:auto !important; max-width:min(460px, 100%) !important; box-sizing:border-box !important;
+  display:grid !important; grid-template-columns:auto minmax(0, 1fr) !important; grid-template-areas:"kind title" "kind delta" !important;
+  align-items:baseline !important; column-gap:12px !important; row-gap:2px !important;
+  padding:10px 16px !important; margin:0 !important;
+  border:${VISOR_BAY_BORDER} !important; border-left:3px solid #f2b950 !important; border-radius:2px !important;
+  background:linear-gradient(155deg, rgb(12 25 36 / .97) 0%, rgb(7 15 23 / .98) 100%) !important;
+  box-shadow:${VISOR_BAY_SHADOW} !important;
+  white-space:normal !important; pointer-events:none !important; isolation:auto !important;
+  font-family:${UI} !important; text-transform:none !important;
+}
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt[hidden] { display:none !important; }
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt::before { content:none !important; display:none !important; }
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt > .so-transfer { display:none !important; }
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt > .sx-receipt__kind {
+  grid-area:kind; align-self:start; padding-top:2px;
+  font-family:${UI} !important; font-stretch:100% !important; font-size:12px !important; font-weight:700 !important;
+  letter-spacing:.08em !important; text-transform:uppercase !important; color:${GOLD} !important; white-space:nowrap !important;
+}
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt > .sx-receipt__title {
+  grid-area:title; min-width:0;
+  font-family:${UI} !important; font-stretch:100% !important; font-size:14px !important; font-weight:700 !important; line-height:1.3 !important;
+  letter-spacing:0 !important; text-transform:none !important; color:#f4f7f5 !important; overflow-wrap:anywhere !important; white-space:normal !important;
+}
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt > .sx-receipt__delta {
+  grid-area:delta; min-width:0; margin:0 !important;
+  font-family:${UI} !important; font-size:13px !important; font-weight:500 !important; letter-spacing:0 !important; text-transform:none !important;
+  color:rgb(${BONE} / .80) !important; font-variant-numeric:tabular-nums; white-space:normal !important;
+}
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt > .sx-receipt__delta:empty { display:none !important; }
+${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt.is-live { animation:sf-receipt-in 160ms ease-out both; }
+@keyframes sf-receipt-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) {
+  ${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt.is-live { animation:none !important; }
+}
+@media (max-width:600px) {
+  ${PA} .sxb-ops.sxb-ops .sx-receipt.sx-receipt { left:0 !important; right:0 !important; max-width:none !important; bottom:calc(100% + 8px) !important; }
+}
 `;
 
 export function injectStationStandard(doc = globalThis.document) {

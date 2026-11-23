@@ -30,11 +30,19 @@ function missionRiskTier(m) {
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
 }
 
+/** Live jobs the pilot took from a desk: the opening's own story contract (47-A) is installed at
+ *  cold start, not taken, so it never makes a new pilot read as already employed. */
+export function deskJobCount(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  return active.filter((m) => m && (m.status == null || m.status === 'active')
+    && !(typeof m.storyTag === 'string' && m.storyTag.startsWith('campaign47a:'))).length;
+}
+
 function firstLoopNeedsSafeWork(state) {
   const ob = state && state.onboarding;
   if (!ob || ob.finished === true) return false;
   const beatDoneAt = ob.beatDoneAt || {};
-  return beatDoneAt.choice == null && activeMissionCount(state) === 0;
+  return beatDoneAt.choice == null && deskJobCount(state) === 0;
 }
 
 function missionDestName(m) {

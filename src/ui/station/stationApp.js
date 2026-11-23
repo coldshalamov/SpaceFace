@@ -1109,22 +1109,28 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     showReceipt(receipt.title, receipt.line, receipt.detail);
     refresh();
   });
-  subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
+  // Receipts speak plain words (R18): what happened, then what it cost or what it set up.
+  subscribe('module:purchased', (p = {}) => showReceipt('Shipyard', 'Part bought', `−${fmtCr(p.price)} cr`));
   // inf-fit-milestone: a fit that teaches the hull a new verb names it on the receipt — the
-  // capability vocabulary's own words — instead of the mechanical LOADOUT RECALCULATED line.
+  // capability vocabulary's own words — instead of a mechanical loadout line.
   subscribe('module:equipped', (p = {}) => {
     const gained = consumeFitCapabilityMilestone(state(), p);
-    showReceipt('SHIPWORKS', 'FIT COMMITTED', gained && gained.verb
-      ? `NEW · ${String(gained.verb).toUpperCase()}`
-      : 'LOADOUT RECALCULATED');
+    showReceipt('Shipyard', 'Part fitted', gained && gained.verb
+      ? `New: ${String(gained.verb)}`
+      : '');
   });
-  subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
-  subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
-  subscribe('mission:accepted', () => showReceipt('MISSION BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
+  subscribe('module:unequipped', () => showReceipt('Shipyard', 'Part removed', 'In your storage'));
+  subscribe('ship:purchased', (p = {}) => showReceipt('Shipyard', 'Ship bought', p.price ? `−${fmtCr(p.price)} cr` : ''));
+  subscribe('mission:accepted', (p = {}) => {
+    const s = state();
+    const active = s && s.missions && Array.isArray(s.missions.active) ? s.missions.active : [];
+    const job = active.find((m) => m && p && String(m.id) === String(p.missionId));
+    showReceipt('Job taken', job && job.title ? String(job.title) : 'On your list', 'Route marked on your chart');
+  });
   subscribe('mission:completed', (p = {}) => {
     const reward = Number(p.rewardCr);
-    const delta = Number.isFinite(reward) && reward > 0 ? `+${fmtCr(reward)} cr` : 'OBJECTIVE SETTLED';
-    showReceipt('MISSION COMPLETE', String(p.type || 'JOB').replace(/_/g, ' ').toUpperCase(), delta);
+    const delta = Number.isFinite(reward) && reward > 0 ? `+${fmtCr(reward)} cr` : '';
+    showReceipt('Job done', titleCaseWords(String(p.type || 'job')), delta);
   });
   subscribe('mission:updated', (payload = {}) => {
     // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
@@ -1138,13 +1144,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const reason = String(p.reason || '');
     if (!reason.startsWith('service:')) return;
     const serviceResult = {
-      repair: 'HULL REPAIRED',
-      refuel: 'FUEL RESTORED',
-      ammo: 'MUNITIONS LOADED',
-      hull_wash: 'HULL WASHED',
-      survey_fix: 'SURVEY FIX',
-    }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} COMPLETE`;
-    showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
+      repair: 'Hull repaired',
+      refuel: 'Fuel topped up',
+      ammo: 'Munitions loaded',
+      hull_wash: 'Hull washed',
+      survey_fix: 'Survey fixed',
+    }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} done`;
+    showReceipt('Service', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
 
   // PQ-163.03: the first-hour store hook waits for the admitted dock surface — this comms
@@ -1156,7 +1162,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (!shown || typeof text !== 'string' || !text) return false;
     if (presentedStoreSentenceOfferId === offerId) return false;
     presentedStoreSentenceOfferId = offerId;
-    showReceipt('FLIGHT SCHOOL', text, 'SHIPWORKS');
+    showReceipt('Flight school', text, 'Shipyard');
     const bus = ctx && ctx.bus;
     if (bus && typeof bus.emit === 'function') {
       bus.emit('firsthour:sentencePresented', { id: offerId });

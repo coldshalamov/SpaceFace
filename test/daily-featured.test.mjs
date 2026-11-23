@@ -168,7 +168,8 @@ test('the dossier explains the premium terms', () => {
   const html = missionDossierHtml(featuredOffer(), state, { origin: 'Helios' });
   assert.match(html, /Featured/);
   assert.match(html, /×1\.75/);
-  assert.match(html, /\+3 rep/);
+  // plain words (R18): the featured bonus reads "+3 standing", not the "rep" shorthand
+  assert.match(html, /\+3 standing/);
   const plain = missionDossierHtml(
     featuredOffer({ id: 'x', featured: undefined, title: 'Ordinary haul' }), state, {});
   assert.doesNotMatch(plain, /Featured/);
