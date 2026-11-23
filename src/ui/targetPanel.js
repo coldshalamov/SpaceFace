@@ -118,7 +118,8 @@ function familyEffectiveness(channelMult, weights) {
 }
 
 const ROLE_LABEL = {
-  starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
+  // The player's own starting hull, flown by someone else, is just a light ship to a stranger.
+  starter: 'Light ship', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
   multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
   gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
@@ -131,10 +132,10 @@ const ROLE_LABEL = {
 };
 
 const GIMMICK_LABELS = {
-  'tether-cutter': 'MASSLINE CUTTER',
-  'tether_cutter': 'MASSLINE CUTTER',
-  'massline-cutter': 'MASSLINE CUTTER',
-  'massline_cutter': 'MASSLINE CUTTER',
+  'tether-cutter': 'LINE CUTTER',
+  'tether_cutter': 'LINE CUTTER',
+  'massline-cutter': 'LINE CUTTER',
+  'massline_cutter': 'LINE CUTTER',
   'pd-screen': 'PD SCREEN',
   'pd_screen': 'PD SCREEN',
   'ram-plate': 'RAM-PLATE',
@@ -1158,8 +1159,10 @@ export function createTargetPanel(ctx) {
       lastName = nextName;
       lastClass = nextClass;
       lastFactionId = t.factionId || null;
-      const classText = nextClass && nextClass.toLowerCase() !== nextName.toLowerCase()
-        ? ` · ${nextClass}`.toUpperCase()
+      // The class is a quiet second word, in the name's own case, and only when it says something
+      // the name does not ("Helios Station", never "Helios Station · STATION").
+      const classText = nextClass && !nextName.toLowerCase().includes(nextClass.toLowerCase())
+        ? ` · ${nextClass}`
         : '';
       setText(elName, `${nextName}${classText}`);
       if (el._sfAriaLabel !== `Current target: ${nextName}${nextClass ? `, ${nextClass}` : ''}`) {

@@ -691,6 +691,23 @@ export const HUD_CSS = `
   .sf-threat-halo__attacker-chev .sf-threat-halo__chev-inner {
     fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; opacity:.8;
   }
+  /* 08 §4: the arrow carries the kind and the distance ("Wasp · 420 m") on the screen side of
+     the edge — body face, tabular figures, a dark underlay so it reads over a lit floor. */
+  .sf-threat-halo__tag {
+    position:absolute; display:none; align-items:baseline; gap:6px; white-space:nowrap;
+    padding:2px 6px; border-radius:2px; background:rgb(6 8 12 / .62);
+    font:600 12px/16px var(--dp-face-read, "Instrument Sans", "Segoe UI", sans-serif);
+    font-variant-numeric:tabular-nums; letter-spacing:.01em;
+    color:var(--dp-ink, #e8e2d4); text-shadow:0 1px 2px rgb(0 0 0 / .8);
+  }
+  .sf-threat-halo__tag-kind { font-weight:700; color:var(--k-red, #ff4d3d); }
+  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__tag { left:50%; top:calc(100% + 2px); transform:translateX(-50%); }
+  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__tag { left:50%; bottom:calc(100% + 2px); transform:translateX(-50%); }
+  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__tag { left:calc(100% + 4px); top:50%; transform:translateY(-50%); }
+  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__tag { right:calc(100% + 4px); top:50%; transform:translateY(-50%); }
+  /* A top/bottom arrow whose inward tag would land on the HUD carries it beside itself instead. */
+  .sf-threat-halo__slot--arc[data-tag-side="after"] .sf-threat-halo__tag { left:calc(100% + 4px); right:auto; top:50%; bottom:auto; transform:translateY(-50%); }
+  .sf-threat-halo__slot--arc[data-tag-side="before"] .sf-threat-halo__tag { right:calc(100% + 4px); left:auto; top:50%; bottom:auto; transform:translateY(-50%); }
   .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__attacker-chev { --sf-threat-angle:90deg; }
   .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__attacker-chev { --sf-threat-angle:180deg; }
   .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__attacker-chev { --sf-threat-angle:-90deg; }

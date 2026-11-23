@@ -225,9 +225,11 @@ ${S} #hud .sf-target__name {
   letter-spacing:.01em !important; word-spacing:.08em !important;
   color:var(--dp-ink-hi, #f4f1ea) !important; text-shadow:none !important;
 }
+/* One type system: names and readings are the body face (tabular figures); the mono face is for
+   key caps and codes only. */
 ${S} #hud .sf-target__faction {
-  font-family:var(--dp-face-num, "Spline Sans Mono", monospace) !important;
-  font-size:12px !important; font-weight:500 !important; letter-spacing:.04em !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:12px !important; font-weight:600 !important; letter-spacing:.02em !important;
 }
 ${S} #hud .sf-target__threat {
   padding:0 !important; border:0 !important; background:none !important;
@@ -237,13 +239,13 @@ ${S} #hud .sf-target__threat {
 ${S} #hud .sf-target__rangerow { gap:8px !important; align-items:center !important; margin-top:1px !important; }
 ${S} #hud .sf-target__rangebar { height:3px !important; border-radius:1.5px !important; background:rgb(236 230 216 / .16) !important; }
 ${S} #hud .sf-target__dist {
-  font-family:var(--dp-face-num, "Spline Sans Mono", monospace) !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
   font-size:12px !important; font-weight:600 !important; font-variant-numeric:tabular-nums !important;
   color:var(--dp-phos, #dfeeff) !important;
 }
 ${S} #hud .sf-target__closing {
   display:inline-flex !important; align-items:center !important; gap:4px !important;
-  font-family:var(--dp-face-num, "Spline Sans Mono", monospace) !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
   font-size:12px !important; font-variant-numeric:tabular-nums !important;
 }
 ${S} #hud .sf-target__engaged {

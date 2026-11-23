@@ -808,7 +808,8 @@ export function createPowerRail(options = {}) {
   el.setAttribute('aria-label', 'Power rail');
 
   let labels = resolveSlotLabels(options.bindings);
-  let cycleLabel = codeToLabel(options.bindings?.cycleBomb?.[0]) || 'unbound';
+  // R17: a key the player has not bound is simply not named — never the word 'unbound'.
+  let cycleLabel = codeToLabel(options.bindings?.cycleBomb?.[0]) || '';
   let claims = [];
   let lastSignature = '';
   const slotNodes = new Map();
@@ -827,7 +828,10 @@ export function createPowerRail(options = {}) {
         glyph: given.glyph || slot.glyph,
         badge: given.badge || '',
         description: (given.description || slot.description || '')
-          + (slot.index === BOMB_SLOT_INDEX ? ` Cycle: ${cycleLabel}. Shove sets armed ordnance off: ${labels[POWER_SLOT.shove] || 'unbound'}.` : ''),
+          + (slot.index === BOMB_SLOT_INDEX
+            ? (cycleLabel ? ` Cycle: ${cycleLabel}.` : '')
+              + (labels[POWER_SLOT.shove] ? ` Shove sets armed ordnance off: ${labels[POWER_SLOT.shove]}.` : ' Shove sets armed ordnance off.')
+            : ''),
         why: given.why || '',
         live: given.live === true,
         state: bound ? (given.state || 'ready') : 'empty',
@@ -887,7 +891,7 @@ export function createPowerRail(options = {}) {
   return {
     el,
     /** Refresh key labels after a rebind. */
-    setBindings(bindings) { labels = resolveSlotLabels(bindings); cycleLabel = codeToLabel(bindings?.cycleBomb?.[0]) || 'unbound'; lastSignature = ''; },
+    setBindings(bindings) { labels = resolveSlotLabels(bindings); cycleLabel = codeToLabel(bindings?.cycleBomb?.[0]) || ''; lastSignature = ''; },
     /** `model` is `{ [slotIndex]: { state, name, glyph, cooldownMs } }`. */
     update(model, now = 0) { render(model, now); },
     claim(payload) {

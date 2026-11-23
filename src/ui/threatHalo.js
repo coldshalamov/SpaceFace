@@ -14,6 +14,8 @@ import {
   getForcePaletteHex,
 } from '../data/palettes.js';
 import { pluralWord } from './numberFormat.js';
+import { formatDistance } from './units.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
 
 
 export {
@@ -116,6 +118,25 @@ const tetherPlan = specialistPlanById('tether_cutter');
 const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitTicks)
   ? tetherPlan.commitTicks
   : 45;
+
+// 08 §4 — an off-screen marker is an edge arrow with the kind and the distance: "Wasp · 420 m".
+// The kind is the plain first word of the enemy's own name (never a faction id), else its role
+// word; the distance steps in 10 m (0.1 km past a kilometre) so a closing hull rewrites the tag a
+// few times a second, not every frame.
+const HALO_ENEMY_NAME = new Map(ENEMY_TYPES.map((row) => [row.id, row.name]));
+export function haloKindWord(entity, role = '') {
+  const data = (entity && entity.data) || {};
+  const enemyName = HALO_ENEMY_NAME.get(data.enemyTypeId) || HALO_ENEMY_NAME.get(data.lootTableId);
+  if (enemyName) return String(enemyName).split(/\s+/)[0];
+  const raw = String(role || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+  if (!raw || raw === 'unknown') return 'Hostile';
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+export function haloDistanceText(distance) {
+  const d = Number(distance);
+  if (!Number.isFinite(d) || d < 0) return '';
+  return formatDistance(d >= 1000 ? Math.round(d / 100) * 100 : Math.round(d / 10) * 10);
+}
 
 export function hostileLabelFor(role, bucket, telegraphed, armedMines = 0) {
   const raw = String(role || 'unknown').trim() || 'unknown';
@@ -607,6 +628,21 @@ export function createThreatHalo(root, busOrOpts) {
     });
     slot.appendChild(mineCount);
     slot._sfMineCount = mineCount;
+    // The kind and distance ride beside the arrow, on the screen side of the edge.
+    const tag = document.createElement('span');
+    tag.className = 'sf-threat-halo__tag';
+    tag.setAttribute('aria-hidden', 'true');
+    const tagKind = document.createElement('b');
+    tagKind.className = 'sf-threat-halo__tag-kind';
+    const tagDist = document.createElement('span');
+    tagDist.className = 'sf-threat-halo__tag-dist';
+    tag.appendChild(tagKind);
+    tag.appendChild(tagDist);
+    if (tag.style) tag.style.display = 'none';
+    slot.appendChild(tag);
+    slot._sfTag = tag;
+    slot._sfTagKind = tagKind;
+    slot._sfTagDist = tagDist;
     layer.appendChild(slot);
     hostileSlots[i] = slot;
   }
@@ -650,6 +686,64 @@ export function createThreatHalo(root, busOrOpts) {
   let haloTick = 0;
   let haloSim = 0;
   let haloPublication = 0;
+  // The pass's player and state, read by the edge tags (kind + distance) in applySlots.
+  let haloPlayer = null;
+  let haloState = null;
+  // Edge tags already seated this pass: a lower-ranked arrow whose tag would cover one keeps
+  // its arrow and drops its words. Along-edge spans: a top/bottom tag is a line of text wide.
+  const tagEdge = new Array(HOSTILE_LIMIT);
+  const tagAlong = new Float64Array(HOSTILE_LIMIT);
+  const TAG_CLEAR_ALONG_H = 104;
+  const TAG_CLEAR_ALONG_V = 30;
+  function applyEdgeTag(slot, i, labelled) {
+    const tag = slot._sfTag;
+    if (!tag) return labelled;
+    const e = haloState && haloState.entities && typeof haloState.entities.get === 'function'
+      ? haloState.entities.get(hostileId[i]) : null;
+    const p = haloPlayer;
+    let show = !!(e && e.pos && p && p.pos);
+    const edge = placement.edge;
+    const along = edge === EDGE_TOP || edge === EDGE_BOTTOM ? placement.x : placement.y;
+    if (show) {
+      const clear = edge === EDGE_TOP || edge === EDGE_BOTTOM ? TAG_CLEAR_ALONG_H : TAG_CLEAR_ALONG_V;
+      for (let k = 0; k < labelled; k++) {
+        if (tagEdge[k] === edge && Math.abs(tagAlong[k] - along) < clear) { show = false; break; }
+      }
+    }
+    const kind = show ? haloKindWord(e, hostileRole[i]) : '';
+    const dist = show ? haloDistanceText(Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z)) : '';
+    // The tag never lands on the HUD: try the screen side of the arrow, then beside it along the
+    // edge; a tag that fits nowhere drops its words (the arrow stays). Width is estimated from the
+    // text so seating costs no layout read.
+    const side = show ? edgeTagSide(edge, placement.x, placement.y, kind.length + dist.length + 1) : '';
+    show = show && side !== '';
+    setDisplay(tag, show, 'inline-flex');
+    if (!show) return labelled;
+    setAttr(slot, 'data-tag-side', side);
+    if (slot._sfTagKindText !== kind) { slot._sfTagKindText = kind; slot._sfTagKind.textContent = kind; }
+    if (slot._sfTagDistText !== dist) { slot._sfTagDistText = dist; slot._sfTagDist.textContent = dist; }
+    tagEdge[labelled] = edge;
+    tagAlong[labelled] = along;
+    return labelled + 1;
+  }
+  const TAG_ARROW_HALF_PX = 13;
+  const TAG_HEIGHT_PX = 20;
+  function edgeTagSide(edge, cx, cy, chars) {
+    const w = Math.round(chars * 7 + 20);
+    const h = TAG_HEIGHT_PX;
+    const fits = (x, y) => x >= 4 && y >= 4 && x + w <= viewportW - 4 && y + h <= viewportH - 4
+      && !overlapsReservedOrClear(x, y, w, h);
+    const beside = cy - h / 2;
+    if (edge === EDGE_TOP || edge === EDGE_BOTTOM) {
+      const y = edge === EDGE_TOP ? cy + TAG_ARROW_HALF_PX + 2 : cy - TAG_ARROW_HALF_PX - 2 - h;
+      if (fits(cx - w / 2, y)) return 'in';
+      if (fits(cx + TAG_ARROW_HALF_PX + 4, beside)) return 'after';
+      if (fits(cx - TAG_ARROW_HALF_PX - 4 - w, beside)) return 'before';
+      return '';
+    }
+    const x = edge === EDGE_LEFT ? cx + TAG_ARROW_HALF_PX + 4 : cx - TAG_ARROW_HALF_PX - 4 - w;
+    return fits(x, beside) ? 'in' : '';
+  }
   let lastHarvestIndexVersion = null;
   let lastHarvestAtS = -Infinity;
 
@@ -1560,6 +1654,7 @@ export function createThreatHalo(root, busOrOpts) {
 
   function applySlots(cmState) {
     let shown = 0;
+    let labelled = 0;
     const publicationAt = performance.now();
     haloPublication += 1;
     setAttr(layer, 'data-placement-frame', haloPublication);
@@ -1643,6 +1738,7 @@ export function createThreatHalo(root, busOrOpts) {
       setAttr(slot, 'aria-hidden', mines > 0 ? 'false' : 'true');
       setAttr(slot, 'role', mines > 0 ? 'img' : null);
       setAttr(slot, 'data-armed-mines', mines > 0 ? mines : null);
+      labelled = applyEdgeTag(slot, i, labelled);
       shown++;
     }
 
@@ -1696,6 +1792,8 @@ export function createThreatHalo(root, busOrOpts) {
         lastHarvestAtS = simT;
       }
       expireTelegraphCues(tick);
+      haloPlayer = player;
+      haloState = state;
       const width = (typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
         ? window.innerWidth
         : 1280;
