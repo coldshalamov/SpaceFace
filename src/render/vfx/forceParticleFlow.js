@@ -102,11 +102,10 @@ class TransportBehavior {
     // Read the CURRENT event's kind, not m[0]: flow memory is written below (and on a recycled
     // particle still carries the previous event, so it cannot decide this one).
     // A body larger than the field event itself is impossible decorative occupancy, not an aura.
-    p.forceAura = event.kind < 5 && auraCandidate >= 0
+    const auraWanted = event.kind < 5 && auraCandidate >= 0
       && auraRadius < Math.max(1, event.radius) * 1.25
       && (contacts[auraOffset] - event.x) ** 2 + (contacts[auraOffset + 1] - event.z) ** 2
         <= auraReach * auraReach;
-    if (p.forceAura) owner.stats.aura++;
     const variety = unit(event.seed, ordinal * 3), phase = unit(event.seed, ordinal * 3 + 1) * TAU;
     m[0] = event.kind; m[1] = event.x; m[2] = event.y; m[3] = event.z;
     m[4] = event.dx; m[5] = event.dz; m[6] = event.radius; m[7] = phase; m[8] = variety;
@@ -118,21 +117,30 @@ class TransportBehavior {
     m[12] = clamp(m[11] * (0.085 + unit(event.seed, ordinal * 3 + 2) * 0.015), 0.055, 1.20);
     if (event.kind === 9) m[12] = m[11] * (0.16 + variety * 0.045);
     m[13] = event.halfAngle; m[14] = event.halfWidth;
+    p.life = event.life * (0.74 + variety * 0.26);
+    p.age = Math.min(p.life, event.age);
+    m[10] = p.age;
+    const k = p.forceKinematics || (p.forceKinematics = new Float64Array(MATERIAL_STATE_SIZE));
+    const parcelSeed = Math.trunc(event.seed * 65536);
+    seedMaterialParcel(m, k, p.life, parcelSeed, this.velocity, this.curlScratch);
+    settleMaterialParcel(m, k, p.life, contacts, contactCount);
+    // A parcel born inside the body is the impact. Moving the origin onto the rock first
+    // lifts that parcel off the surface, so the contact flare and the deflected heading never start.
+    p.forceAura = auraWanted && !(k[13] > 0);
     if (p.forceAura) {
+      owner.stats.aura++;
       m[1] = contacts[auraOffset]; m[3] = contacts[auraOffset + 1];
       m[6] = Math.max(3, auraRadius * 1.25);
       m[7] = phase + auraCandidate * 1.73;
       m[9] = Math.min(1.5, event.strength * 1.18);
       m[11] = clamp(auraRadius * 0.85, 1.6, 7.0);
       m[12] = m[11] * (0.075 + unit(event.seed, ordinal * 3 + 4) * 0.02);
+      p.life = Math.min(p.life, 0.42 + variety * 0.20);
+      p.age = Math.min(p.life, event.age);
+      m[10] = p.age;
+      seedMaterialParcel(m, k, p.life, parcelSeed, this.velocity, this.curlScratch);
+      settleMaterialParcel(m, k, p.life, contacts, contactCount);
     }
-    p.life = event.life * (0.74 + variety * 0.26);
-    if (p.forceAura) p.life = Math.min(p.life, 0.42 + variety * 0.20);
-    p.age = Math.min(p.life, event.age);
-    m[10] = p.age;
-    const k = p.forceKinematics || (p.forceKinematics = new Float64Array(MATERIAL_STATE_SIZE));
-    seedMaterialParcel(m, k, p.life, Math.trunc(event.seed * 65536), this.velocity, this.curlScratch);
-    settleMaterialParcel(m, k, p.life, contacts, contactCount);
     // Absolute-age admissions (culled/reconstructed fields) replay the identical bounded solver.
     advanceMaterialParcel(m, k, p.life, p.age, contacts, contactCount, this.velocity, this.curlScratch);
     p.velocity.set(0, 0, 0);
