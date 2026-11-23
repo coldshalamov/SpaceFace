@@ -1765,6 +1765,9 @@ ${PA} .sx-dock__back-key {
   ${PA} .sxb-ops.sxb-ops.dp-frame__foot :is(.of-facility-rail, .sxb-ops__dock, .sx-dock, .sx-dock__group--nav) {
     display:contents !important;
   }
+  /* the hub has its own four doors: its foot is Undock alone, full width */
+  ${PA}[data-operation="concourse"] .sxb-ops.sxb-ops.dp-frame__foot > .of-facility-rail { display:none !important; }
+  ${PA}[data-operation="concourse"] .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-row:1 !important; grid-column:1 / -1 !important; }
   ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li { grid-row:1 !important; display:flex !important; min-width:0 !important; margin:0 !important; }
   ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li > .sx-tile.sx-tile {
     width:100% !important; min-width:0 !important; min-height:48px !important; height:auto !important; margin:0 !important; padding:6px 4px !important;
@@ -1922,7 +1925,12 @@ ${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .sx-tile__badge:not([hidden]) { p
 ${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__back { grid-row:2 !important; grid-column:1 !important; justify-content:center !important; min-height:44px !important; margin:0 !important; }
 ${PM} .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-row:2 !important; grid-column:2 / -1 !important; display:flex !important; margin:0 !important; width:auto !important; }
 ${PM} .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat > .sxb-launch { width:100% !important; min-height:44px !important; }
-${PM}[data-operation="concourse"] .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-column:1 / -1 !important; }
+/* the hub on a phone: its own hero, Service strip and four doors, so the old berth header (crawls,
+   dials, credit line, second purse) and the foot's rail stay hidden as they are on a desktop; the
+   foot is Undock alone */
+${PM}[data-operation="concourse"] header.sxb-berth.sxb-berth { display:none !important; }
+${PM}[data-operation="concourse"] .sxb-ops.sxb-ops.dp-frame__foot > .of-facility-rail { display:none !important; }
+${PM}[data-operation="concourse"] .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-row:1 !important; grid-column:1 / -1 !important; }
 
 /* ==== A RECEIPT IS A TOAST (2026-11-23) ======================================================
    "Job taken", "Part fitted", "Hull repaired": the receipt used to take its own row at the head of
