@@ -26,6 +26,7 @@ import {
   recommendedActions,
   stagedOpeningOwnsCommand,
 } from '../src/ui/screens/missionLog.js';
+import { berthAnchorFor } from '../src/ui/berthOffer.js';
 import { commitCoursePayload, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
 import { takeMapOpenIntent } from '../src/ui/mapAuthority.js';
 import { flightV3 } from '../src/systems/flightV3.js';
@@ -350,4 +351,41 @@ test('tutorialHints off: cold-start still installs mission-owned 47-A waypoint i
     h.state.ui.trackedMissionId,
   );
   assert.equal(actions[0].label, 'TRACKED');
+});
+
+test('a berth objective names its station by stable id, never by a runtime entity id', () => {
+  // A waypoint targetEntityId is read as a rope route anchor (tetherGameplay →
+  // masslineTargetScoring 'route-anchor'), so naming Helios there made the station outrank the
+  // hostile and tow contexts the opening lessons are actually about. The objective may carry the
+  // stable stationId only; berthOffer matches the [E] chip by that id.
+  const station = { id: 7, pos: { x: -420, z: 100 } };
+  const wp = buildOnboardingObjectiveWaypoint(
+    { key: 'berth', line: 'Dock at Helios Station.' },
+    { pos: station.pos, label: 'HELIOS', stationId: 'station_helios' },
+  );
+  assert.equal(wp.stationId, 'station_helios', 'the objective names the station it docks at');
+  assert.equal(wp.targetEntityId, undefined, 'a berth objective never carries a rope route anchor');
+  const throughStation = buildOnboardingObjectiveWaypoint(
+    { key: 'berth', line: 'Dock at Helios Station.' },
+    { pos: station.pos, label: 'HELIOS', targetEntityId: station.id, stationId: 'station_helios' },
+  );
+  assert.equal(throughStation.targetEntityId, undefined,
+    'even a caller that passes a runtime id cannot make the berth a rope anchor');
+});
+
+test('the berth objective measures to the dock anchor, and the [E] chip agrees', () => {
+  const h = harness({ tutorialHints: false });
+  const state = h.state;
+  const helios = state.entityList.find((e) => e && e.type === 'station'
+    && e.data && e.data.stationId === 'station_helios');
+  assert.ok(helios, 'the live Helios body is present');
+  const hull = state.entities.get(state.playerId);
+  const target = onboardingProto._stationObjectiveTarget.call(
+    Object.assign(Object.create(onboardingProto), { state }), helios, 'HELIOS');
+  const anchor = berthAnchorFor(helios, hull);
+  assert.ok(anchor);
+  assert.equal(Math.round(target.pos.x), Math.round(anchor.x));
+  assert.equal(Math.round(target.pos.z), Math.round(anchor.z));
+  assert.equal(target.stationId, 'station_helios');
+  assert.equal(target.targetEntityId, undefined);
 });

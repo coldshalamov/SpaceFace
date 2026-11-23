@@ -16,8 +16,7 @@
 
 import { resolveAutopilotTarget } from '../core/flight/flightPresentationReads.js';
 import { activeRaceMission } from '../systems/racingSteer.js';
-import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
-import { berthAutopilotStation, berthOfferStation, stationDisplayName } from './berthOffer.js';
+import { berthAnchorFor, berthAutopilotStation, berthOfferStation, stationDisplayName } from './berthOffer.js';
 import { openingHoldsBerthOffer } from '../onboarding/openingQuiet.js';
 import { formatDistance } from './units.js';
 import { promptLabel } from './bindings.js';
@@ -193,6 +192,7 @@ export function createFlightHelm(root, state, hooks = {}) {
   let modeSig = '';
   let offerText = '';
   let offerPick = null;
+  let offerBerthAnchor = null;
   let offerResolveIn = 0;
   let offerW = 0;
   let offerH = 0;
@@ -241,14 +241,20 @@ export function createFlightHelm(root, state, hooks = {}) {
     offerResolveIn -= finite(dt, 1 / 30);
     if (offerResolveIn <= 0) {
       offerResolveIn = 0.2;
+      const player = state.entities.get(state.playerId);
       offerPick = resolveBerthOffer(state, { fight, dockInRange });
+      offerBerthAnchor = offerPick && offerPick.station && player
+        ? berthAnchorFor(offerPick.station, player)
+        : null;
     } else if (dockInRange) offerPick = null;
     const pick = offerPick;
     if (!pick || !pick.station || pick.station.alive === false) { hideOffer(); return; }
     const station = pick.station;
     const player = state.entities.get(state.playerId);
     if (!player || !player.pos) { hideOffer(); return; }
-    const dist = Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z);
+    // Distance to the berth, not the hull's centre: the same fix the tracker quotes.
+    const anchor = offerBerthAnchor || berthAnchorFor(station, player) || station.pos;
+    const dist = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
     const key = promptLabel('dock').replace(/^\[\s*|\s*\]$/g, '');
     // Only the key or the station's name changes the chip's width (the distance sits in a
     // fixed-width span), so the one layout read happens on a new station, not as the ship moves.
@@ -311,8 +317,7 @@ export function createFlightHelm(root, state, hooks = {}) {
     const target = resolveAutopilotTarget(state, state.nav.autopilot);
     laneWorld.mouth = target && target.dockingStage !== 'berth' && target.approachPoint
       ? { x: target.approachPoint.x, y: 0, z: target.approachPoint.z } : null;
-    const manifest = resolveCollisionProxyManifest(station);
-    const anchor = (manifest && resolveDockAnchor(station, manifest, player)) || station.pos;
+    const anchor = berthAnchorFor(station, player) || station.pos;
     laneWorld.berth.x = anchor.x; laneWorld.berth.y = station.pos.y || 0; laneWorld.berth.z = anchor.z;
   }
 

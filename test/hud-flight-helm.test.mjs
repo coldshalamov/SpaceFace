@@ -2,7 +2,7 @@
 // and "[E] Fly to berth" names exactly the station E flies to (berthOffer.js is the one pick).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { berthOfferStation, berthAutopilotStation, isDockableStation } from '../src/ui/berthOffer.js';
+import { berthAnchorFor, berthOfferStation, berthAutopilotStation, isDockableStation } from '../src/ui/berthOffer.js';
 import { resolveFlightSteerer, resolveBerthOffer } from '../src/ui/flightHelm.js';
 
 function world({ stations = [], targetId = null, autopilot = null, berthRun = null, extra = {} } = {}) {
@@ -31,8 +31,49 @@ test('E flies to the selected station first, else the nearest dockable one, at a
   assert.equal(picked.chosen, true);
 });
 
-test('the nearest-station offer steps aside in a fight; a station the pilot picked stays offered', () => {
-  const st = station(10, 3000, 0);
+test('a mission waypoint in another sector never offers a berth here', () => {
+  // The trade job's tracker says to jump to Tethys; Tethys Trade Hub is a station body in the
+  // tree (a resident neighbour), so a stationId/name match alone offered 'Fly to berth Tethys'.
+  const helios = station(10, 900, 0, { stationId: 'station_helios', name: 'Helios Station', sectorId: 'sector_helios_prime' });
+  helios.homeSectorId = 'sector_helios_prime';
+  const tethys = station(11, 40000, 0, { stationId: 'station_tethys', name: 'Tethys Trade Hub' });
+  tethys.homeSectorId = 'sector_tethys_junction';
+  const state = world({
+    stations: [helios, tethys],
+    extra: { state: {
+      world: { currentSectorId: 'sector_helios_prime' },
+      missions: { active: [{ id: 'job-1', status: 'active', destStationId: 'station_tethys' }] },
+      nav: { autopilot: null, waypoint: null },
+    } },
+  });
+  const offer = berthOfferStation(state);
+  assert.equal(offer.station, helios, 'the local berth is offered, not the jump target');
+  assert.equal(offer.chosen, false, 'the far station is no longer an objective pick here');
+});
+
+test('the berth chip measures to the same berth anchor the objective does', () => {
+  // A size-L hub berthed from 456 m out: the tracker quotes the distance to the berth anchor,
+  // so the chip must quote that fix too, not the shorter station-centre one.
+  const hub = station(10, 0, 0, { stationId: 'station_helios', dockRadius: 90, collisionProxy: 'station_ring_hub', corridorBearingDeg: 135 });
+  hub.radius = 90;
+  hub.rot = 0;
+  const hull = { id: 1, type: 'ship', alive: true, pos: { x: -456, z: 0 }, radius: 14 };
+  const anchor = berthAnchorFor(hub, hull);
+  assert.ok(anchor, 'the berth anchor resolves');
+  const toAnchor = Math.hypot(anchor.x - hull.pos.x, anchor.z - hull.pos.z);
+  const toCentre = Math.hypot(hub.pos.x - hull.pos.x, hub.pos.z - hull.pos.z);
+  assert.notEqual(Math.round(toAnchor), Math.round(toCentre),
+    'the berth sits off the station centre, so the two measurements differ');
+  assert.ok(toAnchor > 0);
+
+  const plain = station(11, 500, 0, {});
+  const plainAnchor = berthAnchorFor(plain, hull);
+  assert.deepEqual(plainAnchor, { x: 500, z: 0 },
+    'a station with no proxy anchor is measured to its centre');
+  assert.equal(berthAnchorFor(null, hull), null);
+});
+
+test('the nearest-station offer steps aside in a fight; a station the pilot picked stays offered', () => {  const st = station(10, 3000, 0);
   assert.equal(resolveBerthOffer(world({ stations: [st] }), { fight: true }), null);
   assert.ok(resolveBerthOffer(world({ stations: [st] }), { fight: false }));
   assert.ok(resolveBerthOffer(world({ stations: [st], targetId: 10 }), { fight: true }));
