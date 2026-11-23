@@ -19,6 +19,7 @@
 //  * The pilot record a node reads is resolved in ONE place (activePilotRecord): a Swarm run reads
 //    its own run.pilot (it dies with the run); Adventure reads the saved state.player.pilot.
 
+import { counted } from '../core/numberFormat.js';
 import { pilotLiveNodeIds } from './pilotLive.js';
 
 function snake(name) {
@@ -328,7 +329,7 @@ export function pilotNodeStanding(card, pilot, door) {
   const held = heldIn(pilot, card.branch);
   if (held + 1 < gate) {
     const more = gate - 1 - held;
-    return { state: 'locked', needs: `Needs ${more} more point${more === 1 ? '' : 's'} in ${branchName}` };
+    return { state: 'locked', needs: `Needs ${counted(more, 'more point', 'more points')} in ${branchName}` };
   }
   return { state: isPilotCardEligible(card, pilot, door) ? 'open' : 'locked', needs: '' };
 }

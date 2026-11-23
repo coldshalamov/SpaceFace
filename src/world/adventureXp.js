@@ -30,6 +30,8 @@ const XP = Object.freeze({
 });
 export const ADVENTURE_XP = XP;
 
+import { counted } from '../core/numberFormat.js';
+
 function adventureLive(state) {
   if (!state || state.mode === 'menu') return false;
   const run = state.run;
@@ -38,8 +40,6 @@ function adventureLive(state) {
   if (state.physicsVenueSession) return false;
   return true;
 }
-
-function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
 
 export function installAdventureXp(owner) {
   const state = owner.state;
@@ -83,7 +83,7 @@ export function installAdventureXp(owner) {
     if (mineUnits >= batchUnits) {
       const batches = Math.floor(mineUnits / batchUnits);
       mineUnits -= batches * batchUnits;
-      earn(batches * XP.mineBatchXp, 'mine', `Mined ${plural(batches * batchUnits, 'unit')} of ore`);
+      earn(batches * XP.mineBatchXp, 'mine', `Mined ${counted(batches * batchUnits, 'unit')} of ore`);
     }
   }));
   unsubs.push(bus.on('economy:tradeCompleted', (p) => {
@@ -91,7 +91,7 @@ export function installAdventureXp(owner) {
     const profit = Number(p.profit);
     if (!(profit > 0)) return;
     const xp = Math.min(XP.saleMax, Math.max(1, profit * XP.salePerCr));
-    earn(xp, 'sale', `Sold ${plural(Number(p.qty) || 0, 'unit')} for ${Math.round(profit)} cr profit`);
+    earn(xp, 'sale', `Sold ${counted(Number(p.qty) || 0, 'unit')} for ${Math.round(profit)} cr profit`);
   }));
   unsubs.push(bus.on('poi:discovered', () => earn(XP.poiDiscovery, 'discovery', 'New place found')));
   unsubs.push(bus.on('sector:discovered', () => earn(XP.sectorDiscovery, 'discovery', 'New sector charted')));
