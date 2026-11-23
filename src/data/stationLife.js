@@ -7,7 +7,7 @@ const STATIONS = new Map(SECTORS.flatMap(s => (s.stations || []).map(st => [st.i
 const AUTHORITIES = new Map(FACTION_META.map(f => [f.id, f.name]));
 const TYPE = Object.freeze({
   trade_hub: ['Concourse', 'Keep purchases attended. Unclaimed freight is not a gift.', 820, .16],
-  refinery: ['Crucible', 'Hot-work crews: pressure-test the line before the next pour.', 460, .10],
+  refinery: ['Smelter', 'Hot-work crews: pressure-test the line before the next pour.', 460, .10],
   mining: ['Claim', 'Dust seals stay shut until the assay crew clears the lock.', 530, .10],
   fab: ['Foundry', 'Tool lockers close at the bell. Count your fingers before signing.', 620, .12],
   military: ['Watch', 'Visitors remain inside the marked lanes. No exceptions for rank.', 980, .055],

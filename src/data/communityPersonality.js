@@ -151,7 +151,7 @@ export const COMMUNITY_PERSONALITY = Object.freeze([
       'Claim the dead hauler? Towing is believing.',
       'Slag glow is ambience. Shielding is a lifestyle.',
     ],
-    'Crucible orange through steam; a bell over the shipping door; verse chalked on plate.',
+    'Furnace orange through steam; a bell over the shipping door; verse chalked on plate.',
     'Liturgical foundry hymns between crane calls.',
   ),
 

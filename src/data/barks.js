@@ -2780,7 +2780,7 @@ export const STATION_PA_BARKS = Object.freeze({
       'Dock control: array sweep in progress. The return is ours, not yours.',
     ]),
     slag_pour: Object.freeze([
-      'Dock control: slag run from the crucible vents. Stay off the outbound chute.',
+      'Dock control: slag run from the smelter vents. Stay off the outbound chute.',
       'Dock control: hot pour on the outbound lane. Do not fly the glow.',
     ]),
   }),
