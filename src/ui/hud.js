@@ -1445,7 +1445,7 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   FLYBY: 'Break the beam',
   TETHER: 'Deny the latch',
   CHARGE: 'Close in or get behind cover',
-  LAUNCH: 'Something heavy incoming — move',
+  LAUNCH: 'Heavy mass incoming — move',
   INCOMING: 'Sidestep or send it back',
   CALL: 'Kill the caller first',
   MINES: 'Keep one flank clear',
@@ -1453,22 +1453,22 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   GHOST: 'It relocates after the shot',
   FUSE: 'It goes off where it dies',
   // CW-TELLS: the words name the player's decision, matching each cue's authored fiction.
-  BROADSIDE: 'Its side is the gun — circle away',
-  VENT: 'Brood incoming — clear the lane',
-  FINAL: 'It spends everything it has left',
-  CURTAIN: 'Point-defense up — hold missiles',
-  FURNACE: 'Cross its nose — the furnace is charging',
-  IRIS: 'The iris is the gun, not the lights',
-  STALK: 'It presses, then calls the pack',
-  SCAN: 'You are being scanned — comply or run',
-  RETURN: 'It will return your fire — keep moving',
-  SEAL: 'Lane closed for audit — tear the emitters',
+  BROADSIDE: 'Stay off its broadside',
+  VENT: 'Brood incoming — clear out',
+  FINAL: 'Its last stand — stay clear',
+  CURTAIN: 'Missiles will be shot down',
+  FURNACE: 'Get off its nose line',
+  IRIS: 'Only the iris fires',
+  STALK: 'It will call its pack',
+  SCAN: 'Scan sweep — comply or run',
+  RETURN: 'It fires back — keep moving',
+  SEAL: 'Break the lane emitters',
   // CW-TELLS (INV-21 item 5): the Enemy Mind's decisions, same chip family.
-  FLANK: 'A crossfire is opening — turn with it',
-  BAIT: 'It offers the chase — do not follow',
-  PUNISH: 'It read your pursuit — break off',
-  COVER: 'It shields its wounded — press the opening',
-  PEEL: 'Punish the window before it rallies',
+  FLANK: 'Crossfire — turn with it',
+  BAIT: 'Bait — do not chase it',
+  PUNISH: 'A trap — break off the chase',
+  COVER: 'Shielding its wounded — push',
+  PEEL: 'Hit them before they regroup',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
   // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
@@ -3548,6 +3548,10 @@ export function createHud(ctx, alerts) {
     .sf-tell--PEEL .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
       overflow:hidden; text-overflow:ellipsis; }
+    /* A phone's chip is narrower than the longest answer: the hint wraps to a second line
+       instead of losing its last words to an ellipsis. */
+    html[data-sf-mobile-flight="1"] .sf-tell { white-space:normal; }
+    html[data-sf-mobile-flight="1"] .sf-tell__hint { text-overflow:clip; }
     .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
     .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
     .sf-tell:not(.is-offscreen) .sf-tell__dir { display:none; }
@@ -7095,11 +7099,16 @@ export function createHud(ctx, alerts) {
   function seatFlightVoice() {
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
+    // Live class lists where the host has them; a partial DOM (headless harnesses) walks the lane.
     if (alertsEl && !voiceAlertCards) {
-      voiceAlertCards = alertsEl.getElementsByClassName('sf-alert');
-      voiceStageCards = alertsEl.getElementsByClassName('sf-stage__item');
+      voiceAlertCards = typeof alertsEl.getElementsByClassName === 'function'
+        ? alertsEl.getElementsByClassName('sf-alert') : null;
+      voiceStageCards = typeof alertsEl.getElementsByClassName === 'function'
+        ? alertsEl.getElementsByClassName('sf-stage__item') : [];
     }
-    if (toastsLaneEl && !voiceToastCards) voiceToastCards = toastsLaneEl.getElementsByClassName('sf-toast');
+    if (toastsLaneEl && !voiceToastCards && typeof toastsLaneEl.getElementsByClassName === 'function') {
+      voiceToastCards = toastsLaneEl.getElementsByClassName('sf-toast');
+    }
     for (const k in voicePresent) voicePresent[k] = false;
     for (const slot of tellSlots) {
       if (slot.age < Infinity && slot.el.classList.contains('is-on')) { voicePresent.tell = true; break; }
@@ -9105,7 +9114,7 @@ export function createHud(ctx, alerts) {
   function placeFlightReadouts(w, h, followed = null) {
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
     const dock = followed?.dock || findDockAlert();
-    if (!dock?.isConnected || dock.hidden) { trackedDockCue = null; visorDockCue.hide(); return; }
+    if (!dock?.isConnected || dock.hidden || !dock.classList?.contains('sf-alert--dock')) { trackedDockCue = null; visorDockCue.hide(); return; }
     // Reuse the decision bounds between receipt placements so camera tracking requires no
     // layout measurement. Losing the anchor returns the chip to the ordinary alert seat.
     const deck = followed ? null : document.getElementById('sf-prompt-deck');

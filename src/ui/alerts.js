@@ -227,11 +227,20 @@ export function createAlerts(ctx) {
     }
     el.className = 'sf-alert';
     el.hidden = false;
-    el.style.animationName = '';
+    // The HUD seats a dock prompt with inline fixed position and size (placeFlightBox) and caches
+    // them in el._sfStyle; a recycled node must not carry that seat to the next pill, or the next
+    // warning draws at the old dock spot, boxed to the dock prompt's size.
+    if (typeof el.removeAttribute === 'function') el.removeAttribute('style');
+    else el.style.animationName = '';
+    delete el._sfStyle;
     // Optional-call: Mini-DOM harnesses may not implement removeAttribute.
     if (typeof el.removeAttribute === 'function') {
+      for (const name of Array.from(el.getAttributeNames?.() || [])) {
+        if (name.startsWith('data-')) el.removeAttribute(name);
+      }
       el.removeAttribute('data-dock-station');
       el.removeAttribute('data-dock-key');
+      el.removeAttribute('data-visor-anchored');
     }
     if (alertNodeFree.length < ALERT_NODE_POOL_MAX) alertNodeFree.push(node);
   }
