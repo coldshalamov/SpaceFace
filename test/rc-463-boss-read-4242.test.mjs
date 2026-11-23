@@ -160,7 +160,8 @@ test('warning projection stays in CSS pixels on high-DPI screens and after menu 
     assert.equal(canvas.hidden, true);
     assert.equal(canvas.width, 1, 'flight without a warning keeps the backing buffer idle');
     h.bus.emit('capitalBoss:telegraph', {
-      fightId: h.fightId, castId: 'dpi-cast', startedAt: 0, fireAt: 60, endAt: 120,
+      // The floor telegraph lights only in the last 0.6 s (36 ticks) before the hit.
+      fightId: h.fightId, castId: 'dpi-cast', startedAt: 0, fireAt: 30, endAt: 120,
       shapes: [{ kind: 'lane', a: { x: 0, z: 0 }, b: { x: 100, z: 0 }, radius: 10 }],
     });
     mount.draw(h.state);
@@ -193,7 +194,7 @@ test('warning projection stays in CSS pixels on high-DPI screens and after menu 
 });
 
 // ── 1 · all seven authored beats read out before they fire ────────────────────────────
-test('the Iron Maw opening seats its live instruction clear of the HUD and hands it off to the phone bar', () => {
+test('the Iron Maw opening puts its live instruction on the boss bar, never a card over the fight', () => {
   const env = installDom(960, 540);
   env.doc.body = env.root;
   env.root.removeChild = node => node.remove();
@@ -236,15 +237,14 @@ test('the Iron Maw opening seats its live instruction clear of the HUD and hands
     bus.emit('capitalBoss:telegraphEnd', { fightId, castId: 'old', reason: 'spent' });
     bus.emit('capitalBoss:recovery', { fightId, title: beat.title, exposure: beat.expose,
       mouthLine: `Mouth open. ${hullInstruction}` });
-    mount.draw(state);
-    const readout = shown();
-    assert.deepEqual(groupText(readout).slice(2), ['Mouth open', hullInstruction]);
-    const box = readout._rect;
-    const layout = resolveObjectiveHudLayout(960, 540);
-    for (const r of [railBox, layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]) {
-      assert.ok(!r || box.x + box.width <= r.x || r.x + r.width <= box.x
-        || box.y + box.height <= r.y || r.y + r.height <= box.y, 'readout stays outside the active HUD');
-    }
+    // Owner 2026-11-23: Swarm seats no boss card on any screen. The open mouth's one short
+    // line rides the boss bar in the HUD's own type and follows what the player holds.
+    const barLine = () => { mount.draw(state); swarmJuiceHud.update(DT, state);
+      return findAll(env.root, n => n.className === 'sf-sj__bossinstruction')[0]; };
+    const instruction = barLine();
+    assert.equal(shown(), undefined, 'no boss card over the fight');
+    assert.equal(instruction.hidden, false);
+    assert.equal(instruction.textContent, hullInstruction);
     assert.equal(canvas.hidden, false);
     assert.ok(canvas._drawCalls.includes('stroke') && !canvas._drawCalls.includes('fillText'));
     const live = findAll(env.root, n => n.getAttribute?.('aria-live') === 'polite');
@@ -255,25 +255,20 @@ test('the Iron Maw opening seats its live instruction clear of the HUD and hands
     state.entities.set(dart.id, dart);
     state.masslineAcquisition = { validUntil: state.simTime + 1,
       selected: { targetId: dart.id, occupantGeneration: 6, status: 'ready' } };
-    mount.draw(state);
-    assert.equal(groupText(shown())[3], hullInstruction, 'the READY preview must name the current life');
+    assert.equal(barLine().textContent, hullInstruction, 'the READY preview must name the current life');
     state.masslineAcquisition.selected.occupantGeneration = dart.occupantGeneration;
     state.masslineAcquisition.validUntil = state.simTime - 1;
-    mount.draw(state);
-    assert.equal(groupText(shown())[3], hullInstruction, 'the old preview is no longer actionable');
+    assert.equal(barLine().textContent, hullInstruction, 'the old preview is no longer actionable');
     state.masslineAcquisition.validUntil = state.simTime + 1;
     state.masslineAcquisition.selected.status = 'blocked';
-    mount.draw(state);
-    assert.equal(groupText(shown())[3], hullInstruction, 'a live blocked Dart does not earn a throw instruction');
+    assert.equal(barLine().textContent, hullInstruction, 'a live blocked Dart does not earn a throw instruction');
     state.masslineAcquisition.selected.status = 'ready';
-    mount.draw(state);
-    assert.equal(groupText(shown())[3], latchInstruction);
+    assert.equal(barLine().textContent, latchInstruction);
     assert.ok(live.some(region => region.textContent.includes(latchInstruction)));
 
     env.doc.documentElement.setAttribute('data-sf-mobile-flight', '1');
     mount.draw(state);
     swarmJuiceHud.update(DT, state);
-    const instruction = findAll(env.root, n => n.className === 'sf-sj__bossinstruction')[0];
     assert.equal(shown(), undefined);
     assert.equal(instruction.hidden, false);
     assert.equal(instruction.textContent, latchInstruction);
@@ -592,6 +587,9 @@ test('late mount and save:loaded restore the live instruction without a replayed
       get() { return liveRegion._live || ''; },
       set(v) { liveRegion._live = v; announceLog.push({ tick: h.state.tick, text: v }); },
     });
+    // The floor telegraph lights only in the last 0.6 s before the hit: step into that window.
+    const toFire = fight.cast.startedAt + score.beats.find((b) => b.id === fight.cast.beatId).tellTicks - fight.clock;
+    if (toFire > 30) tick(h, toFire - 30);
     mount.draw(h.state);
     const g = groupNodes(env.root)[0];
     assert.equal(g.children[2].textContent, score.beats.find((b) => b.id === fight.cast.beatId).title,

@@ -454,12 +454,29 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     return best;
   };
   const readoutMoveKey = move => move?.mouth ? `${move.castId}|${move.counter}` : move?.castId ?? null;
+  // Swarm hints: the boss bar names a move once, the first time the fight casts it, then the
+  // floor telegraph alone carries it. The live region still hears every cast in full.
+  const barMovesSeen = new Map();
   const foldMoveIntoBar = (group, readout) => {
     const move = readout.move;
     const key = readoutMoveKey(move);
     if (group.barMoveKey === key) return;
     group.barMoveKey = key;
-    bus.emit('swarm:bossMove', { word: move?.title || '', instruction: move?.mouth ? move.counter : '' });
+    let seen = barMovesSeen.get(readout.fightId);
+    if (!seen) { if (barMovesSeen.size > 8) barMovesSeen.clear(); seen = { titles: new Set(), mouthCast: null }; barMovesSeen.set(readout.fightId, seen); }
+    // A move's word shows the first time it is cast. The open mouth's instruction follows what
+    // the player holds (latch the Detonator, throw it, or hit the hull) through the first opening.
+    let first = false;
+    if (move && move.mouth) {
+      if (seen.mouthCast == null) seen.mouthCast = move.castId;
+      first = seen.mouthCast === move.castId;
+    } else if (move && !seen.titles.has(move.title)) {
+      seen.titles.add(move.title);
+      first = true;
+    }
+    bus.emit('swarm:bossMove', first
+      ? { word: move.title, instruction: move.mouth ? counterInstruction(move.counter) : '', ...(move.mouth ? {} : { ttl: 3 }) }
+      : { word: '' });
     if (move) announce(`cast|${readout.fightId}|${key}`, `${move.title}. ${move.counter}`, true);
   };
   const setGroup = (group, readout, showHealth, entities) => {
@@ -579,9 +596,9 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       return;
     }
     const showHealth = !(st && st.run && st.run.kind === 'survival');
-    // Phone Swarm: no separate boss card. The move's word rides the boss bar (swarmJuiceHud
-    // listens for swarm:bossMove); the live region still gets the full instruction.
-    const foldIntoBar = !showHealth && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    // Swarm: no separate boss card on any screen. The move's word rides the boss bar once
+    // (swarmJuiceHud listens for swarm:bossMove); the live region still gets the full instruction.
+    const foldIntoBar = !showHealth && st.run.ruleset === 'swarm';
     const barAvailable = foldIntoBar && arcadeEffectsLevel(st.settings) !== 'off';
     if (sizeDirty) syncSize();
     const layout = layoutFor(cssWidth || 1280, cssHeight || 720);

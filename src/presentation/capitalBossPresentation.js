@@ -23,20 +23,21 @@ export function capitalShapeOutlines(shape) {
   .concat(circleArc(shape.x,shape.z,shape.inner,lo+span,-span))];
 }
 function path(ctx,outlines,project){ctx.beginPath();for(const points of outlines){points.forEach((p,i)=>{const q=project(p);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);});ctx.closePath();}}
+// One short telegraph per attack: the lit lane or cone appears on the floor this many ticks
+// (0.6 s at 60 Hz) before the hit, brightens to the hit, then goes. The boss's own tell (its turn,
+// its bark) carries the earlier warning; the floor does not sit painted through the whole wind-up.
+export const CAPITAL_WARNING_LEAD_TICKS=36;
 export function drawCapitalWarning(ctx,warning,clock,project,{reducedMotion=false}={}) {
- if(clock<warning.startedAt||clock>=warning.endAt)return;
- const active=clock>=warning.fireAt,locked=warning.locked===true;
- const phase=(clock-warning.startedAt)/Math.max(1,warning.fireAt-warning.startedAt);
- const colour=active?'#ff755e':locked?'#edba72':'#bcc6cf';
+ const shownAt=Math.max(warning.startedAt,warning.fireAt-CAPITAL_WARNING_LEAD_TICKS);
+ if(clock<shownAt||clock>=warning.endAt)return;
+ const active=clock>=warning.fireAt;
+ const phase=Math.min(1,(clock-shownAt)/Math.max(1,warning.fireAt-shownAt));
+ const colour=active?'#ff755e':'#edba72';
  for(const shape of warning.shapes){
   const outlines=capitalShapeOutlines(shape);ctx.save();path(ctx,outlines,project);
-  ctx.fillStyle=colour;ctx.globalAlpha=active?.19:.035+.035*Math.min(1,phase);ctx.fill('evenodd');
-  ctx.globalAlpha=active?1:.55+.4*phase;ctx.strokeStyle=colour;ctx.lineWidth=active?2.5:1.5;
-  ctx.setLineDash(locked?[]:[5,5]);ctx.stroke();ctx.setLineDash([]);
-  path(ctx,outlines,project);ctx.clip('evenodd');ctx.globalAlpha=active?.32:.10;
-  const offset=reducedMotion?0:(clock*.35)%24;ctx.lineWidth=1;
-  // Bounded by canvas pixels, not world population. Never shade the inner refuge.
-  for(let x=-ctx.canvas.height;x<ctx.canvas.width+ctx.canvas.height;x+=24){ctx.beginPath();ctx.moveTo(x+offset,0);ctx.lineTo(x+ctx.canvas.height+offset,ctx.canvas.height);ctx.stroke();}
+  ctx.fillStyle=colour;ctx.globalAlpha=active?.22:.06+.1*phase;ctx.fill('evenodd');
+  ctx.globalAlpha=active?.95:.5+.4*phase;ctx.strokeStyle=colour;ctx.lineWidth=active?2.5:1.5;
+  ctx.stroke();
   ctx.restore();
  }
 }
