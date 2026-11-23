@@ -170,10 +170,10 @@ test('a title that finishes preparing under New Game defers its warm draw until 
   state.ui.stageRequest = { scene: 'title-field', hullDefId: 'ship_kestrel' };
   presentUiStage({ render, state });
   assert.equal(ops(log, 'compile').length, 1, 'Back reuses the prepared authored stage');
-  assert.equal(ops(log, 'render').length, drawsBefore + 2, 'Back warms once then presents the title');
+  assert.equal(ops(log, 'render').length, drawsBefore + 1, 'Back warms once; the covering plate skips later presents');
   assert.equal(uiStageReport().prepared.warm, true);
   presentUiStage({ render, state });
-  assert.equal(ops(log, 'render').length, drawsBefore + 3, 'later frames need only the presented draw');
+  assert.equal(ops(log, 'render').length, drawsBefore + 1, 'covered title-field does not draw every frame');
 });
 
 test('releasing a stage during prop admission does not start its hull load afterward', async (t) => {

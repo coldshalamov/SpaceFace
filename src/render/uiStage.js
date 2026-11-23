@@ -487,6 +487,14 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
     // An adopted stage the flight frame never got to warm (the player docked on the very frame it
     // finished preparing) takes its warm-up here, under the plate — exactly where it used to be.
     if (stage.warmupPending === true) warmupStage(stage, renderer);
+    // title-field sits under the authored still (titleDoorsLayouts keeps that plate opaque).
+    // Warm-up still compiles and draws once; later frames are GPU spent on a picture nobody
+    // sees. The lab replay (title-attract) is the picture, so it keeps presenting.
+    if (stage.id === 'title-field') {
+      if (!stage.hullDrawn) publishStatus(request, stage.liveFailed ? 'unavailable' : 'loading');
+      else publishStatus(request, canvasIsVisible(renderer, stage) ? 'live' : 'plate');
+      return true;
+    }
     drawStage(stage, renderer, state, dt);
   } catch (error) {
     dedupWarn('uiStage.stage-draw', '[uiStage] stage draw failed', error);

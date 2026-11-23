@@ -169,12 +169,16 @@ function installFadeDom() {
       this.id = '';
       this.offsetWidth = 0;
       this._className = '';
+      this.attributes = new Map();
     }
     get className() { return this._className; }
     set className(v) {
       this._className = String(v || '');
       this.classList.values = new Set(this._className.split(/\s+/).filter(Boolean));
     }
+    setAttribute(name, value) { this.attributes.set(name, String(value)); }
+    getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null; }
+    removeAttribute(name) { this.attributes.delete(name); }
     appendChild(child) {
       child.parentNode = this;
       this.children.push(child);
@@ -245,6 +249,7 @@ test('a classified save:error lifts the Continue veil immediately, without a mod
     const fade = doc.querySelector('.sf-continue-fade');
     assert.ok(fade, 'the veil mounted');
     assert.equal(fade.classList.contains('open'), true, 'the veil is opaque over the title');
+    assert.equal(fade.getAttribute('aria-modal'), 'true', 'the veil owns the surface so title keys stay behind it');
 
     // The load is rejected while mode is still 'menu' — no mode:changed edge exists.
     bus.emit('save:error', { reason: 'load_failed', slot: 'quick', error: 'damaged save' });

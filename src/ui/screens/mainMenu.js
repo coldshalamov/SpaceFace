@@ -18,6 +18,7 @@ import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectTitleDoorsLayouts } from '../orrery/titleDoorsLayouts.js';
+import { playerFacingObjectiveSummary } from '../sim/missionRecap.js';
 import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
 import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
@@ -317,7 +318,8 @@ function saveSummaryText(slot, meta) {
 
 function objectiveSummaryText(meta) {
   if (!meta) return '';
-  return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+  const raw = meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+  return playerFacingObjectiveSummary(raw);
 }
 
 let refs = null;
@@ -1141,7 +1143,9 @@ export const mainMenuScreen = {
     const setDrift = (on) => {
       drifting = on;
       if (on) {
-        rootEl.dataset.attract = '1';
+        // '1' is the still's cheap drift (kit.css). 'live' is the lab replay
+        // (?titleLab=1): the plate may step aside so that fight is the picture.
+        rootEl.dataset.attract = replayAllowed ? 'live' : '1';
         // The flag alone changes nothing — the manager owns stageRequest and only
         // re-resolves stage specs on a stack sync, so arming needs the explicit nudge.
         if (replayAllowed && this._attractLive !== true) {
@@ -1256,12 +1260,19 @@ export const mainMenuScreen = {
     if (!fade) {
       fade = document.createElement('div');
       fade.className = 'sf-continue-fade';
+      if (typeof fade.setAttribute === 'function') {
+        fade.setAttribute('role', 'dialog');
+        fade.setAttribute('aria-modal', 'true');
+        fade.setAttribute('aria-busy', 'true');
+      }
       const loc = document.createElement('div');
       loc.className = 'sf-continue-fade__loc';
       fade.appendChild(loc);
       (document.getElementById('ui-root') || document.body).appendChild(fade);
     }
-    fade.querySelector('.sf-continue-fade__loc').textContent = locationName || 'Helios Belt';
+    const place = locationName || 'Helios Belt';
+    if (typeof fade.setAttribute === 'function') fade.setAttribute('aria-label', 'Loading ' + place);
+    fade.querySelector('.sf-continue-fade__loc').textContent = place;
     // Force reflow so the transition runs from 0 → 1.
     void fade.offsetWidth;
     fade.classList.add('open');

@@ -210,8 +210,8 @@ test('idle gate on a player title arms only the drift; the hero shot stays', () 
 test('with the lab switch the idle gate arms the live replay after the idle window', () => {
   const { before, after, stopped } = runIdleGate({ search: '?titleLab=1' });
   assert.equal(before.live, false);
-  assert.equal(after.attract, '1');
-  assert.equal(after.live, true, 'stage spec never swapped to the live scene');
+  assert.equal(after.attract, 'live', 'lab attract marks the plate so it can step aside');
+  assert.equal(after.live, true, 'lab idle swaps the stage request to the live replay');
   assert.ok(after.syncs > 0, 'arming never re-resolved the stage request');
   assert.equal(stopped.live, false);
 });
