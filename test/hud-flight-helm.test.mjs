@@ -20,15 +20,24 @@ function world({ stations = [], targetId = null, autopilot = null, berthRun = nu
 }
 const station = (id, x, z, data = {}) => ({ id, type: 'station', alive: true, name: `Station ${id}`, pos: { x, z }, data });
 
-test('E flies to the selected station first, else the nearest dockable one, at any distance', () => {
+test('E flies to the tracked objective station first, never offers Customs Gates, else selected or nearest dockable', () => {
   const near = station(10, 6600, 0);
-  const far = station(11, 20000, 0);
+  const far = station(11, 20000, 0, { name: 'Helios Station', stationId: 'station_helios' });
   const hostile = station(12, 100, 0, { hostile: true });
+  const customs = station(13, 50, 0, { stationId: 'station_customs', name: 'Customs Gate', services: ['toll', 'scan', 'refuel'] });
   assert.equal(isDockableStation(hostile), false, 'a hostile station is never offered');
-  assert.equal(berthOfferStation(world({ stations: [near, far, hostile] })).station, near, '6.6 km is in reach');
+  assert.equal(isDockableStation(customs), false, 'a Customs Gate is never offered for E-to-dock');
+  assert.equal(berthOfferStation(world({ stations: [near, far, hostile, customs] })).station, near, '6.6 km is in reach and Customs Gate is skipped');
   const picked = berthOfferStation(world({ stations: [near, far], targetId: 11 }));
   assert.equal(picked.station, far);
   assert.equal(picked.chosen, true);
+  const trackedObjective = berthOfferStation(world({
+    stations: [near, far, customs],
+    targetId: 10,
+    extra: { state: { nav: { autopilot: null, waypoint: { pos: { x: 20000, z: 0 }, reason: 'Dock at Helios Station.' } } } },
+  }));
+  assert.equal(trackedObjective.station, far, 'tracked objective station outranks a closer or targeted non-objective station');
+  assert.equal(trackedObjective.chosen, true);
 });
 
 test('a mission waypoint in another sector never offers a berth here', () => {
