@@ -493,7 +493,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     ring?.report(stage, { reset: fresh }); ring?.start();
     if (!ring || !raf) {
       const amount = Math.max(0, Math.min(.997, Number(stage.progress) || 0));
-      paint(amount, `${(Math.floor(amount * 1000) / 10).toFixed(1)}%`);
+      paint(amount, `${Math.min(99, Math.floor(amount * 100))}%`);
     }
     if (placeShown) {
       // The film stays paused under a place; its owner is kept for the next cold boot.

@@ -475,6 +475,10 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
   letter-spacing: .16em;
   color: rgb(232 226 212 / .45);
 }
+/* The top edge stays clean: the wordmark under the ring already names the game, and an ELAPSED
+   stopwatch counting up on a boot screen reads as a profiler, not a finished game. The clock
+   element stays in the DOM (the terminal art and presenter still write it) but is never shown. */
+#boot-overlay.boot-overlay--orrery .boot-meta { display:none; }
 /* The loading presenter keeps internal details available for startup diagnostics. */
 #boot-overlay.boot-overlay--orrery .boot-detail:not([data-loading-destination], .boot-error) { display:none; }
 /* the flight HUD and its toasts never draw over the intro splash (or its fade). uiRoot toggles

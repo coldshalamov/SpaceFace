@@ -65,7 +65,7 @@ export function mountBootRing(document, overlay) {
   const marks = element(document, 'g', { class: 'boot-ring__marks' });
   const head = element(document, 'circle', { r: 2.2, cx: 88, cy: 24, class: 'boot-ring__head' });
   const percent = element(document, 'text', { x: 88, y: 198, class: 'boot-ring__percent', 'text-anchor': 'middle' });
-  percent.textContent = '0.0%';
+  percent.textContent = '0%';
   live.append(bloom, fill, marks, head, percent);
   svg.append(grad, filigree, track, live);
   const canvas = document.createElement('canvas');
