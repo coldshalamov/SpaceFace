@@ -2779,6 +2779,13 @@ export const crucibleScreen = {
           preparation.show(0);
           preparation.focus();
         };
+        // Behind More, Esc comes back to the front before anything else can close the screen.
+        rootEl.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape' || door._doorView !== 'more' || event.repeat) return;
+          event.preventDefault(); event.stopPropagation();
+          cue('close');
+          this._showFront();
+        });
         setView('play');
         syncArena(); syncHull(); syncStake();
         front.update();

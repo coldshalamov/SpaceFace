@@ -105,7 +105,8 @@ ${PF} .sf-play-pick__opt { display:block; width:100%; min-height:32px; margin:0;
   color:#f6f1e6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color 140ms ease-out; }
 ${PF} .sf-play-pick__opt[hidden] { display:none !important; }
 ${PF} .sf-play-pick__opt:hover { color:var(--dp-lamp-hot, #ffd98c); }
-${PF} .sf-play-pick__opt:focus-visible { color:var(--dp-lamp-hot, #ffd98c); }
+${PF} .sf-play-pick__opt:focus-visible { color:var(--dp-lamp-hot, #ffd98c); outline:none !important; box-shadow:none !important; }
+/* the row carries the focus mark (lamp edge); the value only warms */
 ${PF} .sf-play-pick__line { grid-area:line; margin:0; padding:0 4px 2px; font:400 13px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif);
   color:var(--dp-ink-dim, #b7b4a6); }
 ${PF} .sf-play-pick--sub { margin-top:-4px; padding:4px 12px 6px 16px; border-top-color:rgb(232 226 212 / .04);

@@ -497,6 +497,13 @@ export function createSwarmPlayFront({
   const stops = () => [...rows.map((r) => r.buttons.find((b) => b.getAttribute('aria-checked') === 'true')), go,
     ...alt.querySelectorAll('button')].filter(Boolean);
   front.addEventListener('keydown', (event) => {
+    // Enter is PLAY from anywhere on the front except a quiet key, whose own Enter wins.
+    if (event.key === 'Enter') {
+      if (event.repeat || alt.contains(event.target)) return;
+      event.preventDefault(); event.stopPropagation();
+      onPlay();
+      return;
+    }
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     const list = stops();
     const here = list.indexOf(doc.activeElement);
