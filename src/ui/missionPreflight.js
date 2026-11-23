@@ -722,14 +722,16 @@ export function missionTimePacing(m, state) {
   const tight = critical || timeLimit <= TIMER_TIGHT_S || (slack != null && slack < 1.6);
   return {
     chip: {
-      kind: critical ? 'bad' : (tight || uncertain ? 'warn' : 'ok'),
+      kind: critical ? 'bad' : (tight || !routeKnown ? 'warn' : 'ok'),
       text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} ${intakeWindow ? 'intake window' : 'timer'}${uncertain ? ' · est' : ''}`,
     },
     warning: critical
       ? 'Timer is critical; accept only if the route is staged and the ship is ready to launch.'
       : (tight
         ? `Timer is tight for the route distance; refuel, repair, and launch directly after accepting.${uncertain ? ` Window is an estimate — ${uncertain}.` : ''}`
-        : (uncertain ? `Window is an estimate — ${uncertain}.` : null)),
+        // An unknown ship speed on a roomy timer is the game's bookkeeping, not the pilot's
+        // problem: the chip already says "est". Only an uncharted route is worth a sentence.
+        : (!routeKnown ? `Window is an estimate — ${uncertain}.` : null)),
     slack,
     estimateS: estimate,
     basis: { shipSpeed, routeKnown },
