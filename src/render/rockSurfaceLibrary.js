@@ -113,7 +113,7 @@ function configureSurfaceTexture(texture, { color = false, role = 'surface-data'
   texture.repeat.set(ROCK_SURFACE_TEXTURE_REPEAT, ROCK_SURFACE_TEXTURE_REPEAT);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = !texture.isCompressedTexture && texture.mipmaps.length === 0;
+  texture.generateMipmaps = !texture.isCompressedTexture;
   texture.anisotropy = 8;
   texture.userData = {
     ...(texture.userData || {}),

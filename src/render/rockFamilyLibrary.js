@@ -42,7 +42,7 @@ function configure(texture, { color = false, role }) {
   texture.repeat.set(ROCK_FAMILY_REPEAT[0], ROCK_FAMILY_REPEAT[1]);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = !texture.isCompressedTexture && texture.mipmaps.length === 0;
+  texture.generateMipmaps = !texture.isCompressedTexture;
   texture.anisotropy = 4;
   texture.userData = { ...(texture.userData || {}), spacefaceSurfaceRole: role };
   texture.needsUpdate = true;
