@@ -478,7 +478,7 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 /* The top edge stays clean: the wordmark under the ring already names the game, and an ELAPSED
    stopwatch counting up on a boot screen reads as a profiler, not a finished game. The clock
    element stays in the DOM (the terminal art and presenter still write it) but is never shown. */
-#boot-overlay.boot-overlay--orrery .boot-meta { display:none; }
+#boot-overlay .boot-meta { display:none; }
 /* The loading presenter keeps internal details available for startup diagnostics. */
 #boot-overlay.boot-overlay--orrery .boot-detail:not([data-loading-destination], .boot-error) { display:none; }
 /* the flight HUD and its toasts never draw over the intro splash (or its fade). uiRoot toggles
@@ -494,7 +494,7 @@ body.sf-boot-open :is(#hud, #screens) * { animation-play-state:paused !important
   border-radius: 4px;
   background: radial-gradient(ellipse closest-side, rgb(16 22 30 / .65), transparent 95%);
 }
-#boot-overlay.boot-overlay--orrery .boot-wordmark {
+#boot-overlay .boot-wordmark {
   display:block; width:min(64vw, 380px); aspect-ratio:684.7 / 60; font-size:0; line-height:0; color:transparent; text-indent:0;
   background:rgb(236 230 216); filter:drop-shadow(0 2px 14px rgb(0 0 0 / .6));
   -webkit-mask:url("/assets/ui/kit/marks/logotype/spaceface-logotype.svg") left top / 100% 100% no-repeat;
@@ -528,7 +528,7 @@ body.sf-boot-open :is(#hud, #screens) * { animation-play-state:paused !important
 html.sf-reduce-motion .boot-ring__emblem { animation:none; }
 @media (prefers-reduced-motion: reduce) { .boot-ring__emblem { animation:none; } }
 @media (forced-colors: active) {
-  #boot-overlay.boot-overlay--orrery .boot-wordmark { background:none; -webkit-mask:none; mask:none; width:auto; aspect-ratio:auto; font-size:32px; line-height:1; color:CanvasText; }
+  #boot-overlay .boot-wordmark { background:none; -webkit-mask:none; mask:none; width:auto; aspect-ratio:auto; font-size:32px; line-height:1; color:CanvasText; }
   .boot-ring__emblem { display:none; }
 }
 

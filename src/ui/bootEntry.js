@@ -37,6 +37,10 @@ function watchBootVeil(overlay) {
 function armBootFilmSkip(overlay, artwork) {
   if (!artwork || typeof artwork.skipFilm !== 'function' || typeof window === 'undefined') return;
   const skip = () => { try { artwork.skipFilm(); } catch (_) { /* decoration */ } };
+  // index.html's parse-time catch held the seconds before this module evaluated: take over from
+  // it, and honour a key or click that already landed there.
+  try { window.__SF_BOOT_FILM_EARLY_SKIP__?.detach?.(); } catch (_) { /* decoration */ }
+  if (window.__SF_BOOT_FILM_SKIPPED__ === true) { skip(); return; }
   const detach = () => {
     window.removeEventListener('keydown', skip, true);
     window.removeEventListener('pointerdown', skip, true);

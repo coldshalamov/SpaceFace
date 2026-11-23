@@ -51,6 +51,28 @@
       timeline.mark('first-script-evaluated');
     })();
   </script>
+  <!-- Any key or click dismisses the boot film from its very first frame. bootEntry arms the full
+       skip once its module evaluates (seconds later on a cold boot); this parse-time catch covers
+       the gap, and bootEntry detaches it and honours a press that already landed. -->
+  <script>
+    (function () {
+      var skip = function () {
+        window.__SF_BOOT_FILM_SKIPPED__ = true;
+        try {
+          var video = document.getElementById('boot-intro-video');
+          if (video) { video.style.visibility = 'hidden'; video.pause(); }
+        } catch (e) { /* decoration never blocks boot */ }
+        detach();
+      };
+      var detach = function () {
+        window.removeEventListener('keydown', skip, true);
+        window.removeEventListener('pointerdown', skip, true);
+      };
+      window.addEventListener('keydown', skip, true);
+      window.addEventListener('pointerdown', skip, true);
+      window.__SF_BOOT_FILM_EARLY_SKIP__ = { detach: detach };
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="assets/ui/app-icon/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="assets/ui/app-icon/favicon-32.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="assets/ui/app-icon/apple-touch-icon.png" />
