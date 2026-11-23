@@ -8,7 +8,7 @@ import { freezeDeep, hullActor, ballast, sector, lane, packet, beat, score,
 export const REGENT = freezeDeep({
   id: 'capital_boss_regent',
   shape: { situation: 'set_piece', place: 'arena_ring', twist: 'named', actor: 'forge_regent' },
-  placeName: 'Crucible crown furnace',
+  placeName: 'Pit crown furnace',
   twist: 'The whole front half is mirror plate. The furnace beam sustains; the crown never turns faster than you.',
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'FORGE REGENT', archetype: 'forge_regent', hull: 720,

@@ -12,7 +12,7 @@ import { freezeDeep, hullActor, ballast, sector, lane, ring, packet, beat, score
 export const BROOD_QUEEN = freezeDeep({
   id: 'capital_boss_brood_queen',
   shape: { situation: 'set_piece', place: 'arena_ring', twist: 'named', actor: 'brood_queen' },
-  placeName: 'Crucible brood nest',
+  placeName: 'Pit brood nest',
   twist: 'The sacs are her guns and her soft arc. Break them, and the hunt begins — she is never helpless, only slower.',
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'BROOD QUEEN', archetype: 'brood_queen', hull: 900,
