@@ -1737,6 +1737,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       visibleHostiles.push({ x: at.x - cx, y: at.y - cy });
       registerHoverable(entity, role, at.x, at.y, color, distW);
     }
+    for (const c of hostileCells.values()) drawClusterCount(c.x, c.y, c.count, c.color);
 
     // Add off-range hostiles collected beyond the sensor radius
     for (let i = 0; i < offRangeHostiles.length; i += 1) {
