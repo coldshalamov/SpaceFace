@@ -303,9 +303,13 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
     const draw = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
     // G08-02 — a course round's twistId deals its own card through the same consult; band
     // rounds serve it at the minor voice instead, so they stay out of the major column.
+    // Tests follow e43158f938 (C01-05): a twistId that names a shipped ROOM mechanic (lights_out,
+    // the_law, the_yardmaster, everything_must_go, quiet, delivery …) owns its round with no event
+    // card at all — the room is the event. Only a twist with a card of its own deals one.
     const course = swarmCourseFor(wave);
+    const twistCard = course && course.twistId ? SWARM_EVENT_BY_ID[course.twistId] : null;
     const majors = (wave > 30 && wave % 10 === 5)
-      || Boolean(course && course.twistId && !isSwarmMinorEventWave(wave));
+      || Boolean(twistCard && !isSwarmMinorEventWave(wave));
     if (!majors) {
       assert.equal(draw, null, `wave ${wave} has no major event round`);
     } else {
@@ -315,10 +319,20 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
     }
     const minor = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
     if (isSwarmMinorEventWave(wave)) {
-      assert.ok(minor && SWARM_EVENT_BY_ID[minor.id], `wave ${wave} draws a real minor card`);
-      // Same inputs, same card — a ghost replay and a share code see the same room.
-      const again = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
-      assert.equal(again.id, minor.id, `wave ${wave} is seeded-stable`);
+      // Tests follow e43158f938 (C01-05): a course twist that names a shipped room mechanic owns
+      // its band round instead of dealing a second card on top of it — round 12 rides the freight,
+      // 18 is Highway Robbery, 22 the chain gang, 28 Black Friday. Those rounds deal no minor card.
+      const course = swarmCourseFor(wave);
+      const roomOwnsTheRound = Boolean(course && course.twistId
+        && !SWARM_EVENT_BY_ID[course.twistId]);
+      if (roomOwnsTheRound) {
+        assert.equal(minor, null, `wave ${wave} is the ${course.twistId} room, which deals no second card`);
+      } else {
+        assert.ok(minor && SWARM_EVENT_BY_ID[minor.id], `wave ${wave} draws a real minor card`);
+        // Same inputs, same card — a ghost replay and a share code see the same room.
+        const again = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
+        assert.equal(again.id, minor.id, `wave ${wave} is seeded-stable`);
+      }
     } else {
       assert.equal(minor, null, `wave ${wave} is not a minor round`);
     }
@@ -326,10 +340,13 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
   // The minor band deals only from the arena's authored pool: every draw lands inside it,
   // the room's own trick deals its share, and the shared pods out-deal it (helios's mix
   // is one own card against the two shared ones).
+  // Tests follow e43158f938 (C01-05): a course round whose twist names a shipped mechanic deals
+  // ONLY that card (wave 8 is mine_drift, always), so the authored 1:2 mix is read on a plain
+  // band round — wave 32 has no course twist and draws the open pool.
   const pool = new Set(swarmMinorEventPool('helios_core'));
   const counts = {};
   for (let seed = 1; seed <= 40; seed++) {
-    const draw = swarmMinorEventFor({ arenaId: 'helios_core', wave: 2, seed });
+    const draw = swarmMinorEventFor({ arenaId: 'helios_core', wave: 32, seed });
     assert.ok(draw, 'the minor round always deals');
     assert.ok(pool.has(draw.id), 'every draw lands inside the authored minor pool');
     counts[draw.id] = (counts[draw.id] || 0) + 1;
@@ -649,19 +666,20 @@ test('a surge overdrive rides the per-tick write for its whole window', () => {
   const director = createSwarmEventDirector({ state: h.state, bus: h.bus, helpers: {}, registry });
   director.init();
   // C01-01: majors are dead inside the course — sling_gust is the minor band's
-  // install-free surge, dealt on lagrange's wave-12 minor round at seed 1.
-  const seed = 1;
+  // install-free surge. Tests follow e43158f938 (C01-05): round 12 is the Delivery room now and
+  // deals no second card, so the surge is read on wave 32 (a plain band round) at seed 6.
+  const seed = 6;
   assert.equal(
-    swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave: 12, seed })?.id,
+    swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave: 32, seed })?.id,
     'sling_gust',
     'the seeded draw lands the minor surge',
   );
   h.state.run.seed = seed;
   h.state.run.arenaId = 'lagrange_crucible';
-  h.state.run.wave = 12;
-  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 12 }));
+  h.state.run.wave = 32;
+  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 32 }));
   director.setInstalledFields([{ id: 'survival_arena_field_a', strength: 40 }]);
-  h.bus.emit('run:waveStarted', { wave: 12 });
+  h.bus.emit('run:waveStarted', { wave: 32 });
   // Past the windup: the overdrive is live, and the per-tick write must carry it.
   h.state.simTime += 10;
   director.update(0.016, h.state);
@@ -716,9 +734,15 @@ test('a pod a drone ate pays nobody — the collector gate mirrors the repair ce
   const awards = () => named(h.emitted, 'run:awardRequested')
     .filter((e) => e.payload && e.payload.reason === 'swarm:supplyPod');
   director._pods.set(77, 60);
+  // Tests follow 20b2c694af: a drone's or NPC's touch is REFUSED on the receipt, so the pod is
+  // not eaten and no wallet is written — it stays on the field for the pilot to collect.
   h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 40 });
-  assert.equal(awards().length, 0, 'an NPC collector consumes but never pays');
-  assert.ok(!director._pods.has(77), 'the pod is still spent');
+  assert.equal(awards().length, 0, 'an NPC collector never pays the pilot');
+  assert.ok(director._pods.has(77), 'the refused pod stays on the field for the pilot');
+  // The pilot's own scoop then pays once and spends the pod.
+  h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 9 });
+  assert.equal(awards().length, 1, 'the pilot collects the same pod and is paid once');
+  assert.ok(!director._pods.has(77), 'the pod is spent by its real collector');
   // Absent claims (the publishers disagree on payload shape); the player's id claims.
   for (const collectorId of [undefined, 9]) {
     director._pods.set(88, 60);
