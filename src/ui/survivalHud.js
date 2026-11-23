@@ -1432,7 +1432,8 @@ export const survivalHud = {
     .sf-crun { min-width:0; }
     .sf-crun__hero-num, .sf-crun__chainfig { font-size:22px; }
     /* A narrow card keeps kills, Scrap and the level on one line by dropping the score total
-       (Run Over shows it), instead of clipping Scrap and the level. */
+       instead of clipping them — the Run Over plate's figures are Round, Kills, Best chain
+       and Time, so the total only lives on the wide card. */
     .sf-crun__scorepair { display:none; }
   }
 `;
