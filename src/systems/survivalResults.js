@@ -209,8 +209,13 @@ export function deathCauseText(receipt, trail = []) {
     const physicalFallback = physicalWeaponLabelFromDamage(receipt)
       || (typeof receipt.weapon === 'string' && receipt.weapon && !receipt.weapon.includes('_')
         ? receipt.weapon : null);
+    // 04_SWARM.md §8 — the killer is never unnamed: with no weapon the line falls
+    // back to the attacking hull's own display name, and the last resort stays plain
+    // words rather than "unidentified weapon".
+    const hullName = attacker !== 'Unidentified attacker' && attacker !== 'Unknown contact' ? attacker : null;
     const weapon = receipt.source?.kind === 'environment'
-      ? receipt.physicalLabel || 'Environmental impact' : receipt.weapon || physicalFallback || 'unidentified weapon';
+      ? receipt.physicalLabel || 'Environmental impact'
+      : receipt.weapon || physicalFallback || hullName || 'the ship that hit you';
     const direction = receipt.direction || 'bearing unknown';
     const layer = receipt.dominantLayer || 'hull';
     return `${attacker} · ${weapon} · ${direction}${closingSpeedPhrase(receipt)} · ${layer} breach`;
@@ -223,7 +228,7 @@ export function deathCauseText(receipt, trail = []) {
       byWeapon.set(id, (byWeapon.get(id) || 0) + 1);
     }
     const top = [...byWeapon.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    return `${weaponLabel(top)} fire took you apart — no single hull to name.`;
+    return `${top ? weaponLabel(top) : 'Unidentified'} fire took you apart — no single hull to name.`;
   }
   return 'Unidentified fire took you apart — no single hull to name.';
 }
@@ -304,8 +309,13 @@ export function resolveDeathTelegraph({
       counts.set(id, (counts.get(id) || 0) + 1);
     }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    // 04_SWARM.md §8 — the warning still names what fired when the trail carries no
+    // weapon id: the attacking hull's own display name, else plain fire.
+    const firing = top ? weaponLabel(top)
+      : (receipt && typeof receipt.attacker === 'string' && receipt.attacker
+        && receipt.attacker !== 'Unknown contact' ? receipt.attacker : null);
     return {
-      name: `Taking ${weaponLabel(top)} fire`,
+      name: `Taking ${firing ? `${firing} ` : ''}fire`,
       leadTimeMs: Math.max(0, Math.round((death - first.simTime) * 1000)),
       source: 'incoming-fire',
     };
