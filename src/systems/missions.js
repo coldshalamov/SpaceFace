@@ -4475,6 +4475,11 @@ export const missions = {
         }
         if (!this._deliverCargo(m)) {
           if (m.storyTag === CONTRACT_47A_B0_TAG) {
+            // The opening docks at Helios before the sample is ever cut (demo route 2026-11-23):
+            // that first visit is not a loss, so it says nothing. Only a sample that was aboard
+            // and is gone earns the warning and the re-marked site.
+            const hadSample = m.params.sampleRecovered === true;
+            if (!hadSample) continue;
             m.params.sampleRecovered = false;
             m.objectiveProgress = 0;
             this._resolveContract47aSampleSource(m);
