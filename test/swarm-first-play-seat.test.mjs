@@ -55,6 +55,19 @@ test('the Swarm door seats the pilot and its physics body together at the Foundr
     for (let i = 0; i < 6; i++) await send(1);
     assert.ok(Math.hypot(pilot.pos.x - seat.x, pilot.pos.z - seat.z) < 40,
       `the pilot opened the fight on its seat, not at (${Math.round(pilot.pos.x)}, ${Math.round(pilot.pos.z)})`);
+
+    // The demo's next door on the same session: a new Adventure game seats its pilot in the
+    // harbour while the Swarm run's physics owner is still alive. The body must agree there too.
+    const adventure = await send(0, { kind: 'mode', mode: 'loading' }, { kind: 'rpc', id: 'adventure-boot', op: 'newGameBoot', args: { opts: {} } });
+    const advAck = adventure.rpcAcks && adventure.rpcAcks.find((row) => row.id === 'adventure-boot');
+    assert.equal(advAck && advAck.result && advAck.result.ok, true, `adventure newGameBoot: ${JSON.stringify(advAck && advAck.result)}`);
+    const harbourPilot = state.entities.get(state.playerId);
+    assert.ok(harbourPilot && harbourPilot !== pilot, 'the new game has its own pilot');
+    const rec = physics._sg02 && physics._sg02.records.get(harbourPilot.id);
+    assert.ok(rec && rec.body && rec.entity === harbourPilot, 'the harbour pilot has its own native body');
+    const hb = rec.body.translation();
+    assert.ok(Math.hypot(hb.x - harbourPilot.pos.x, hb.z - harbourPilot.pos.z) < 1,
+      `harbour body at (${Math.round(hb.x)}, ${Math.round(hb.z)}), pilot at (${Math.round(harbourPilot.pos.x)}, ${Math.round(harbourPilot.pos.z)})`);
   } finally {
     lane.shutdown();
   }

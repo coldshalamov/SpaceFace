@@ -1144,8 +1144,18 @@ export const physics = {
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId) : null;
     if (!player || player.alive === false) return false;
+    // Only an owner already holding this pilot's body is touched (a new game's seat runs while
+    // the previous run's owner is still alive, before its reset prepare replaces it).
+    const rec = owner.records && typeof owner.records.get === 'function' ? owner.records.get(player.id) : null;
+    if (!rec || rec.entity !== player) return false;
     this._syncSg02FrameOrigin(state);
-    return owner.resyncEntityPose(player);
+    // The relocation's no-blend mark stays for the presentation and the next sync to read; only
+    // the body moves early.
+    const flags = player.flags;
+    const noBlend = !!(flags && flags.noInterp);
+    const moved = owner.resyncEntityPose(player);
+    if (noBlend && flags) flags.noInterp = true;
+    return moved;
   },
 
   _syncSg02FrameOrigin(state) {
