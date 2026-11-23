@@ -589,6 +589,11 @@ export function buildOnboardingObjectiveWaypoint(beat, target) {
     markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
     mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
   };
+  // The objective names its station by STABLE id, never by a runtime entity id: a waypoint
+  // targetEntityId became a rope route anchor (masslineTargetScoring 'route-anchor'), so the
+  // station outranked the hostile and tow contexts the lesson is actually about. berthOffer
+  // matches the chip by stationId, which survives a re-materialized hull.
+  if (target.stationId) waypoint.stationId = target.stationId;
   const rock = beatKey === 'seam' ? target.entity : null;
   if (rock?.id != null && rock.occupantGeneration != null) {
     waypoint.presentationEntityId = rock.id;
@@ -5739,7 +5744,13 @@ export const onboarding = {
   _stationObjectiveTarget(station, label) {
     const hull = this.state.entities.get(this.state.playerId);
     const anchor = resolveDockAnchor(station, resolveCollisionProxyManifest(station), hull);
-    return { pos: anchor || station.pos, label };
+    return {
+      pos: anchor || station.pos,
+      label,
+      // No targetEntityId here: see buildOnboardingObjectiveWaypoint. The stable stationId is the
+      // only identity the berth objective may carry.
+      stationId: station && station.data && station.data.stationId ? station.data.stationId : undefined,
+    };
   },
 
   // ---- DOM ------------------------------------------------------------------------------------
