@@ -2102,6 +2102,16 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   if (openingOwns && storyAction) {
     const recovery = active.find(m => m.storyTag === 'campaign47a:b0:recovery');
     if (openingRecoveryMapAction(state, recovery)) storyAction.markerLabel = state.nav.waypoint.label;
+    // The opening asks one thing at a time and the tracker says it ("Latch the loose rock. (F)");
+    // the log's current action says the same, not story beat 0's old "Follow the anomaly / mine
+    // the anomalous ore" — the rope, the throw and the berth all come before the sample now.
+    const live = state.onboarding && typeof state.onboarding.beatAction === 'string'
+      ? state.onboarding.beatAction.trim() : '';
+    if (live) {
+      storyAction.title = live;
+      storyAction.body = 'First flight, one step at a time. The 47-A sample comes after your first dock at Helios.';
+      storyAction.meta = 'First flight';
+    }
     actions.push(storyAction);
   } else if (tracked) {
     const mapAction = missionMapAction(state, tracked, true);

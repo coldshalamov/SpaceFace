@@ -363,13 +363,14 @@ function starterLoadoutRows(starter) {
     .map((def) => [labels[def.slotType] || def.slotType, def.name]);
 }
 
-// The first fifteen minutes (spec2/03 §1): the four beats a Steam-demo player should know before
-// Launch. Rendered as four static kit rows under the loadout (check-new-game-first-run-rail).
+// The first minutes, in the order the game asks for them (demo route 2026-11-23: rope the loose
+// rock, throw it, dock at Helios, take a job). Rendered as four static kit rows under the loadout
+// (check-new-game-first-run-rail); the fourth row follows the picked hull's own Helios ticket.
 const FIRST_MINUTES = [
-  ['Latch the loose rock', 'Right-click the marked rock beside you. One verb at a time.'],
-  ['Swing it through the wreck', 'Fly an arc, then release toward the derelict.'],
-  ['Mine the first seam', 'Pulse, beam the bright seams, ride the heat.'],
-  ['Dock and pick work', 'Sell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.'],
+  ['Latch the loose rock', 'F or right mouse on the marked rock beside you. One verb at a time.'],
+  ['Throw it at the wreck', 'Swing round, aim, and tap the Line again to let go.'],
+  ['Dock at Helios', 'Press E and the autopilot flies you to the berth.'],
+  ['Take a job', 'Pick work from the Helios Jobs board, then undock and do it.'],
 ];
 
 /** A form field: a label at body size 62 % and its control beneath, separated from the next by a hairline. */
@@ -1035,7 +1036,7 @@ export const newGameScreen = {
     }
     refs.firstFlightDesc.textContent = refs.flownBefore
       ? 'Skips the stick drills and the power setups. The rope, the raid and the Range stay.'
-      : 'The full first flight: stick drills, the rope, the raid, one setup per power.';
+      : 'The full first flight: rope a rock, dock, then the raid and the drills.';
     syncKeys(refs.firstFlightWords);
   },
 

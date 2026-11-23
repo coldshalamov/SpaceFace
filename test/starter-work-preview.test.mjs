@@ -44,7 +44,8 @@ test('every catalog hull previews its canonical first board ticket with its actu
     assert.ok(title.length <= 24);
     assert.ok(detail.includes(job.steps[0].title));
     assert.ok(detail.includes(MODULES.find(module => module.id === job.requiredModule).name));
-    assert.match(detail, /Contracts at Helios/);
+    assert.match(detail, /Helios Jobs board/, 'the preview names the station door a player will see (Jobs, not the retired Contracts tab)');
+    assert.doesNotMatch(detail, /Contracts/);
     assert.doesNotMatch(detail, /accepted|paid|guaranteed/i);
   }
   assert.equal(JSON.stringify(NEW_GAME_STARTERS), before);
@@ -64,7 +65,7 @@ test('missing or malformed fits replace the offered route rather than promise th
 
 test('unknown and mismatched identities do not inherit a named starter route', () => {
   for (const starter of [null, {}, { ...NEW_GAME_STARTERS[0], id: 'starter_wasp' }, { ...NEW_GAME_STARTERS[0], shipId: 'ship_unknown' }]) {
-    assert.deepEqual(starterWorkPreview(starter), ['Dock and pick work', 'Check Contracts at Helios for work your current fit can take.']);
+    assert.deepEqual(starterWorkPreview(starter), ['Take a job', 'Pick work your fit can take from the Helios Jobs board.']);
   }
 });
 
@@ -98,7 +99,7 @@ test('presenter clears a prior named job when the fit becomes unavailable', () =
   route.renderWorkPreview(starterById('starter_wasp'));
   assert.match(route.workHeading.textContent, /gate runner/);
   route.renderWorkPreview(null);
-  assert.equal(route.workHeading.textContent, 'Dock and pick work');
+  assert.equal(route.workHeading.textContent, 'Take a job');
   assert.doesNotMatch(route.workDetail.textContent, /gate runner|First local ticket/);
   assert.equal(route.steps.children.length, 4);
 });

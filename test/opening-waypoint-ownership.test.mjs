@@ -1,7 +1,7 @@
 // Opening waypoint ownership — New Game cold-start must not install a competing
 // kind:'mission' marker while the staged tutorial owns the first-session rail.
-// Mission Log CURRENT ACTION must carry the story first-route ("Follow the anomaly")
-// during teaching so the public first-15 route has one unmistakable opening objective.
+// Mission Log CURRENT ACTION must carry the opening's live instruction (the same words as the
+// tracker) during teaching so the public first-15 route has one unmistakable opening objective.
 //
 // Companion to check:first-15-runtime (browser) and contract-47a-first-loop
 // (tutorial off). Run:
@@ -147,7 +147,8 @@ test('default New Game: cold-start tracks 47-A without claiming a mission waypoi
     h.state.ui.trackedMissionId,
   );
   assert.equal(actions[0].label, 'STORY', 'opening CURRENT ACTION is the story first-route');
-  assert.match(actions[0].title, /Follow the anomaly/i);
+  assert.equal(actions[0].title, 'Thrust toward the beacon.',
+    'the log names the lesson the tracker names, not story beat 0 and its retired "Follow the anomaly"');
 });
 
 test('the opening Mission Log names its existing recovery marker and opens it on the chart once', () => {
@@ -181,7 +182,8 @@ test('the opening Mission Log names its existing recovery marker and opens it on
     });
     const current = root.querySelectorAll('[data-current-action="true"]');
     assert.equal(current.length, 1);
-    assert.match(current[0].textContent, /Follow the anomaly/);
+    const liveAction = h.state.onboarding.beatAction || 'Follow the anomaly';
+    assert.ok(current[0].textContent.includes(liveAction), 'the log names the live lesson: ' + liveAction);
     assert.match(current[0].textContent, /47-A Recovery Site/);
     assert.doesNotMatch(current[0].textContent, /No goal marker yet/i);
     const chart = root.querySelectorAll('[data-map-selection-target="47a-recovery-fix"]');
