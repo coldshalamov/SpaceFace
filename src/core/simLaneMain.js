@@ -1385,6 +1385,11 @@ export function createSimLaneRuntime({
         laneForce.padRows = Math.max(0, opts.padRows | 0);
         try { channel.post({ kind: 'laneForce', padRows: laneForce.padRows }); } catch (_) { return false; }
       }
+      // A/B only: the pre-2026-11-23 rule (every command batch builds the full reply detail).
+      if (typeof opts.detailEveryCommand === 'boolean') {
+        laneForce.detailEveryCommand = opts.detailEveryCommand;
+        try { channel.post({ kind: 'laneForce', detailEveryCommand: opts.detailEveryCommand }); } catch (_) { return false; }
+      }
       return { ...laneForce, now, legacy: laneLegacy, poseTable: poseShared ? 'shared' : 'transfer' };
     };
   }
@@ -2361,6 +2366,9 @@ export function createSimLaneRuntime({
         steps: bounded(d.steps),
         shedSteps: bounded(d.shedSteps),
         budgetDeferredSteps: bounded(d.budgetDeferredSteps),
+        detailDirectives: bounded(d.detailDirectives),
+        detailForcedByCommands: bounded(d.detailForcedByCommands),
+        detailSkippedHandOnly: bounded(d.detailSkippedHandOnly),
         heartbeatHolds: bounded(d.heartbeatHolds),
         heartbeatHeld: d.heartbeatHeld === true,
         heartbeatAgeMs: bounded(d.heartbeatAgeMs),

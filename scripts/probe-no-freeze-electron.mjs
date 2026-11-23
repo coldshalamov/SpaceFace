@@ -42,6 +42,10 @@ const PAD = argv.pad ? String(argv.pad) : null;
 const REAL_PROFILE = argv['real-profile'] === true;
 const VISIBLE = argv.visible === true;
 const PROFILE = argv.profile === true;
+// --ab=detail [--ab-seg=30] [--ab-rounds=4]: interleaved A/B segments inside one dense run.
+const AB = argv.ab ? String(argv.ab) : null;
+const AB_SEG_S = Number(argv['ab-seg'] || 30);
+const AB_ROUNDS = Number(argv['ab-rounds'] || 4);
 // --alloc: garbage-collector trace (every isolate) and a heap-sampling profile of the SIM WORKER.
 const ALLOC = argv.alloc === true;
 // --gctrace: a DevTools performance trace (v8 GC categories) over the dense phase; every minor and
@@ -365,6 +369,21 @@ try {
           && /^(Launch round \d+|Launch|Keep current loadout|Continue|Start run|Retry|Restart|Respawn|Undock)/i.test(n(x.textContent)));
         if (b) b.click();
       }).catch(() => {});
+      // Population census every ~15 s: what the world is made of while the hand plays (the
+      // screen-side facade, i.e. what is really alive in the run, not a bench bot's leftovers).
+      if (beat % 10 === 5) {
+        const c = await page.evaluate(() => {
+          const s = window.SF.state; const by = {};
+          for (const e of s.entityList || []) {
+            if (!e || e.alive === false) continue;
+            const k = e.type === 'pickup' || e.type === 'projectile' || e.type === 'payload'
+              ? e.type + ':' + ((e.data && (e.data.kind || e.data.weaponId || e.data.commodityId)) || '-') : e.type;
+            by[k] = (by[k] || 0) + 1;
+          }
+          return { wave: s.run && s.run.wave, mode: s.mode, total: (s.entityList || []).length, by };
+        }).catch(() => null);
+        if (c) (report.census || (report.census = [])).push({ atS: Math.round((Date.now() - t0) / 1000), ...c });
+      }
       // A Swarm run that ended (death, results screen) is relaunched so every phase flies.
       const mode = await page.evaluate(() => window.SF.state.mode).catch(() => 'flight');
       // A run that is loading is left to load (relaunching over it restarts the load); one that has
@@ -400,7 +419,17 @@ try {
     }
     return false;
   };
-  phases.push(['dense input', async () => play(SECONDS * 1000)]);
+  if (AB === 'detail') {
+    // Interleaved A/B in ONE run (the machine's load swings too much between runs): the old rule
+    // (every command batch builds the full reply detail) against the new one, ABBA order.
+    for (let r = 0; r < AB_ROUNDS; r++) {
+      const arms = r % 2 === 0 ? [true, false] : [false, true];
+      for (const old of arms) {
+        phases.push([`ab ${old ? 'old' : 'new'} ${r}`, async () => { await force({ detailEveryCommand: old }); await play(AB_SEG_S * 1000); }]);
+      }
+    }
+    phases.push(['ab reset', async () => { await force({ detailEveryCommand: false }); }]);
+  } else phases.push(['dense input', async () => play(SECONDS * 1000)]);
   const traceChunks = [];
   if (GCTRACE || WORST) {
     cdp.on('Tracing.dataCollected', (ev) => { for (const e of ev.value || []) traceChunks.push(e); });
@@ -416,7 +445,12 @@ try {
     const age = await readAge();
     const freezeAfter = await page.evaluate(() => JSON.parse(JSON.stringify(window.__SF_FREEZE_LOG__ || []))).catch(() => []);
     await page.screenshot({ path: join(OUT, `${String(report.phases.length).padStart(2, '0')}-${name.replace(/[^a-z0-9]+/gi, '-')}.png`) }).catch(() => {});
-    report.phases.push({ name, age, freezeEpisodes: freezeAfter.slice(freezeBefore) });
+    const clockEnd = await page.evaluate(() => {
+      const c = window.SF.simLaneDiag().workerClockLastDiagnostics || {};
+      return { directives: c.directiveTicks, steps: c.steps, detail: c.detailDirectives, forced: c.detailForcedByCommands,
+        skipped: c.detailSkippedHandOnly, stepMsP50: c.perfWindow && c.perfWindow.stepMsP50, workMsP50: c.perfWindow && c.perfWindow.workMsP50 };
+    }).catch(() => null);
+    report.phases.push({ name, age, freezeEpisodes: freezeAfter.slice(freezeBefore), clockEnd });
   }
   hand.stop();
   {

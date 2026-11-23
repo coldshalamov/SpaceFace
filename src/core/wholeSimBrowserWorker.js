@@ -141,6 +141,28 @@ function localCommandEnvelopeStale(env) {
   if (LOCAL_STALE_COMMAND_TYPES.has(env.t)) return true;
   return env.t === 'dom' && env.p && env.p.d && LOCAL_STALE_DOM_TYPES.has(env.p.d.type);
 }
+// FREEZE lane (2026-11-23): the hand's own stream — held-key repeats, mouse and pad motion, the
+// cursor, input folds, camera, viewport, time effects, keepalive — never needs the read-model
+// detail built at once. Before, ANY queued command forced the vitals walk and domain diff, and in
+// flight the moving camera alone queues one every frame, so the 100 ms detail interval never
+// applied while the player was flying: measured 0.36-0.70 detail builds per directive (old) vs
+// 0.18-0.22 (new) in a live Swarm A/B. The detail is shadow/diff based, so deferring it to the
+// next interval loses nothing. Commands whose answer the screen reads back (rpc, settings, bus,
+// mode, spawn, nav, ui...) and fresh presses still build it at once.
+// A fresh press or release (not an OS auto-repeat) still answers at once, so the HUD reacts to the
+// press itself on the next reply; held keys, mouse motion and the per-frame samples do not.
+const LOCAL_HAND_COMMAND_TYPES = new Set(['dom', 'input', 'camera', 'viewport', 'timeEffects', 'keepalive']);
+const LOCAL_EDGE_DOM_TYPES = new Set(['keydown', 'keyup', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click']);
+function localCommandsNeedDetail(commands) {
+  for (let i = 0; i < commands.length; i++) {
+    const env = commands[i];
+    if (!env || typeof env.t !== 'string' || !LOCAL_HAND_COMMAND_TYPES.has(env.t)) return true;
+    if (env.t !== 'dom') continue;
+    const d = env.p && env.p.d;
+    if (d && LOCAL_EDGE_DOM_TYPES.has(d.type) && d.repeat !== true) return true;
+  }
+  return false;
+}
 // A publish whose ACK never lands wedges sentAwaitingAck forever: every later
 // tick only deepens the retained reply while presentation freezes at the last
 // applied pose — invisible to the in-flight watchdog because nothing is in
@@ -249,6 +271,11 @@ const localClock = {
   lastWakeViaTask: false,
   longGaps: [],
   budgetDeferredStepCount: 0,
+  // Directives that built the full read-model detail (vitals walk + domain diff), and how many of
+  // those were forced by a command batch rather than the detail interval.
+  detailDirectives: 0,
+  detailForcedByCommands: 0,
+  detailSkippedHandOnly: 0,
   commandCount: 0,
   // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
   stallCycle: null,
@@ -1149,9 +1176,18 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   // without losing any; motion and the player's dials ride the pose table every step. Any
   // directive that carries commands, explicit steps, or runs paused builds them at once.
   const detailNow = localNowMs();
-  const replyDetail = force || hasExplicitSteps || commands.length > 0 || !(localClock.scale > 0)
-    || detailNow - (localClock.lastDetailAtMs || 0) >= LOCAL_DETAIL_INTERVAL_MS;
-  if (replyDetail) localClock.lastDetailAtMs = detailNow;
+  const commandsNeedDetail = commands.length > 0
+    && (localClock.detailEveryCommand === true || localCommandsNeedDetail(commands));
+  const detailDue = detailNow - (localClock.lastDetailAtMs || 0) >= LOCAL_DETAIL_INTERVAL_MS;
+  const replyDetail = force || hasExplicitSteps || commandsNeedDetail || !(localClock.scale > 0) || detailDue;
+  if (replyDetail) {
+    localClock.lastDetailAtMs = detailNow;
+    localClock.detailDirectives += 1;
+    if (commandsNeedDetail && !detailDue && !force && !hasExplicitSteps) localClock.detailForcedByCommands += 1;
+  } else if (commands.length > 0) {
+    // Before 2026-11-23 these hand-only batches built the full detail too.
+    localClock.detailSkippedHandOnly += 1;
+  }
   const markStart = localClock.directiveMarks ? localNowMs() : 0;
   let reply = await tick({
     kind: 'tick',
@@ -1225,6 +1261,9 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     dilation: localPerfRound(localClock.dilation),
     longGaps: localClock.longGaps.slice(),
     budgetDeferredSteps: localClock.budgetDeferredStepCount,
+    detailDirectives: localClock.detailDirectives,
+    detailForcedByCommands: localClock.detailForcedByCommands,
+    detailSkippedHandOnly: localClock.detailSkippedHandOnly,
     commands: localClock.commandCount,
     pendingCommands: localClock.pendingCommands.length,
     appliedCommandSequence: localClock.appliedCommandSequence,
@@ -1752,6 +1791,8 @@ self.onmessage = (event) => {
   }
   // Dev forced-stall harness: make every reply carry N inert durable rows (a dense retained reply).
   if (msg.kind === 'laneForce') {
+    if (typeof msg.detailEveryCommand === 'boolean') localClock.detailEveryCommand = msg.detailEveryCommand;
+    if (!('padRows' in msg)) return;
     const rows = Number(msg.padRows);
     localClock.forcePadRows = Number.isFinite(rows) && rows > 0 ? Math.min(20000, Math.floor(rows)) : 0;
     return;
