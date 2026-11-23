@@ -209,8 +209,8 @@ function detonate(d, live, state, atRing) {
   d.dangerImpulse(live, 'runaway_kiln_detonation', IMPACT_DANGER);
   d.emit('news:publish', {
     text: atRing
-      ? 'CRUCIBLE NINE-ARM BURNS ON THE DEPOT RING — SALVAGE GONE, RING SCORCHED'
-      : 'CRUCIBLE NINE-ARM DETONATED UNDER GUNS — THE DEPOT NEVER GOT ITS GLASS',
+      ? 'KILN NINE-ARM BURNS ON THE DEPOT RING — SALVAGE GONE, RING SCORCHED'
+      : 'KILN NINE-ARM DETONATED UNDER GUNS — THE DEPOT NEVER GOT ITS GLASS',
     kind: 'choir', sectorId: live.sectorId, encounterId: live.id, source: 'the_runaway_kiln',
   });
   finish(d, live, state, atRing ? 'impact' : 'detonated', {
@@ -269,7 +269,7 @@ export const RUNAWAY_KILN_RUNTIME = Object.freeze({
       return;
     }
     const entity = reusable || d.spawnProp(live, { type: 'payload', pos: row.pos, radius: KILNBACK_RADIUS,
-      mass: 150, scanLabel: 'CRUCIBLE NINE-ARM', storyPropKind: 'runaway_kiln' });
+      mass: 150, scanLabel: 'KILN NINE-ARM', storyPropKind: 'runaway_kiln' });
     if (!entity) { d.abort(live, 'crucible_restore_failed'); return; }
     if (prior) BINDINGS.delete(prior.live);
     if (!reusable) {
@@ -336,7 +336,7 @@ export const RUNAWAY_KILN_RUNTIME = Object.freeze({
       pos: { x: ring.x + dx * backoff, z: ring.z + dz * backoff },
       radius: KILNBACK_RADIUS,
       mass: 150,
-      scanLabel: 'CRUCIBLE NINE-ARM',
+      scanLabel: 'KILN NINE-ARM',
       storyPropKind: 'runaway_kiln',
     });
     if (!crucible || crucible.id == null) { d.abort(live, 'crucible_spawn_failed'); return; }
@@ -384,7 +384,7 @@ export const RUNAWAY_KILN_RUNTIME = Object.freeze({
     if (speed < SAVE_SPEED) return saved(d, live, state);
     if (distance <= RING_RADIUS) return detonate(d, live, state, true);
     if (now - vars.startedAt > GRACE_S) {
-      d.say(live, 'info', 'The lane stops watching. The crucible keeps her vector.', null, { literal: true });
+      d.say(live, 'info', 'The lane stops watching. The kiln keeps her vector.', null, { literal: true });
       return finish(d, live, state, 'drifted');
     }
     return null;
@@ -398,7 +398,7 @@ export const RUNAWAY_KILN_RUNTIME = Object.freeze({
       if (vars.scanned) return;
       vars.scanned = true;
       d.say(live, 'info',
-        'REGISTRY: CRUCIBLE NINE-ARM. CARGO: molten glass charge. CREW: none. DRIVE: cold. VECTOR: the depot ring.',
+        'REGISTRY: KILN NINE-ARM. CARGO: molten glass charge. CREW: none. DRIVE: cold. VECTOR: the depot ring.',
         null, { literal: true });
       return;
     }
