@@ -24,12 +24,13 @@ export function runRulesetLabel(ruleset) {
 const KIND_LABEL = Object.freeze({
   adventure: 'Adventure',
   campaign: 'Adventure',
-  survival: 'Crucible',
+  // A survival run with no named ruleset is still the Swarm to a player (R18: no internal names).
+  survival: 'Swarm',
 });
 
 const ALLOWED_LABELS = new Set([
   'Adventure', 'Swarm', 'Gauntlet', 'Boss circuit', 'Foundry Block',
-  'Racing', 'Crucible', 'Flight',
+  'Racing', 'Flight',
 ]);
 
 // Mode and sector changes. Never a per-tick event.

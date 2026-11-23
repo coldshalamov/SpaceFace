@@ -192,7 +192,8 @@ test('the real UI root installs a state-driven title without a command bar or HU
   bus.emit('sector:enter', { sectorId: state.world.currentSectorId });
   expectTitle('Adventure — Ceres Belt');
 
-  for (const [ruleset, label] of [['swarm', 'Swarm'], ['scored', 'Gauntlet'], [null, 'Crucible']]) {
+  // R18: a survival run with no named ruleset reads Swarm, never the internal 'Crucible'.
+  for (const [ruleset, label] of [['swarm', 'Swarm'], ['scored', 'Gauntlet'], [null, 'Swarm']]) {
     state.run = createRunState({ kind: 'survival', ruleset, seed: SEED });
     state.run.phase = 'wave';
     bus.emit('run:started', { kind: 'survival', ruleset, seed: SEED });
