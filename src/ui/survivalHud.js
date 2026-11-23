@@ -1179,7 +1179,7 @@ export const survivalHud = {
     root.setAttribute('role', 'status');
     root.setAttribute('aria-live', 'polite');
     root.setAttribute('aria-atomic', 'true');
-    root.setAttribute('aria-label', 'Crucible run status');
+    root.setAttribute('aria-label', 'Swarm run status');
 
     // MOB-07: on a phone the round panel is this one line (round · hostiles left · score); tapping it
     // opens the full panel. Desktop never shows it (display:none in the base sheet).

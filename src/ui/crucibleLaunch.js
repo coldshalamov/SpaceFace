@@ -158,7 +158,7 @@ export function crucibleHullSetupFor({
 /** The door's display names, so `?swarmArena=` accepts what the arena row shows. */
 const SWARM_ARENA_DOOR_NAMES = Object.freeze({
   helios_core: 'Ricochet Foundry',
-  lagrange_crucible: 'Lagrange Crucible',
+  lagrange_crucible: 'Lagrange Arena',
   cinder_sluice: 'Cinder Sluice',
   cryo_drift: 'Cryo Drift',
   storm_lattice: 'Storm Lattice',
