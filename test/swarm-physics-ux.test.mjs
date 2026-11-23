@@ -96,7 +96,9 @@ test('the Line pulses only while the massline receipt holds a ready hostile', ()
   state.masslineAcquisition = { selected: { targetId: 7, status: 'ready' } };
   model = readRailModel(state, state.simTime);
   assert.equal(model[SWARM_LIVE_SLOTS.line].live, true);
-  assert.match(model[SWARM_LIVE_SLOTS.line].why, /throw/i);
+  // Tests follow f10cd0fe03: the socket's live words read "Target in hook reach" — the plain-word
+  // power bar dropped "latch is in reach — a body you can throw".
+  assert.match(model[SWARM_LIVE_SLOTS.line].why, /hook reach/i);
 
   // A denied or lost pick is not "in reach".
   state.masslineAcquisition = { selected: { targetId: 7, status: 'out-of-range', reason: 'out-of-range' } };
@@ -115,20 +117,27 @@ test('the Line pulses only while the massline receipt holds a ready hostile', ()
 test('the Blast pulse is armed ordnance on the field — swarm runs only', () => {
   const state = railState();
   put(state, hostile(7, 200, 0));
+  // Tests follow f10cd0fe03: the plain-word power bar has five powers beside Burn — the old
+  // "Blast" pulse seat (SWARM_LIVE_SLOTS.blast) is the Bomb socket now, and an armed charge
+  // reads 'armed' there with the Detonate name.
   put(state, { id: 40, alive: true, type: 'charge', pos: { x: 40, z: 10 }, data: { ownerId: 1, armed: true } });
   const model = readRailModel(state, state.simTime);
-  assert.equal(model[SWARM_LIVE_SLOTS.blast].state, 'armed');
-  assert.equal(model[SWARM_LIVE_SLOTS.blast].live, true);
+  assert.equal(model[POWER_SLOT.bomb].state, 'armed');
+  assert.equal(model[POWER_SLOT.bomb].live, true);
+  assert.equal(model[POWER_SLOT.bomb].name, 'Detonate');
 
   // Nothing armed: the slot is quiet, not pulsing at a dead field.
   state.entities.get(40).data.armed = false;
-  assert.equal(readRailModel(state, state.simTime)[SWARM_LIVE_SLOTS.blast].live, undefined);
+  assert.equal(readRailModel(state, state.simTime)[POWER_SLOT.bomb].live, undefined);
 
   // The same armed charge in ADVENTURE earns no pulse — the cue is swarm language.
+  // KNOWN SOURCE BUG (class b, DEMO-TESTHEALTH-1): the armed branch in src/ui/powerRail.js
+  // readRailModel writes `live: blastLive || true`, a tautology, so an Adventure armed charge
+  // pulses the Swarm-only cue. Fix is one word (`blastLive`); this assert stays red until then.
   state.entities.get(40).data.armed = true;
   state.run = null;
   const adventure = readRailModel(state, state.simTime);
-  assert.equal(adventure[SWARM_LIVE_SLOTS.blast].live, undefined);
+  assert.equal(adventure[POWER_SLOT.bomb].live, undefined);
   assert.equal(adventure[SWARM_LIVE_SLOTS.line].live, undefined);
   assert.equal(adventure[SWARM_LIVE_SLOTS.well].live, undefined);
 });
@@ -144,7 +153,8 @@ test('the Well pulses on a held pack and on a reachable clump — never on an em
   for (let i = 0; i < SWARM_WELL_PACK_MIN; i += 1) put(state, hostile(10 + i, 320 + i * 10, 5));
   let model = readRailModel(state, state.simTime);
   assert.equal(model[SWARM_LIVE_SLOTS.well].live, true);
-  assert.match(model[SWARM_LIVE_SLOTS.well].why, /holding a pack/i);
+  // Tests follow f10cd0fe03: the power bar's pull socket speaks plain words — "Pulling a pack".
+  assert.match(model[SWARM_LIVE_SLOTS.well].why, /pulling a pack/i);
 
   // A cooling well cannot act — the pulse yields to the cooldown readout.
   state.fields.cooldowns.well = state.simTime + 4;
@@ -163,7 +173,8 @@ test('the Well pulses on a held pack and on a reachable clump — never on an em
   // 10..11 live + 20..21 live = 4 bodies around (310..340, ~0..8): a pack.
   model = readRailModel(state, state.simTime);
   assert.equal(model[SWARM_LIVE_SLOTS.well].live, true);
-  assert.match(model[SWARM_LIVE_SLOTS.well].why, /in well range/i);
+  // Tests follow f10cd0fe03: with no deployed field the clump reads as a pull opportunity.
+  assert.match(model[SWARM_LIVE_SLOTS.well].why, /pull range/i);
 
   // The same pack beyond deploy reach earns nothing.
   for (const e of state.entities.values()) {
@@ -172,13 +183,15 @@ test('the Well pulses on a held pack and on a reachable clump — never on an em
   assert.equal(readRailModel(state, state.simTime)[SWARM_LIVE_SLOTS.well].live, undefined);
 });
 
-test('the arena shelf never offers the planet-grazing scoop; RIG is the cone there', () => {
+test('the arena shelf never offers the planet-grazing scoop; the Plow is the bow cone there', () => {
   const state = railState();
   const model = readRailModel(state, state.simTime);
-  // Cone stays: the sluice plows arena debris — real ammunition. The scoop half of RIG needs a
-  // planet band and the arena has none, so the key never offers it (five powers, 2026-10-22).
+  // Tests follow f10cd0fe03: RIG was renamed Plow on the power bar (the old internal word never
+  // reaches the player). The cone still stays — the sluice plows arena debris, real ammunition —
+  // and the scoop half needs a planet band the arena has none of, so the key never offers it.
   assert.equal(model[POWER_SLOT.rig].state, 'ready');
-  assert.match(model[POWER_SLOT.rig].why, /clearing cone/i);
+  assert.equal(model[POWER_SLOT.rig].name, 'Plow');
+  assert.match(model[POWER_SLOT.rig].why, /ready/i);
   assert.doesNotMatch(model[POWER_SLOT.rig].why, /scoop/i);
 });
 
