@@ -2111,16 +2111,17 @@ export const missionStoryOps = {
     const seed = (state.meta && state.meta.seed) >>> 0;
     const sectorId = state.world && state.world.currentSectorId || null;
     // In front of the pilot, not around them: the fan opens along the ship's travel (its nose when
-    // it is still), where the camera leads a moving ship, so the blasts and their wrecks are seen. It used
-    // to be a ring 140-210 m out at seeded bearings, so the Skim usually landed behind the camera
-    // and read as a line of all-caps text.
+    // it is still). The flight camera shows about 64 m ahead at rest and more at speed, so the
+    // three sit 44-93 m ahead and 27-61 m either side of the flight line (seen, and never in the
+    // ship's path). It used to be a ring 140-210 m out at seeded bearings, so the Skim usually
+    // landed off screen and read as a line of all-caps text.
     const vx = Number(player.vel && player.vel.x) || 0;
     const vz = Number(player.vel && player.vel.z) || 0;
     const heading = Math.hypot(vx, vz) > 5 ? Math.atan2(vz, vx) : (Number.isFinite(player.rot) ? player.rot : 0);
     const rows = [
-      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140, spread: -0.35 },
-      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 160, spread: 0.3 },
-      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 180, spread: 0 },
+      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 60, spread: -0.65 },
+      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 75, spread: 0.6 },
+      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 80, spread: 0.45 },
     ];
     const blast = where === 'lane' && this.bus && typeof this.bus.emit === 'function';
     const hasLiveWreck = (row) => {

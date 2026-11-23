@@ -114,9 +114,11 @@ export function makeRescueCastSpecs(playerPos, rng, opts = {}) {
     z: pz + Math.sin(theta + bearing) * range,
   });
   // Beside the nose the pair is drawn in so the wreck is on screen when the line says "Aim at the
-  // wreck". The flight camera holds a fixed height of world (about ±73 m), so a 16:9 window shows
-  // about ±130 m across: rock 75 and wreck ~110 off the hull keep the whole wreck inside it (at 160
-  // it sat past the edge, measured on the 1280x720 route, and the first throw aimed at nothing).
+  // wreck". The flight camera holds a fixed height of world (about ±64 m at rest), so a 16:9 window
+  // shows about ±114 m across (measured on the 1280x720 route): rock 75 and wreck ~110 off the hull
+  // put the wreck at the frame's edge at rest and fully in view once the latch draws the ship toward
+  // the rock (at 160 it sat past the edge and the first throw aimed at nothing). A narrower window
+  // or a portrait phone still needs the camera to frame the pair; this spacing cannot do that alone.
   const rockRange = beside == null ? 90 : 75;
   const wreckGap = beside == null ? 140 : 35;
   const rockPos = at(rockRange, 0);

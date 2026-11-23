@@ -253,7 +253,8 @@ function shoveScoutWithStarterGun(state, attacker, scout, shots = 4) {
 // Production route order (onboarding.js BEATS): thrust/brake open cold, the tether attach
 // leads the story beats, and the firing drills sit behind the first dock (OPENING-1 — the
 // driver walks the same order the player now meets).
-const DRILL_KEYS = ['tether', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
+// Demo route (2026-11-23): the throw hands to the berth before the raid, so the driver docks once.
+const DRILL_KEYS = ['tether', 'berth', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -296,6 +297,13 @@ function driveDrillTo(h, beatKey) {
         h.bus.emit('combat:fire', { ownerId: player.id, weaponId: 'pulse_laser_s' });
       }
       player.data.weapons[0]._heat = 2;
+      tick(h);
+    } else if (key === 'berth') {
+      // The first dock at Helios completes the berth; the raid waits behind it.
+      advanceTime(h);
+      tick(h);
+      h.bus.emit('dock:docked', { stationId: 'station_helios' });
+      assert.ok(h.state.onboarding.beatDoneAt.berth != null, 'docking at Helios completes the berth');
       tick(h);
     } else if (key === 'raid') {
       // The raid beat: latch the staged raider, fling him, and the throw-kill resolves it.
