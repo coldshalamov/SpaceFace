@@ -41,6 +41,9 @@ function branchNodes(branch, rows) {
 
 // Branch NAMES are what a stranger reads on a card, the tree and Run Over: plain, short words for
 // the fighting style (director ruling, 2026-11-20). Ids stay the code's own (saves, tests, effects).
+// Card NAMES stay too (DEMO-SWARM-WORDS-1): a node's id is snaked from its name (branchNodes
+// above), so renaming a card would orphan saved pilots and the live set. The rewrite lives in
+// each card's one line — same mechanics, said in the pilot's own hands.
 export const PILOT_BRANCHES = Object.freeze([
   Object.freeze({ id: 'gunner', name: 'Guns', motto: 'nothing survives the stream' }),
   Object.freeze({ id: 'bruiser', name: 'Knockback', motto: 'one shot and he\'s across the room, through his friends' }),
@@ -67,62 +70,62 @@ export const PILOT_EVOLUTION_BRANCH_POINTS = 4;
 export const PILOT_REROLL_SCRAP = 150;
 
 const GUNNER = branchNodes('gunner', [
-  [1, 'Steady Hands', 'Your shots fly dead straight while you are moving.'],
-  [1, 'Hollow Point', 'Once a ship\'s shield is down, your shots tear its hull half again as fast.'],
-  [2, 'Drum', 'Your heat bar is twice as long.'],
-  [2, 'Spin-Up', 'Hold the trigger and rapid-fire guns wind up to nearly double their rate in two seconds.'],
-  [3, 'Execution', 'An enemy down to the last fifth of its hull dies to your next hit and bursts into chunks.'],
-  [3, 'Ricochet', 'Your bullets bounce once off rock and walls.'],
-  ['capstone', 'Gold Thread', 'Every shot you fire goes straight through the first ships it hits and keeps flying.'],
+  [1, 'Steady Hands', 'Moving? Your shots still fly dead straight.'],
+  [1, 'Hollow Point', 'Shield down? Your shots tear hull half again as fast.'],
+  [2, 'Drum', 'Your heat bar is twice as long. Keep firing.'],
+  [2, 'Spin-Up', 'Hold the trigger: rapid guns wind up near double in two seconds.'],
+  [3, 'Execution', 'Last fifth of hull? Your next hit finishes it, in chunks.'],
+  [3, 'Ricochet', 'Your bullets bounce once — off rock, off walls.'],
+  ['capstone', 'Gold Thread', 'Every shot punches through the first two ships it hits.'],
 ]);
 
 const BRUISER = branchNodes('bruiser', [
-  [1, 'Heavy Slugs', 'Heavy guns knock what they hit about a third further.'],
-  [1, 'Stagger', 'Anything you knock back cannot fire for a second.'],
-  [2, 'Billiards', 'Anything you knock flying kills the first enemy it hits, whatever its size.'],
-  [3, 'Pass It On', 'When something you knocked hits another body, that one flies too.'],
-  [3, 'Wall Splat', 'Anything you knock into a wall or a station dies.'],
-  ['capstone', 'Newton\'s Cradle', 'What you knock flying hands all its speed to what it hits, body to body, five times over.'],
+  [1, 'Heavy Slugs', 'Thump shots knock their target about a third further.'],
+  [1, 'Stagger', 'A hard knock stops them firing for a second.'],
+  [2, 'Billiards', 'Knock one flying: it kills the first enemy it meets, whatever its hull.'],
+  [3, 'Pass It On', 'Your flying body knocks the next one flying too.'],
+  [3, 'Wall Splat', 'Anything you knock into a wall or station dies.'],
+  ['capstone', 'Newton\'s Cradle', 'A flying body stops and hands its speed on, five bodies deep.'],
 ]);
 
 const RIGGER = branchNodes('rigger', [
-  [1, 'Long Reel', 'The Line reaches half again as far.'],
-  [1, 'Quick Latch', 'Up close, the Line grabs the moment you press it.'],
-  [2, 'Sweet Spot', 'The lit release window stays open twice as long, and a throw inside it leaves faster.'],
-  [2, 'Crane', 'Whatever is on your Line hits as if it were twice as heavy.'],
-  [3, 'Whip Snap', 'Throw a body while it is whipping round fast and it leaves half again as fast.'],
+  [1, 'Long Reel', 'Your Line reaches half again as far.'],
+  [1, 'Quick Latch', 'Up close, your Line grabs the instant you press.'],
+  [2, 'Sweet Spot', 'The lit window lasts twice as long; throws inside leave faster.'],
+  [2, 'Crane', 'On your Line, everything hits twice as heavy.'],
+  [3, 'Whip Snap', 'Throw mid-whip and it leaves half again as fast.'],
   ['capstone', 'Hurricane', 'Anything you throw with the Line leaves twice as fast.'],
 ]);
 
 const CONJURER = branchNodes('conjurer', [
   [1, 'Quick Cast', 'Every power comes back a quarter sooner.'],
   [1, 'Wide Bore', 'Every power reaches further and covers more ground.'],
-  [2, 'Implode', 'Pull makes a small, fierce well that crushes what it catches into each other.'],
-  [2, 'Heavy Shove', 'Shove throws everything twice as far.'],
-  [3, 'Echo', 'Pull, Shove and Bomb fire twice: the second half as strong, half a second later.'],
-  [3, 'Combo', 'A body hit by two different powers within two seconds blows up.'],
-  ['capstone', 'Landslide', 'The Plow holds twice as much, scoops up enemies lighter than you, and fires the lot twice as fast.', { id: 'conjurer_avalanche' }],
+  [2, 'Implode', 'Pull becomes a small, fierce well — triple strength, packed tight.'],
+  [2, 'Heavy Shove', 'Shove throws with twice the force.'],
+  [3, 'Echo', 'Pull, Shove and Bomb echo: half strength, half a second later.'],
+  [3, 'Combo', 'Two powers on one body in two seconds? It blows up.'],
+  ['capstone', 'Landslide', 'The Plow holds double, hauls heavier rock, scoops enemies no heavier than you, fires double-fast.', { id: 'conjurer_avalanche' }],
 ]);
 
 const JUGGERNAUT = branchNodes('juggernaut', [
-  [1, 'Ram Plate', 'Bumps at less than about half your cruise speed never hurt you.'],
+  [1, 'Ram Plate', 'Slow, nose-on bumps never hurt you.'],
   [1, 'Ballast', 'Your ship is a third heavier: you win every shoving match.'],
-  [1, 'Thick Skin', 'Four seconds out of the fight and your armour starts growing back.'],
-  [2, 'Snowplow', 'Ram an enemy no heavier than you at speed and it dies, its pieces thrown ahead of you.', { id: 'juggernaut_snowplough' }],
-  [2, 'Run-Up', 'Hold boost and your top speed keeps climbing, up to double.'],
-  [2, 'Shoulder Check', 'Boost into something and it is knocked away like a heavy-gun hit.'],
-  [3, 'Last Stand', 'With your hull nearly gone, every ram you land repairs you.'],
+  [1, 'Thick Skin', 'Four quiet seconds and your armour grows back.'],
+  [2, 'Snowplow', 'Ram any enemy no heavier than you at speed — it dies, pieces flying ahead.', { id: 'juggernaut_snowplough' }],
+  [2, 'Run-Up', 'Hold boost: your top speed climbs to double.'],
+  [2, 'Shoulder Check', 'Boost into them: knocked away like a Thump hit.'],
+  [3, 'Last Stand', 'Hull nearly gone? Every ram you land repairs you.'],
   ['capstone', 'Juggernaut', 'Above cruise speed, nothing you hit hurts you, and everything you hit takes double.'],
 ]);
 
 // Stealth's root is the cloak itself: taking it gives the ship a cloak on V (no module needed).
 const GHOST = branchNodes('ghost', [
-  [1, 'Cloak', 'Go dark (V): enemies outside your ring lose you and hunt where you were. Firing or a hull hit drops it.'],
-  [1, 'Cold Drift', 'Coasting in the dark, your ring shrinks to half: slip right past them.', { needs: 'ghost_cloak' }],
-  [2, 'Ambush', 'Your first shots out of the dark hit three times as hard.', { needs: 'ghost_cloak' }],
+  [1, 'Cloak', 'Go dark (V): they lose you and hunt your wake. A shot or hull hit drops it.'],
+  [1, 'Cold Drift', 'Coast dark and your ring halves — slip past them.', { needs: 'ghost_cloak' }],
+  [2, 'Ambush', 'First shots from the dark hit three times as hard.', { needs: 'ghost_cloak' }],
   [2, 'Deep Shroud', 'Your cloak drains half as fast and charges twice as fast.', { needs: 'ghost_cloak' }],
-  [3, 'Vanish', 'A kill in the second after you fire from the dark puts you straight back in it.', { needs: 'ghost_cloak' }],
-  ['capstone', 'Phantom', 'Firing no longer drops your cloak; each shot only shows you for a moment.', { needs: 'ghost_cloak' }],
+  [3, 'Vanish', 'Kill within a second of firing and you\'re dark again.', { needs: 'ghost_cloak' }],
+  ['capstone', 'Phantom', 'Firing keeps you dark — each shot only flashes you.', { needs: 'ghost_cloak' }],
 ]);
 
 // The work branches: Adventure only (ruling R21 — each rung of the ladder is its own game).
@@ -151,11 +154,11 @@ export const PILOT_NODES = Object.freeze([
 
 // The evolutions: named builds a player can describe, each opened by two branches at 4 points.
 export const PILOT_EVOLUTIONS = Object.freeze([
-  Object.freeze({ id: 'evolution_orbital_saw', kind: 'evolution', name: 'Orbital Saw', build: 'a light ship that swings on the Line and saws with its guns', text: 'While you are on the Line, every shot goes through every ship in its path.', requires: Object.freeze(['gunner', 'rigger']) }),
-  Object.freeze({ id: 'evolution_wrecking_ball', kind: 'evolution', name: 'Wrecking Ball', build: 'everything you hit becomes the next shot', text: 'Anything you knock or throw flying keeps killing: it no longer stops at the first enemy.', requires: Object.freeze(['bruiser', 'rigger']) }),
-  Object.freeze({ id: 'evolution_freight_train', kind: 'evolution', name: 'Freight Train', build: 'a heavy ram that tows and smashes', text: 'Whatever you tow on the Line smashes like a ram: it kills any enemy no heavier than you that it hits.', requires: Object.freeze(['juggernaut', 'rigger']) }),
-  Object.freeze({ id: 'evolution_meteor_shower', kind: 'evolution', name: 'Meteor Shower', build: 'a bulldozer that shoots its own wall of rock', text: 'Rocks fired from the Plow kill every enemy they hit and keep going.', requires: Object.freeze(['conjurer', 'gunner']) }),
-  Object.freeze({ id: 'evolution_black_hole', kind: 'evolution', name: 'Black Hole', build: 'a ghost that leaves a trap where it vanished', text: 'Going dark leaves a Pull well where you were; the pack chasing you falls into it.', requires: Object.freeze(['conjurer', 'ghost']) }),
+  Object.freeze({ id: 'evolution_orbital_saw', kind: 'evolution', name: 'Orbital Saw', build: 'a light hull swinging on the Line, sawing with its guns', text: 'On the Line, every shot goes through every ship in its path.', requires: Object.freeze(['gunner', 'rigger']) }),
+  Object.freeze({ id: 'evolution_wrecking_ball', kind: 'evolution', name: 'Wrecking Ball', build: 'everything you hit becomes the next shot', text: 'Anything you knock or throw flying keeps killing — never stops at the first enemy.', requires: Object.freeze(['bruiser', 'rigger']) }),
+  Object.freeze({ id: 'evolution_freight_train', kind: 'evolution', name: 'Freight Train', build: 'a heavy ram that tows and smashes', text: 'Whatever you tow smashes like a ram: it kills any enemy no heavier than you.', requires: Object.freeze(['juggernaut', 'rigger']) }),
+  Object.freeze({ id: 'evolution_meteor_shower', kind: 'evolution', name: 'Meteor Shower', build: 'a bulldozer that shoots its own wall of rock', text: 'Rocks fired from the Plow kill every enemy they hit — and keep going.', requires: Object.freeze(['conjurer', 'gunner']) }),
+  Object.freeze({ id: 'evolution_black_hole', kind: 'evolution', name: 'Black Hole', build: 'a ghost that leaves a trap where it vanished', text: 'Going dark leaves a strong Pull well where you stood. The pack falls in.', requires: Object.freeze(['conjurer', 'ghost']) }),
 ]);
 
 // The fifteen power bends were cut (2026-11-20): none had an effect in the build. The export stays
