@@ -107,14 +107,17 @@ export function resolveHudAttention(state, { lastPlayerHullHitAt = -Infinity, we
 // come back when the seat frees). Ranks, highest first:
 //   deck    a decision card waiting on the player's choice (rare in a fight; it owns the moment)
 //   tell    an enemy is about to do something and the tag says the answer ("FLYBY Break the beam")
-//   danger  a danger line with no world equivalent on screen (MISSILE LOCK, SHIELDS DOWN)
+//   danger  a timed danger announcement with no world equivalent (SHIELDS DOWN, OUT OF FUEL)
 //   speaker a named voice's card (Kessler's line)
 //   floor   the banner's ordinary line (a story, tutorial or objective nudge)
 //   feed    the receipt cards
-// The dock prompt is the station's verb tag ("E Dock") and a standing status pill (a hazard zone,
-// a gate in range) is a lamp, so neither is one of the voices: they stay up beside the speaker, a
-// banner line or a receipt, and step aside only for a tell, a danger line or a decision. Sound
-// captions are an accessibility channel and never step aside. Under an open centre dialog the
+// Standing lamps (ttl Infinity, class sf-alert--lamp: WANTED, HULL CRITICAL, MISSILE LOCK, bingo
+// fuel, and the other condition lights) are not voices. They stay lit beside whoever holds the
+// seat, and they never take the danger seat or hide another surface. A warning tag still outranks
+// a timed danger line. The dock prompt is the station's verb tag ("E Dock") and a standing status
+// pill (a hazard zone, a gate in range) is a lamp, so neither is one of the voices: they stay up
+// beside the speaker, a banner line or a receipt, and step aside only for a tell, a danger line or
+// a decision. Sound captions are an accessibility channel and never step aside. Under an open centre dialog the
 // world tells step aside too (the dialog owns the screen).
 export const VOICE_SEAT_ORDER = Object.freeze(['deck', 'tell', 'danger', 'speaker', 'floor', 'feed']);
 const VOICE_SEAT_STANDING = Object.freeze(['dock', 'pill']);
@@ -138,6 +141,25 @@ export function resolveVoiceSeat(present = {}, { dialogOpen = false } = {}) {
     for (const name of VOICE_SEAT_STANDING) if (present[name]) yields.add(name);
   }
   return { seat, yields };
+}
+
+/**
+ * Which one-voice channel a live alert card occupies.
+ * A standing lamp (ttl Infinity, class `sf-alert--lamp`) is never the danger voice: WANTED,
+ * HULL CRITICAL, MISSILE LOCK and bingo fuel stay lit beside whoever is speaking. A dock lamp
+ * stays the dock verb tag. Only a timed danger line (no lamp class) takes `danger`.
+ */
+export function alertVoiceChannel(classList) {
+  const has = (name) => {
+    if (!classList) return false;
+    if (typeof classList.contains === 'function') return classList.contains(name);
+    return ` ${classList} `.includes(` ${name} `);
+  };
+  if (has('sf-alert--lamp')) return has('sf-alert--dock') ? 'dock' : 'pill';
+  if (has('sf-alert--dock')) return 'dock';
+  if (has('sf-alert--danger')) return 'danger';
+  if (has('sf-alert--floor')) return 'floor';
+  return 'pill';
 }
 
 export const VITAL_NUMERIC_LOW = 0.5;

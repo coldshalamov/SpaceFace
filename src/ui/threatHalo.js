@@ -1,6 +1,7 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
 import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scannerReadModel.js';
+import { contactCensus } from './contactCensus.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { countArmedOwnerMines } from '../systems/mines.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -693,13 +694,20 @@ export function createThreatHalo(root, busOrOpts) {
   // its arrow and drops its words. Along-edge spans: a top/bottom tag is a line of text wide.
   const tagEdge = new Array(HOSTILE_LIMIT);
   const tagAlong = new Float64Array(HOSTILE_LIMIT);
-  // A pack arriving from one side is one tag that counts it ('Wasp ×3  340 m', the lead arrow's
-  // distance) instead of three stacked lines of text down the screen edge; the arrows stay.
+  // A pack arriving from one side is one tag in the plural ('Wasps  340 m', the lead arrow's
+  // distance) instead of three stacked lines of text down the screen edge; the arrows stay. No
+  // number: only HOSTILE_LIMIT arrows are drawn, so a count of merged arrows would undercount a pack.
   const tagSlot = new Array(HOSTILE_LIMIT);
   const tagKindWord = new Array(HOSTILE_LIMIT);
+  const tagDistText = new Array(HOSTILE_LIMIT);
   const tagCount = new Int32Array(HOSTILE_LIMIT);
   const TAG_CLEAR_ALONG_H = 104;
   const TAG_CLEAR_ALONG_V = 64;
+  function pluralKind(word) {
+    if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
+    if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+    return `${word}s`;
+  }
   function applyEdgeTag(slot, i, labelled) {
     const tag = slot._sfTag;
     if (!tag) return labelled;
@@ -715,11 +723,7 @@ export function createThreatHalo(root, busOrOpts) {
         if (tagEdge[k] === edge && Math.abs(tagAlong[k] - along) < clear) {
           show = false;
           const word = haloKindWord(e, hostileRole[i]);
-          if (tagSlot[k] && tagKindWord[k] === word) {
-            tagCount[k] += 1;
-            const text = `${word} ×${tagCount[k]}`;
-            if (tagSlot[k]._sfTagKindText !== text) { tagSlot[k]._sfTagKindText = text; tagSlot[k]._sfTagKind.textContent = text; }
-          }
+          if (tagSlot[k] && tagKindWord[k] === word) tagCount[k] += 1;
           break;
         }
       }
@@ -729,20 +733,37 @@ export function createThreatHalo(root, busOrOpts) {
     // The tag never lands on the HUD: try the screen side of the arrow, then beside it along the
     // edge; a tag that fits nowhere drops its words (the arrow stays). Width is estimated from the
     // text so seating costs no layout read.
-    // Three spare characters: a pack's count (' ×3') is written onto this tag after it is seated.
+    // Spare characters: a pack's plural ('Wasps') is written onto this tag after it is seated.
     const side = show ? edgeTagSide(edge, placement.x, placement.y, kind.length + dist.length + 4) : '';
     show = show && side !== '';
     setDisplay(tag, show, 'inline-flex');
     if (!show) return labelled;
     setAttr(slot, 'data-tag-side', side);
-    if (slot._sfTagKindText !== kind) { slot._sfTagKindText = kind; slot._sfTagKind.textContent = kind; }
-    if (slot._sfTagDistText !== dist) { slot._sfTagDistText = dist; slot._sfTagDist.textContent = dist; }
+    // Seat and count only. The pack's final word is written once, after every merge.
     tagEdge[labelled] = edge;
     tagAlong[labelled] = along;
     tagSlot[labelled] = slot;
     tagKindWord[labelled] = kind;
+    tagDistText[labelled] = dist;
     tagCount[labelled] = 1;
     return labelled + 1;
+  }
+  function writeSeatedEdgeTags(n) {
+    for (let k = 0; k < n; k++) {
+      const slot = tagSlot[k];
+      if (!slot || !slot._sfTagKind) continue;
+      const word = tagKindWord[k] || '';
+      const text = tagCount[k] > 1 ? pluralKind(word) : word;
+      const dist = tagDistText[k] || '';
+      if (slot._sfTagKindText !== text) {
+        slot._sfTagKindText = text;
+        slot._sfTagKind.textContent = text;
+      }
+      if (slot._sfTagDistText !== dist) {
+        slot._sfTagDistText = dist;
+        slot._sfTagDist.textContent = dist;
+      }
+    }
   }
   const TAG_ARROW_HALF_PX = 13;
   const TAG_HEIGHT_PX = 20;
@@ -1499,24 +1520,27 @@ export function createThreatHalo(root, busOrOpts) {
   function collectHostiles(player, state, worldToScreen) {
     hostileCount = 0;
     tetherPass += 1;
-    const index = state.entityIndex;
-    const indexedShips = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships);
-    const ships = indexedShips
-      ? index.ships
-      : (state.entityList || []);
-    const playerTeam = player.team;
+    // Ship-like contacts + hostility come from the shared per-tick census
+    // (src/ui/contactCensus.js) instead of a private bucket walk: the combat HUD's contact
+    // marks and the roster scan the same set this frame. Rows are treated as id hints exactly
+    // like the old index.ships bucket — resolved to the live map entity before use.
+    const census = contactCensus(state, player);
     const playerVelX = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
     const playerVelZ = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
 
-    for (let i = 0; i < ships.length; i++) {
-      let entity = ships[i];
-      if (indexedShips && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
+    for (let i = 0; i < census.rows.length; i++) {
+      const row = census.rows[i];
+      let entity = row.e;
+      if (census.indexed && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
       if (!entity || entity === player || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;
-      const distSq = dx * dx + dz * dz;
+      const distSq = entity === row.e ? row.distSq : dx * dx + dz * dz;
       if (distSq > HALO_RANGE_SQ) continue;
-      const hostile = isHostileToPlayer(entity, playerTeam, state);
+      // row.hostile was computed on the bucket entry; when the index hint resolved to a
+      // replacement object the live entity's hostility is the one that counts (the old code
+      // checked the resolved entity too).
+      const hostile = entity === row.e ? row.hostile : isHostileToPlayer(entity, player.team, state);
       if (!hostile) continue;
 
       // The submitted root is frame-local and may trail the simulation by one fixed tick.
@@ -1763,6 +1787,7 @@ export function createThreatHalo(root, busOrOpts) {
       labelled = applyEdgeTag(slot, i, labelled);
       shown++;
     }
+    writeSeatedEdgeTags(labelled);
 
     for (let i = 0; i < MISSILE_LIMIT; i++) {
       const slot = missileSlots[i];

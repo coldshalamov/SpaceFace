@@ -442,6 +442,33 @@ export function createToasts(ctx) {
     invalidateReceiptGeometry();
   }
 
+  // The one-voice seat hides the receipt lane while a higher voice holds it. A hidden
+  // receipt must not spend its life unseen: credit the yielded interval onto its birth.
+  function feedYielded() {
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body || typeof body.getAttribute !== 'function') return false;
+    const list = body.getAttribute('data-sf-voice-yields');
+    if (!list) return false;
+    return ` ${list} `.includes(' feed ');
+  }
+  function holdReceiptClock(rec, now) {
+    const mark = rec._yieldMark == null ? now : rec._yieldMark;
+    const hiddenFor = now - mark;
+    if (hiddenFor > 0) rec.born += hiddenFor;
+    rec._yieldMark = now;
+    const decay = rec._node && rec._node.decay;
+    if (decay && decay.style && decay.style.animationPlayState !== 'paused') {
+      decay.style.animationPlayState = 'paused';
+    }
+  }
+  function releaseReceiptClock(rec) {
+    rec._yieldMark = null;
+    const decay = rec._node && rec._node.decay;
+    if (decay && decay.style && decay.style.animationPlayState === 'paused') {
+      decay.style.animationPlayState = 'running';
+    }
+  }
+
   // Called from hud's frame(), but sleeps until a toast can fade or expire.
   function tick() {
     if (swarmWait.length && !live.length) {
@@ -450,6 +477,13 @@ export function createToasts(ctx) {
     }
     if (!live.length) return;
     const now = performance.now();
+    if (feedYielded()) {
+      for (let i = 0; i < live.length; i++) holdReceiptClock(live[i], now);
+      return;
+    }
+    for (let i = 0; i < live.length; i++) {
+      if (live[i]._yieldMark != null) releaseReceiptClock(live[i]);
+    }
     if (now < nextWakeAt) return;
     let next = Infinity;
     for (let i = live.length - 1; i >= 0; i--) {

@@ -326,13 +326,15 @@ html.sf-reduce-flash .sf-gloc-vignette {
 /* ── One voice per moment (design/overhaul/08 §4; hudAttention.resolveVoiceSeat). The HUD's slow
    pass names the surfaces that must step aside on <body data-sf-voice-yields>; each yields here
    with a short fade, keeps its place, and returns when the seated voice clears. Matching by
-   selector means a card arriving between passes never flashes over the seated voice. ── */
+   selector means a card arriving between passes never flashes over the seated voice.
+   A standing lamp (sf-alert--lamp, ttl Infinity) is always visible: a yield never hides it,
+   and a lamp never takes a seat that would hide anything else. ── */
 body[data-sf-voice-yields~="tell"] .sf-tells,
-body[data-sf-voice-yields~="danger"] #alerts .sf-alert--danger,
-body[data-sf-voice-yields~="floor"] #alerts .sf-alert--floor:not(.sf-alert--danger),
+body[data-sf-voice-yields~="danger"] #alerts .sf-alert--danger:not(.sf-alert--lamp),
+body[data-sf-voice-yields~="floor"] #alerts .sf-alert--floor:not(.sf-alert--danger):not(.sf-alert--lamp),
 body[data-sf-voice-yields~="floor"] #alerts .sf-stage__item,
-body[data-sf-voice-yields~="pill"] #alerts .sf-alert:not(.sf-alert--floor):not(.sf-alert--dock):not(.sf-alert--danger),
-body[data-sf-voice-yields~="dock"] #alerts .sf-alert--dock,
+body[data-sf-voice-yields~="pill"] #alerts .sf-alert:not(.sf-alert--floor):not(.sf-alert--dock):not(.sf-alert--danger):not(.sf-alert--lamp),
+body[data-sf-voice-yields~="dock"] #alerts .sf-alert--dock:not(.sf-alert--lamp),
 body[data-sf-voice-yields~="dock"] .sf-visor-dock-guide,
 body[data-sf-voice-yields~="deck"] #sf-prompt-deck,
 body[data-sf-voice-yields~="speaker"] #sf-stage-speaker,

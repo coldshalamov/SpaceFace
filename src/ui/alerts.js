@@ -245,13 +245,19 @@ export function createAlerts(ctx) {
     if (alertNodeFree.length < ALERT_NODE_POOL_MAX) alertNodeFree.push(node);
   }
 
+  // Standing condition lights (ttl Infinity) wear sf-alert--lamp so the one-voice seat
+  // never treats them as a timed danger announcement and the yield CSS never hides them.
+  function alertClass(sev, ttl) {
+    return `sf-alert sf-alert--${sev} dp-annunc${ttl === Infinity ? ' sf-alert--lamp' : ''}`;
+  }
+
   function ensureEl(rec) {
     if (rec.el) return rec.el;
     const node = acquireAlertNode();
     const el = node.el;
     // dp-annunc: the annunciator is a machined strip with a lamp lens (deckplate components).
     // Persistent condition chips (ttl Infinity) are lit controls — --status, never a blinker.
-    el.className = `sf-alert sf-alert--${rec.sev} dp-annunc`;
+    el.className = alertClass(rec.sev, rec.ttl);
     node.lens.className = `dp-annunc__lens dp-lamp${rec.sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     rec._node = node;
     rec._lens = node.lens;
@@ -269,7 +275,7 @@ export function createAlerts(ctx) {
     rec.ttl = ttl == null || ttl === Infinity ? Infinity : ttl * 1000;
     rec.born = performance.now();
     rec.expiresAt = rec.ttl === Infinity ? Infinity : rec.born + rec.ttl;
-    if (rec.el) rec.el.className = `sf-alert sf-alert--${sev} dp-annunc`;
+    if (rec.el) rec.el.className = alertClass(sev, rec.ttl);
     // A danger word deserves a danger lens — the kit ships the variant but nothing wore it, so
     // every severity lit the same amber dot. Steady red (no blink): pills are lit controls.
     if (rec._lens) rec._lens.className = `dp-annunc__lens dp-lamp${sev === 'danger' ? ' dp-lamp--danger' : ''}`;

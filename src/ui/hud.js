@@ -134,6 +134,7 @@ import {
   masslineInstrumentVisible,
   openingInstructionSolo,
   placeHudString,
+  alertVoiceChannel,
   receiptLaneRect,
   resolveVoiceSeat,
   shipGlyphBox,
@@ -1407,8 +1408,15 @@ function threatArcPath(a, r = 48, s = 0.28) {
   const y1 = (r * Math.sin(a + s)).toFixed(1);
   return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
 }
-// A tracker line that ends in its key in brackets: words (trailing full stop dropped) + the key.
-const TRACKER_KEY_SUFFIX = /^(.*?)[.\s]*\(([^()]{1,16})\)\s*$/;
+// A tracker line that ends in a real key token: words (trailing full stop dropped) + the key.
+// Progress marks ('1/3') and prose asides ('Field Build') are not keys.
+const TRACKER_KEY_SUFFIX = /^(.*?)[.\s]*\(((?:[A-Z0-9]|F\d{1,2}|RMB|LMB|MMB|Space|Tab|Shift|Ctrl|Alt|Enter|Esc))\)\s*$/;
+export function splitTrackerActionKey(actionLine) {
+  const line = actionLine == null ? '' : String(actionLine);
+  const keyed = TRACKER_KEY_SUFFIX.exec(line);
+  if (!keyed) return null;
+  return { text: keyed[1], key: keyed[2] };
+}
 // M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
 const DOCTRINE_TELL_BY_KIND = Object.freeze({
   engine_flare: 'FLYBY',
@@ -7052,9 +7060,9 @@ export function createHud(ctx, alerts) {
         setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
       }
       const actionLine = objective === dest.line ? dest.compactAction || action : action;
-      const keyed = TRACKER_KEY_SUFFIX.exec(actionLine);
-      setText(mtActionText, keyed ? keyed[1] : actionLine);
-      setText(mtActionKey, keyed ? keyed[2] : '');
+      const keyed = splitTrackerActionKey(actionLine);
+      setText(mtActionText, keyed ? keyed.text : actionLine);
+      setText(mtActionKey, keyed ? keyed.key : '');
       setHidden(mtActionKey, !keyed);
       setText(mtReadings, readings.join('\n'));
       setText(mtDetailsText, [actFull, objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
@@ -7117,11 +7125,8 @@ export function createHud(ctx, alerts) {
       for (let i = 0; i < voiceAlertCards.length; i++) {
         const el = voiceAlertCards[i];
         if (el.hidden || el.style.visibility === 'hidden') continue;
-        const cl = el.classList;
-        if (cl.contains('sf-alert--dock')) voicePresent.dock = true;
-        else if (cl.contains('sf-alert--danger')) voicePresent.danger = true;
-        else if (cl.contains('sf-alert--floor')) voicePresent.floor = true;
-        else voicePresent.pill = true;
+        // Standing lamps (ttl Infinity) are condition lights, never the danger voice.
+        voicePresent[alertVoiceChannel(el.classList)] = true;
       }
       for (let i = 0; i < voiceStageCards.length; i++) {
         if (!voiceStageCards[i].hidden) { voicePresent.floor = true; break; }
@@ -7378,6 +7383,11 @@ export function createHud(ctx, alerts) {
     const p = state.entities.get(state.playerId);
     syncSafetyAlerts(p);
     if (alerts && alerts.tick) alerts.tick();
+    // The seat is only recomputed while the flight HUD ticks. A yield left on <body> after
+    // dock, pause, a menu or Run Over kept hiding receipts and speaker cards that arrive there.
+    lastVoiceYields = '';
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (body && typeof body.removeAttribute === 'function') body.removeAttribute('data-sf-voice-yields');
   }
 
   function resolveNavStation(nw) {

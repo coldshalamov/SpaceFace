@@ -396,6 +396,13 @@ export function lawfulInspectionStatusText(target, state) {
 // rest of the build already uses, so the badge teaches nothing new -- it just says it sooner.
 const THREAT_TIER_WORD = ['', 'LIGHT', 'HEAVY', 'CAPITAL'];
 
+/** Drop the printed tier word only when the class line is that word. 'Light ship' still says LIGHT. */
+export function classSaysThreatTier(classText, tierWord) {
+  const word = String(tierWord || '').trim().toLowerCase();
+  if (!word) return false;
+  return String(classText || '').trim().toLowerCase() === word;
+}
+
 function entityClass(e, state) {
   if (!e) return '';
   if (e.type === 'ship') {
@@ -1381,11 +1388,10 @@ export function createTargetPanel(ctx) {
       // not a word. Styling on [data-tier="high"] would have been dead CSS that looked correct.
       const tierNum = intel ? (intel.threatTier | 0) : 0;
       const tier = tierNum > 0 ? String(tierNum) : '';
-      // The pips always carry the tier; the word drops when the name line already says it
-      // ('Raider · Light ship' over a LIGHT badge read the same word twice).
+      // The pips always carry the tier. The word drops only when the class line IS the tier
+      // ('LIGHT'), never when it merely contains it ('Light ship' left a bare pip).
       const tierWord = THREAT_TIER_WORD[tierNum] || 'THREAT';
-      const classSaysTier = !!(nextClass && tierNum > 0
-        && String(nextClass).toLowerCase().includes(tierWord.toLowerCase()));
+      const classSaysTier = tierNum > 0 && classSaysThreatTier(nextClass, tierWord);
       const threatKey = tier + '|' + (intel ? intel.threatPips : '') + '|' + (classSaysTier ? 1 : 0);
       if (threatKey !== lastThreatKey) {
         lastThreatKey = threatKey;
