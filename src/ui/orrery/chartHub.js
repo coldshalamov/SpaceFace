@@ -551,11 +551,11 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
     };
     on(searchInput, 'focus', openPalette);
     on(searchInput, 'click', openPalette);
-    // typing hands the list to the chart's own results (its handler has already painted them by now);
-    // clearing the field brings the suggestions back
+    // Typing hands the list to the chart's own results. Clearing the field closes it:
+    // a blank query must not leave a suggestion Enter can still run.
     on(searchInput, 'input', () => {
       if (searchInput.value.trim()) releasePalette();
-      else openPalette();
+      else closePalette();
     });
     const browse = root.querySelector('.gm-places-btn');
     if (browse) on(browse, 'click', releasePalette);

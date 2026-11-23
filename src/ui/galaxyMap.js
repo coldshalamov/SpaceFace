@@ -5344,8 +5344,14 @@ export const galaxyMapScreen = {
       return true;
     };
 
-    const renderPlaces = () => {
+    const renderPlaces = ({ directory = false } = {}) => {
       const q = searchInput.value.trim().toLowerCase();
+      // A blank field is not a search. Browse opens the station directory on purpose;
+      // clearing the text must drop the list so Enter cannot plot the nearest station.
+      if (!q && !directory) {
+        this._dismissPlaceFinder();
+        return;
+      }
       const state = this._ctx && this._ctx.state;
       if (!state) { clearSearchResults(); return; }
       const sectorId = currentSectorId(state);
@@ -5374,7 +5380,7 @@ export const galaxyMapScreen = {
             : 'Charted stations · nearest first';
       }
       resultRows.innerHTML = filtered.length ? filtered.map((t, idx) => mapSearchItemHtml(t, idx)).join('')
-        : `<p class="gm-search-empty">${q ? 'Try a station name or a service like fuel.' : 'No charted stations offer this service.'}</p>`;
+        : `<p class="gm-search-empty">${q ? 'No results found. Try a station name or a service like fuel.' : 'No charted stations offer this service.'}</p>`;
       resultsContainer.hidden = false;
       placesButton?.setAttribute('aria-expanded', 'true');
 
@@ -5383,12 +5389,12 @@ export const galaxyMapScreen = {
       this._searchResultsQuery = q;
     };
 
-    searchInput.addEventListener('input', renderPlaces);
+    searchInput.addEventListener('input', () => renderPlaces());
     placesButton?.addEventListener('click', () => {
       if (this._dismissPlaceFinder()) return;
       searchInput.value = '';
       service = '';
-      renderPlaces();
+      renderPlaces({ directory: true });
     });
     searchContainer?.addEventListener('focusout', (ev) => {
       if (ev.relatedTarget && !searchContainer.contains(ev.relatedTarget)) this._dismissPlaceFinder();
@@ -5426,7 +5432,7 @@ export const galaxyMapScreen = {
       if (filter) {
         service = filter.dataset.placeService;
         searchInput.value = '';
-        renderPlaces();
+        renderPlaces({ directory: true });
         return;
       }
       if (!searchResultsCurrent()) return;
