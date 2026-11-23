@@ -17,6 +17,7 @@ import {
   loadCrucibleMeta,
   swarmResumeFor,
   useCrucibleMetaStorage,
+  writeSwarmResume,
 } from '../src/systems/survivalRecords.js';
 
 const SEED = 4242;
@@ -63,7 +64,10 @@ function dropRig() {
   runSession.destroy();
 }
 
-test('a swarm draft opening stamps the round-start resume slot', () => {
+test('the opening stop leaves no slot: nothing is resumable before a round is flown', () => {
+  // Rewritten rule: a slot for a run that never flew a round resumed to exactly what PLAY gives,
+  // and the sim worker's boot rehearsal (a throwaway checkpoint fight) left "Resume round 3" on
+  // a brand-new player's Swarm door. Only a cleared round stamps the slot now.
   const storage = memoryStorage();
   useCrucibleMetaStorage(storage);
   clearSwarmResume(storage);
@@ -72,18 +76,16 @@ test('a swarm draft opening stamps the round-start resume slot', () => {
   bus.emit('run:loadoutReady', {});
   bus.emit('run:openingPrepareRequested', {});
   assert.equal(state.run.phase, 'draft');
-  const resume = swarmResumeFor(loadCrucibleMeta(storage));
-  assert.ok(resume, 'resume slot written');
-  assert.equal(resume.wave, 1);
-  assert.equal(resume.seed, SEED >>> 0);
-  assert.equal(resume.arenaId, ARENA);
-  assert.equal(resume.ship.defId, 'ship_kestrel');
-  assert.deepEqual(resume.ship.loadout, [
-    { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
-    { slotIndex: 1, defId: 'mod_shield_booster_s' },
-    { slotIndex: 4, defId: 'mod_engine_ion_m' },
-  ]);
-  assert.equal(resume.run.wave, 0);
+  assert.equal(swarmResumeFor(loadCrucibleMeta(storage)), null, 'the round-1 opening writes no slot');
+  dropRig();
+
+  // A checkpoint start parks one below its first round; its opening writes nothing either.
+  const rig = makeRig();
+  rig.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA, startWave: 3 });
+  rig.bus.emit('run:loadoutReady', {});
+  rig.bus.emit('run:openingPrepareRequested', {});
+  assert.equal(rig.state.run.phase, 'draft');
+  assert.equal(swarmResumeFor(loadCrucibleMeta(storage)), null, 'a checkpoint opening writes no slot');
   dropRig();
 });
 
@@ -113,6 +115,15 @@ test('a cleared round advances the slot and a quit keeps it for resume', () => {
   // stamps on the draft ENTRY transition, which is the whole point of the boundary write.
   for (let i = 0; i < SURVIVAL_CLEANUP_TICKS + 10; i++) survivalRun.update(DT);
   const resume = swarmResumeFor(loadCrucibleMeta(storage));
+  assert.ok(resume, 'a cleared round stamps the slot');
+  assert.equal(resume.seed, SEED >>> 0);
+  assert.equal(resume.arenaId, ARENA);
+  assert.equal(resume.ship.defId, 'ship_kestrel');
+  assert.deepEqual(resume.ship.loadout, [
+    { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+    { slotIndex: 1, defId: 'mod_shield_booster_s' },
+    { slotIndex: 4, defId: 'mod_engine_ion_m' },
+  ]);
   assert.equal(resume.wave, 2, 'the slot names the next round');
   assert.equal(resume.run.wave, 1, 'the run counter sits at the cleared wave');
   assert.equal(resume.run.credits, state.run.credits);
@@ -151,6 +162,9 @@ test('a defeat retires the slot', () => {
   bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA });
   bus.emit('run:loadoutReady', {});
   bus.emit('run:openingPrepareRequested', {});
+  // A slot an earlier cleared round left behind.
+  assert.ok(writeSwarmResume({ wave: 2, seed: SEED, arenaId: ARENA, ruleset: 'swarm',
+    ship: { defId: 'ship_kestrel', loadout: [] }, run: { wave: 1 } }, storage));
   assert.ok(swarmResumeFor(loadCrucibleMeta(storage)));
   bus.emit('run:endRequested', { outcome: 'defeat', reason: 'player_down', tick: 10 });
   assert.equal(swarmResumeFor(loadCrucibleMeta(storage)), null);

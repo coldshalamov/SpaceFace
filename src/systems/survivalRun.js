@@ -281,6 +281,13 @@ export const survivalRun = {
    */
   _writeSwarmResume(run) {
     if (!isSwarmRuleset(run && run.ruleset)) return;
+    // Only a run that has flown a round leaves a slot. The opening stop (round 0, or a checkpoint
+    // start parked one below its first round) resumes to exactly what PLAY gives — and the sim
+    // worker's boot rehearsal, a throwaway checkpoint fight, was leaving "Resume round 3" on a
+    // brand-new player's Swarm door.
+    const tele = run.telemetry;
+    const startWave = tele && Number.isInteger(tele.startWave) && tele.startWave > 1 ? tele.startWave : 1;
+    if (!Number.isInteger(run.wave) || run.wave < startWave) return;
     const p = this.state && this.state.player;
     const owned = p && Array.isArray(p.ownedShips)
       ? p.ownedShips[Number.isInteger(p.activeShipIndex) ? p.activeShipIndex : 0]
