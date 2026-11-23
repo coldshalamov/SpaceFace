@@ -2335,7 +2335,7 @@ async function mountFlightHud(opts = {}) {
     const pip = hudRoot.querySelector('.sf-leadpip');
     if (pip) pip.setAttribute('data-denial', 'blocked');
     const tagText = hudRoot.querySelector('.sf-aimtag__text');
-    if (tagText) tagText.textContent = 'LINE TARGET · BLOCKED';
+    if (tagText) tagText.textContent = 'GUNS BLOCKED';
   }
     // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
     // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
