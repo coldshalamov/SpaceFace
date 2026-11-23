@@ -135,7 +135,8 @@ test('Crucible readout names the Veil hold/release binding and current energy re
   ship.boost.energy = 70;
   ship._phaseBlink = { aiming: true, active: true, dist: 120, readyAt: 0 };
   assert.equal(line().status, 'armed');
-  assert.match(line().text, /120 WU · release to jump/);
+  // Tests follow df01ea648d: plain units everywhere — the Veil Step's reach reads in metres.
+  assert.match(line().text, /120 m · release to jump/);
   ship.boost.energy = 1;
   assert.equal(line().status, 'cooldown');
   assert.match(line().text, /needs 48 energy to release/);
