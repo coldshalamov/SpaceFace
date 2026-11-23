@@ -1721,6 +1721,11 @@ export const onboarding = {
     const savedBeatKey = d.version >= 2 ? d.currentBeatKey : V1_BEAT_KEYS[d.currentBeat];
     ob.currentBeat = BEATS.findIndex((beat) => beat.key === savedBeatKey);
     ob.beatDoneAt = plainClone(d.beatDoneAt) || {};
+    // A save from the berth-first build (2026-11-21) can stand on 'berth' with the rope never
+    // thrown. The rope now comes first and the swing it starts gates the rest of the rail, so that
+    // save resumes on the rope; the berth follows it as usual (or is skipped once docked).
+    const savedBerthBeforeRope = BEATS[ob.currentBeat]?.key === 'berth' && ob.beatDoneAt.tether == null;
+    if (savedBerthBeforeRope) ob.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
     ob.firedFollowups = plainClone(d.firedFollowups) || {};
     ob.oreCollected = d.oreCollected | 0;
     ob.trainingOre = d.trainingOre | 0;
@@ -1730,7 +1735,7 @@ export const onboarding = {
       : (d.tetherSectorId === undefined && BEATS[ob.currentBeat]?.key === 'tether' && st.world?.currentSectorId
         ? 'sector_helios_prime' : null);
     ob.tetherBreaks = d.tetherBreaks | 0;
-    ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
+    ob.beatAction = savedBerthBeforeRope ? '' : (typeof d.beatAction === 'string' ? d.beatAction : '');
     ob.pace = normalizePaceState(d.pace);
     ob.powerSit = normalizePowerSit(d.powerSit);
     if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence); else delete ob.storeSentence;
@@ -2431,10 +2436,22 @@ export const onboarding = {
     const wp = st.nav.waypoint;
     if (!wp || wp.onboarding === true || (wp.kind !== 'local' && wp.kind !== 'nav')) return;
     const stationId = payload && payload.stationId;
+    if (!stationId) return;
+    const isDocked = (e) => !!(e && e.type === 'station'
+      && ((e.data && e.data.stationId) === stationId || e.id === stationId));
     const target = wp.targetEntityId != null && st.entities && typeof st.entities.get === 'function'
       ? st.entities.get(wp.targetEntityId) : null;
-    if (!stationId || !target || target.type !== 'station') return;
-    if ((target.data && target.data.stationId) !== stationId && target.id !== stationId) return;
+    if (target) {
+      if (!isDocked(target)) return;
+    } else {
+      // The autopilot can drop its target bind on arrival; the course's fix is then matched to
+      // the station by position (anywhere on the station or its berth apron).
+      if (!wp.pos) return;
+      const station = (st.entityList || []).find(isDocked);
+      if (!station || !station.pos) return;
+      const reach = (Number(station.radius) || 100) + 200;
+      if (Math.hypot(wp.pos.x - station.pos.x, wp.pos.z - station.pos.z) > reach) return;
+    }
     st.nav.waypoint = null;
   },
 

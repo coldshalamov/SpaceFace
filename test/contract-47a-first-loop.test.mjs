@@ -132,6 +132,10 @@ test('the first visit to Helios before the sample is cut says nothing about a mi
   assert.notEqual(mission.params.sampleRecovered, true);
   assert.ok(!h.toasts.some((row) => /sample missing|re-marked/i.test(row.text)),
     'docking before the seam is not a loss');
+  // ...and the contract still closes the ordinary way: cut the sample, dock, story moves on.
+  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1, minerId: 1, pos: { ...h.asteroid.pos } });
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(h.state.story.beatIndex, 1, 'the 47-A delivery completes after an early visit');
 });
 
 test('missing sample re-marks recovery instead of dead-ending delivery', () => {

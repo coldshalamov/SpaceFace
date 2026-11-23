@@ -485,6 +485,38 @@ test('the E course to the berth is spent once docked, so the raid instruction ta
   assert.equal(st.nav.waypoint && st.nav.waypoint.markerId, 'onboarding:raid', 'the raid owns the objective');
 });
 
+test('an arrived berth course that lost its target bind is still retired by its position', () => {
+  const h = boot();
+  launchToSwing(h);
+  completeSwing(h);
+  advanceTime(h); tick(h);
+  const st = h.state;
+  const helios = makeEntity({ type: 'station', pos: { x: 0, z: 340 }, radius: 100, data: { stationId: 'station_helios' } });
+  helios.id = 501; st.entities.set(501, helios); st.entityList.push(helios);
+  st.nav.waypoint = { kind: 'local', pos: { x: 120, z: 300 }, label: 'Helios Station' };
+  completeBerth(h);
+  advanceTime(h); tick(h);
+  assert.equal(st.nav.waypoint && st.nav.waypoint.markerId, 'onboarding:raid');
+  // A course somewhere else is the pilot's own plan and stays.
+  st.nav.waypoint = { kind: 'local', pos: { x: 3000, z: 3000 }, label: 'Somewhere' };
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(st.nav.waypoint.label, 'Somewhere');
+});
+
+test('a save from the berth-first build resumes on the rope; one that already docked keeps its berth', () => {
+  const h = boot();
+  const base = { version: 2, mainRailActive: true, active: true, finished: false, beatDoneAt: {},
+    firedFollowups: {}, beatAction: 'Dock at Helios Station.' };
+  h.sys.deserialize({ ...base, currentBeatKey: 'berth' });
+  assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'tether', 'the rope comes first now');
+  assert.equal(h.state.onboarding.beatAction, '', 'the stale berth line is not respoken');
+  h.sys.deserialize({ ...base, currentBeatKey: 'tether', beatDoneAt: { berth: 12 }, beatAction: 'Latch the loose rock.' });
+  assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'tether');
+  assert.equal(h.state.onboarding.beatDoneAt.berth, 12, 'the berth already reached stays done');
+  h.sys.deserialize({ ...base, currentBeatKey: 'berth', beatDoneAt: { tether: 5 } });
+  assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'berth', 'a rope already thrown leaves the berth current');
+});
+
 test('a pilot who docks before the berth is asked for is never sent back to it', () => {
   const h = boot();
   launchToSwing(h);

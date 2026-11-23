@@ -113,9 +113,13 @@ export function makeRescueCastSpecs(playerPos, rng, opts = {}) {
     x: px + Math.cos(theta + bearing) * range,
     z: pz + Math.sin(theta + bearing) * range,
   });
-  const rockPos = at(90, 0);
-  const alongX = rockPos.x + dir.x * 140;
-  const alongZ = rockPos.z + dir.z * 140;
+  // Beside the nose the pair is drawn in so the wreck is on screen when the line says "Aim at the
+  // wreck" (rock 75, wreck ~160 off the hull: inside the rest-zoom frame's ~170 half-width).
+  const rockRange = beside == null ? 90 : 75;
+  const wreckGap = beside == null ? 140 : 85;
+  const rockPos = at(rockRange, 0);
+  const alongX = rockPos.x + dir.x * wreckGap;
+  const alongZ = rockPos.z + dir.z * wreckGap;
   const asteroidPos = at(420, 0.6);
   const drift = drawRng(rng) * Math.PI * 2;
 
