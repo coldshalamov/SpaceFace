@@ -250,7 +250,7 @@ const CARD_SPECS = Object.freeze({
 });
 
 /** Join live key glyphs: single characters run together ("WASD"), words stay spaced. */
-function compactKeys(keys) {
+export function compactKeys(keys) {
   const list = keys.filter(Boolean);
   if (!list.length) return '';
   if (list.every((k) => k.length === 1)) return list.join('');

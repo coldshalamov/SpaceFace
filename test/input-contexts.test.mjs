@@ -190,9 +190,12 @@ test('X5 P0: labels stay live in every context — the sheet never blanks a real
       assert.ok(label.length > 0, `${ctx}: ${action} label is blank`);
       assert.ok(resolveActionCodes(st, action).length > 0, `${ctx}: ${action} codes are empty`);
     }
-    for (const action of ['travelBurn', 'cruise', 'brake']) {
+    for (const action of ['travelBurn', 'cruise']) {
       assert.equal(resolveActionLabel(st, action), '', `${ctx}: ${action} is a wheel slice — no key label`);
     }
+    // R17 (a289310ab0): X is the dedicated full-stop key in every scheme — brake is a real key
+    // seat, so its label must stay live in every context like the rest of the taught set.
+    assert.equal(resolveActionLabel(st, 'brake'), 'X', `${ctx}: brake is the X full-stop key`);
     // Fire is the left mouse button and the Line the right: no KeyboardEvent code, never blank.
     assert.equal(resolveActionLabel(st, 'fire'), 'LMB');
     assert.equal(resolveActionLabel(st, 'tether'), 'F');

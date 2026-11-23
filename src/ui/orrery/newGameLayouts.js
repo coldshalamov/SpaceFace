@@ -143,12 +143,17 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
 /* every desktop window up to 800 tall (1280×720, 1366×650): the form column held 490px of choices in a ~350px
    window, so First flight and the seed sat under the scroll fade and a stranger never saw "Teach me". The
    difficulty stations close to 28px rows (the scale re-measures and redraws its ruler) and the hairline gaps
-   close to one 4px beat; First flight now reads before the seed, so the choice that matters shows first. */
+   close to one 4px beat; First flight now reads before the seed, so the choice that matters shows first.
+   FRONT-1 (DEMO review, 2026-11-23): the First flight helper still met the hang's scroll fade at the fold on
+   1280×720, so the column tightens one more beat — labels to 2px of air, the scale's stations to 26px (still
+   above the 24px hit floor), the live tier's sentence to 6px under — which stands the helper and the seed
+   clear of the 20px fade. */
 @media (min-width:801px) and (max-height:800px) {
   ${NGD} .sf-ng-body .orr-ng-gap { height:4px !important; }
-  ${NGD} .orr-stopscale--y > .orr-stopscale__row > li > .k-word { min-height:28px !important; height:28px !important;
+  ${NGD} .orr-ng-label { margin-bottom:2px !important; }
+  ${NGD} .orr-stopscale--y > .orr-stopscale__row > li > .k-word { min-height:26px !important; height:26px !important;
     padding-top:0 !important; padding-bottom:0 !important; align-items:center !important; }
-  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { margin-bottom:8px !important; }
+  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { margin-bottom:6px !important; }
 }
 /* ≤700 tall (1366×650): the frame's 68px margins top and bottom close to 40/32 and the rows to 12px, so the
    column gains the ~70px First flight needs instead of leaving it under the fade */

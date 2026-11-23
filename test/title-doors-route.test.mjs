@@ -53,6 +53,16 @@ test('with a save the Adventure door is Continue and New Game steps into the sma
   assert.match(MENU, /Start a new game\?/);
 });
 
+test('while the shared store is the only thing that could enable Continue, the word waits in the small row as its plain self', () => {
+  // DEMO-FIX-FRONT-1: a machine with no local save used to render the sync wait as a fully
+  // dressed 'Checking saves' door card among the small row's words. The branch now tags the
+  // li with the row-item class, so the word shows as its plain self (or hides once the sync
+  // settles with nothing to continue).
+  assert.match(MENU, /_layoutTitleRow\(checking = false\)/);
+  assert.match(MENU, /if \(checking && !hasSave && cont\) cont\.classList\.add\('of-title-row-item'\)/);
+  assert.match(MENU, /this\._layoutTitleRow\(true\)/);
+});
+
 test('the doors are the composition at every size, and the lab verbs are hidden unless the dev switch is on', () => {
   assert.match(MENU, /rootEl\.classList\.add\(phone \? 'orr-title--phone' : 'orr-title', 'orr-title--doors'\)/);
   assert.doesNotMatch(MENU, /createArcRail\(/, 'the dial is retired from the title');

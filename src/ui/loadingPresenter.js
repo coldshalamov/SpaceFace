@@ -5,6 +5,11 @@ import { observeBootWork, createBootWorkAccumulator } from '../core/bootWork.js'
 import { dataState } from './uiPrimitives.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
+import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
+import { MOVE_CARD_ACTIONS, compactKeys } from '../data/inputContexts.js';
+import { resolveActionLabel } from '../systems/input.js';
+import { getPromptDevice, getGamepadGlyphSet } from './bindings.js';
+import { GAMEPAD_VERB_ALIASES, gamepadButtonLabels, resolveGamepadBindings } from '../systems/gamepad.js';
 
 const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
@@ -59,18 +64,32 @@ const SWARM_ARENA_ART = Object.freeze({
   storm_lattice: 'assets/ui/kit/assets/tiles/tile.arena.storm-lattice@2x.png',
 });
 export const LOADING_SCENE_LINE = Object.freeze({
+  // The launch's own words (setScene) win over these kind defaults; the swarm entry is the
+  // fallback for a launch that names no room (the picture falls back to the Foundry with it).
   swarm: 'Round 1 · Madame Kiln’s Foundry',
   adventure: 'The Helios harbour',
   restore: 'Back where you left off',
   space: '',
 });
-/** The one controls card: the five verbs a first minute needs, in the game's default keys. */
+/** The caption follows the launch, the way the picture already does: a Swarm run names the room it
+ *  is entering, and a Gauntlet names itself — never a Foundry round. The default room keeps its
+ *  authored fiction name (the title's Swarm door already says it); every other room says the arena
+ *  row's own display name. An unknown room falls back to the Foundry pair with the picture. */
+const SWARM_ARENA_LINE_NAMES = Object.freeze({ helios_core: 'Madame Kiln’s Foundry' });
+export function swarmSceneLine(ruleset, arenaId) {
+  if (ruleset === 'scored') return CRUCIBLE_RULESET_DISPLAY_NAMES.scored;
+  const named = SWARM_ARENA_LINE_NAMES[arenaId] || (COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || {}).label;
+  return `Round 1 · ${named || SWARM_ARENA_LINE_NAMES.helios_core}`;
+}
+/** The one controls card: the five verbs a first minute needs. The keys column is the shipped
+ *  default; the painted card resolves every row through the live binding map (Help's own rule), so
+ *  a rebind never reads a key the player no longer has, and a pad player reads their own buttons. */
 export const LOADING_CONTROLS = Object.freeze([
-  Object.freeze(['W A S D', 'Fly']),
-  Object.freeze(['Mouse', 'Aim']),
-  Object.freeze(['LMB', 'Fire']),
-  Object.freeze(['RMB', 'Line: latch, swing, throw']),
-  Object.freeze(['Shift', 'Boost']),
+  Object.freeze(['W A S D', 'Fly', 'move']),
+  Object.freeze(['Mouse', 'Aim', null]),
+  Object.freeze(['LMB', 'Fire', 'fire']),
+  Object.freeze(['F / RMB', 'Line: latch, swing, throw', 'tether']),
+  Object.freeze(['Shift', 'Boost', 'boost']),
 ]);
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
@@ -151,9 +170,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let restoredNamed = false;
   let loadingSlot = null;
   // LOADING-02: the place this launch is going ('swarm' | 'adventure' | 'restore' | 'space'), its
-  // picture, and the nodes that show them. null = the cold boot (the authored film plays).
+  // picture, the launch's own caption, and the nodes that show them. null = the cold boot (the
+  // authored film plays).
   let scene = null;
   let sceneArt = '';
+  let sceneLine = '';
   let sceneNodes = null;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
 
@@ -164,14 +185,14 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     // Decoration: a shim document without full DOM methods simply gets no picture.
     try { return buildSceneNodes(); } catch (_) { return null; }
   }
+  const make = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  };
+  const add = (parent, ...kids) => { for (const kid of kids) parent.appendChild(kid); return parent; };
   function buildSceneNodes() {
-    const add = (parent, ...kids) => { for (const kid of kids) parent.appendChild(kid); return parent; };
-    const make = (tag, cls, text) => {
-      const node = document.createElement(tag);
-      if (cls) node.className = cls;
-      if (text != null) node.textContent = text;
-      return node;
-    };
     const root = make('div', 'boot-dest');
     root.setAttribute('aria-hidden', 'true');
     const art = make('img', 'boot-dest__art');
@@ -181,13 +202,6 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const keys = make('aside', 'boot-dest__keys');
     keys.appendChild(make('p', 'boot-dest__keys-title', 'Controls'));
     const list = make('ul', 'boot-dest__keys-list');
-    for (const [key, verb] of LOADING_CONTROLS) {
-      const row = make('li', 'boot-dest__key');
-      const caps = make('span', 'boot-dest__caps');
-      for (const cap of key.split(' ')) caps.appendChild(make('kbd', '', cap));
-      add(row, caps, make('span', 'boot-dest__verb', verb));
-      list.appendChild(row);
-    }
     keys.appendChild(list);
     add(root, art, shade, keys);
     if (typeof overlay.insertBefore === 'function') overlay.insertBefore(root, overlay.firstChild || null);
@@ -198,13 +212,74 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const dest = destinationNode();
     if (dest && dest.parentNode === host && typeof host.insertBefore === 'function') host.insertBefore(line, dest.nextSibling);
     else host?.appendChild?.(line);
-    sceneNodes = { root, art, line };
+    sceneNodes = { root, art, line, keys, keysList: list, keysPainted: null };
     return sceneNodes;
   }
-  /** Latch where this launch is going. The picture starts decoding at once, before the veil needs it. */
-  function setScene(kind, artRel) {
+  /** The five rows with the player's live keys — Help's own rules, one owner per label: the Fly row
+   *  is the resolved move set (single glyphs run together, exactly the Help card's Move row), Fire
+   *  and Boost are the live labels, and the Line prints its rebound key beside the permanent RMB
+   *  seat. A pad player reads the pad's own buttons (sticks fly and aim), falling back to the live
+   *  keyboard label when their map leaves a verb without one; a row nothing can express is dropped
+   *  rather than taught with a phantom key — the same rule as the Help card. */
+  function loadingControlRows() {
+    if (!state) return LOADING_CONTROLS.map(([keys, verb]) => [keys, verb]);
+    const padMap = getPromptDevice() === 'gamepad' ? resolveGamepadBindings(state.settings) : null;
+    const rows = [];
+    for (const [stock, verb, action] of LOADING_CONTROLS) {
+      let keys = '';
+      // The labels resolve straight from the binding map (input.js keeps them context-ungated:
+      // "labels stay honest in every context"), so the card shows the keys the player actually
+      // has whatever place they are restoring into.
+      if (action === 'move') {
+        keys = compactKeys(MOVE_CARD_ACTIONS.map((a) => resolveActionLabel(state, a)));
+      } else if (action === 'tether') {
+        const key = resolveActionLabel(state, 'tether');
+        keys = key && key !== 'RMB' ? `${key} / RMB` : key || stock;
+      } else if (action != null) {
+        keys = resolveActionLabel(state, action) || stock;
+      } else {
+        keys = stock;
+      }
+      // When the pad is the live device, the same rows name the pad's own grammar — sticks fly and
+      // aim, and a verb with a button prints it. A verb the player's map left without one keeps
+      // the keyboard label rather than print a pad lie (bindings.js's own fallback rule).
+      if (padMap) {
+        if (action === 'move') keys = 'L-stick';
+        else if (action == null) keys = 'R-stick';
+        else {
+          const pad = gamepadButtonLabels(GAMEPAD_VERB_ALIASES[action] || action, padMap, { glyphSet: getGamepadGlyphSet() });
+          if (pad.length) keys = pad.join(' / ');
+        }
+      }
+      if (keys) rows.push([keys, verb]);
+    }
+    return rows;
+  }
+  /** Repaint the controls card's rows when the live labels move (a rebind between runs, a pad
+   *  taking over). Same signature, same rows: no work on the no-op pass. */
+  function paintControlsCard() {
+    const nodes = ensureSceneNodes();
+    if (!nodes || !nodes.keysList) return;
+    const rows = loadingControlRows();
+    const painted = rows.map(([keys]) => keys).join('|');
+    if (nodes.keysPainted === painted) return;
+    nodes.keysPainted = painted;
+    const list = nodes.keysList;
+    while (list.firstChild) list.removeChild(list.firstChild);
+    for (const [key, verb] of rows) {
+      const row = make('li', 'boot-dest__key');
+      const caps = make('span', 'boot-dest__caps');
+      for (const cap of key.split(' ')) caps.appendChild(make('kbd', '', cap));
+      add(row, caps, make('span', 'boot-dest__verb', verb));
+      list.appendChild(row);
+    }
+  }
+  /** Latch where this launch is going. The picture starts decoding at once, before the veil needs it;
+   *  `line` is this launch's own caption and overrides the kind's default words. */
+  function setScene(kind, artRel, line) {
     scene = kind || null;
     sceneArt = scene ? assetUrl(artRel || LOADING_SCENE_ART[scene === 'restore' ? 'adventure' : scene] || LOADING_SCENE_ART.space) : '';
+    sceneLine = scene && typeof line === 'string' && line ? line : '';
     if (scene) paintScene();
   }
   function paintScene() {
@@ -217,8 +292,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       if (typeof nodes.art.decode === 'function') nodes.art.decode().then(ready, ready);
       else ready();
     }
-    const words = LOADING_SCENE_LINE[scene] || '';
+    const words = sceneLine || LOADING_SCENE_LINE[scene] || '';
     if (nodes.line.textContent !== words) nodes.line.textContent = words;
+    if (scene) paintControlsCard();
   }
   /** Show the place (a launch) or give the overlay back to the boot film (null). */
   function applyScene(on) {
@@ -308,7 +384,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     restoredNamed = false;
     loadingSlot = null;
     paintDestination();
-    scene = null; sceneArt = '';
+    scene = null; sceneArt = ''; sceneLine = '';
     applyScene(false);
   }
   /** An Adventure embark names the pilot's picks; a bare payload is a toy/sandbox launch. */
@@ -335,7 +411,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       setDestination(routeName, rulesetName || routeName);
       if (mark === 'crucibleLaunch') {
         const arenaId = setup && setup.survivalSetup && setup.survivalSetup.arenaId;
-        setScene('swarm', SWARM_ARENA_ART[arenaId] || LOADING_SCENE_ART.swarm);
+        // The caption follows the launch exactly like the picture: a Swarm run names the room it
+        // is entering, a Gauntlet names itself — the slate must never promise a Foundry round to a
+        // run that happens somewhere (or as something) else.
+        setScene('swarm', SWARM_ARENA_ART[arenaId] || LOADING_SCENE_ART.swarm,
+          swarmSceneLine(setup && setup.survivalRuleset, arenaId));
       } else setScene('space');
       return;
     }
@@ -486,7 +566,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       ordinarySectorName = '';
       ordinarySectorUnnamed = false;
       setDestination(null, BOOT_DESTINATION);
-      scene = null; sceneArt = '';
+      scene = null; sceneArt = ''; sceneLine = '';
     }
     // LOADING-02: a launch with a known place shows it; the boot film never plays under it.
     const placeShown = !bootStage && !!scene;

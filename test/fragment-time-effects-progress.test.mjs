@@ -10,9 +10,10 @@
 // The structural repair: automatic presentation beats never write the world clock at all.
 // 'feel:hit-stop' is a retired request name — nothing in feel sets it, and init/reset/destroy
 // still clear it defensively so a lease parked by an older generation cannot linger. Impact,
-// kill, moment, and chain beats keep their FOV punch, trauma, directed kick, vignette,
-// killCam, and audio stinger — only the clock write is gone. The world clock belongs to
-// explicit owners alone: pauses, save restore, and the player's own Focus/bulletTime.
+// kill, moment, and chain beats keep their trauma, directed kick, vignette, killCam, and audio
+// stinger — the clock write is gone, and HARMONY-FIX 5 (61736e012e) took the FOV punch with
+// it: only the player's own acts (boost, jump) ever move the field of view. The world clock
+// belongs to explicit owners alone: pauses, save restore, and the player's own Focus/bulletTime.
 //
 // This fixture drives the REAL feel singleton — real init(), real bus subscriptions, real
 // frame() — against the real event bus and the real timeEffects service, with production
@@ -322,9 +323,15 @@ for (const [label, frameDt] of [['60 fps', FRAME_60], ['20 fps', FRAME_20]]) {
     );
     // The beats themselves still land — every surviving channel.
     assert.ok(samples.some((s) => s.beat > 0 || s.fov > 0), 'beats still arm their authored windows');
-    assert.ok(samples.some((s) => s.fov > 0), 'the storm must still land its FOV punch');
+    // HARMONY-FIX 5 (61736e012e): the FOV gate admits only the player's own acts (boost, jump).
+    // Hits, kills, collisions and moments never punch the field of view — the storm's beats land
+    // through trauma, the directed kick, the camera hold and the stinger instead.
+    assert.ok(samples.every((s) => s.fov === 0), 'hits never punch the FOV — only the player\'s own acts do (HARMONY-FIX 5)');
     assert.ok(fx.calls.trauma.length > 0, 'impact trauma must still land');
-    assert.ok(fx.calls.kick.length > 0, 'directed impact kicks must still land');
+    // R10 (3474e87069, OVH-06a): a collision is a room event — the camera's trauma, kick and
+    // hold refuse it, and the directed kick belongs to the player's own weapon hits alone. This
+    // storm is contacts, chains, kills and moments: it must never slide the frame.
+    assert.equal(fx.calls.kick.length, 0, 'a fragment storm never slides the frame — only the player\'s own weapon hits kick (R10)');
     assert.ok(fx.calls.killCam.length > 0, 'kill cam must still answer player-caused kills');
     assert.ok(fx.calls.hold.length > 0, 'the rated-moment camera hold must still arm');
     assert.ok(
@@ -421,9 +428,13 @@ test('the death beat is presentation too — punch, wash, cam; never the clock',
     fx.calls.killCam.some((k) => k && k.death === true),
     'the death cam still arms',
   );
-  assert.ok(
-    fx.host._fovPunch > 0 || fx.host._fovPunchApplied > 0,
-    'the death FOV punch still lands',
+  // HARMONY-FIX 5 (61736e012e): the death beat keeps its wash, its cam and its clock-untouched
+  // window, but the FOV gate refuses it like every other presentation beat — only the player's
+  // own acts (boost, jump) punch the field of view.
+  assert.equal(
+    fx.host._fovPunch + fx.host._fovPunchApplied,
+    0,
+    'death no longer punches the FOV — only the player\'s own acts do (HARMONY-FIX 5)',
   );
   for (let i = 0; i < 90; i += 1) {
     fx.state.tick += 1;

@@ -617,8 +617,13 @@ export const mainMenuScreen = {
     };
     stage.addEventListener('pointerover', onPointerWake);
     // The arrow keys and the D-pad walk the composition as it is laid out: Left/Right between the doors
-    // and along the row, Up/Down between the doors and the row.
-    const onArrow = (ev) => {
+    // and along the row, Up/Down between the doors, the row and the fine line. The handler lives on
+    // rootEl (never stage) because the fine line is rootEl's own child, not stage's: bound to stage,
+    // ArrowDown could walk into the footer but no keydown from inside it ever reached the handler, so
+    // ArrowUp could never walk back out. rootEl survives remounts, so the previous binding is removed
+    // before this mount adds its own, and dispose takes it down for good.
+    if (this._onArrowKey) rootEl.removeEventListener('keydown', this._onArrowKey, true);
+    this._onArrowKey = (ev) => {
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(ev.key) || ev.altKey || ev.ctrlKey || ev.metaKey) return;
       const usable = titleTabLadder(refs).filter(titleVerbUsable);
       const active = document.activeElement;
@@ -630,7 +635,7 @@ export const mainMenuScreen = {
       try { next.focus({ preventScroll: true }); } catch (_) { next.focus(); }
       cue('move');
     };
-    stage.addEventListener('keydown', onArrow, true);
+    rootEl.addEventListener('keydown', this._onArrowKey, true);
 
     // The fine line: "SpaceFace v0.0.0 · " then the Credits word (Task B §1.6). The version text
     // lives in its own span so _loadVersion can rewrite it without touching the word.
@@ -836,7 +841,9 @@ export const mainMenuScreen = {
   // TITLE-01: the doors and the small row. The Adventure door is New Game for a new player and Continue when a
   // save exists; then New Game stands on the door as its secondary key (never behind More). The small row
   // (Settings, Help, Quit) is centred under the doors by how many of its words show.
-  _layoutTitleRow() {
+  // `checking` is the shared-store wait with no local save: Continue is on screen but cannot act yet,
+  // so it waits in the small row as its plain word — never as a dressed door card.
+  _layoutTitleRow(checking = false) {
     if (!refs || !refs.stage) return;
     const stage = refs.stage;
     const liOf = (a) => {
@@ -853,6 +860,10 @@ export const mainMenuScreen = {
     const adventure = hasSave ? cont : ng;
     if (adventure) adventure.classList.add('of-title-door', 'is-adventure');
     if (hasSave && ng) ng.classList.add('of-title-row-item');
+    // The shared store is still the only thing that could enable Continue: the word stands in the
+    // small row as its plain self (the row-item card hides every door span but the word), so a
+    // machine with no save never shows a dressed 'Checking saves' door among the small words.
+    if (checking && !hasSave && cont) cont.classList.add('of-title-row-item');
   },
 
   _render(ctx) {
@@ -884,7 +895,7 @@ export const mainMenuScreen = {
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
       this._syncCurrent();
-      this._layoutTitleRow();
+      this._layoutTitleRow(true);
       reapplyTitleContinueLoadFailure(refs);
       return;
     }
@@ -1096,6 +1107,8 @@ export const mainMenuScreen = {
     if (arcRail) { arcRail.dispose(); arcRail = null; }
     if (this._onTabKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onTabKey);
     this._onTabKey = null;
+    if (this._onArrowKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onArrowKey, true);
+    this._onArrowKey = null;
     if (this._glossDetach) { this._glossDetach(); this._glossDetach = null; }
     this._glossAwake = null;
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }

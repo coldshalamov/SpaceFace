@@ -1034,9 +1034,11 @@ export const newGameScreen = {
       b.setAttribute('aria-pressed', String((b.dataset.action === 'firstFlight:flown') === refs.flownBefore));
       b.tabIndex = -1;
     }
+    // The helper stays one short line: taking a job at the first berth retires the teaching rail,
+    // so the sentence must promise only what the ordinary route actually delivers.
     refs.firstFlightDesc.textContent = refs.flownBefore
       ? 'Skips the stick drills and the power setups. The rope, the raid and the Range stay.'
-      : 'The full first flight: rope a rock, dock, then the raid and the drills.';
+      : 'Rope a rock, throw it, dock, then take your first job.';
     syncKeys(refs.firstFlightWords);
   },
 
