@@ -51,7 +51,13 @@ const packetPath = join(PACKETS, `${packetId}.md`);
 if (!existsSync(packetPath)) { console.error(`no packet ${packetPath}`); process.exit(2); }
 
 // Machine safety (owner, 2026-11-11: two crashes under load): at most MAX_ACTIVE workers at once.
-const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 4);
+let MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 4);
+// The director can raise the cap for queued chains at runtime: .devshots/fleet/max-active.txt holds a
+// number; the larger of it and the env value wins (owner 2026-11-23: keep every seat busy).
+try {
+  const fileCap = Number(readFileSync(join(REPO, '.devshots', 'fleet', 'max-active.txt'), 'utf8').trim());
+  if (fileCap > MAX_ACTIVE) MAX_ACTIVE = fileCap;
+} catch { /* no override */ }
 const ACTIVE = join(REPO, '.devshots', 'fleet', 'active');
 mkdirSync(ACTIVE, { recursive: true });
 const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
