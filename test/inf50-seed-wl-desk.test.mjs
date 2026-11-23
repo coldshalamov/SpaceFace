@@ -101,14 +101,16 @@ test('seed 4242: a rescued captain counts the run, then changes exactly one axis
   assert.equal(hash32(captain.id, 4) % 3 >= 0, true);
 });
 
-test('seed 4242: the accept key says hold before the first trade, and the rail speaks every help line', () => {
+test('seed 4242: the accept key says hold only when collateral is at risk, and the rail speaks every help line', () => {
+  // Rule (2026-11-23, the demo route): Accept is one press. Only a job that can cost you money
+  // (collateral) is held, so a stranger's first click on a safe job takes it.
   const fresh = { missions: { active: [], receipts: [] } };
-  assert.equal(contractAcceptHoldNote(fresh, 0), 'hold');
+  assert.equal(contractAcceptHoldNote(fresh, 0), '', 'a first safe job is a press, not a hold');
   assert.equal(contractAcceptHoldNote(fresh, 40), 'hold');
   const cold = { missions: { active: [{ id: 'c', storyTag: 'campaign47a:b0:recovery' }], receipts: [] } };
-  assert.equal(contractAcceptHoldNote(cold, 0), 'hold');
+  assert.equal(contractAcceptHoldNote(cold, 0), '');
   const coldDone = { missions: { active: [], receipts: [{ storyTag: 'campaign47a:b0:recovery' }] } };
-  assert.equal(contractAcceptHoldNote(coldDone, 0), 'hold');
+  assert.equal(contractAcceptHoldNote(coldDone, 0), '');
   const coldSettled = {
     missions: {
       active: [],
@@ -121,7 +123,7 @@ test('seed 4242: the accept key says hold before the first trade, and the rail s
       }],
     },
   };
-  assert.equal(contractAcceptHoldNote(coldSettled, 0), 'hold');
+  assert.equal(contractAcceptHoldNote(coldSettled, 0), '');
   const traded = {
     missions: {
       active: [],
@@ -132,7 +134,8 @@ test('seed 4242: the accept key says hold before the first trade, and the rail s
   const flown = { missions: { active: [{ id: 'm' }], receipts: [] } };
   assert.equal(contractAcceptHoldNote(flown, 0), '');
   assert.equal(contractAcceptHoldNote(flown, 40), 'hold');
-  const ids = Object.keys(STATION_HELP);
+  // The help map covers the hub and every destination the station can open (the rail shows four).
+  const ids = Object.keys(STATION_HELP).filter((id) => id !== 'concourse');
   assert.equal(ids.length, 7);
   const tiles = new Map();
   const dock = {
@@ -153,7 +156,7 @@ test('seed 4242: the accept key says hold before the first trade, and the rail s
     };
     tiles.set(id, tile);
   }
-  const stamped = stampDestinationRail(dock);
+  const stamped = stampDestinationRail(dock, ids.map((id) => ({ id, label: STATION_HELP[id][0] })));
   assert.equal(stamped.length, 7);
   for (const row of stamped) {
     const tile = tiles.get(row.id);
@@ -338,11 +341,11 @@ function deskMatches(element, selector) {
   return saw;
 }
 
-test('seed 4242: the live rail keeps its help line, and the board shows the count and the hold word', () => {
+test('seed 4242: the live rail keeps its help line, and a safe job shows the count and no hold word', () => {
   globalThis.document = new DeskDocument();
   const destinations = Object.entries(STATION_HELP).map(([id, pair]) => ({ id, label: pair[0] }));
   const dock = createCommandDock({ destinations, actions: [], onNavigate() {}, onAction() {} });
-  stampDestinationRail(dock.el);
+  stampDestinationRail(dock.el, destinations);
   dock.setAttention('contracts', { badge: '!', title: 'Missions — recovery waiting' });
   const missions = dock.el.querySelector('[data-nav="contracts"]');
   const help = STATION_HELP.contracts[1];
@@ -380,8 +383,8 @@ test('seed 4242: the live rail keeps its help line, and the board shows the coun
   const standing = screen.el.querySelector('[data-replay-standing-orders]');
   assert.match(standing.textContent, /2 of 3 tow recovery/);
   const note = screen.el.querySelector('.orr-lampkey__note');
-  assert.ok(note, 'the Accept key shows a hold note');
-  // the yes/no signal is contractAcceptHoldNote (pinned above); the visible note names the gesture
-  assert.equal(note.textContent, 'hold to accept');
+  // the yes/no signal is contractAcceptHoldNote (pinned above): this offer has no collateral, so
+  // Accept is one press and names no hold gesture
+  assert.ok(!note || !String(note.textContent || '').trim(), 'a safe job carries no hold note');
   screen.dispose();
 });

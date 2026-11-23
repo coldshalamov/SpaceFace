@@ -5,6 +5,18 @@ import { stationControlAttrs } from './stationBindingMap.js';
 // The old artwork rail (.sx-tile__seat) is display:none in the Orrery station sheet, which is
 // why the rail read as micro-text with no icons; the seat span stays (checks query it).
 import { stationTabGlyphSvg } from '../icons/index.js';
+
+/** The glyph each of the station's places wears, on the hub's doors and on the rail alike. People
+ *  (the bar's player-facing name) is two figures, not a glass. */
+export function stationDoorGlyphSvg(glyph, size = 16) {
+  if (glyph === 'people' || glyph === 'bar') {
+    const stroke = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"';
+    return `<svg class="dust-tab-glyph" viewBox="0 0 24 24" width="${size}" height="${size}" ${stroke} style="vertical-align:-2.5px;margin-right:6px" aria-hidden="true" focusable="false" data-tab-glyph="people">` +
+      `<circle cx="9.5" cy="8.5" r="3" ${stroke}/><path ${stroke} d="M4 19c.6-3.2 2.7-5 5.5-5s4.9 1.8 5.5 5"/>` +
+      `<circle cx="16.8" cy="9.5" r="2.2" ${stroke} opacity="0.78"/><path ${stroke} d="M15.8 14.5c2 .3 3.6 1.8 4.2 4.5" opacity="0.78"/></svg>`;
+  }
+  return stationTabGlyphSvg(glyph, { size });
+}
 // Station destinations: an explicit facility rail, horizontal on narrow screens.
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
@@ -23,12 +35,13 @@ function tileHtml(item, kind) {
   // for nav tiles it stays present but empty, so narrow layouts that un-hide it do not draw
   // a second, different icon beside the label's.
   const seat = isNav ? '' : stationIcon(item.id);
-  const labelGlyph = isNav ? stationTabGlyphSvg(item.id) : '';
+  const labelGlyph = isNav ? stationDoorGlyphSvg(item.id) : '';
   // Inside a role=tablist an <li> keeps no role of its own — the tab is the listitem's button.
   return (
     `<li${isNav ? ' role="presentation"' : ''}><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
       `<span class="sx-tile__seat" aria-hidden="true">${seat}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
+      (isNav && item.key ? `<kbd class="sx-tile__key" aria-hidden="true">${escapeMarkup(item.key)}</kbd>` : '') +
       `<span class="sx-tile__label">${labelGlyph}${escapeMarkup(item.label)}</span>` +
       (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +
     `</button></li>`
@@ -43,13 +56,20 @@ function tileHtml(item, kind) {
  * @param {(id:string)=>void} cfg.onAction
  */
 export function createCommandDock(cfg) {
-  const { destinations = [], actions = [], onNavigate, onAction, allowMotion = () => true } = cfg;
+  const { destinations = [], actions = [], onNavigate, onAction, onBack = null, allowMotion = () => true } = cfg;
   const el = document.createElement('div');
   el.className = 'sx-dock';
   el.setAttribute('role', 'toolbar');
   el.setAttribute('aria-label', 'Station destinations');
   el.setAttribute('aria-orientation', 'horizontal');
-  el.innerHTML =
+  // Back leads the rail: inside a door it returns to the hub (the bay and its Service strip), the
+  // same move Esc makes. It is a plain button, not a tab — the tablist stays the four places.
+  const backHtml = typeof onBack === 'function'
+    ? `<button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-dock__back" data-dock-back aria-label="Back to the hub">` +
+        `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" aria-hidden="true" focusable="false"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>` +
+        `<span class="sx-dock__back-label">Back</span><kbd class="sx-dock__back-key" aria-hidden="true">Esc</kbd></button>`
+    : '';
+  el.innerHTML = backHtml +
     `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-orientation="horizontal" aria-label="Destinations">` +
       destinations.map((d) => tileHtml(d, 'nav')).join('') +
     `</ul>` +
@@ -58,6 +78,7 @@ export function createCommandDock(cfg) {
       : '');
 
   el.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-dock-back]')) { onBack && onBack(); return; }
     const nav = ev.target.closest('[data-nav]');
     if (nav) { onNavigate && onNavigate(nav.getAttribute('data-nav')); return; }
     const act = ev.target.closest('[data-act]');

@@ -9,6 +9,7 @@ import { prettyType } from './stationHubFormatters.js';
 import { stationTabLabel } from './stationHubModel.js';
 import { activeMissionCount } from './stationMissionModel.js';
 import { playerYardSummary } from './serviceQuotes.js';
+import { sellableCargoQuantity } from '../../systems/cargoReservations.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -274,6 +275,22 @@ function cargoUsedUnits(state) {
   return Object.values(items).reduce((sum, qty) => sum + Math.max(0, Number(qty) || 0), 0);
 }
 
+/** Units aboard the pilot may actually sell here: sealed contract cargo (the 47-A sample a new
+ *  pilot docks with) is not "what you hauled" and must not send them to sell it. */
+function sellableCargoUnits(state) {
+  const cargo = state && state.player && state.player.cargo || {};
+  const ids = new Set(Object.keys(cargo.items || {}));
+  for (const slot of (Array.isArray(cargo.slots) ? cargo.slots : [])) if (slot && slot.commodityId) ids.add(slot.commodityId);
+  if (!ids.size) return cargoUsedUnits(state);
+  let total = 0;
+  for (const id of ids) {
+    let qty = 0;
+    try { qty = Number(sellableCargoQuantity(state, id)) || 0; } catch (_) { qty = Number(cargo.items && cargo.items[id]) || 0; }
+    total += Math.max(0, qty);
+  }
+  return total;
+}
+
 function firstDockStoryIndex(state) {
   const story = state && state.story || {};
   const raw = story.beatIndex != null ? story.beatIndex :
@@ -313,7 +330,7 @@ export function firstDockHandoffSteps(state = {}) {
   // FIRST HOUR (2026-11-21): the first dock is now the game's first objective, so "the dock beat
   // is done" no longer means anything was sold. The step reads the hold itself: something aboard
   // → sell it; nothing aboard → say so and open the prices (the click goes where the title says).
-  const hasCargo = cargoUsedUnits(state) > 0;
+  const hasCargo = sellableCargoUnits(state) > 0;
   const stats = state.player && state.player.stats;
   const sold = !!(stats && Number(stats.tradesCount) > 0);
   const marketDone = !hasCargo;

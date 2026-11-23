@@ -659,18 +659,9 @@ export function buildConcourseDoors(state, stationId, stationIdentity, options =
   const handoffTarget = options.handoffTarget || null;
 
   const doors = [
+    // The four places in one order everywhere: 1 Jobs, 2 Market, 3 Shipyard, 4 People.
     {
       key: '1',
-      id: 'market',
-      controlId: 'door-market',
-      glyph: 'market',
-      label: 'Market',
-      summary: marketDoorSummary(s, id),
-      badge: handoffTarget === 'market' ? 'Next' : '',
-      tone: handoffTarget === 'market' ? 'next' : 'normal',
-    },
-    {
-      key: '2',
       id: 'contracts',
       controlId: 'door-contracts',
       glyph: 'contracts',
@@ -678,6 +669,16 @@ export function buildConcourseDoors(state, stationId, stationIdentity, options =
       summary: jobsDoorSummary(s, id, attention),
       badge: attention?.badge ? String(attention.badge) : (handoffTarget === 'contracts' ? 'Next' : ''),
       tone: attention ? 'attention' : (handoffTarget === 'contracts' ? 'next' : 'normal'),
+    },
+    {
+      key: '2',
+      id: 'market',
+      controlId: 'door-market',
+      glyph: 'market',
+      label: 'Market',
+      summary: marketDoorSummary(s, id),
+      badge: handoffTarget === 'market' ? 'Next' : '',
+      tone: handoffTarget === 'market' ? 'next' : 'normal',
     },
     {
       key: '3',

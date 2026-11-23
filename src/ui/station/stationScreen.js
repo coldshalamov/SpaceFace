@@ -20,6 +20,9 @@ export const stationScreen = {
     app = createStationApp(rootEl, ctx, { serviceQuote });
   },
   onShow(ctx) { if (app && app.onShow) app.onShow(ctx); },
+  // Esc backs out: inside a door it returns to the hub; on the hub it falls through to the
+  // ordinary exit (the departure check, then undock).
+  onEscape() { return !!(app && typeof app.back === 'function' && app.back()); },
   onHide() { if (app && app.onHide) app.onHide(); },
   refresh(ctx, options) { if (app && app.refresh) app.refresh(ctx, options); },
   dispose() {

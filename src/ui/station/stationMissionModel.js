@@ -158,9 +158,11 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
     };
   }
   // A live spine with no posted journey row keeps the board quiet. Procedural work stays
-  // available as rows; it just does not claim the one recommendation badge.
-  if (liveSpineBeat(state)) return null;
+  // available as rows; it just does not claim the one recommendation badge. The exception is the
+  // first-hour loop before the pilot's first job: a stranger's first dock has one obvious next
+  // action, so the safest ready job is still recommended (and the board selects it).
   const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
+  if (liveSpineBeat(state) && !firstLoopSafeWork) return null;
   let candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {
       if (!mission) return null;

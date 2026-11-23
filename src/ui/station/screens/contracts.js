@@ -292,14 +292,19 @@ function recommendedBadge(pick, missionId) {
 }
 
 function sortBoardOffers(list, state, focusId) {
+  // The recommended job stands at the top of the board, where a stranger looks first; authored
+  // first-hour rows keep their own order (they own the badge when present).
+  const pick = boardRecommendedOfferId(list, state);
+  const pickId = pick && pick.missionId && !pick.blocker ? String(pick.missionId) : null;
   const decorated = list.map((offer, index) => ({
     offer,
     index,
     firstHour: firstHourBoardOfferPresentation(state, offer),
+    picked: pickId != null && String(mid(offer)) === pickId,
   }));
   decorated.sort((a, b) => {
-    const aRank = a.firstHour ? a.firstHour.rank : Number.POSITIVE_INFINITY;
-    const bRank = b.firstHour ? b.firstHour.rank : Number.POSITIVE_INFINITY;
+    const aRank = a.firstHour ? a.firstHour.rank : (a.picked ? -2 : Number.POSITIVE_INFINITY);
+    const bRank = b.firstHour ? b.firstHour.rank : (b.picked ? -2 : Number.POSITIVE_INFINITY);
     if (aRank !== bRank) return aRank - bRank;
     if (focusId) {
       const aFocus = String(mid(a.offer)) === String(focusId) ? 0 : 1;
@@ -536,14 +541,11 @@ function isPlayerDeskJob(mission) {
   return true;
 }
 
-/** The word under Accept. Collateral always says hold. A first trade says hold even with nothing at risk. */
+/** The word under Accept: 'hold' when collateral is at risk, otherwise nothing. Accept is a press;
+ *  only a job that can cost you money asks you to hold it (a stranger's first click on a safe job
+ *  takes it). */
 export function contractAcceptHoldNote(state, collateral) {
-  if (Number(collateral) > 0) return 'hold';
-  const missions = state && state.missions;
-  const active = missions && Array.isArray(missions.active) ? missions.active : [];
-  const receipts = missions && Array.isArray(missions.receipts) ? missions.receipts : [];
-  const accepted = active.some(isPlayerDeskJob) || receipts.some(isPlayerDeskJob);
-  return accepted ? '' : 'hold';
+  return Number(collateral) > 0 ? 'hold' : '';
 }
 
 export function createContractsScreen(ctx) {
@@ -581,6 +583,9 @@ export function createContractsScreen(ctx) {
   // the dossier happens to paint now.
   let pendingCommit = null;
   let acceptHoldMs = 450;
+  /** True only while the shown offer puts collateral at risk: then Accept is held. Otherwise one
+   *  press (click, Enter, Space, pad A) takes the job, and the ring plays through as its receipt. */
+  let acceptNeedsHold = false;
   let pointerAt = -1;
   let keyAt = -1;
   // the tether's hold painter, armed by layTether once the combined path is measured; the bench
@@ -674,7 +679,11 @@ export function createContractsScreen(ctx) {
     const list = sortBoardOffers(offers(state), state, focusId());
     const stationId = state && state.ui && state.ui.dockedStationId;
     if (list.length && (!selectedId || !list.some((offer) => String(mid(offer)) === selectedId))) {
-      selectedId = String(mid(list[0]));
+      // The board opens on its one recommendation when it has one (sorted to the top), so the
+      // dossier beside it is the job to take and Accept is the one obvious press.
+      const pick = boardRecommendedOfferId(list, state);
+      selectedId = pick && pick.missionId && list.some((offer) => String(mid(offer)) === pick.missionId)
+        ? pick.missionId : String(mid(list[0]));
     }
     const dispatch = missionBoardDispatchLabel(state, stationId, list.length);
     const standing = [replayStandingLines(state).join(' '), standingOrderProgressLines(state, stationId).join(' ')].filter(Boolean).join(' ');
@@ -748,7 +757,7 @@ export function createContractsScreen(ctx) {
         // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise a
         // featured day's premium mark outranks the best-next pick. Never more than one, never a reorder.
         const badge = firstHour ? firstHour.label
-          : (m.featured ? 'FEATURED' : recommendedBadge(recommended, id));
+          : (recommendedBadge(recommended, id) || (m.featured ? 'FEATURED' : ''));
         const badgePrefix = badge ? `${badge}${destTag ? ' ' + destTag : ''} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
@@ -1154,12 +1163,13 @@ export function createContractsScreen(ctx) {
     // early retracts it; at full the berth ignites and the mission commits.
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
     const consequences = missionConsequenceSummary(m, state);
-    acceptHoldMs = consequences.collateral > 0 ? 720 : 450;
+    acceptNeedsHold = consequences.collateral > 0;
+    acceptHoldMs = acceptNeedsHold ? 720 : 180;
     const holdNote = contractAcceptHoldNote(state, consequences.collateral);
     if (accept && !accept.disabled) {
-      const hint = consequences.collateral > 0
+      const hint = acceptNeedsHold
         ? ` Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`
-        : ' Hold to accept.';
+        : '';
       accept.setAttribute('aria-label', `${accept.getAttribute('aria-label') || 'Accept'}${hint}`);
       if (!accept.querySelector('.dp-holdring')) {
         const ring = document.createElement('span');
@@ -1594,9 +1604,11 @@ export function createContractsScreen(ctx) {
   // belongs to that hold; the pad's A (a synthetic click) arms a hold that lasts while A stays down;
   // a bare activation with nothing held (assistive tech) runs the hold through on its own.
   const onAccept = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-accept]:not(:disabled)') : null);
-  el.addEventListener('pointerdown', (ev) => { if (onAccept(ev) && ev.button === 0) { pointerAt = holdClock(); startHold('pointer'); } });
+  el.addEventListener('pointerdown', (ev) => {
+    if (onAccept(ev) && ev.button === 0 && acceptNeedsHold) { pointerAt = holdClock(); startHold('pointer'); }
+  });
   el.addEventListener('pointerup', (ev) => {
-    if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+    if ((onAccept(ev) && acceptNeedsHold) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
   }, true);
   for (const type of ['pointercancel', 'pointerleave']) {
     el.addEventListener(type, (ev) => {
@@ -1605,14 +1617,15 @@ export function createContractsScreen(ctx) {
         if (accept && ev.relatedTarget
           && (accept === ev.relatedTarget || accept.contains?.(ev.relatedTarget))) return;
       }
-      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); cancelHold(); }
+      if ((onAccept(ev) && acceptNeedsHold) || hold?.source === 'pointer') { pointerAt = holdClock(); cancelHold(); }
     }, true);
   }
   el.addEventListener('keydown', (ev) => {
     if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     ev.preventDefault();
     keyAt = holdClock();
-    if (!ev.repeat) startHold('key');
+    // nothing at risk: the press is the accept (the ring plays through on its own)
+    if (!ev.repeat) startHold(acceptNeedsHold ? 'key' : 'auto');
   });
   el.addEventListener('keyup', (ev) => {
     if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;

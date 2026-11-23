@@ -4,7 +4,7 @@
 
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
-import { stationTabGlyphSvg } from '../../icons/index.js';
+import { stationDoorGlyphSvg } from '../dock.js';
 import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 import {
   resolveStationIdentity,
@@ -23,15 +23,8 @@ function playerEntity(state) {
     ? state.entities.get(state.playerId) : null;
 }
 
-function doorGlyphSvg(glyph, size = 16) {
-  if (glyph === 'people') {
-    const stroke = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"';
-    return `<svg class="dust-tab-glyph" viewBox="0 0 24 24" width="${size}" height="${size}" ${stroke} style="vertical-align:-2.5px;margin-right:6px" aria-hidden="true" focusable="false" data-tab-glyph="people">` +
-      `<circle cx="9.5" cy="8.5" r="3" ${stroke}/><path ${stroke} d="M4 19c.6-3.2 2.7-5 5.5-5s4.9 1.8 5.5 5"/>` +
-      `<circle cx="16.8" cy="9.5" r="2.2" ${stroke} opacity="0.78"/><path ${stroke} d="M15.8 14.5c2 .3 3.6 1.8 4.2 4.5" opacity="0.78"/></svg>`;
-  }
-  return stationTabGlyphSvg(glyph, { size });
-}
+// The hub's doors and the rail inside every door wear the same glyphs (People is two figures).
+const doorGlyphSvg = stationDoorGlyphSvg;
 
 export function createConcourseScreen(ctx, hooks = {}) {
   const el = document.createElement('section');
@@ -66,8 +59,11 @@ export function createConcourseScreen(ctx, hooks = {}) {
     const ship = playerEntity(state);
     const credits = Math.max(0, Math.round(Number(state.player?.credits) || 0));
     const cargo = state.player?.cargo || {};
-    const usedHold = Math.round(Number(cargo.usedVolume) || 0);
-    const capHold = Math.round(Number(cargo.capVolume) || 0);
+    // The hold reads in slots wherever the bag has them (the same count the door head and the
+    // manifest use); volume is the fallback for a hull without slot data.
+    const slotted = Number.isFinite(cargo.slotCount) && cargo.slotCount > 0;
+    const usedHold = slotted ? (Array.isArray(cargo.slots) ? cargo.slots.length : 0) : Math.round(Number(cargo.usedVolume) || 0);
+    const capHold = slotted ? cargo.slotCount : Math.round(Number(cargo.capVolume) || 0);
     const fuel = state.fuel || {};
     const fuelPct = fuel.max > 0 ? Math.round(Math.max(0, Math.min(1, (fuel.current || 0) / fuel.max)) * 100) : 100;
     const hullPct = ship && ship.hullMax > 0 ? Math.round(Math.max(0, Math.min(1, (ship.hull || 0) / ship.hullMax)) * 100) : 100;
@@ -96,7 +92,12 @@ export function createConcourseScreen(ctx, hooks = {}) {
     const newsActionAttr = news.actionDoor
       ? ` data-news-door="${escapeHtml(news.actionDoor)}"${news.actionSub ? ` data-news-sub="${escapeHtml(news.actionSub)}"` : ''}`
       : '';
-    const newsHtml = `<div class="sx-cc__news" data-priority="${escapeHtml(news.priority)}">` +
+    // One news line, and only when it is news the pilot can act on or must know: a fine on the
+    // hull, what happened while away, a danger, a price worth a trip. The ambient wire chatter
+    // (the old LOCAL WIRE / Berth Wire crawl) is retired from the hub.
+    const newsWorthShowing = !!(news && news.text
+      && (news.priority === 'urgent' || news.priority === 'high' || news.actionDoor));
+    const newsHtml = !newsWorthShowing ? '' : `<div class="sx-cc__news" data-priority="${escapeHtml(news.priority)}">` +
       `<span class="sx-cc__news-tag">${escapeHtml(news.tag)}</span>` +
       `<p class="sx-cc__news-text">${escapeHtml(news.text)}</p>` +
       (news.actionDoor
@@ -194,7 +195,7 @@ export function createConcourseScreen(ctx, hooks = {}) {
           `<p class="sx-cc__note">${escapeHtml(identity.chartNote)}</p>` +
         `</div>` +
         `<div class="sx-cc__purse" aria-label="Ship account and vitals">` +
-          `<div class="sx-cc__credits"><span class="sx-cc__credits-k">Credits</span><strong class="sx-cc__credits-v"><span class="sx-cc__credits-unit">CR</span>${fmtCr(credits)}</strong></div>` +
+          `<div class="sx-cc__credits"><span class="sx-cc__credits-k">Credits</span><strong class="sx-cc__credits-v">${fmtCr(credits)}</strong></div>` +
           `<div class="sx-cc__vitals">` +
             `<span class="sx-cc__vital${hullPct < 70 ? ' is-warn' : ''}">Hull <b>${hullPct}%</b></span>` +
             `<span class="sx-cc__vital${fuelPct < 45 ? ' is-warn' : ''}">Fuel <b>${fuelPct}%</b></span>` +

@@ -34,7 +34,9 @@ const NUM = 'var(--dp-face-num, "Spline Sans Mono", ui-monospace, Consolas, mono
 const TITLE = 'var(--dp-face-display, "Archivo", system-ui, sans-serif)';
 
 const CSS = `
-${P} { --dp-face-num: "Spline Sans Mono", ui-monospace, Consolas, monospace; }
+/* Figures read in the body face with tabular numerals (one type system, 2026-11-23); the mono face
+   is for key caps only (see FOUR PLACES at the end of this sheet). */
+${P} { --dp-face-num: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
 
 /* ---- shared: one label voice, one button voice -------------------------------------------- */
 ${P} :is(.sxb-berth__ident, .sxb-vital__label, .sxb-event__badge, .sxb-event__title, .sxb-next__t, .so-command-trigger,
@@ -1646,6 +1648,110 @@ ${PA} .sx-cc__teach-text, ${PA} .sx-cc__news-text {
   ${PA} .sx-cc__doors, ${PA} .sx-cc__doors[data-count="5"] { grid-template-columns:1fr; }
   ${PA} .sx-cc__hero { padding:12px 14px; }
   ${PA} .sx-cc__purse { align-items:flex-start; width:100%; }
+}
+
+/* ==== FOUR PLACES (08_INTERFACE §7, 2026-11-23) ==============================================
+   The station is four places plus Undock, everywhere. Inside a door the head is one slim plate in
+   the hub's voice (.sx-dh) and the foot is Back, the four places, and Undock. Retired from the
+   player's view: the Ctrl+K palette, the bay screen and station wire crawls, the news tape, the
+   vitals dials with their service verbs and the credit line (service is the hub's one strip),
+   Comms and Help keys. One type system: figures are the body face in tabular numerals; only key
+   caps stay in the mono face. */
+${PA} {
+  --dp-face-num: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+${PA} :is(kbd, .dp-kbd, .sx-cc-door__key, .sx-tile__key, .sx-dock__back-key) {
+  font-family:"Spline Sans Mono", ui-monospace, monospace !important; font-variant-numeric:normal;
+}
+${PA} .sx-cc__vitals { font-family:${UI}; font-size:13px; }
+${PA} .sx-cc__credits-v { font-family:${UI}; font-weight:700; letter-spacing:.01em; }
+
+/* -- the door head ------------------------------------------------------------------------ */
+${PA}:not([data-operation="concourse"]):not([data-operation=""]) .sxb-berth.sxb-berth.dp-frame__head.dp-frame__head {
+  display:flex !important; flex-wrap:wrap !important; align-items:stretch !important; gap:12px !important;
+  grid-template-columns:none !important; grid-template-areas:none !important;
+  height:auto !important; min-height:0 !important; padding:0 !important; margin:0 !important;
+  background:none !important; border:0 !important; box-shadow:none !important;
+}
+${PA}:not([data-operation="concourse"]):not([data-operation=""]) .sxb-berth.sxb-berth.dp-frame__head.dp-frame__head > :is(.so-station-mark, .so-station-title, .so-command-trigger, .sxb-tape, .sxb-signs, .sxb-handoff, .sxb-berth__lamp) {
+  display:none !important;
+}
+${PA}:not([data-operation="concourse"]) .sxb-crown > :is(.sxb-purse, .sxb-vitals) { display:none !important; }
+${PA}:not([data-operation="concourse"]) .sxb-crown:not(:has(> .sxb-law-fine:not([hidden]))) { display:none !important; }
+${PA}:not([data-operation="concourse"]) .sxb-crown:has(> .sxb-law-fine:not([hidden])) {
+  position:static !important; flex:0 1 auto !important; width:auto !important; max-width:min(520px, 100%) !important;
+  margin:0 !important; padding:12px 16px !important; display:flex !important; align-items:center !important;
+}
+${PA}[data-operation="concourse"] .sx-dh { display:none !important; }
+${PA} .sx-dh {
+  box-sizing:border-box; flex:1 1 520px; min-width:0;
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 24px;
+  padding:12px 20px;
+  border:${VISOR_BAY_BORDER}; border-left:3px solid #f2b950; border-radius:2px;
+  background:
+    linear-gradient(90deg, #f2b950 0 36px, rgb(158 220 233 / .45) 36px 180px, rgb(158 220 233 / .12) 180px 100%) top left / 100% 2px no-repeat,
+    linear-gradient(155deg, rgb(10 22 33 / .90) 0%, rgb(6 14 22 / .86) 100%);
+  box-shadow:${VISOR_BAY_SHADOW};
+  font-family:${UI}; color:rgb(${BONE});
+}
+${PA} .sx-dh__where { min-width:0; display:flex; flex-direction:column; gap:2px; }
+${PA} .sx-dh__station {
+  margin:0; font-family:${UI}; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:${ICE};
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+${PA} .sx-dh__door {
+  margin:0; font-family:${TITLE}; font-size:28px; font-weight:700; line-height:1.05; letter-spacing:.01em; color:#f4f7f5;
+}
+${PA} .sx-dh__purse { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+${PA} .sx-dh__credits { margin:0; display:flex; align-items:baseline; gap:10px; }
+${PA} .sx-dh__credits-k { font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:${GOLD}; }
+${PA} .sx-dh__credits-v { font-family:${UI}; font-size:24px; font-weight:700; line-height:1; color:#fff1cf; font-variant-numeric:tabular-nums; }
+${PA} .sx-dh__vitals { margin:0; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px 16px; font-size:13px; color:rgb(${BONE} / .78); }
+${PA} .sx-dh__vital b { color:#edf2ef; font-weight:600; font-variant-numeric:tabular-nums; }
+${PA} .sx-dh__vital.is-warn b { color:#f2b950; }
+${PA} button.sx-dh__vital {
+  text-transform:none; letter-spacing:0; min-height:0;
+  margin:0; padding:0 0 1px; border:0; border-bottom:1px dotted rgb(158 220 233 / .45); border-radius:0; background:none;
+  font:inherit; color:inherit; cursor:pointer; transition:color 140ms ease-out, border-color 140ms ease-out;
+}
+${PA} button.sx-dh__vital:is(:hover, :focus-visible) { color:#fff1cf; border-bottom-color:${GOLD}; outline:none; }
+${PA} button.sx-dh__vital:focus-visible { outline:2px solid #f2b950; outline-offset:3px; }
+
+/* -- the foot: Back, the four places, Undock ----------------------------------------------- */
+${PA} .sxb-ops .sx-comms__toggle, ${PA} .sxb-ops .sxb-help, ${PA} .so-berth-status { display:none !important; }
+${PA} .sx-dock { display:flex !important; align-items:center !important; gap:12px !important; }
+${PA} .sxb-ops .sx-tile::before { content:none !important; display:none !important; }
+${PA} .sx-tile__key {
+  display:inline-grid; place-items:center; min-width:18px; height:18px; margin:0 8px 0 0; padding:0 4px; box-sizing:border-box;
+  border:${KEYCAP_BORDER}; border-radius:2px; background:${KEYCAP_BG}; box-shadow:${KEYCAP_SHADOW};
+  font-size:12px; font-weight:600; line-height:16px; color:${ICE};
+}
+${PA} .sx-tile.is-active .sx-tile__key { color:#f3d178; border-color:${GOLD}; }
+${PA} .sx-tile { display:inline-flex !important; align-items:center !important; }
+${PA} .sx-dock__back {
+  display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:0 12px 0 8px; box-sizing:border-box;
+  border:1px solid rgb(154 198 218 / .22); border-radius:2px; background:transparent;
+  font-family:${UI}; font-size:13px; font-weight:600; letter-spacing:.03em; color:rgb(${BONE} / .80); cursor:pointer;
+  transition:color 140ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
+}
+${PA} .sx-dock__back:is(:hover, :focus-visible) { color:#fff1cf; border-color:${GOLD}; background:rgb(224 181 94 / .10); outline:none; }
+${PA} .sx-dock__back:focus-visible { outline:2px solid #f2b950; outline-offset:2px; }
+${PA} .sx-dock__back:active, ${PA} .sx-tile:active { transform:translateY(1px); }
+${PA} .sx-dock__back-key {
+  display:inline-grid; place-items:center; min-width:26px; height:18px; padding:0 4px; margin-left:2px; box-sizing:border-box;
+  border:1px solid rgb(158 220 233 / .26); border-radius:2px; font-size:11px; line-height:16px; color:rgb(158 220 233 / .80);
+}
+@media (prefers-reduced-motion: reduce) {
+  ${PA} :is(.sx-dock__back, .sx-tile, button.sx-dh__vital) { transition:none !important; }
+  ${PA} .sx-dock__back:active, ${PA} .sx-tile:active { transform:none !important; }
+}
+@media (max-width:600px) {
+  ${PA} .sx-dh { padding:10px 14px; }
+  ${PA} .sx-dh__door { font-size:22px; }
+  ${PA} .sx-dh__purse { align-items:flex-start; width:100%; }
+  ${PA} .sx-dh__vitals { justify-content:flex-start; }
+  ${PA} .sx-dock__back-key { display:none; }
 }
 `;
 
