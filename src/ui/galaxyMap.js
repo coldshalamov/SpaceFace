@@ -3529,11 +3529,12 @@ const HINT_ROWS = Object.freeze([
 // MAPS-2: four tabs, not nine. Place answers "what is here" (who owns it, its services, its danger:
 // the old Overview, Services and Threat); Route is the plotted course; Jobs is work (Missions and
 // Careers); Trade is prices. Discovery and History sit behind one Log link. Nothing is lost.
+// 08_INTERFACE §8 (2026-11-23): at most three — Here, Route, Jobs. Prices fold into Here (a
+// station's exchange is part of what is there) and the Log's survey record follows them.
 export const MAP_INSPECTOR_TABS = Object.freeze([
-  { id: 'place', label: 'Place' },
+  { id: 'place', label: 'Here' },
   { id: 'travel', label: 'Route' },
   { id: 'jobs', label: 'Jobs' },
-  { id: 'trade', label: 'Trade' },
 ]);
 /** The Log (survey Discovery + site History): a link under the tabs, one click away. */
 export const MAP_INSPECTOR_LOG_TAB = Object.freeze({ id: 'log', label: 'Log' });
@@ -3541,15 +3542,15 @@ export const MAP_INSPECTOR_LOG_TAB = Object.freeze({ id: 'log', label: 'Log' });
 export const MAP_INSPECTOR_TAB_ALIASES = Object.freeze({
   overview: 'place', threat: 'place', services: 'place',
   missions: 'jobs', careers: 'jobs',
-  economy: 'trade',
-  discovery: 'log', history: 'log',
+  economy: 'place', trade: 'place',
+  discovery: 'place', history: 'place', log: 'place',
 });
 export function normalizeInspectorTab(id) {
-  if (id === 'log' || MAP_INSPECTOR_TABS.some((t) => t.id === id)) return id;
+  if (MAP_INSPECTOR_TABS.some((t) => t.id === id)) return id;
   return MAP_INSPECTOR_TAB_ALIASES[id] || null;
 }
 
-export const MAP_INSPECTOR_TAB_IDS = Object.freeze([...MAP_INSPECTOR_TABS.map((t) => t.id), MAP_INSPECTOR_LOG_TAB.id]);
+export const MAP_INSPECTOR_TAB_IDS = Object.freeze(MAP_INSPECTOR_TABS.map((t) => t.id));
 
 /**
  * Which tabs carry something for the current selection/state.
@@ -3601,6 +3602,7 @@ export function resolveInspectorTabAvailability(state, target) {
       : 'No active jobs, and no work posted here. Dock at a station to take a contract.');
   set('trade', true, 'Prices from your market memory and the best known places to buy and sell');
   set('log', true, 'What you have charted here, and the history of a selected site');
+  // Three tabs (08_INTERFACE §8): Here also carries prices, charted sites and site history.
   return Object.freeze(out);
 }
 
@@ -6377,7 +6379,7 @@ _stepAnimation(now) {
             <span class="gm-ins-row-val">${law.level} · ${secPips}</span>
           </div>
           <div class="gm-ins-row">
-            <span>Jurisdiction</span>
+            <span>Held by</span>
             <span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span>
           </div>
           <div class="gm-ins-note" style="margin-top:6px;"><b style="color:var(--k-text-live);">ILLEGAL:</b> ${law.illegal}</div>
@@ -6740,12 +6742,29 @@ _stepAnimation(now) {
     }
     const avail2 = avail;
     const join = (...parts) => parts.filter(Boolean).join('');
+    // The old Log's charted-sites list: shown under any selection, and with nothing selected only
+    // when it has World Sites to offer (so the plain Here stays three sections).
+    const chartedHtml = () => {
+      if (selectionHtml && avail2.history.available) return '';
+      const html = this._discoveryTabHtml(state);
+      return selectionHtml || /data-world-site-id=/.test(html) ? html : '';
+    };
     switch (this._activeTab) {
       case 'place': return join(
         this._overviewTabHtml(state, selectionHtml),
-        // With nothing selected Place stays compact; a selection brings its services and danger.
+        // With nothing selected Here stays compact; a selection brings its services, its prices
+        // (the old Trade tab) and its danger.
         selectionHtml && avail2.services.available ? this._servicesTabHtml(state) : '',
-        selectionHtml && avail2.threat.available ? this._threatTabHtml(state) : '');
+        // Trade lanes (the old Trade tab) join a selected station once you hold a price to rank:
+        // before the first market visit there is nothing to show, so nothing is shown.
+        selectionHtml && this._selectedTarget && this._selectedTarget.kind === 'station'
+          && state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length
+          ? this._economyTabHtml(state) : '',
+        selectionHtml && avail2.threat.available ? this._threatTabHtml(state) : '',
+        // The old Log: a selected World Site's history; any other selection lists what you have
+        // charted around it. With nothing selected Here stays three sections.
+        selectionHtml && avail2.history.available ? this._historyTabHtml() : '',
+        chartedHtml());
       case 'jobs': return join(
         avail2.missions.available ? this._missionsTabHtml(state) : '',
         avail2.careers.available ? this._careersTabHtml(state) : '');
@@ -6963,7 +6982,7 @@ _stepAnimation(now) {
     const zoneMeta = zone ? zoneTypeMeta(zone.type) : null;
     const zoneThreatLvl = zone ? zoneThreat(zone.type) : 0;
     const zoneLine = zone
-      ? `${zone.name} (${zoneMeta ? zoneMeta.label : zone.type}${zoneThreatLvl ? ` · Threat ${zoneThreatLvl}` : ''})`
+      ? `${zone.name} · ${String(zoneMeta ? zoneMeta.label : zone.type).toLowerCase()}${zoneThreatLvl ? ` · ${zoneThreatLvl >= 3 ? 'dangerous' : zoneThreatLvl >= 2 ? 'some danger' : 'low danger'}` : ''}`
       : 'Open sector space';
     // inf-lane-chatter-chart: flying inside a lane the boards still flag says so under the zone
     // row — the live talk only; a cooled warning stays on the zone's own record.
@@ -6994,28 +7013,28 @@ _stepAnimation(now) {
       const wpBrg = compassOctant(wpPos.x - globalPos.x, wpPos.z - globalPos.z);
       const isMissionWp = !!(wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective');
       const wpKind = isMissionWp
-        ? 'Mission Objective'
+        ? 'Job goal'
         : wp.stationId || wp.type === 'station'
-          ? 'Station Berth'
+          ? 'Station'
           : wp.type === 'gate'
-            ? 'Jump Gate'
-            : 'Navigation Fix';
+            ? 'Jump gate'
+            : 'Marked point';
       const wpReason = String(wp.reason || wp.label || 'Manual course fix').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').trim();
       wpHtml = `
         <div class="gm-ov-wp-box">
-          <div class="gm-ins-row"><span>Waypoint pin</span><span class="gm-ins-row-val" style="color:${INK.amberHot};">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
-          <div class="gm-ins-row"><span>Marker type</span><span class="gm-ins-row-val">${escapeMapHtml(wpKind)} · ${escapeMapHtml(formatDistanceWU(wpDist))}${wpBrg ? ` ${wpBrg}` : ''}</span></div>
+          <div class="gm-ins-row"><span>Heading for</span><span class="gm-ins-row-val" style="color:${INK.amberHot};">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
+          <div class="gm-ins-row"><span>${escapeMapHtml(wpKind)}</span><span class="gm-ins-row-val">${escapeMapHtml(formatDistanceWU(wpDist))} away</span></div>
           ${wpReason && wpReason.toLowerCase() !== waypointMapLabel(wp).toLowerCase()
             ? `<div class="gm-ins-note">${escapeMapHtml(wpReason)}</div>`
             : ''}
         </div>`;
     } else if (wp && mapWaypointSector(state, wp) && mapWaypointSector(state, wp) !== sectorId) {
       const remoteSector = mapWaypointSector(state, wp);
-      wpHtml = `<div class="gm-ov-wp-box"><div class="gm-ins-row"><span>Waypoint pin</span>
+      wpHtml = `<div class="gm-ov-wp-box"><div class="gm-ins-row"><span>Heading for</span>
         <span class="gm-ins-row-val">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
         <div class="gm-ins-note">In ${escapeMapHtml(sectorNameOf(state, remoteSector))} — plot a route to reach it.</div></div>`;
     } else {
-      wpHtml = '<div class="gm-ins-note">No active waypoint pin — click any marker below or drag from your ship to set a fix.</div>';
+      wpHtml = '<div class="gm-ins-note">Nowhere marked yet. Click a place below, or drag from your ship to set a course.</div>';
     }
 
     const activeMissions = ((state.missions && state.missions.active) || []).filter((m) => m && m.status === 'active');
@@ -7049,7 +7068,7 @@ _stepAnimation(now) {
           ${switchers}
         </div>`;
     } else {
-      missionHtml = '<div class="gm-ins-note">No active contracts. Dock at a station and open Contracts to take work.</div>';
+      missionHtml = '<div class="gm-ins-note">No jobs yet. Dock at a station and open Jobs to take work.</div>';
     }
 
     // Section 3: Markers in Range & Symbol Key
@@ -7069,32 +7088,32 @@ _stepAnimation(now) {
 
     const out = `
       <div class="gm-ins-section">
-        <div class="gm-ins-kind">Your ship &amp; sector</div>
+        <div class="gm-ins-kind">You are here</div>
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorName)}</span></div>
-        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
-        <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
+        <div class="gm-ins-row"><span>Held by</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
+        <div class="gm-ins-row"><span>Area</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
         ${hereChatterHtml}
-        <div class="gm-ins-row"><span>Your position</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) m · Heading ${headingBrg} · ${speed} m/s</span></div>
+        <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${speed > 1 ? `${speed} m/s` : 'Holding still'}</span></div>
         ${careersInner}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-title" style="color:${INK.amberHot};">Mission &amp; Waypoint Fix</div>
+        <div class="gm-ins-title" style="color:${INK.amberHot};">Your goal</div>
         ${wpHtml}
         ${missionHtml}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-title">Markers on Chart &amp; Key</div>
+        <div class="gm-ins-title">Nearby</div>
         ${markersHtml}
         <div class="gm-ov-key-grid" role="list" aria-label="Chart symbol key">
           <span class="gm-ov-key-item" role="listitem"><b style="color:#fcf9f0">⊙</b> You</span>
-          <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.amberHot}">◆</b> Goal Pin</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.amberHot}">◆</b> Your goal</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">⬢ ⚒ ⛏ ⚙ ⛨ ◬ ✧</b> Station types</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">▪</b> Other station</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">⊂⊃</b> Jump Gate</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.red}">◆</b> Hostile</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#b8c7d9">➤</b> Ship / Drone</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">◇</b> Scan / Site</span>
-          <span class="gm-ov-key-item" role="listitem"><b style="color:#e8e2d4">▸</b> Off-View Rim</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#e8e2d4">▸</b> Off screen</span>
         </div>
         <div class="gm-ins-note"><b>Drag from your ship</b> to preview a course; click any marker to inspect or double-click to set course.</div>
       </div>`;
@@ -7287,7 +7306,7 @@ _stepAnimation(now) {
         <div class="gm-ins-kind">Threat assessment</div>
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorNameOf(state, sectorId))}</span></div>
         <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
-        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span></div>
+        <div class="gm-ins-row"><span>Held by</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span></div>
         <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
         <div class="gm-ins-row"><span>Events</span><span class="gm-ins-row-val">${escapeMapHtml(conflictLine)}</span></div>
         <div class="gm-ins-row"><span>Holdings</span><span class="gm-ins-row-val">${escapeMapHtml(holdingsLine)}</span></div>
@@ -7667,7 +7686,7 @@ _stepAnimation(now) {
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
 
     if (!this._tabButtons.length) {
-      host.innerHTML = [...MAP_INSPECTOR_TABS, MAP_INSPECTOR_LOG_TAB].map((tab) => `
+      host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
         <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend${tab.id === 'log' ? ' gm-tab--log' : ''}" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
@@ -10941,8 +10960,9 @@ _drawSystem(g, state, w, h) {
         const zoneLabel = makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'zone',
-          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix,
-          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix],
+          // Plain words: a danger word, never "THREAT 1" (only a zone with real danger says so).
+          text: z.name + (z.threat >= 2 ? ` · ${z.threat >= 3 ? 'dangerous' : 'some danger'}` : '') + chatterSuffix,
+          lines: [z.name + (z.threat >= 2 ? ` · ${z.threat >= 3 ? 'dangerous' : 'some danger'}` : '') + chatterSuffix],
           x,
           y,
           anchorRadius: 3,
@@ -12209,10 +12229,12 @@ _drawLocal(g, state, w, h) {
       const objectiveLabel = waypointMapLabel(wp);
       const wpDist = Math.hypot((Number(wpPos.x) || 0) - px, (Number(wpPos.z) || 0) - pz);
       const wpBrg = compassOctant((Number(wpPos.x) || 0) - px, (Number(wpPos.z) || 0) - pz);
+      // Plain words (08_INTERFACE §8): what it is and how far — no "NAV WAYPOINT", no compass heading.
       const wpKindTag = wp && (wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective')
-        ? 'MISSION'
-        : wp && wp.kind === 'claim_defense' ? 'RAID ALERT' : 'NAV WAYPOINT';
-      const wpSubLine = `${wpKindTag} · ${formatDistanceWU(wpDist)}${wpBrg ? ` · ${wpBrg}` : ''}`;
+        ? 'JOB'
+        : wp && wp.kind === 'claim_defense' ? 'RAID ALERT' : '';
+      void wpBrg;
+      const wpSubLine = `${wpKindTag ? `${wpKindTag} · ` : ''}${formatDistanceWU(wpDist)} away`;
       labelCandidates.push(makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
         kind: 'objective',

@@ -93,9 +93,10 @@ Object.defineProperty(knownSector, 'security', {
   configurable: true,
   get() { overviewReads += 1; return 0.98; },
 });
-galaxyMapScreen._activeTab = 'history';
+// History folded into Here (three tabs, 2026-11-23): Route is the tab that hides Here now.
+galaxyMapScreen._activeTab = 'travel';
 galaxyMapScreen._updateInspector();
-assert.equal(overviewReads, 0, 'History must not compute the hidden sector Overview');
+assert.equal(overviewReads, 0, 'Route must not compute the hidden sector Overview');
 galaxyMapScreen._activeTab = 'overview';
 galaxyMapScreen._updateInspector();
 assert.ok(overviewReads > 0, 'returning to Overview must read the current sector model');

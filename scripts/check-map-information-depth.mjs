@@ -793,16 +793,18 @@ function mountWith(state, { busEvents = [] } = {}) {
   const { root } = mountWith(state);
   galaxyMapScreen._setTab('history');
   const panel = root.querySelector('#gm-tabpanel');
-  assert.match(panel.textContent, /select a world site/i,
-    'an empty tab must SAY why it is empty — a blank panel reads as broken and a filled one lies');
+  // History folded into Here (three tabs): asking for it with nothing selected opens Here, which
+  // is never blank — it says where you are.
+  assert.match(panel.textContent, /you are here/i,
+    'asking for History with no site selected must land on a filled Here, never a blank panel');
 
-  // MAPS-2: History sits behind the Log link. Asking for History opens the Log, which stays
-  // reachable and states why the site history is empty.
-  const historyTab = root.querySelector('#gm-tab-log');
-  assert.equal(historyTab.getAttribute('aria-selected'), 'true', 'History lands on the Log');
+  // 08_INTERFACE §8 (2026-11-23): three tabs — Here, Route, Jobs. History and charted sites live
+  // in Here; asking for History opens Here, which stays reachable.
+  const historyTab = root.querySelector('#gm-tab-place');
+  assert.equal(historyTab.getAttribute('aria-selected'), 'true', 'History lands on Here');
   assert.ok(historyTab.getAttribute('title'), 'the reason must travel on the control for pointer users');
-  assert.notEqual(historyTab.disabled, true, 'the Log must stay focusable');
-  ok('without a World Site selection the Log says why its History is empty, and stays reachable');
+  assert.notEqual(historyTab.disabled, true, 'Here must stay focusable');
+  ok('without a World Site selection Here stays reachable');
 }
 
 {
@@ -821,7 +823,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   const selectedAvailability = resolveInspectorTabAvailability(state, galaxyMapScreen._selectedTarget);
   assert.equal(selectedAvailability.history.available, true);
   galaxyMapScreen._setTab('history');
-  const historyTab = root.querySelector('#gm-tab-log');
+  const historyTab = root.querySelector('#gm-tab-place');
   assert.equal(historyTab.getAttribute('aria-selected'), 'true');
   assert.equal(historyTab.getAttribute('aria-disabled'), 'false');
   const panel = root.querySelector('#gm-tabpanel');

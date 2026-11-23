@@ -484,9 +484,9 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
     wireRows = list;
     const lead = list[0];
     wire.dataset.tone = lead ? lead.tone : 'quiet';
-    wireText.textContent = lead ? `${lead.label || lead.tone} · ${lead.title}` : 'Quiet · no fronts or hot sectors';
+    wireText.textContent = lead ? `${lead.label || lead.tone} · ${lead.title}` : 'All quiet · no fighting or danger nearby';
     wireCount.textContent = list.length > 1 ? `+${list.length - 1}` : '';
-    if (!list.length) { wireList.innerHTML = '<div class="gmh-empty">Nothing pressing across charted space. Fronts, war and dangerous sectors appear here as they open.</div>'; return; }
+    if (!list.length) { wireList.innerHTML = '<div class="gmh-empty">Nothing pressing across charted space. Fighting and dangerous places show here when they flare up.</div>'; return; }
     let html = '';
     let lastTone = null;
     list.forEach((s, i) => {
