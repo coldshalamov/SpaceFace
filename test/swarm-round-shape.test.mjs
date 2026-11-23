@@ -34,6 +34,7 @@ import {
   SWARM_SPAWN_DISTANCE,
   resetSwarmPressureState,
 } from '../src/data/swarmMode.js';
+import { swarmRoundBudget } from '../src/data/swarmCourseCast.js';
 
 const DT = 1 / 60;
 const ARENA = 'helios_core';
@@ -395,11 +396,15 @@ test('wave lengths: waves 1-6 play long enough to be rounds, not bursts', () => 
     durations.push({ wave, seconds: +(clearTick / 60).toFixed(1) });
   }
   console.table(durations);
+  // Tests follow 15dc667f49 (DEMO-SWARM-BUDGET-1): the director approved the round body budgets
+  // (10, 16, 20, 24, 26 … instead of the old 42-heavy ladder), and a round's length at a
+  // competent pilot's kill rate follows its body count — so the round band is now read off that
+  // budget instead of a fixed 60-100 s. A round still has to be a round and never a burst:
+  // about 1.2 s per owed body at the very least, and no round may run past 100 s.
   for (const { wave, seconds } of durations) {
-    // Wave 1 is the pinned 15-body lesson wave — it resolves in ~half a minute by
-    // design; the 60–90 s band starts at wave 2.
-    const floor = wave === 1 ? 20 : 45;
+    const budget = swarmRoundBudget(wave);
+    const floor = Math.max(12, Math.round(budget * 1.2));
     assert.ok(seconds >= floor && seconds <= 100,
-      `wave ${wave} ran ${seconds}s — outside the ${floor}-100s round band (target 60-90)`);
+      `wave ${wave} (${budget} bodies) ran ${seconds}s — outside the ${floor}-100s round band`);
   }
 });
