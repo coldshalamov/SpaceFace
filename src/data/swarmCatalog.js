@@ -105,7 +105,9 @@ export function catalogBlurbFor(def) {
   const base = swarmFightReason(def) || `${catalogVerbFor(def)}${size} for the bay that takes it.`;
   if (def.slotType !== 'weapon') return base;
   // The scales' own plain words — fire and impact — never dps/impulse jargon on a Bench card.
-  if (/fire|impact|dps|impulse/i.test(base)) return base;
+  // Skip only when the sentence already PRINTS figures: an authored line that merely says
+  // "Fire-and-forget" (Missile Rack M) still gets its numbers.
+  if (/\b(?:fire|impact)\s+\d|\bdps\b|\bimpulse\b/i.test(base)) return base;
   const dps = Number.isFinite(def.dps) ? def.dps : null;
   const impulse = Number.isFinite(def.impulsePerHit) ? def.impulsePerHit : null;
   if (dps == null && impulse == null) return base;

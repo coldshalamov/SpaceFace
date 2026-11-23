@@ -617,6 +617,9 @@ test('a catalog gun carries its figures; a stake tile carries its yield', () => 
   assert.ok(blurb.includes('fire'), 'sustained fire reads on the row');
   assert.ok(blurb.includes('impact'), 'shove reads on the row');
   assert.ok(!/\bdps\b|impulse/i.test(blurb), 'no jargon on the row');
+  // An authored sentence that only SAYS fire ("Fire-and-forget hunters…") still shows its figures.
+  const rack = WEAPONS.find((w) => w.id === 'wpn_missile_rack_m');
+  assert.match(catalogBlurbFor(rack), /fire \d+ · impact \d+\.$/, 'Missile Rack M keeps its figures');
   const rig = MODULES.find((m) => m.slotType === 'utility');
   assert.equal(catalogBlurbFor(rig).includes('dps'), false, 'a rig keeps its sentence');
   for (const stake of SWARM_STAKES) {
