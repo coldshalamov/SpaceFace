@@ -217,6 +217,27 @@ test('enterSector entry point is galactic-global for the target sector', () => {
   assert.equal(state.world.frameOriginSeq, seqBefore);
 });
 
+// Sliced sector enters (owner freeze bug 2026-11-21): arrival materialization is deferred —
+// neighbor residency drains one job per world tick (sliceArrival) and the continuous/deferred
+// enter lanes drain a fixed number of sim steps per tick. Assertions that need the landed
+// layout settle the lanes directly instead of ticking the world dozens of times.
+function drainArrivals(world) {
+  for (let i = 0; i < 512; i++) {
+    let more = false;
+    if (world._activeContinuousEnter
+      && world._drainContinuousSectorEnter(1024)) more = true;
+    if (world._activeEnter && !world._activeEnter.done) {
+      world._drainDeferredSectorEnter(1024, false);
+      more = more || !world._activeEnter.done;
+    }
+    if (world._pendingResidency && world._pendingResidency.length) {
+      world._drainResidencyQueue(1024);
+      more = more || world._pendingResidency.length > 0;
+    }
+    if (!more) return;
+  }
+}
+
 test('rebasing mutates only frameOrigin/seq and leaves every entity global pose untouched', () => {
   // Helios hosts kinematic Verge-Layer machines (precursorMachines.js orbit/sweep their anchors
   // every world tick), so "pose before == pose after" is not the rebase invariant — a world tick
@@ -226,6 +247,10 @@ test('rebasing mutates only frameOrigin/seq and leaves every entity global pose 
   const staged = (seed) => {
     const booted = bootWorld(seed);
     booted.world.enterSector(HELIOS);
+    // Sliced sector enters: after a sync enter the residency backlog still mints one neighbor
+    // sector per world tick. Settle it so the single update below poses the rebase invariant
+    // on a landed world — the minted neighbor's stations would otherwise read as self-driven.
+    drainArrivals(booted.world);
     // Place player past rebase threshold; keep other entities at their global anchors.
     booted.player.pos.x = FRAME_REBASE_THRESHOLD_WU + 100;
     booted.player.pos.z = -FRAME_REBASE_THRESHOLD_WU - 50;

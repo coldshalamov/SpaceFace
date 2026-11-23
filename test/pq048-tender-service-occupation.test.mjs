@@ -47,6 +47,13 @@ function boot(seed = SEED) {
   });
   sim.state.mode = 'flight';
   sim.registry.get('world').enterSector(CERES_ACTIVITY_SECTOR_ID, { placePlayer: false });
+  // Sliced sector enters (owner freeze bug 2026-11-21): neighbor residency drains one job per
+  // world tick, so the incident steps below would mint a neighbor sector's bodies mid-test and
+  // read as extra live actors. Settle the backlog before counting.
+  const worldSystem = sim.registry.get('world');
+  for (let i = 0; i < 64 && worldSystem._pendingResidency && worldSystem._pendingResidency.length; i++) {
+    worldSystem._drainResidencyQueue(64);
+  }
   const tender = liveActor(sim.state, TENDER_SLOT_ID);
   const miner = liveActor(sim.state, MINER_SLOT_ID);
   const trafficSystem = sim.registry.get('traffic');

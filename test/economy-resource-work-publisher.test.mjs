@@ -67,6 +67,13 @@ function fieldRocks(state, fieldId) {
 /** Work the field into the "worked" band, seat the player at the seam, and regrow once. */
 function prepareSeam(h, { drainWorkS = null, parkPlayerAtField = true } = {}) {
   h.world.enterSector(HELIOS, {});
+  // Sliced sector enters (owner freeze bug 2026-11-21): neighbor residency drains one job per
+  // world tick, so the single update below would otherwise spend its spawn budget minting a
+  // neighbor sector — and a spawn-refusal stub would crash that mint before the seam test ran.
+  // Settle the backlog so the tick exercises the seam alone.
+  for (let i = 0; i < 64 && h.world._pendingResidency && h.world._pendingResidency.length; i++) {
+    h.world._drainResidencyQueue(64);
+  }
   const field = (h.state.world.activeSector.fields || [])[0];
   assert.ok(field && field.id && field.center, 'Helios materializes at least one authored field');
   for (let i = 0; i < 5; i++) {
