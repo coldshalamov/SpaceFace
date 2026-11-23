@@ -107,7 +107,9 @@ test('stable active Massline controls do not rewrite their accessible label at H
     assert.equal(controls.getAttribute('tabindex'), '0', 'the socket stays keyboard reachable');
     const labelBefore = controls.getAttribute('aria-label');
     const tipBefore = controls.getAttribute('data-why');
-    assert.match(labelBefore, /Line.*\(F\)/, 'the accessible name carries the live Massline key');
+    // Tests follow f10cd0fe03 (HUD-POWER-BAR): the Line socket's accessible name carries every live
+    // key it answers to — "key RMB / F" — instead of the old single parenthesised "(F)" seat.
+    assert.match(labelBefore, /Line.*RMB \/ F/, 'the accessible name carries the live Massline keys');
     assert.match(tipBefore, /Line/, 'the socket still explains its verb');
 
     let ariaLabelWrites = 0;
