@@ -9,6 +9,7 @@ import {
   resolveImpactAudioCue,
 } from '../presentation/causalVfxGrammar.js';
 import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 import { SECTOR_ARRIVAL_CUES } from '../data/audioRecipes.js';
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
@@ -560,6 +561,14 @@ export const presentationAdapters = {
     const playerScoped = warnsAboutRecipient
       ? cue.targetId != null && cue.targetId === this.state?.playerId
       : finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
+    // DEMO-ADV-2 (item 2): the opening's own physics is not a threat, and it never says so. Until
+    // the first dock the generic swing-danger read cannot tell the lesson's rock — or the raider the
+    // player is swinging on purpose — from a hostile line, so it raised "SWING THREAT" and spoke
+    // "Swing threat detected." over the sentence asking for the throw. The words retire; the world
+    // feedback (the sting at the line, the spark, the camera's small knock) stays, because moving
+    // mass is real and the picture is how the player learns it. The named hostile variants — a
+    // committed blade, a counter-tether cut, an overload — are enemy actions and always speak.
+    const openingSwingNoise = cue?.id === 'massline.threat' && openingQuiet(this.state);
     const tutorialOwnsSignalAnnouncement = onboardingOwnsSignalAnnouncement(this.state, cue);
     const camera = playerScoped ? this._applyCamera(cue) : null;
     if (camera) outputs.camera = camera;
@@ -567,9 +576,11 @@ export const presentationAdapters = {
     if (vfx) outputs.vfx = vfx;
     const audio = this._applyAudio(cue);
     if (audio) outputs.audio = audio;
-    const ui = playerScoped && !tutorialOwnsSignalAnnouncement ? this._applyUi(cue) : null;
+    const ui = playerScoped && !tutorialOwnsSignalAnnouncement && !openingSwingNoise
+      ? this._applyUi(cue)
+      : null;
     if (ui) outputs.ui = ui;
-    const accessibility = playerScoped && !tutorialOwnsSignalAnnouncement
+    const accessibility = playerScoped && !tutorialOwnsSignalAnnouncement && !openingSwingNoise
       ? this._applyAccessibility(cue)
       : null;
     if (accessibility) outputs.accessibility = accessibility;

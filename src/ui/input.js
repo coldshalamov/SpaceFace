@@ -409,8 +409,14 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   // mouth, rides the lane and parks at the berth; any steering or the brake takes the helm back.
   function flyToBerth(berth) {
     if (!isDockableStation(berth) || state.mode !== 'flight' || state.ui?.docked) return false;
+    // DEMO-ADV-2: the course carries its own provenance. The opening rail retires only the berth
+    // run it laid (onboarding._retireArrivedBerthCourse), so the run is stamped where it is plotted:
+    // berthAutopilot marks the course as this key's, berthStationId is the stable station id that
+    // survives the autopilot dropping its live target bind on arrival. world carries both onto
+    // state.nav.waypoint; a course the pilot plots through the chart or the radar has neither.
     bus.emit('ui:setCourse', { pos: { x: berth.pos.x, z: berth.pos.z }, targetEntityId: berth.id,
-      label: stationDisplayName(berth), waypointKind: 'local', autopilot: true });
+      label: stationDisplayName(berth), waypointKind: 'local', autopilot: true,
+      berthAutopilot: true, berthStationId: (berth.data && (berth.data.stationId || berth.data.id)) || berth.id });
     // No toast: the flight-mode chip by the speed dial names the autopilot for as long as it flies
     // ("Autopilot · to <station> berth — steer to take over"), and the lane is drawn in the world.
     bus.emit('audio:cue', { id: 'ui_confirm' });

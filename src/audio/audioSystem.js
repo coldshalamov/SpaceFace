@@ -46,6 +46,7 @@ import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livin
 import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { isSwarmGlass } from '../ui/swarmGlass.js';
+import { openingThrowLessonCurrent } from '../onboarding/openingQuiet.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -1056,6 +1057,11 @@ export function payoffCaptionForRun(state, event, payload) {
 
 export const DEATH_CAPTION = 'Ship lost.';
 export const RESPAWN_CAPTION = 'Back in the fight.';
+// DEMO-ADV-2: how long a payoff earned during the opening's throw lesson waits for the throw. Past
+// this the moment is gone and the line is dropped rather than spoken late over the next instruction.
+export const OPENING_PAYOFF_HOLD_MS = 25000;
+// Bounded: the opening's throw can earn a level and a deed, not a queue.
+const OPENING_PAYOFF_HOLD_CAP = 4;
 
 export function missionMomentCaption(event) {
   if (event === 'mission:accepted') return 'Mission accepted.';
@@ -3209,10 +3215,17 @@ export const audio = {
     });
     // Achievements and career promotions: previously silent or text-only. An unlocked deed gets
     // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
+    // DEMO-ADV-2: while the opening's throw lesson is asking for the throw, the deed it earns is
+    // held and played once the throw lands (see _holdForOpeningThrow) — the picture and the sound
+    // still arrive, but not over the sentence that asked for them.
     bus.on('achievement:unlocked', (p) => {
-      this._duckMusic();
-      this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });
-      this._emitNamedCaption(payoffCaption('achievement:unlocked', p));
+      const play = () => {
+        this._duckMusic();
+        this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });
+        this._emitNamedCaption(payoffCaption('achievement:unlocked', p));
+      };
+      if (this._holdForOpeningThrow(play)) return;
+      play();
     });
     bus.on('career:ladder:completed', (p) => {
       this.play('sfx_promotion_chord', { gain: 0.7, captionOwned: true });
@@ -5842,6 +5855,40 @@ export const audio = {
   _emitNamedCaption(text, opts = {}) {
     if (!text) return;
     this._emitPresentationCaption(text, { channel: 'cue', ...opts });
+  },
+
+  // DEMO-ADV-2 (item 2): the opening's throw lesson is one voice. A deed earned BY that throw (the
+  // lesson rock is a hull thrown with the Line — "Light Ships Are Ammunition") used to speak its
+  // caption and fanfare over the sentence asking for the throw. The payoff is held and played once
+  // when the throw lands, checked on the audio frame (the same clock the one-shots ride).
+  _holdForOpeningThrow(play) {
+    const rt = this.rt;
+    if (!rt || rt._destroyed) return false;
+    if (!openingThrowLessonCurrent(this.state)) return false;
+    const held = rt._openingPayoffs || (rt._openingPayoffs = []);
+    // Every payoff the beat is owed still speaks, once, after the throw. A deed and the level it
+    // paid are different facts; dropping one to "keep it to one line" would lose the other.
+    if (held.length >= OPENING_PAYOFF_HOLD_CAP) held.shift();
+    held.push({ play, atWall: typeof performance !== 'undefined' ? performance.now() : Date.now() });
+    return true;
+  },
+
+  /** Replay held opening payoffs once the throw lesson has closed. Called from the audio frame. */
+  _drainOpeningPayoffs() {
+    const rt = this.rt;
+    const held = rt && rt._openingPayoffs;
+    if (!held || !held.length) return;
+    const closed = !openingThrowLessonCurrent(this.state);
+    const nowWall = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const keep = [];
+    for (const rec of held) {
+      // The beat it belonged to is gone: a payoff held this long is history, not a receipt.
+      if (nowWall - rec.atWall > OPENING_PAYOFF_HOLD_MS) continue;
+      if (!closed) { keep.push(rec); continue; }
+      try { rec.play(); } catch (_) {}
+    }
+    held.length = 0;
+    for (const rec of keep) held.push(rec);
   },
 
   _captionFieldLife(event) {
@@ -8957,6 +9004,8 @@ export const audio = {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
     this._stepWantedSearchAudio();
+    // DEMO-ADV-2: a payoff held by the opening's throw lesson replays here the frame it lands.
+    this._drainOpeningPayoffs();
     const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
     const now = ctx.currentTime;
 

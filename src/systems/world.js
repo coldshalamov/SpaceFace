@@ -7727,6 +7727,11 @@ export const world = {
         pos,
         ...(payload.recoverySource ? { missionId,
           recoverySource: { ...payload.recoverySource } } : {}),
+        // DEMO-ADV-2: the berth key stamps the course it plots with its own provenance, so the
+        // opening rail can retire exactly that run and never a course the pilot plotted. Carried
+        // verbatim from the ui:setCourse payload; a chart or radar course has neither field.
+        ...(payload.berthAutopilot === true ? { berthAutopilot: true } : {}),
+        ...(payload.berthStationId != null ? { berthStationId: String(payload.berthStationId) } : {}),
       };
       let stableTarget = null;
       if (bound) {

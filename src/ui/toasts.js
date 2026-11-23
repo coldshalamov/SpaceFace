@@ -29,6 +29,7 @@ import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
 import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
 import { isSwarmGlass } from './swarmGlass.js';
+import { openingThrowLessonCurrent } from '../onboarding/openingQuiet.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -250,6 +251,46 @@ export function createToasts(ctx) {
   // or deferred toast events never make the HUD walk and measure the flight overlays.
   function invalidateReceiptGeometry() { bus?.emit?.('hud:receiptGeometryChanged', {}); }
 
+  // DEMO-ADV-2 (item 2): the opening's throw lesson keeps one voice on the glass. While the
+  // staged rail's swing beat is current — the sentence asking for the throw is the objective line —
+  // the pilot's payoff receipts wait for it to land instead of landing on top of it: the level-up
+  // point ("Level 2: a point to spend in the Pilot Tree (T)") and a deed ("Light Ships Are
+  // Ammunition") fire on the very throw the lesson is asking for, so they used to speak over the
+  // instruction that earned them. Held receipts replay through this same admission path once the
+  // beat closes, so every ordinary gate still applies at speak time. Nothing the player must act on
+  // is held: an error, a danger/warning line or a tutorial line goes straight through.
+  const OPENING_HELD_KINDS = new Set(['good', 'info', 'success', 'credits', 'rep', 'discovery']);
+  const OPENING_HELD_HOLD_MS = 25000;
+  let openingHeld = null;
+  function holdForOpeningThrow(text, kind) {
+    if (!OPENING_HELD_KINDS.has(String(kind || 'info'))) return false;
+    if (!openingThrowLessonCurrent(ctx.state)) {
+      if (openingHeld && openingHeld.length) drainOpeningHeld();
+      return false;
+    }
+    if (!openingHeld) openingHeld = [];
+    if (openingHeld.length >= 4) openingHeld.shift();
+    openingHeld.push({ text, kind, channel: '', queuedAtMs: performance.now() });
+    return true;
+  }
+  function drainOpeningHeld() {
+    const held = openingHeld;
+    openingHeld = null;
+    if (!held || !held.length || destroyed) return;
+    const now = performance.now();
+    for (const rec of held) {
+      // A payoff held past its moment is history, not a receipt: the beat it belonged to is gone.
+      if (now - rec.queuedAtMs > OPENING_HELD_HOLD_MS) continue;
+      if (openingThrowLessonCurrent(ctx.state)) {
+        // The next beat reopened the lesson (a retry restaged the swing): keep waiting.
+        if (!openingHeld) openingHeld = [];
+        openingHeld.push(rec);
+        continue;
+      }
+      pushNow({ text: rec.text, kind: rec.kind });
+    }
+  }
+
   // Returns true when the receipt was drawn (or folded into a live card) and false when it was
   // refused, so a once-only notice sent through the presenter can tell it was never seen.
   function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null } = {}) {
@@ -258,6 +299,8 @@ export function createToasts(ctx) {
     // callout already speaks the moment, and the phone HUD budget has no room for both.
     if (kind === 'stunt' && isSwarmGlass(ctx.state) && typeof document !== 'undefined'
       && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') return false;
+    // DEMO-ADV-2: the throw lesson's own payoff receipts wait for the throw (see holdForOpeningThrow).
+    if (holdForOpeningThrow(text, kind)) return false;
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
     // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
     // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
@@ -471,6 +514,9 @@ export function createToasts(ctx) {
 
   // Called from hud's frame(), but sleeps until a toast can fade or expire.
   function tick() {
+    // DEMO-ADV-2: the throw lesson's held payoffs replay the moment it lands. Checked before the
+    // idle return so the lane wakes even when no card is live.
+    if (openingHeld && openingHeld.length && !openingThrowLessonCurrent(ctx.state)) drainOpeningHeld();
     if (swarmWait.length && !live.length) {
       if (isSwarmGlass(ctx.state)) pushNow(swarmWait.shift());
       else swarmWait.length = 0;
