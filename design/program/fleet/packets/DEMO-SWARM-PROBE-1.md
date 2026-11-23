@@ -1,3 +1,18 @@
+# DEMO-SWARM-PROBE-1 — VERIFY ONLY (director 2026-11-23 16:10)
+
+**Changed:** deepseek already wrote `scripts/probe-first-swarm-minute.mjs` (committed) and ran it
+three times (`.devshots/demo/swarm-minute/`). Do NOT rewrite it. Your job now:
+1. Run it once: `node scripts/fleet/game-lock.mjs run -- node scripts/probe-first-swarm-minute.mjs`.
+2. Fix two probe bugs only if they are probe bugs (not game bugs): (a) `again-first-hostile` reported
+   "no hostile appeared after Again within 180 s" at t=79.8 s, only 4 s after the Again press — the
+   probe stops watching too early or the check is wrong; (b) `throw-1` "latch did not take" — check
+   whether the probe aims at a latchable body (the game's own massline preview says what a press grabs).
+3. Receipt: press->live-control seconds, press->first hostile, world speed per 10 s, throws
+   attempted/latched/released, and the Again timings. Commit only the probe script.
+
+---
+(original packet below, for reference only)
+
 # DEMO-SWARM-PROBE-1 — a probe that plays Swarm's first minute the way a stranger does
 
 **For:** a careful engineer (no vision needed: you write and run a capture script; the director
