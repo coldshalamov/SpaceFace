@@ -350,9 +350,13 @@ test('E3: a live Crucible run keeps the Line — combat-flight systems are not s
     assert.equal(systemRunsInMode(system, SIM_MODE.SWARM), true, `${system} must run in Swarm`);
     assert.equal(shouldSkipSystemThisStep(system, liveRun), false, `${system} must not be skipped`);
   }
+  // mining owns the pickup vacuum: Swarm credit chips are combat loot that must home on the hull
+  // (2026-11-23: flight-only, the vacuum never ran in the Pit and a round-6 fight left 53 chips,
+  // the run's money, on the floor). The beam stays out because no Swarm loadout carries one.
+  assert.equal(systemRunsInMode('mining', SIM_MODE.SWARM), true, 'the loot vacuum must run in Swarm');
+  assert.equal(shouldSkipSystemThisStep('mining', liveRun), false);
   // Adventure-only verb stays out of the arena. lineProgression is open-world adventure, not a
   // combat-flight owner; keeping it out of Swarm is the scope contract the manifest declares.
-  assert.equal(shouldSkipSystemThisStep('mining', liveRun), true);
   assert.equal(shouldSkipSystemThisStep('lineProgression', liveRun), true);
   assert.equal(systemRunsInMode('lineProgression', SIM_MODE.FLIGHT), true);
   assert.equal(systemRunsInMode('lineProgression', SIM_MODE.YARD), true);

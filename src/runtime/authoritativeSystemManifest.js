@@ -1011,7 +1011,11 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   // §7.1 head behaviors move live bodies on the settled tick; they ride the Line in Swarm too.
   lineHeads: MODE_SCOPE_COMBAT_FLIGHT,
   volatileExposure: MODE_SCOPE_FLIGHT_ONLY,
-  mining: MODE_SCOPE_FLIGHT_ONLY,
+  // mining owns the pickup vacuum as well as the beam: Swarm credit chips are combat loot that
+  // homes on the hull (with the hangar's magnet upgrades and the Magnet drop). Flight-only, the
+  // vacuum never ran in the Pit — chips piled up (53 in a round-6 fight) and the run's money lay
+  // on the floor. The beam itself stays out of Swarm because no Swarm loadout carries one.
+  mining: MODE_SCOPE_COMBAT_FLIGHT,
   fieldDepletion: MODE_SCOPE_FLIGHT_ONLY,
   fragileCargo: MODE_SCOPE_FLIGHT_ONLY,
   moistureLoss: MODE_SCOPE_FLIGHT_ONLY,
