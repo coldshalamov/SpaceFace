@@ -636,29 +636,34 @@ export const mainMenuScreen = {
     // lives in its own span so _loadVersion can rewrite it without touching the word.
     const version = el('footer', 'dp-frame__foot dp-etch');
     version.dataset.role = 'version';
-    // The build light: the produced `light.dot.good.on` render, the frame's own corner detail.
-    // Decorative — the build string beside it is the information.
-    const buildLight = el('span', 'dp-led');
-    buildLight.dataset.colour = 'good';
-    buildLight.setAttribute('aria-hidden', 'true');
-    version.appendChild(buildLight);
-    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
-    // The full identity stays one hover away for a bug report, off the wall (section 4.15).
-    versionText.title = leftoverVersionLabel(CREDITS);
-    version.appendChild(versionText);
-    version.appendChild(el('span', '', ' · '));
+    // The two quiet words first (Credits · Achievements), then the build string set apart at the
+    // far end: a version jammed against the links read as one run-on line ("BETA.1 · CREDITS").
     const bCredits = el('button', 'dp-menu__item dp-menu__item--fine', 'Credits');
     bCredits.type = 'button';
     bCredits.dataset.action = 'credits';
     bCredits.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'credits'); });
     version.appendChild(bCredits);
     // PQ-033.03: Achievements rides the same fine line as Credits — a quiet word, not a menu row.
-    version.appendChild(el('span', '', ' · '));
+    const dot = el('span', 'of-title-foot__dot', '·');
+    dot.setAttribute('aria-hidden', 'true');
+    version.appendChild(dot);
     const bAchievements = el('button', 'dp-menu__item dp-menu__item--fine', 'Achievements');
     bAchievements.type = 'button';
     bAchievements.dataset.action = 'achievements';
     bAchievements.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'achievements'); });
     version.appendChild(bAchievements);
+    const build = el('span', 'of-title-build');
+    // The build light: the produced `light.dot.good.on` render, the frame's own corner detail.
+    // Decorative — the build string beside it is the information.
+    const buildLight = el('span', 'dp-led');
+    buildLight.dataset.colour = 'good';
+    buildLight.setAttribute('aria-hidden', 'true');
+    build.appendChild(buildLight);
+    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
+    // The full identity stays one hover away for a bug report, off the wall (section 4.15).
+    versionText.title = leftoverVersionLabel(CREDITS);
+    build.appendChild(versionText);
+    version.appendChild(build);
     rootEl.appendChild(version);
 
     refs = {

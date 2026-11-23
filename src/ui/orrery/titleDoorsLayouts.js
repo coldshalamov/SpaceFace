@@ -60,9 +60,9 @@ ${ROW_LI} { order:2; flex:0 0 auto !important; }
 /* ── THE DOORS ─────────────────────────────────────────────────────────────────────────────── */
 ${DOOR} {
   position:relative !important; isolation:isolate; overflow:hidden !important; container-type:inline-size;
-  display:flex !important; flex-direction:column !important; justify-content:flex-end !important; align-items:flex-start !important;
+  display:flex !important; flex-direction:column !important; justify-content:safe flex-end !important; align-items:flex-start !important;
   width:100% !important; height:clamp(188px, 34vh, 300px) !important; min-height:0 !important;
-  margin:0 !important; padding:20px 24px !important; box-sizing:border-box;
+  margin:0 !important; padding:52px 24px 20px !important; box-sizing:border-box;
   text-align:left !important; white-space:normal !important; cursor:pointer;
   color:rgb(248 244 234) !important; background:#0a0c10 !important;
   border:1px solid rgb(${BONE} / .26) !important; border-radius:4px !important; outline:none !important;
@@ -71,10 +71,14 @@ ${DOOR} {
   transform:none !important; opacity:1 !important;
   transition:border-color .16s ${EASE}, box-shadow .16s ${EASE}, transform .16s ${EASE} !important; }
 ${DOOR}::before, ${DOOR}::after { display:none !important; content:none !important; }
-${DOOR} > .of-door__art {
-  position:absolute; inset:0; z-index:-1; pointer-events:none;
+/* the picture is a clipped frame (the art span) around a painted plate (its ::before), so the awake zoom
+   stays inside the frame: a scaled frame used to widen the door's scroll box by ~7px, which read as a
+   horizontal clip to the layout checks */
+${DOOR} > .of-door__art { position:absolute; inset:0; z-index:-1; pointer-events:none; overflow:hidden; border-radius:inherit; }
+${DOOR} > .of-door__art::before {
+  content:""; position:absolute; inset:0;
   background:
-    linear-gradient(0deg, rgb(5 6 9 / .94) 0%, rgb(5 6 9 / .72) 34%, rgb(5 6 9 / .12) 68%, rgb(5 6 9 / .28) 100%),
+    linear-gradient(0deg, rgb(5 6 9 / .95) 0%, rgb(5 6 9 / .84) 30%, rgb(5 6 9 / .46) 62%, rgb(5 6 9 / .22) 100%),
     var(--door-img) var(--door-img-pos, center) / cover no-repeat;
   filter:saturate(.82) brightness(.84);
   transform:scale(1.0); transform-origin:50% 60%;
@@ -82,16 +86,18 @@ ${DOOR} > .of-door__art {
 ${DOOR}[data-door="swarm"] > .of-door__art { --door-img:url("${SWARM_IMG}"); --door-img-pos:50% 42%; }
 ${DOOR}[data-door="adventure"] > .of-door__art { --door-img:url("${ADVENTURE_IMG}"); --door-img-pos:58% 46%; }
 ${DOOR} > .of-door__kicker {
-  position:absolute; top:16px; left:20px; padding:4px 8px; border-radius:2px;
+  position:absolute; top:16px; left:20px; max-width:calc(100% - 40px); box-sizing:border-box; overflow-wrap:anywhere; padding:4px 8px; border-radius:2px;
   font:600 12px/1 ${READ}; letter-spacing:.14em; text-transform:uppercase;
   color:rgb(${BONE} / .92); background:rgb(6 8 12 / .72); border:1px solid rgb(${BONE} / .16); }
 ${DOOR} > .of-door__name {
   display:block; max-width:100%; font:800 clamp(28px, min(5.6vh, 14cqw), 52px)/1 ${DISPLAY}; letter-spacing:.015em; text-transform:uppercase;
-  color:rgb(250 247 239); text-shadow:0 2px 12px rgb(0 0 0 / .55); }
+  color:rgb(250 247 239); text-shadow:0 2px 12px rgb(0 0 0 / .55);
+  /* a longer translation breaks inside the word before it can run past the card's clip */
+  overflow-wrap:anywhere; hyphens:auto; }
 ${DOOR} > .of-door__line {
   display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important;
   position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
-  max-width:36ch; min-height:2.8em; margin:8px 0 0 !important; padding:0 !important;
+  max-width:36ch; min-height:2.8em; margin:8px 0 0 !important; padding:0 !important; overflow-wrap:anywhere;
   font:400 15px/1.4 ${READ} !important; letter-spacing:0 !important; text-transform:none !important;
   color:rgb(${BONE} / .9) !important; opacity:1 !important; text-shadow:0 1px 6px rgb(0 0 0 / .7) !important; }
 ${DOOR} > .of-door__go {
@@ -105,7 +111,7 @@ ${DOOR} > .of-door__plain { display:none !important; }
 ${DOOR}:is(:hover, :focus, [data-awake]) {
   border-color:${GOLD} !important;
   box-shadow:0 0 0 1px ${GOLD}, 0 14px 40px rgb(0 0 0 / .55), 0 0 36px rgb(242 185 80 / .2) !important; }
-${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art { transform:scale(1.045); filter:saturate(1) brightness(.98); }
+${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art::before { transform:scale(1.045); filter:saturate(1) brightness(.98); }
 ${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go { color:#1a1208; background:${GOLD}; border-color:${GOLD}; }
 ${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go::after { transform:translateX(3px); }
 ${DOOR}:focus-visible { box-shadow:0 0 0 2px ${GOLD}, 0 0 0 5px rgb(242 185 80 / .28), 0 14px 40px rgb(0 0 0 / .55) !important; }
@@ -144,8 +150,14 @@ ${LAB} .dp-lit__note { display:none !important; }
 ${LAB} .dp-lit__item:is(:hover, :focus) { color:#fff !important; border-color:rgb(${BONE} / .7) !important; }
 
 /* ── THE FINE LINE ─────────────────────────────────────────────────────────────────────────── */
-${T} > .dp-frame__foot { grid-area:auto !important; position:absolute !important; left:48px !important; right:auto !important; bottom:clamp(20px, 4vh, 32px) !important; top:auto !important; margin:0 !important; padding:0 !important;
-  display:flex !important; flex-wrap:wrap; align-items:center; gap:0 4px; font:500 12px/1.4 ${READ} !important; letter-spacing:.06em !important; text-transform:uppercase; opacity:1 !important; }
+${T} > .dp-frame__foot { grid-area:auto !important; position:absolute !important; left:48px !important; right:48px !important; bottom:clamp(20px, 4vh, 32px) !important; top:auto !important; margin:0 !important; padding:0 !important;
+  display:flex !important; flex-wrap:wrap; align-items:center; gap:4px 8px; font:500 12px/1.4 ${READ} !important; letter-spacing:.06em !important; text-transform:uppercase; opacity:1 !important; }
+/* Credits · Achievements on the left; the build string stands apart at the far right, quieter and in
+   tabular figures, so the line reads as two links and a stamp rather than one run-on sentence */
+${T} > .dp-frame__foot > .of-title-foot__dot { opacity:.6; }
+${T} > .dp-frame__foot > .of-title-build { margin-left:auto; display:inline-flex; align-items:center; gap:8px;
+  font:500 12px/1.4 ${READ}; letter-spacing:.06em; font-variant-numeric:tabular-nums; }
+${T} > .dp-frame__foot > .of-title-build, ${T} > .dp-frame__foot > .of-title-build * { color:rgb(${BONE} / .62) !important; }
 ${T} > .dp-frame__foot, ${T} > .dp-frame__foot * { color:rgb(${BONE} / .86) !important; text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 10px rgb(0 0 0 / .8); }
 ${T} > .dp-frame__foot .dp-menu__item--fine { font:600 12px/1 ${READ} !important; letter-spacing:.06em !important; min-height:28px; padding:4px 6px !important;
   border-radius:2px; transition:color .16s ${EASE}; background:none !important; border:0 !important; cursor:pointer; }
@@ -155,7 +167,7 @@ ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${
 /* a short window: the doors give height before anything overlaps */
 @media (max-height:620px) and (min-width:701px) {
   ${T} .of-title-actions { bottom:64px !important; }
-  ${DOOR} { height:clamp(160px, 32vh, 200px) !important; padding:16px 20px !important; }
+  ${DOOR} { height:clamp(160px, 32vh, 200px) !important; padding:44px 20px 16px !important; }
   ${DOOR} > .of-door__go { margin-top:12px; }
 }
 /* a narrow screen: the doors stack under the name, full width, then the row */
@@ -167,7 +179,7 @@ ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${
   ${T} { overflow-y:auto !important; overscroll-behavior:contain; }
   ${T} > .dp-frame__body { overflow:visible !important; max-height:none !important; }
   ${DOOR} > .of-door__line { min-height:0; }
-  ${T} > .dp-frame__foot { position:relative !important; left:auto !important; bottom:auto !important; margin:24px 0 0 !important; }
+  ${T} > .dp-frame__foot { position:relative !important; left:auto !important; right:auto !important; bottom:auto !important; margin:24px 0 0 !important; }
   ${DOOR} > .of-door__go { margin-top:12px; }
   ${ROW_LI} { flex:1 1 calc(50% - 6px) !important; }
   ${ROW_BTN} { width:100% !important; min-height:44px !important; height:44px; }
@@ -175,7 +187,7 @@ ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${
 }
 /* reduced motion is the game's setting (html.sf-reduce-motion), never the OS query alone */
 html.sf-reduce-motion ${DOOR}, html.sf-reduce-motion ${DOOR} > *, html.sf-reduce-motion ${ROW_BTN} { transition:none !important; }
-html.sf-reduce-motion ${DOOR}:is(:hover, :focus) > .of-door__art { transform:none; }
+html.sf-reduce-motion ${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art::before { transform:none; transition:none; }
 `;
 
 export function injectTitleDoorsLayouts(doc = globalThis.document) {
