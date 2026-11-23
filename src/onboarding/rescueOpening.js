@@ -114,9 +114,11 @@ export function makeRescueCastSpecs(playerPos, rng, opts = {}) {
     z: pz + Math.sin(theta + bearing) * range,
   });
   // Beside the nose the pair is drawn in so the wreck is on screen when the line says "Aim at the
-  // wreck" (rock 75, wreck ~160 off the hull: inside the rest-zoom frame's ~170 half-width).
+  // wreck". The flight camera holds a fixed height of world (about ±73 m), so a 16:9 window shows
+  // about ±130 m across: rock 75 and wreck ~110 off the hull keep the whole wreck inside it (at 160
+  // it sat past the edge, measured on the 1280x720 route, and the first throw aimed at nothing).
   const rockRange = beside == null ? 90 : 75;
-  const wreckGap = beside == null ? 140 : 85;
+  const wreckGap = beside == null ? 140 : 35;
   const rockPos = at(rockRange, 0);
   const alongX = rockPos.x + dir.x * wreckGap;
   const alongZ = rockPos.z + dir.z * wreckGap;
