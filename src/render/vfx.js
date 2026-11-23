@@ -2592,9 +2592,10 @@ export const vfx = {
     this._initTetherCable();
     this._npcCableFx = new NpcCableFx(this._scene, this._combatBeamLocalizer, resolveMasslineAccessibilityPolicy);
     this._initArcPreview();
-    this._initMasslineReleaseArc();
+    // No ring rides the Line's bodies (owner, 2026-11-23): the release annulus round the aimed or
+    // held body and the cyan rim on the latched body are not built. The cable shows what is bound,
+    // the release path and the 'RMB · THROW' tag show the throw, the verdict pill grades it.
     this._initMasslineSwingTrace();
-    this._initMasslineLatchRim();
     this._initPowerPreview();
     this._initMasslineChainReadout();
     this._initMonofilamentBlade();
@@ -7858,7 +7859,6 @@ export const vfx = {
   // and whip are the published presentation reads — no second strain law here.
   _updateMasslineLatchRim(dt) {
     const rim = this._masslineLatchRim;
-    if (!rim) return false;
     const state = this.state;
     const playerTether = state && state.player && state.player.tether;
     const remoteTether = state && state.player && state.player.remoteMassline;
@@ -7889,6 +7889,7 @@ export const vfx = {
         }
       }
     }
+    if (!rim) return false;
     const plan = resolveMasslineLatchRimPlan(tether, target, load, whip, rim.plan);
     return updateMasslineLatchRim(rim, plan, dt, (x, z) => this._toLocalXZ(x, z, this._spawnLocalXZ));
   },
