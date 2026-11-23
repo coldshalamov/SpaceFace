@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { LOADING_SCENE_ART, LOADING_SCENE_LINE, LOADING_CONTROLS, swarmSceneLine } from '../src/ui/loadingPresenter.js';
+import { LOADING_SCENE_ART, LOADING_SCENE_LINE, LOADING_CONTROLS, loadingKeyCapTokens, swarmSceneLine } from '../src/ui/loadingPresenter.js';
 
 const ROOT = new URL('../', import.meta.url);
 const SRC = readFileSync(new URL('src/ui/loadingPresenter.js', ROOT), 'utf8');
@@ -32,6 +32,12 @@ test('the controls card ships the taught set: the Line row carries its key besid
   const line = LOADING_CONTROLS.find(([, verb]) => /^Line/.test(verb));
   assert.ok(line, 'the card still has its Line row');
   assert.match(line[0], /^F \/ RMB$/, 'the shipped Line row prints the taught key and the mouse seat');
+  assert.deepEqual(loadingKeyCapTokens(line[0]), [
+    { kind: 'kbd', text: 'F' },
+    { kind: 'sep', text: '/' },
+    { kind: 'kbd', text: 'RMB' },
+  ], 'the slash is plain text between two chips, not a third key');
+  assert.deepEqual(loadingKeyCapTokens('W A S D').map((t) => t.text), ['W', 'A', 'S', 'D']);
 });
 
 test('a Swarm launch names the room it is entering; a Gauntlet names itself', () => {

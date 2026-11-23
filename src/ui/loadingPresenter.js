@@ -91,6 +91,19 @@ export const LOADING_CONTROLS = Object.freeze([
   Object.freeze(['F / RMB', 'Line: latch, swing, throw', 'tether']),
   Object.freeze(['Shift', 'Boost', 'boost']),
 ]);
+/** Split a row's keys so a slash is a separator, never a chip: 'F / RMB' paints two keys with
+ *  a plain '/' between them, matching Help's card. 'W A S D' still paints four chips. */
+export function loadingKeyCapTokens(keys) {
+  const out = [];
+  const chunks = String(keys || '').split(/\s*\/\s*/);
+  for (let i = 0; i < chunks.length; i++) {
+    if (i) out.push({ kind: 'sep', text: '/' });
+    for (const cap of chunks[i].trim().split(/\s+/).filter(Boolean)) {
+      out.push({ kind: 'kbd', text: cap });
+    }
+  }
+  return out;
+}
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
@@ -269,7 +282,10 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     for (const [key, verb] of rows) {
       const row = make('li', 'boot-dest__key');
       const caps = make('span', 'boot-dest__caps');
-      for (const cap of key.split(' ')) caps.appendChild(make('kbd', '', cap));
+      for (const token of loadingKeyCapTokens(key)) {
+        if (token.kind === 'sep') caps.appendChild(make('span', 'boot-dest__caps-sep', token.text));
+        else caps.appendChild(make('kbd', '', token.text));
+      }
       add(row, caps, make('span', 'boot-dest__verb', verb));
       list.appendChild(row);
     }
