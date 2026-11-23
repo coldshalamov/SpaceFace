@@ -102,7 +102,8 @@ test('firing spawns an already-drifting crucible on the ring vector — no offer
   const dot = (vx * toRing.x + vz * toRing.z) / (speed * Math.hypot(toRing.x, toRing.z));
   assert.ok(dot > 0.999, 'the velocity is dead-on the depot ring');
   assert.deepEqual(rec.vars.ring, { x: RING.x, z: RING.z, name: 'Refuel Depot' });
-  assert.ok(events.some((row) => row.name === 'encounter:voice' && /CRUCIBLE/i.test(row.payload.text)),
+  // plain words, design/overhaul/08_INTERFACE.md §5: the vessel reads as the kiln it is.
+  assert.ok(events.some((row) => row.name === 'encounter:voice' && /KILN/i.test(row.payload.text)),
     'the depot hail is the first and only prompt');
 });
 
@@ -128,7 +129,8 @@ test('the bleed is physical: below save speed the yard takes her, pays, and reme
   assert.ok(events.some((row) => row.name === 'economy:grantCredits' && row.payload.amount === 320));
   assert.ok(events.some((row) => row.name === 'faction:repDelta'
     && row.payload.factionId === 'faction_choir' && row.payload.delta === 8));
-  assert.ok(events.some((row) => row.name === 'news:publish' && /CRUCIBLE/i.test(row.payload.text)),
+  // plain words, design/overhaul/08_INTERFACE.md §5: the headline names the kiln, never the old mode word.
+  assert.ok(events.some((row) => row.name === 'news:publish' && /KILN/i.test(row.payload.text)),
     'the save is a headline, not a toast');
 
   const blocked = t.director.requestAuthoredEncounter({
