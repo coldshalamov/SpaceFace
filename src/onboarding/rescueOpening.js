@@ -97,16 +97,17 @@ function drawRng(rng) {
 // the lesson state on Continue. The scout keeps its standard contacts so gunfire can
 // move it and the asteroid can stop it.
 // `opts.beside` (a heading in radians) seats the tableau beside the pilot's nose instead of on a
-// free bearing: the rock lands ~70 degrees off the nose on a seeded side, a little ahead, so it is
-// on screen at rest zoom (clear of the bottom instruments) and the tableau never runs into what
-// the pilot faces (the opening seat faces Helios Station's berth). The draw count is unchanged.
+// free bearing: the rock lands abeam on a seeded side, a touch ahead, so it is on screen at rest
+// zoom level with the ship (clear of the bottom instruments, and its hover card clear of the
+// objective tracker above it), and the tableau never runs into what the pilot faces (the opening
+// seat faces Helios Station's berth). The draw count is unchanged.
 export function makeRescueCastSpecs(playerPos, rng, opts = {}) {
   const px = finite(playerPos && playerPos.x);
   const pz = finite(playerPos && playerPos.z);
   const draw = drawRng(rng);
   const beside = opts && Number.isFinite(opts.beside) ? opts.beside : null;
   const theta = beside == null ? draw * Math.PI * 2
-    : beside + (draw < 0.5 ? 1 : -1) * (Math.PI / 2 - 0.4 + ((draw * 2) % 1 - 0.5) * 0.3);
+    : beside + (draw < 0.5 ? 1 : -1) * (Math.PI / 2 - 0.15 + ((draw * 2) % 1 - 0.5) * 0.2);
   const dir = { x: Math.cos(theta), z: Math.sin(theta) };
   const at = (range, bearing) => ({
     x: px + Math.cos(theta + bearing) * range,

@@ -733,6 +733,7 @@ export const onboarding = {
     this._unsubs.push(bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
       this._creditEarlyBerth();
+      this._retireArrivedBerthCourse(p);
       this._onBeatEvent('dock:docked', p);
       // A berth arrival after the rail still earns the rack pointer — during the rail the B5
       // line owns this same floor, so the sale/payout triggers below carry it there instead.
@@ -2417,6 +2418,24 @@ export const onboarding = {
     const berthIndex = BEATS.findIndex((beat) => beat.key === 'berth');
     if (berthIndex < 0 || ob.currentBeat >= berthIndex) return;
     ob.beatDoneAt.berth = this.state.simTime || 0;
+  },
+
+  // "[E] Fly to berth" lays a course to the station. Once the ship has docked there the course is
+  // done; left standing it read as the pilot's own plan, so after the first undock the tracker kept
+  // saying "Helios Station · 66 m" and the raid's instruction could not take the slot. During the
+  // opening rail, an arrived course to the station just docked at is retired.
+  _retireArrivedBerthCourse(payload) {
+    const st = this.state;
+    const ob = st && st.onboarding;
+    if (!ob || !ob.active || ob.finished || !st.nav) return;
+    const wp = st.nav.waypoint;
+    if (!wp || wp.onboarding === true || (wp.kind !== 'local' && wp.kind !== 'nav')) return;
+    const stationId = payload && payload.stationId;
+    const target = wp.targetEntityId != null && st.entities && typeof st.entities.get === 'function'
+      ? st.entities.get(wp.targetEntityId) : null;
+    if (!stationId || !target || target.type !== 'station') return;
+    if ((target.data && target.data.stationId) !== stationId && target.id !== stationId) return;
+    st.nav.waypoint = null;
   },
 
   // Mark a beat DONE and, if it was the choice beat, finish the tutorial.
@@ -5443,7 +5462,8 @@ export const onboarding = {
     if (beat && beat.key === 'raid') {
       const raider = this._raidActor('raider');
       if (!raider || ob.beatDoneAt.raid != null) {
-        if (existing?.onboarding && existing.markerId === 'onboarding:raid') {
+        // Any onboarding mark still up here is spent (the raid's own, or the berth just reached).
+        if (existing?.onboarding) {
           st.nav.waypoint = null;
         }
         return;

@@ -468,6 +468,23 @@ test('seed 4242 route: rope and throw, berth, raid, claimed, seam and dock in si
   assert.equal(h.seen.rangePrompt[0].text, RANGE_POINTER_LINE);
 });
 
+test('the E course to the berth is spent once docked, so the raid instruction takes the tracker after undocking', () => {
+  const h = boot();
+  launchToSwing(h);
+  completeSwing(h);
+  advanceTime(h); tick(h);
+  const st = h.state;
+  const helios = makeEntity({ type: 'station', pos: { x: 0, z: 340 }, radius: 100, data: { stationId: 'station_helios' } });
+  helios.id = 500; st.entities.set(500, helios); st.entityList.push(helios);
+  st.nav.waypoint = { kind: 'local', pos: { x: 0, z: 340 }, targetEntityId: 500, label: 'Helios Station' };
+  completeBerth(h);
+  assert.equal(st.nav.waypoint?.kind === 'local' && st.nav.waypoint?.targetEntityId === 500, false,
+    'the arrived course no longer reads as the pilot\'s plan');
+  advanceTime(h); tick(h);
+  assert.equal(ROUTE_BEATS[st.onboarding.currentBeat].key, 'raid');
+  assert.equal(st.nav.waypoint && st.nav.waypoint.markerId, 'onboarding:raid', 'the raid owns the objective');
+});
+
 test('a pilot who docks before the berth is asked for is never sent back to it', () => {
   const h = boot();
   launchToSwing(h);
