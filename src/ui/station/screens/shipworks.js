@@ -2162,7 +2162,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let jigCaption = null;
   let fleetCap = null;
   function drawFleetCaption(g) {
-    const want = g && host === 'dock' && mode === 'fleet' && jigCaption && jigHost && jigHost.classList.contains('orr-hull--on')
+    // No words are printed round the hull diagram (08_INTERFACE §7): the ship's name and length
+    // live on its nameplate, and the ring stays a clean frame for the hull and its parts.
+    const want = false && g && host === 'dock' && mode === 'fleet' && jigCaption && jigHost && jigHost.classList.contains('orr-hull--on')
       && !jigHost.querySelector('.orr-micro');
     if (!want) { if (fleetCap) { fleetCap.remove(); fleetCap = null; } return; }
     // The caption paints above the jig host: the shared sheet seats this svg at z2 while the jig
@@ -3166,7 +3168,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const ring = hardpointClassOf(slot) === 'ring' ? ' · ring' : '';
       const stockDrive = !fitted && slot.type === 'engine' && activeBandModel && activeBandModel.stockDrive;
       const name = fitted ? fitted.name : slotName;
-      const state = fitted ? `${slotName} · ${slot.size || ''}${ring}` : (stockDrive ? `stock · ${slot.size || ''}` : `empty · ${slot.size || ''}${ring}`);
+      // Plain words (R18): a slot with no part reads "Open", never "EMPTY". The size letter stays
+      // (S/M/L, the yard's own part sizes) so the callout fits its plate.
+      const state = fitted ? `${slotName} · ${slot.size || ''}${ring}`
+        : (stockDrive ? `Stock · ${slot.size || ''}` : `Open · ${slot.size || ''}${ring}`);
       const html = `<span class="orr-sw-node__num">${String(i + 1).padStart(2, '0')}</span>`
         + `<span class="orr-sw-node__body"><b class="orr-sw-node__name">${escapeHtml(name)}</b>`
         + `<span class="orr-sw-node__state">${escapeHtml(state)}</span></span>`;
@@ -3180,7 +3185,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
     j.setHull(def ? def.id : null);
     jigCaption = def ? { defId: def.id, name: shipName || def.name || '' } : null;
-    j.setNodes(nodes, { engraving: def ? `${shipName || def.name || ''} \u00b7 ${fittedCount} of ${nodes.length} fitted` : '' });
+    // Nothing is printed on the hull diagram itself: the ship's name lives on its nameplate.
+    void fittedCount;
+    j.setNodes(nodes, { engraving: '' });
     j.light(selectedSlot >= 0 && selectedSlot < nodes.length ? selectedSlot : -1, { swing: false });
   }
 
@@ -4061,7 +4068,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const prepBroke = !!(prepPlan && !prepReady && prepPlan.unmetNeed > 0 && prepPlan.limitingReason === 'credits');
     const rackVerbs = [];
     let prepNote = null;
-    if (anyMagazine) {
+    // A rack with nothing to prepare shows no key at all (a disabled "Nothing to prepare" is a stub).
+    if (anyMagazine && (prepReady || prepBroke || !availability.outfitEnabled)) {
       const prepareLabel = !availability.outfitEnabled ? 'Dock to prepare'
         : prepReady
           ? `Prepare ${prepPlan.roundsLoaded} · ${fmt(prepPlan.totalCost)} cr`
@@ -4082,14 +4090,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (rack.sockets < BOMB_RACK.socketsMax) {
       const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;
       const upgradeLabel = !availability.outfitEnabled ? 'Dock to extend'
-        : afford ? `Third socket · ${fmt(BOMB_RACK.socketUpgradeCr)} cr` : `Third socket · need ${fmt(BOMB_RACK.socketUpgradeCr)} cr`;
+        : afford ? `Third bomb slot · ${fmt(BOMB_RACK.socketUpgradeCr)} cr` : `Third bomb slot · need ${fmt(BOMB_RACK.socketUpgradeCr)} cr`;
       const upgradeHint = !availability.outfitEnabled ? availability.outfitLabel
         : afford ? 'Weld a third bomb-rack socket into the bay' : 'Not enough credits';
       rackVerbs.push(`<li><button type="button" ${stationControlAttrs('upgrade-rack')} class="k-word k-word--fine" data-rack-upgrade ${availability.outfitEnabled && afford ? '' : `disabled aria-label="${escapeHtml(upgradeHint)}"`}>${escapeHtml(upgradeLabel)}</button></li>`);
     }
     const rackBlock =
       `<div class="sx-sw-rack">` +
-        `<p class="k-caps sx-sw-band__label">Bomb rack <span class="k-38">${armedCells}/${rack.sockets} armed · ${stockTotal} stowed</span></p>` +
+        `<p class="k-caps sx-sw-band__label">Bomb rack <span class="k-38">${armedCells} of ${rack.sockets} loaded${stockTotal > 0 ? ` · ${stockTotal} spare` : ''}</span></p>` +
         `<ul class="k-rows sx-sw-rack__cells">${rackCells}</ul>` +
         (rackVerbs.length ? `<ul class="k-words k-words--row sx-sw-rack__verbs">${rackVerbs.join('')}</ul>` : '') +
         // Credit-limited partial fills say so in visible type, not just the button title.

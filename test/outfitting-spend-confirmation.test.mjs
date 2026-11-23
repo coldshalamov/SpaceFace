@@ -303,17 +303,21 @@ function getConfirmDialog() {
     assert.equal(describeOutfittingSpendConfirm(freeMod, 10000), null, 'zero-cost modules skip confirm');
   }
 
+  // Rule (2026-11-23): a normal fit is one press — no extra confirm. An affordable paid part that
+  // leaves a healthy purse and touches no job fits (or goes to inventory) straight away.
   const paidMod = { id: 'mod_test_cheap', name: 'Cheap Module', price: 1500, slotType: 'shield', size: 'S' };
-  const fitOpts = describeOutfittingSpendConfirm(paidMod, 10000, { fitSlotIndex: 1 });
-  assert.ok(fitOpts, 'paid module produces confirm options');
+  assert.equal(describeOutfittingSpendConfirm(paidMod, 10000, { fitSlotIndex: 1 }), null, 'a normal fit is one press');
+  assert.equal(describeOutfittingSpendConfirm(paidMod, 10000, {}), null, 'a normal inventory buy is one press');
+  assert.equal(describeOutfittingSpendConfirm(paidMod, 10000, { fitSlotIndex: 1, replacesName: 'Old Shield' }), null,
+    'a replacement is one press too: the displaced part goes to module inventory');
+
+  // A swap that breaks a held job still asks, and says what it costs.
+  const fitOpts = describeOutfittingSpendConfirm(paidMod, 10000, { fitSlotIndex: 1, jobImpact: 'Your survey job needs the scanner.' });
+  assert.ok(fitOpts, 'a job-breaking fit produces confirm options');
   assert.equal(fitOpts.title, 'Buy ' + paidMod.name + '?', 'confirm names the module');
   assert.match(fitOpts.body, /1,500 CR/, 'confirm states the cost');
   assert.equal(fitOpts.confirmLabel, 'Buy & Fit', 'fit-capable purchase labels Buy & Fit');
   assert.equal(fitOpts.danger, false, 'affordable purchase under threshold is not danger');
-
-  const invOpts = describeOutfittingSpendConfirm(paidMod, 10000, {});
-  assert.equal(invOpts.confirmLabel, 'Buy', 'inventory-only purchase labels Buy');
-  assert.match(invOpts.body, /Goes to module inventory/, 'inventory purchase explains destination');
 
   const thinOpts = describeOutfittingSpendConfirm({ ...paidMod, price: 440 }, 900, { fitSlotIndex: 1 });
   assert.equal(thinOpts.danger, true, 'sub-50% spend leaving thin reserve is danger');
@@ -322,8 +326,8 @@ function getConfirmDialog() {
   const halfOpts = describeOutfittingSpendConfirm({ ...paidMod, price: 5000 }, 10000, { fitSlotIndex: 1 });
   assert.equal(halfOpts.danger, true, 'spend at exactly 50% is danger');
 
-  const noCreditsOpts = describeOutfittingSpendConfirm(paidMod, 0, { fitSlotIndex: 1 });
-  assert.equal(noCreditsOpts.danger, false, 'unaffordable purchase is not flagged danger');
+  // An unaffordable purchase is not flagged danger (the buy itself is refused upstream).
+  assert.equal(isOutfittingSpendDanger(paidMod.price, 0), false, 'unaffordable purchase is not flagged danger');
 }
 
 // ── Shared confirm modal behavior ───────────────────────────────────────────

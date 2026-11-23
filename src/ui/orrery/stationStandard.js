@@ -1767,6 +1767,21 @@ ${PA} .sx-mkt.orr-market .sx-mkt__quote > p.k-empty { display:none !important; }
 ${PA} .sx-mkt.orr-market .so-route-disclosure:has(> .sx-mkt__pulse) { display:none !important; }
 ${PA} .sx-mkt.orr-market .sx-mkt-cause { font-family:${UI} !important; font-size:13px !important; color:rgb(${BONE} / .78) !important; }
 ${PA} .sx-mkt.orr-market .sx-mkt-row__stock { white-space:nowrap !important; }
+
+/* ==== THE BAY IS THE PICTURE (hub) ===========================================================
+   On the hub every reading sits on its own plate (hero, Service strip, doors), so the berth does
+   not need the work-column veil the doors use: that grade sat at 54-90% black over the bay and
+   left the player's own ship a silhouette. The hub keeps only a soft edge vignette, so the lit
+   bay and the hull read between the hero and the lower deck. The foot under the doors drops its
+   empty plate: Undock stands alone at the right. */
+${PA}[data-operation="concourse"] .sxb-veil {
+  background:
+    radial-gradient(120% 100% at 50% 42%, transparent 0%, transparent 48%, rgb(6 7 10 / .30) 78%, rgb(6 7 10 / .58) 100%),
+    linear-gradient(180deg, rgb(6 7 10 / .28) 0%, transparent 22%, transparent 58%, rgb(6 7 10 / .42) 100%) !important;
+}
+${PA}[data-operation="concourse"] .sxb-ops {
+  background:none !important; border-color:transparent !important; box-shadow:none !important;
+}
 `;
 
 export function injectStationStandard(doc = globalThis.document) {
