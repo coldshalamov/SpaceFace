@@ -227,11 +227,11 @@ function calloutState(combo, over = {}) {
   };
 }
 
-test('the overlay names the trick, meters the chain and banks out loud — Crucible only', () => {
+test('the overlay names the trick, meters the chain in scored Crucible, and yields the chain meter in Swarm (Swarm arcade HUD, owner 2026-11-23)', () => {
   const doc = fakeDocument();
   const bus = fakeBus();
   const combo = createComboState();
-  const state = calloutState(combo);
+  const state = calloutState(combo, { run: { kind: 'survival', phase: 'active', ruleset: 'scored' } });
   const owner = createStuntCallout({ state, bus, doc });
   assert.ok(owner.root, 'the layer mounts');
 
@@ -244,7 +244,7 @@ test('the overlay names the trick, meters the chain and banks out loud — Cruci
   owner.update(0);
   let text = calloutTextFor(owner.root);
   assert.match(text, /Razor Wrecking Ball · Collateral ×3/, 'the act is named on the glass');
-  assert.match(text, /×1\.00/, 'the multiplier rides the meter');
+  assert.match(text, /×1\.00/, 'the multiplier rides the meter in scored Crucible');
 
   recordTrick(combo, trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 }));
   bus.emit('stunt:trickAmended', trickFor({ trickId: 'bank_job', episodeId: 'ep2', tick: 660 }));
@@ -258,6 +258,16 @@ test('the overlay names the trick, meters the chain and banks out loud — Cruci
   owner.update(20);
   text = calloutTextFor(owner.root);
   assert.match(text, /Banked \+345 · ×1\.50/, 'the bank receipt names what settled');
+
+  // Swarm arcade HUD owns the single chain meter beneath the round plate; stuntCallout keeps
+  // its legacy chain meter dark in Swarm so two multipliers never compete.
+  const swarmCombo = createComboState();
+  recordTrick(swarmCombo, trickFor({ trickId: 'bank_job', episodeId: 'epSwarm', tick: 660 }));
+  const swarmState = calloutState(swarmCombo, { run: { kind: 'survival', phase: 'active', ruleset: 'swarm' } });
+  const swarmOwner = createStuntCallout({ state: swarmState, bus: fakeBus(), doc: fakeDocument() });
+  swarmOwner.update(0);
+  assert.doesNotMatch(calloutTextFor(swarmOwner.root), /×1\.00|window/, 'Swarm keeps the legacy stuntCallout chain meter dark');
+  swarmOwner.destroy();
 
   // Scope law: outside a live survival flight the layer is dark and hears nothing.
   const adventure = createStuntCallout({ state: calloutState(combo, { run: null, mode: 'adventure' }), bus: fakeBus(), doc: fakeDocument() });

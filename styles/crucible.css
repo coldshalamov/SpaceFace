@@ -135,16 +135,40 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
   .sf-cru-activation { color: ButtonText; }
 }
 
-/* Swarm keeps the flight HUD's hardware. Adventure-only instruments hide so the arena owns
-   the centre; the Crucible readout stays in the comms strip. Do not restyle materials here —
-   that overlay was the cheap web-HUD the owner named on 2026-09-20 (PQ-210.05). */
+/* Swarm keeps the flight HUD's hardware untouched (owner 2026-11-23). Adventure-only controls
+   hide cleanly behind body.sf-swarm-hud / body.sf-swarm-flight; Swarm's own layer (.sf-swhud)
+   sits along the top perimeter. Do not restyle or round the shared flight instruments. */
 .sf-swarm-flight .sf-overview,
 .sf-swarm-flight .sf-mission-tracker,
 .sf-swarm-flight #sf-wpnstat,
-.sf-swarm-flight #sf-rolestat { display: none !important; }
-.sf-swarm-flight #hud .sf-stat[data-chip] { display: none !important; }
+.sf-swarm-flight #sf-rolestat,
+.sf-swarm-hud .sf-overview,
+.sf-swarm-hud .sf-mission-tracker,
+.sf-swarm-hud .sf-nav-readout,
+.sf-swarm-hud .sf-nav-label,
+.sf-swarm-hud #sf-wpnstat,
+.sf-swarm-hud #sf-rolestat { display: none !important; }
+.sf-swarm-flight #hud .sf-stat[data-chip],
+.sf-swarm-hud #hud .sf-stat[data-chip] { display: none !important; }
 .sf-swarm-flight #hud .sf-pslot[data-slot="9"],
-.sf-swarm-flight #hud .sf-pslot[data-slot="8"][data-state="locked"] { display: none; }
+.sf-swarm-flight #hud .sf-pslot[data-slot="8"][data-state="locked"],
+.sf-swarm-hud #hud .sf-pslot[data-slot="9"],
+.sf-swarm-hud #hud .sf-pslot[data-slot="8"][data-state="locked"] { display: none; }
+/* DEMO-SWARM-HUD-2 Item 7: nothing Adventure-only in a Swarm run (M·Chart / Survey buttons,
+   Overhead, COMMS, Radio, Hail, Field Build, objective tracker, old top-left run card). */
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #hud .sf-visor-utility-row,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight)[data-hud-skin="orrery"] #hud .sf-visor-utility-row,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #hud .sf-commtape,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #sf-comm-backlog-btn,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #sf-band-hud,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #race-tape,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #sf-contact-hail,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) .fb-pill-btn,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) .sf-flight-chart__footer,
+:root body.sf-swarm-hud #hud > .sf-leftcontext > .sf-crun,
+:root body.sf-swarm-hud[data-hud-skin="orrery"] #hud > .sf-leftcontext > .sf-crun {
+  display: none !important;
+}
 .sf-crucible-door .k-title h1 { font-weight: 800; letter-spacing: -.055em; }
 .sf-crucible-door .k-word[aria-checked="true"] { color: var(--dp-lamp-hot, #ffd98c); }
 .sf-crucible-door .sf-crd-settings .k-row > .k-row__name { color: var(--dp-ink-mute, #96948e); }

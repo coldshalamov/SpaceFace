@@ -142,7 +142,8 @@ test('a clear tally held behind BOSS DOWN is not spent while it waits', () => {
   assert.deepEqual(h.shown(), ['bossDown']);
   h.tick(2.3);
   assert.deepEqual(h.shown(), ['tally'], 'the tally appears after BOSS DOWN, whole');
-  assert.equal(h.dom.tallyTitle.textContent, 'ROUND 5 CLEAR');
+  // Swarm arcade HUD, owner 2026-11-23: sentence case, no ALL-CAPS label soup.
+  assert.equal(h.dom.tallyTitle.textContent, 'Round 5 clear');
   h.tick(1);
   assert.equal(h.dom.tally.hidden, false, 'its hold began when it first showed');
   swarmJuiceHud.destroy();

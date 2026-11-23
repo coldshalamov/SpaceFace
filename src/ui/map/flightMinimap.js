@@ -581,12 +581,13 @@ function drawFrameBezel(ctx, width, height, cut) {
 // A Swarm or pirate enemy is called by its own kind everywhere it is named ('Wasp'), the word the
 // off-screen edge arrow prints (threatHalo.haloKindWord), so one enemy never wears two names.
 const ENEMY_KIND_WORD = new Map(ENEMY_TYPES.map((row) => [row.id, String(row.name || '').split(/\s+/)[0]]));
-export function contactDisplayName(entity, role) {
+export function contactDisplayName(entity, role, { isSwarm = false } = {}) {
   const data = entity && entity.data;
   const kind = data && (ENEMY_KIND_WORD.get(data.enemyTypeId) || ENEMY_KIND_WORD.get(data.lootTableId));
-  const word = kind || (role === 'civilian' ? civilianWord(entity) : contactRoleWord(role));
+  const word = kind || (role === 'civilian' ? (isSwarm ? '' : civilianWord(entity)) : contactRoleWord(role));
   const raw = (data && (data.name || data.callsign || data.enemyName || data.label)) || entity?.name || '';
   const cleaned = String(raw).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/[…]+/g, '').replace(/\s+/g, ' ').trim();
+  if (isSwarm && (role === 'civilian' || /^traffic$/i.test(cleaned))) return '';
   if (!cleaned) return word;
   return cleaned.length <= CONTACT_NAME_MAX ? cleaned : word;
 }
@@ -1628,6 +1629,12 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       if (!pointInsideChamfer(at.x, at.y, width, height, 10, cut)) continue;
       const selected = entity.id === targetId || mark.selected;
       const role = classifyContactRole(entity);
+      // DEMO-SWARM-HUD-1 Item 5: Adventure ambient civilian traffic has no place in a Swarm arena;
+      // keep player wingmen, run-owned cohort craft, circuit escorts, salvage and wrecks.
+      if (isSwarm && role === 'civilian'
+        && !(entity.data && (entity.data.ownerId === player.id || entity.data.runCohort || entity.data.circuitEscort))) {
+        continue;
+      }
       if (!selected && (role === 'loot' || role === 'wreck')
         && Math.hypot(at.x - cx, at.y - cy) > nearLootPx) continue;
       const cell = `${Math.floor(at.x / NEUTRAL_CLUSTER_CELL_PX)}:${Math.floor(at.y / NEUTRAL_CLUSTER_CELL_PX)}`;
@@ -2075,9 +2082,9 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         ctx.restore();
       }
       if (!sameAsObjective) {
-        const name = contactDisplayName(focusContact.entity, focusContact.role);
+        const name = contactDisplayName(focusContact.entity, focusContact.role, { isSwarm });
         const distStr = formatMinimapDistance(focusContact.distWorld);
-        drawSmartLabel(name, distStr ? ` · ${distStr}` : '', focusContact, COLOR_FRAME_INK, { tagged: false, markRadius: 11 });
+        if (name) drawSmartLabel(name, distStr ? ` · ${distStr}` : '', focusContact, COLOR_FRAME_INK, { tagged: false, markRadius: 11 });
       }
     }
 

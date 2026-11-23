@@ -678,8 +678,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       }
       return false;
     }
-    // FB-012 — the chain meter is Crucible-only; adventure speaks through the callout lines.
-    const combo = !scope.adventure && st.stunts && typeof st.stunts === 'object'
+    // FB-012 / DEMO-SWARM-HUD-1 — the style/chain meter lives in ONE place in Swarm (top centre
+    // in swarmJuiceHud/survivalHud), so stuntCallout's legacy combo meter stays dark during Swarm
+    // and only renders for non-Swarm survival runs. Adventure speaks through the callout lines.
+    const combo = !scope.adventure && !isSwarmGlass(st) && st.stunts && typeof st.stunts === 'object'
       ? st.stunts.combo : null;
     const readout = comboReadout(combo, st.tick);
     pruneLines(Number.isFinite(Number(now)) ? Number(now) : wallNow());

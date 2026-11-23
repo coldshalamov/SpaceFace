@@ -166,8 +166,9 @@ test('popup text: the figure rides the cause word', () => {
   assert.equal(swarmPopupText({ word: 'SLAMMED', score: 120 }), '+120 SLAMMED');
   assert.equal(swarmPopupText({ word: 'MINED', score: 0, credits: 4 }), '+4 CR MINED');
   assert.equal(swarmPopupText({ word: 'FRIENDLY FIRE' }), 'FRIENDLY FIRE');
-  assert.equal(swarmSlamSub({ boss: { name: 'The Anvil' } }), 'BOSS · The Anvil');
-  assert.equal(swarmSlamSub({ newcomer: { name: 'Detonator Dart' } }), 'NEW THREAT · Detonator Dart');
+  // Swarm arcade HUD, owner 2026-11-23: sentence case subtitle, no ALL-CAPS soup.
+  assert.equal(swarmSlamSub({ boss: { name: 'The Anvil' } }), 'Boss · The Anvil');
+  assert.equal(swarmSlamSub({ newcomer: { name: 'Detonator Dart' } }), 'New threat · Detonator Dart');
 });
 
 // --- the detector ---------------------------------------------------------------------

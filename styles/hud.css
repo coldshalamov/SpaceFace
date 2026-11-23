@@ -350,3 +350,44 @@ body[data-sf-voice-yields~="feed"] #toasts .sf-toast {
 }
 html.sf-reduce-motion body[data-sf-voice-yields] :is(.sf-tells, #alerts .sf-alert, #alerts .sf-stage__item,
   .sf-visor-dock-guide, #sf-prompt-deck, #sf-stage-speaker, #toasts .sf-toast) { transition: none !important; }
+
+/* ── Swarm HUD gating (DEMO-SWARM-HUD-2 Item 7): scoped strictly to body.sf-swarm-hud so
+   Adventure is untouched and clearing the class on run end / quit / Run Over restores everything.
+   Hides Adventure-only controls (M·Chart / Survey, Overhead / COMMS / Radio / Hail / Field Build,
+   objective tracker, old top-left run card) and seats Swarm alerts/toasts clear of top-right Scrap. ── */
+body.sf-swarm-hud #hud .sf-visor-utility-row,
+body.sf-swarm-hud #hud .sf-commtape,
+body.sf-swarm-hud #sf-comm-backlog-btn,
+body.sf-swarm-hud #sf-band-hud,
+body.sf-swarm-hud #race-tape,
+body.sf-swarm-hud #sf-contact-hail,
+body.sf-swarm-hud .fb-pill-btn,
+body.sf-swarm-hud .sf-flight-chart__footer,
+body.sf-swarm-hud .sf-mission-tracker,
+body.sf-swarm-hud .sf-nav-readout,
+body.sf-swarm-hud .sf-nav-label,
+body.sf-swarm-hud .sf-overview,
+body.sf-swarm-hud #hud > .sf-leftcontext > .sf-crun {
+  display: none !important;
+}
+@media (min-width: 1100px) and (min-height: 580px) {
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-hud #alerts {
+    position: fixed !important;
+    left: auto !important;
+    right: 18px !important;
+    top: 102px !important;
+    bottom: auto !important;
+    width: 300px !important;
+    transform: none !important;
+    align-items: flex-end;
+  }
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-hud #toasts {
+    position: fixed !important;
+    left: auto !important;
+    right: 18px !important;
+    top: 164px !important;
+    bottom: auto !important;
+    width: 300px !important;
+    transform: none !important;
+  }
+}

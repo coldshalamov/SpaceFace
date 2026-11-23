@@ -83,7 +83,7 @@ import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { ensureFirstBeatCentre, releaseFirstBeatCentre } from './firstBeatCentre.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
-import { isSwarmGlass } from './swarmGlass.js';
+import { isSwarmGlass, isSwarmHudActive } from './swarmGlass.js';
 import { targetBracketShape } from './targetBracket.js';
 import { flightBearingAngle, resolveFlightEdgePlacement, resolveSelectedTargetMarker } from './flightViewProjection.js';
 import { resolveSteeringView } from '../systems/racingSteer.js';
@@ -7186,7 +7186,25 @@ export function createHud(ctx, alerts) {
     }
   }
 
+  let lastSwarmHudClass = null;
+  function syncSwarmHudClass(active) {
+    const next = !!active;
+    if (lastSwarmHudClass === next) return;
+    lastSwarmHudClass = next;
+    document.body?.classList?.toggle('sf-swarm-hud', next);
+    flightTextObstaclesStale = true;
+    flightTextObstacleGeomStale = true;
+    alertLanePlacementStale = true;
+  }
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    const clearSwarmHud = () => syncSwarmHudClass(false);
+    hudUnsubscribers.push(ctx.bus.on('run:ended', clearSwarmHud));
+    hudUnsubscribers.push(ctx.bus.on('game:exitToMenu', clearSwarmHud));
+    hudUnsubscribers.push(ctx.bus.on('save:restoring', clearSwarmHud));
+  }
+
   function frame(dt, deferReceiptPlacement = false) {
+    syncSwarmHudClass(isSwarmHudActive(state));
     // Read dirty obstacle geometry before this frame's HUD writes.
     if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
@@ -7412,6 +7430,7 @@ export function createHud(ctx, alerts) {
   }
 
   function tickHidden(dt) {
+    syncSwarmHudClass(false);
     const p = state.entities.get(state.playerId);
     syncSafetyAlerts(p);
     if (alerts && alerts.tick) alerts.tick();
@@ -7838,6 +7857,10 @@ export function createHud(ctx, alerts) {
         if (el.matches('.sf-sj__col')) {
           for (const child of el.children) if (!child.hidden) consider('swarm-callout', child);
         } else consider('swarm-callout', el);
+      }
+      const swhudEl = typeof document.getElementById === 'function' ? document.getElementById('sf-swhud') : null;
+      if (swhudEl && !swhudEl.hidden && Array.isArray(swhudEl._sfObstacles)) {
+        for (const el of swhudEl._sfObstacles) if (el && !el.hidden) consider('swarm-callout', el);
       }
     }
     for (const el of externalFlightCaptions) consider('flight-caption', el);
@@ -8326,7 +8349,7 @@ export function createHud(ctx, alerts) {
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
-    const swarmVisible = !!(document.body?.classList?.contains('sf-run-flight') || document.body?.classList?.contains('sf-swarm-flight'));
+    const swarmVisible = !!(document.body?.classList?.contains('sf-run-flight') || document.body?.classList?.contains('sf-swarm-flight') || document.body?.classList?.contains('sf-swarm-hud'));
     const canCacheBands = receiptPlacementMode === 'shared' && typeof receiptGeometryRects === 'object' && receiptGeometryRects
       && typeof performance !== 'undefined';
     const cacheNowMs = canCacheBands ? (typeof performance.now === 'function' ? performance.now() : Date.now()) : 0;
@@ -8337,6 +8360,10 @@ export function createHud(ctx, alerts) {
       swarmCallouts = freeOverlayBands._swarmCache.els;
     } else {
       swarmCallouts = queryReceiptGeometry(document, '.sf-crun, .sf-sj__col');
+      const swhudEl = typeof document.getElementById === 'function' ? document.getElementById('sf-swhud') : null;
+      if (swhudEl && !swhudEl.hidden && Array.isArray(swhudEl._sfObstacles)) {
+        swarmCallouts = [...swarmCallouts, ...swhudEl._sfObstacles.filter((el) => el && !el.hidden)];
+      }
       if (canCacheBands) freeOverlayBands._swarmCache = { at: cacheNowMs, els: swarmCallouts };
     }
     const staticSelector = '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-commtape, .sf-dock-prompt, #sf-prompt-deck, #sf-tutorial-flight-card';
@@ -9280,6 +9307,7 @@ export function createHud(ctx, alerts) {
   }
 
   function setVisible(v) {
+    if (!v) syncSwarmHudClass(false);
     setDisplay(root, !!v, 'block');
     if (hudMeta && hudMeta.setVisible) hudMeta.setVisible(v);
   }
@@ -9368,6 +9396,7 @@ export function createHud(ctx, alerts) {
       restoreYieldedFlightVisuals();
       externalFlightCaptions.clear();
       document.body?.classList.remove('sf-cargo-open');
+      syncSwarmHudClass(false);
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       if (radar && typeof radar.destroy === 'function') radar.destroy();
       if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();

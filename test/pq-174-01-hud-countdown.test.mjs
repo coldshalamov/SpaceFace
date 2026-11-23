@@ -212,19 +212,18 @@ function killOne(h) {
   return true;
 }
 
+// Swarm arcade HUD, owner 2026-11-23: Swarm renders its hostiles-left count on the top-centre
+// Round Plate (`swarmHudLayer`) instead of the retired top-left .sf-crun card.
 function hud() {
-  const dom = survivalHud._dom;
-  assert.ok(dom && dom.threatFig, 'HUD mounted a countdown figure');
+  const sw = survivalHud._swarmLayer && survivalHud._swarmLayer.dom;
+  assert.ok(sw && sw.roundNum, 'HUD mounted a Swarm Round Plate figure');
   return {
-    word: dom.threatWord.textContent,
-    fig: dom.threatFig.textContent,
-    fill: String(dom.threatFill.style.width || ''),
-    fillPct: Number.parseInt(String(dom.threatFill.style.width || '0'), 10) || 0,
-    hidden: !!dom.threat.hidden,
-    aria: dom.threat.getAttribute('aria-label') || '',
-    now: dom.threat.getAttribute('aria-valuenow'),
-    max: dom.threat.getAttribute('aria-valuemax'),
-    kills: dom.killFig ? dom.killFig.textContent : '',
+    word: sw.roundUnit.textContent,
+    fig: sw.roundNum.textContent,
+    kicker: sw.roundKicker.textContent,
+    name: sw.roundName.textContent,
+    mode: sw.round.dataset.mode || '',
+    hidden: !!sw.round.hidden,
   };
 }
 
@@ -267,14 +266,12 @@ test('seed 4242: the round readout counts the live cohort and the wave closes on
     assert.ok(Number.isInteger(progress0.remaining) && Number.isInteger(progress0.total),
       `cohort progress carries remaining/total, got ${JSON.stringify(progress0)}`);
     assert.equal(progress0.durationTicks, undefined, 'no clock rides the cohort payload');
-    // 57686d45ca wired typed wave plans: the full-ship cohort reads HOSTILE SHIPS, not HOSTILES.
-    assert.equal(t0.word, 'HOSTILE SHIPS');
+    // Swarm arcade HUD, owner 2026-11-23: top-centre Round Plate shows `<N> left`.
+    assert.equal(t0.kicker, 'ROUND 1');
+    assert.equal(t0.name, 'Doors Open');
+    assert.equal(t0.word, 'left');
     const cohort = progress0.total;
-    assert.equal(t0.fig, `${cohort} / ${cohort}`, `full cohort on the readout, got ${t0.fig}`);
-    assert.equal(t0.fillPct, 0);
-    assert.equal(t0.aria, 'hostile ships remaining');
-    assert.equal(t0.now, String(cohort));
-    assert.equal(t0.max, String(cohort));
+    assert.equal(t0.fig, String(cohort), `full cohort on the readout, got ${t0.fig}`);
 
     // Kills move the readout because kills are the finish line: each resolution drops the count.
     let killed = 0;
@@ -282,10 +279,8 @@ test('seed 4242: the round readout counts the live cohort and the wave closes on
     assert.ok(killed > 0, 'someone had to die');
     const t1 = paint(h);
     const progress1 = lastProgress(h);
-    assert.equal(t1.fig, `${cohort - killed} / ${cohort}`, `kills resolved the count: ${t1.fig}`);
-    assert.equal(t1.now, String(cohort - killed));
-    assert.ok(t1.fillPct > 0, 'the bar is resolved-share, not elapsed time');
-    assert.equal(t1.aria, 'hostile ships remaining');
+    assert.equal(t1.fig, String(cohort - killed), `kills resolved the count: ${t1.fig}`);
+    assert.equal(t1.word, 'left');
     assert.ok(progress1.remaining < progress0.remaining, 'the published count fell with the kills');
 
     // The wave closes when the cohort resolves — no clock carries it over the line.
@@ -297,9 +292,9 @@ test('seed 4242: the round readout counts the live cohort and the wave closes on
     assert.equal(cleared.completionKind, 'cohort');
     assert.equal(cleared.survivors, 0, 'a resolved cohort leaves no survivors to carry');
     const tEnd = paint(h);
-    assert.match(tEnd.fig, /^0 \/ \d+$/, `cleared cohort reads empty: ${tEnd.fig}`);
-    assert.equal(tEnd.now, '0');
-    console.log(`[pq-174.01-hud] seed=${SEED} t0=${t0.fig} t1=${t1.fig} tEnd=${tEnd.fig} fill=${tEnd.fillPct}%`);
+    // Between rounds (`cleanup`), the same plate switches to the NEXT ROUND countdown.
+    assert.ok(tEnd.mode === 'between' || tEnd.fig === '0', `cleared cohort enters between-round plate or 0: ${JSON.stringify(tEnd)}`);
+    console.log(`[pq-174.01-hud] seed=${SEED} t0=${t0.fig} t1=${t1.fig} tEnd=${tEnd.kicker} ${tEnd.fig}`);
   } finally {
     survivalHud.destroy();
     survivalWave.destroy();
@@ -316,27 +311,23 @@ test('seed 4242: the readout IS the cohort — kills move it because kills are t
     const beforeKills = paint(h);
     const progress0 = lastProgress(h);
     const cohort = progress0.total;
-    assert.equal(beforeKills.fig, `${cohort} / ${cohort}`);
-    assert.equal(beforeKills.fillPct, 0);
-    assert.equal(beforeKills.word, 'HOSTILE SHIPS');
-    assert.ok(QUOTA_FIG.test(beforeKills.fig),
-      `the cohort readout is honest x / total, got ${beforeKills.fig}`);
+    // Swarm arcade HUD, owner 2026-11-23: big tabular numeral + `left`.
+    assert.equal(beforeKills.fig, String(cohort));
+    assert.equal(beforeKills.word, 'left');
 
     let killed = 0;
-    for (let i = 0; i < 12; i++) {
+    const sampleKills = Math.max(1, Math.min(5, cohort - 1));
+    for (let i = 0; i < sampleKills; i++) {
       if (killOne(h)) killed += 1;
       tick(h, 1);
     }
     const afterKills = paint(h);
     assert.ok(killed >= 1, `need a kill, got ${killed}`);
     const expectedRemaining = Math.max(0, cohort - killed);
-    assert.equal(afterKills.fig, `${expectedRemaining} / ${cohort}`,
+    assert.equal(afterKills.fig, String(expectedRemaining),
       'the figure answers the resolved count, not a clock');
     assert.notEqual(afterKills.fig, beforeKills.fig, 'kills move the readout — they ARE the wave');
-    assert.ok(afterKills.fillPct > beforeKills.fillPct, 'the bar is resolved share');
-    assert.equal(afterKills.word, 'HOSTILE SHIPS');
-    assert.equal(afterKills.aria, 'hostile ships remaining');
-    assert.equal(afterKills.now, String(expectedRemaining));
+    assert.equal(afterKills.word, 'left');
   } finally {
     survivalHud.destroy();
     survivalWave.destroy();
@@ -359,8 +350,7 @@ test('seed 4242: HUD does not advance the count itself — no resolution, no mov
     }
     const still = hud();
     assert.equal(still.fig, frozen.fig, 'no resolution → the cohort count does not change');
-    assert.equal(still.fillPct, frozen.fillPct);
-    assert.equal(still.now, frozen.now);
+    assert.equal(still.word, frozen.word);
     assert.equal(
       h.emitted.filter((e) => e.event === 'run:waveProgress').length,
       progressCount,

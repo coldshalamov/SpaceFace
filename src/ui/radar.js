@@ -1843,6 +1843,7 @@ export function createRadar(ctx) {
     if (typeof window !== 'undefined') window.__SF_MINIMAP_STATS__ = () => ({ ...minimap.getStats(), censusReuses: chartCensusReuses });
   }
   let chartShown = false;
+  let chartFooterHidden = true;
 
   function syncRangeButton() {
     const label = expanded ? 'Tactical' : 'Survey';
@@ -1854,11 +1855,15 @@ export function createRadar(ctx) {
   function syncChart() {
     const isTouchFlight = document.documentElement?.dataset?.sfMobileFlight === '1';
     const shows = !!minimap && orreryFrame && !isTouchFlight;
+    const footerHidden = !shows || isSwarmGlass(state);
+    if (footerHidden !== chartFooterHidden) {
+      chartFooterHidden = footerHidden;
+      chartFooter.hidden = footerHidden;
+    }
     if (shows !== chartShown) {
       chartShown = shows;
       wrap.classList.toggle('sf-radar-wrap--chart', shows);
       minimap.canvas.hidden = !shows;
-      chartFooter.hidden = !shows;
       if (shows) {
         dial.setAttribute('aria-label', expanded
           ? 'Flight minimap, wide survey range. Activate to switch to tactical range.'

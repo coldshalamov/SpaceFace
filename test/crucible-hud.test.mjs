@@ -345,13 +345,18 @@ test('wave plan projection preserves the live Swarm quota, hull runway, and main
       threatBudget: 26, spawnedThreat: 26, resolvedThreat: 0 };
     const bus = createBus();
     survivalHud.init({ state, bus });
+    // Swarm arcade HUD, owner 2026-11-23: Swarm renders on the top-centre Round Plate
+    // (`swarmHudLayer`) instead of the retired top-left .sf-crun card.
     bus.emit('run:wavePlanned', wire.flat);
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS');
-    assert.equal(survivalHud._dom.threatFig.textContent, '26 / 26');
+    const sw = survivalHud._swarmLayer.dom;
+    assert.equal(sw.roundKicker.textContent, 'ROUND 3');
+    assert.equal(sw.roundName.textContent, 'Hot Potato');
+    assert.equal(sw.roundNum.textContent, '26');
+    assert.equal(sw.roundUnit.textContent, 'left');
     state.run.resolvedThreat = 1;
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatFig.textContent, '25 / 26');
+    assert.equal(sw.roundNum.textContent, '25');
   });
 });
 
@@ -367,11 +372,15 @@ test('late cohort progress restores the ship-count HUD while a circuit timer sta
     const bus = createBus();
     survivalHud.init({ state, bus });
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS',
+    // Swarm arcade HUD, owner 2026-11-23: cohort hostiles count on the Round Plate; Circuit
+    // timed waves keep their Survive countdown clock in the same plate slot.
+    const sw = survivalHud._swarmLayer.dom;
+    assert.equal(sw.roundNum.textContent, '26',
       'a positive projected cohort budget is enough while the plan event is still late');
+    assert.equal(sw.roundUnit.textContent, 'left');
     bus.emit('run:waveProgress', { wave: 3, completionKind: 'cohort', remaining: 26, total: 26 });
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS');
+    assert.equal(sw.roundUnit.textContent, 'left');
 
     const timed = planWave({ seed: 4242, arenaId: ARENA, wave: 1, ruleset: 'swarm',
       circuitRound: { stage: 1, localRound: 2, kind: 'survive' } });
@@ -386,8 +395,8 @@ test('late cohort progress restores the ship-count HUD while a circuit timer sta
     bus.emit('run:wavePlanned', projected.flat);
     bus.emit('run:waveProgress', { wave: 1, completionKind: 'duration', durationTicks: 3600, remainingTicks: 3540 });
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'SURVIVE');
-    assert.equal(survivalHud._dom.threatFig.textContent, '0:59',
+    assert.equal(sw.roundUnit.textContent, 'Survive');
+    assert.equal(sw.roundNum.textContent, '0:59',
       'the cohort fallback must not turn a circuit clock into a kill quota');
   });
 });
