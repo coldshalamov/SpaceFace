@@ -98,6 +98,9 @@ function killHaulerIntoWreck(ctx) {
     id: victim.id, killerId: ctx.player.id,
     victimClass: 'hauler', victimVel: { x: -8, z: 2 },
   });
+  // The kill's wreck mint now runs on the deferred spawn lane — this harness asserts before
+  // stepping, so run the same drain lifetimeSweep runs at the end of the step.
+  ctx.helpers.drainEntitySpawnJobs();
   victim.alive = false;
   const marker = aftermathForSector(ctx.state, SECTOR_ID)
     .find((m) => m && m.victimId === victim.id) || null;

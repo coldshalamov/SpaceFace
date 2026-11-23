@@ -88,6 +88,9 @@ for (const terminal of ['completed', 'retired']) {
       victim.alive = false;
       victim.hull = 0;
       h.bus.emit('entity:killed', { id: victim.id, type: 'ship', killerId: h.state.playerId });
+      // The wreck mint is owed to the deferred spawn lane; the sim step's lifetimeSweep
+      // drain is what materializes it — drive that drain where the step would have run.
+      h.helpers.drainEntitySpawnJobs?.();
       const [marker] = h.state.aftermathWrecks.bySector[SECTOR];
       const wreck = h.state.entityList.find(entity => entity.data?.markerId === marker.markerId);
       assert.ok(wreck?.alive, 'the kill minted a live wreck through its owner');

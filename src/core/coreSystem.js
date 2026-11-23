@@ -90,6 +90,17 @@ function beaconHasDespawnAt(index) {
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
+// Deferred corpse-decoration spawn lane (burst fix): entity:killed listener chains — wreck
+// and shard mints, sector materialization top-offs, manifest pods, impact tear-off chips —
+// used to call spawnEntity recursively inside the kill emit, so a wave wipeout minted every
+// decoration inside the routeDamage stack that billed it. Kill listeners now enqueue a job
+// with helpers.deferEntitySpawnJob; lifetimeSweep drains at most this many per step through
+// the spawnBudget mint lane. Owe, never drop: jobs that do not fit stay queued FIFO.
+const SPAWN_DRAIN_JOBS_PER_STEP = 8;
+// A job that throws is tried again on later steps up to this many tries in all before it is
+// dropped, so one bad thunk can neither lose its decoration to a passing fault nor stall the lane.
+const SPAWN_JOB_MAX_ATTEMPTS = 3;
+
 export function clearRecycledEntityPointers(state, id) {
   if (!state || id == null) return;
   const player = state.player;
@@ -536,6 +547,33 @@ export const core = {
         : state.entities.get(entityOrId);
       return entity ? publishPresentation('recordVisual', entity) : 0;
     };
+    // Deferred corpse-decoration spawn jobs (see SPAWN_DRAIN_JOBS_PER_STEP). A job is a plain
+    // thunk that calls helpers.spawnEntity itself; the queue is owned by the step (cleared on
+    // state teardown below), FIFO, and never capacity-dropped. stageEntitySpawn was evaluated
+    // for this and is not the right tool: its contract is atomic publication inside one
+    // synchronous spawn call, not cross-callback deferral.
+    const deferredSpawnJobs = [];
+    this._deferredSpawnJobs = deferredSpawnJobs;
+    // Head-index drain cursor for _drainDeferredSpawnJobs (shift() was O(queue)
+    // per job — every call memmoved the tail). The head walks forward; the array
+    // retires whole when the drain catches up. Every queue-clear below resets
+    // both.
+    this._deferredSpawnJobsHead = 0;
+    const clearDeferredSpawnJobs = () => {
+      deferredSpawnJobs.length = 0;
+      this._deferredSpawnJobsHead = 0;
+    };
+    const deferEntitySpawnJob = (job) => {
+      if (typeof job !== 'function') return false;
+      deferredSpawnJobs.push(job);
+      return true;
+    };
+    // Destruction receipts stay plain per-corpse literals: the burst fix for this channel is
+    // the coalesced entity:destroyedBatch fanout above the queue, not record pooling. A leased
+    // record would force every one of the channel's ~80 synchronous subscribers to promise it
+    // never holds the receipt past dispatch — an unenforceable contract against feature hosts
+    // that legitimately keep receipts for cross-step settlement — for the price of two small
+    // allocations per corpse. Fresh literals keep retention safe for every listener.
     Object.assign(ctx.helpers, {
       spawnEntity, stageEntitySpawn, getEntity, removeEntity, removeEntitiesAtIndices, queryRadius, player,
       entityIndex: () => ensureEntityIndex(state),
@@ -543,6 +581,11 @@ export const core = {
       requestPresentationRebuild,
       mulberry32, hash32, wrapAngle,
       canStartNemesisEncounter,
+      deferEntitySpawnJob,
+      pendingEntitySpawnJobs: () => deferredSpawnJobs.length - (this._deferredSpawnJobsHead | 0),
+      // The lifetimeSweep drain, exposed so harnesses that drive a partial step (tests,
+      // headless owners) can materialize owed decoration exactly where the sweep would.
+      drainEntitySpawnJobs: () => this._drainDeferredSpawnJobs(),
     });
     this.helpers = ctx.helpers;
 
@@ -554,7 +597,13 @@ export const core = {
       }),
       bus.on('entity:spawnRequest', ({ spec }) => spawnEntity(spec)),
       bus.on('ship:appearanceChanged', ({ id }) => markEntityVisualChanged(id)),
-      bus.on('save:restoring', () => {privateSpawnEpoch={};requestPresentationRebuild('save-restoring');}),
+      bus.on('save:restoring', () => {privateSpawnEpoch={};clearDeferredSpawnJobs();requestPresentationRebuild('save-restoring');}),
+      // Hard sector exits retire the decoration queue too: a job captured old-sector
+      // markers, and the marker row is what rematerializes the body on the next enter.
+      // Continuous membership handoffs keep the world (and the queue) intact.
+      bus.on('sector:exit', (p) => {
+        if (!(p && (p.continuous || p.noTeleport))) clearDeferredSpawnJobs();
+      }),
       // Continue restores simTime without reconstructing core. Re-anchor the day boundary so the
       // first preStep cannot invent a multi-day day:tick from _lastDay still sitting at 0.
       bus.on('save:loaded', () => {
@@ -566,8 +615,8 @@ export const core = {
       // continuous source across it. A parked hull stayed at the old spot with the camera on it
       // (measured: Helios capture 1915 WU from the sim pose for 55 s). Re-seed like a sector entry.
       bus.on('world:playerRelocated', () => requestPresentationRebuild('player-relocated')),
-      bus.on('game:new', () => {privateSpawnEpoch={};requestPresentationRebuild('game-new');}),
-      bus.on('game:newGame', () => {privateSpawnEpoch={};requestPresentationRebuild('game-new');}),
+      bus.on('game:new', () => {privateSpawnEpoch={};clearDeferredSpawnJobs();requestPresentationRebuild('game-new');}),
+      bus.on('game:newGame', () => {privateSpawnEpoch={};clearDeferredSpawnJobs();requestPresentationRebuild('game-new');}),
       bus.on('game:started', () => requestPresentationRebuild('game-started')),
     );
   },
@@ -656,17 +705,10 @@ export const core = {
     this._publishPresentation?.('recordDestroy', e);
     markDirty(state, e.id, DIRTY.MEMBERSHIP);
     removeEntityIndex(state.entityIndex, e);
-    const destroyed = {
-      id: e.id,
-      type: e.type,
-      pos: { x: e.pos.x, z: e.pos.z },
-      radius: e.radius,
-      factionId: e.factionId,
-      // The entity object itself: ids recycle, and a queued receipt can flush after a different
-      // occupant took the id. Subscribers that key on identity (spawnBudget's slot release)
-      // compare this ref, not the id alone.
-      entity: e,
-    };
+    // The entity ref rides the receipt because ids recycle — a queued receipt can flush
+    // after a different occupant took the id, and identity subscribers (spawnBudget's slot
+    // release) compare this ref, not the id alone.
+    const destroyed = { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId, entity: e };
     noteRemovalReason(destroyed, e, opts);
     this.bus.queue('entity:destroyed', destroyed);
     state.entities.delete(e.id);
@@ -702,16 +744,10 @@ export const core = {
       clearEntityRuntime(e);
       this._publishPresentation?.('recordDestroy', e);
       markDirty(state, e.id, DIRTY.MEMBERSHIP);
-      const destroyed = {
-        id: e.id,
-        type: e.type,
-        pos: { x: e.pos.x, z: e.pos.z },
-        radius: e.radius,
-        factionId: e.factionId,
-        // Same generation ref as the single path: ids recycle, and a queued receipt that flushes
-        // after a new occupant took the id must not release that occupant's binding.
-        entity: e,
-      };
+      // Same literal receipt (and same generation ref) as the single path: ids recycle, and a
+      // queued receipt that flushes after a new occupant took the id must not release that
+      // occupant's binding.
+      const destroyed = { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId, entity: e };
       noteRemovalReason(destroyed, e, opts);
       this.bus.queue('entity:destroyed', destroyed);
       state.entities.delete(e.id);
@@ -730,6 +766,56 @@ export const core = {
     return corpses.length;
   },
 
+  // Drain enqueued corpse-decoration spawn jobs. The mint lane is advisory for decoration:
+  // an exhausted lane still runs one job per step so owed work can never starve behind a
+  // hostile wave's own mints. A job that throws is owed, not dropped: it goes back to the
+  // front and the next step tries it again, up to SPAWN_JOB_MAX_ATTEMPTS tries in all. Only a
+  // job that keeps failing is dropped — its caller's durable record (wreck marker, manifest
+  // stamp) is what rematerializes the body on the next sector entry.
+  _drainDeferredSpawnJobs() {
+    const jobs = this._deferredSpawnJobs;
+    if (!jobs || jobs.length === 0) return 0;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    let ran = 0;
+    // Head-index drain (the shift() this replaced was O(queue) per job). The head
+    // is read and written back around every job so a re-entrant drain (a job that
+    // reaches the sweep through its own emits) resumes after the running slot
+    // instead of stepping on nulled entries. Consumed slots are nulled so a long
+    // backlog does not pin thunks; a job that enqueues a successor mid-step lands
+    // behind the head and stays FIFO; the array retires whole once caught up.
+    while (ran < SPAWN_DRAIN_JOBS_PER_STEP) {
+      const head = this._deferredSpawnJobsHead | 0;
+      if (head >= jobs.length) break;
+      if (ran > 0 && budget && typeof budget.mintAllowance === 'function'
+        && budget.mintAllowance() <= 0) break;
+      const job = jobs[head];
+      jobs[head] = null;
+      this._deferredSpawnJobsHead = head + 1;
+      if (budget && typeof budget.consumeMint === 'function') budget.consumeMint(1);
+      try { job(); }
+      catch (err) {
+        const tries = (job._spawnJobTries | 0) + 1;
+        job._spawnJobTries = tries;
+        if (tries < SPAWN_JOB_MAX_ATTEMPTS) {
+          // Back to the front, ahead of everything queued behind it. The drain stops here so
+          // the job keeps its turn and spends one try per step.
+          jobs[head] = job;
+          this._deferredSpawnJobsHead = head;
+          console.error(`[core] deferred spawn job failed (try ${tries} of ${SPAWN_JOB_MAX_ATTEMPTS}; retried next step):`, err);
+          ran += 1;
+          break;
+        }
+        console.error(`[core] deferred spawn job failed ${tries} times and is dropped:`, err);
+      }
+      ran += 1;
+    }
+    if ((this._deferredSpawnJobsHead | 0) >= jobs.length) {
+      jobs.length = 0;
+      this._deferredSpawnJobsHead = 0;
+    }
+    return ran;
+  },
+
   // End-of-step: TTL/despawn, sweep dead entities, recycle ids, flush deferred events.
   lifetimeSweep(dt, state) {
     const docked = !!(state.ui && state.ui.docked);
@@ -744,6 +830,10 @@ export const core = {
       }
     }
     const list = state.entityList;
+    // Deferred kill-decoration spawns mint here — before the clocks/dirty/corpse walks so a
+    // drained body's own markDirty and corpse scan run inside this same step, exactly like a
+    // same-step spawn used to. Bounded through the spawnBudget mint lane (owe, never drop).
+    this._drainDeferredSpawnJobs();
     // Clocks and pose-dirty belong to movers / short-lived extras. Stations and field rocks
     // do not get a TTL or a transform publish from this sweep. The dead-compact pass still
     // walks entityList so a skipped clock cannot leak a corpse.
@@ -820,6 +910,8 @@ export const core = {
     // stalling the pocket tender's work cycle for the whole watch.
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
+      // The defeated player stays in the world as a wreck until recovery at a dock revives
+      // this same body (combat.js restorePlayerAtRecoveryDock refuses once it is gone).
       if (e && e.id === state.playerId) continue;
       if (e && !e.alive) corpseIndices.push(i);
     }

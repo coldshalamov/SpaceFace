@@ -20,12 +20,32 @@
 //   available()              -> MAX - current()
 //   max()                    -> the cap
 //   reset()                  -> clear all reservations (used on hard sector change / new game / restore)
+//   mintAllowance()          -> spawnEntity mints a deferrable caller may still spend this step
+//   consumeMint(n)           -> spend up to n mints for this step (re-queue the unspent debt)
+//   mintCap()/setMintCap(v)  -> the per-step mint bound
 
 // Eight slots are reserved for ambient world ships, leaving sixteen for multiple light squads,
 // an escort/controller, and a heavy anchor without lifting the hard safety ceiling below.
 const DEFAULT_MAX = 24;
 const MIN_MAX = 1;
 const HARD_MAX = 40;      // absolute ceiling so a bad override can never explode the sim
+
+// Per-step mint lane (D-burst fix): every granted reservation implies spawnEntity construction
+// work — construction, index append, dirty membership, activity reclassification — that used to
+// all land inside the same step the grant was spent in. The lane counts the mints a step is
+// asked to absorb, tick-keyed so it is deterministic and never wall-clock:
+//   request()      records its grant — the caller mints those bodies synchronously, so the
+//                  step is charged for the construction it is about to do.
+//   consumeMint(n) is for DEFERRABLE work only (corpse decoration, wave materialization
+//                  debts): it grants up to n mints for this step and the caller re-queues
+//                  what did not fit — owe, never drop.
+//   mintAllowance() reads the lane without spending it.
+// The lane is advisory: it binds no slots and refuses no reservation. A step that genuinely
+// needs more mints than the cap can still take them via request() — the cap exists so the
+// callers that CAN spread work across ticks have one shared accounting to spread through.
+const STEP_MINT_CAP = 16;
+const MIN_MINT_CAP = 1;
+const HARD_MINT_CAP = 64;
 
 export const spawnBudget = {
   name: 'spawnBudget',
@@ -97,6 +117,11 @@ export function ensureBudgetState(state) {
   if (!(b.entityRefs instanceof Map)) b.entityRefs = new Map();
   if (!Number.isFinite(b.used) || b.used < 0) b.used = recomputeUsed(b);
   if (!Number.isInteger(b._seq) || b._seq < 1) b._seq = 1;
+  // Mint lane state: _mintTick/mintedThisStep are per-step transients (lazily re-zeroed on
+  // the first call of each tick); mintCap persists like max.
+  if (!Number.isFinite(b.mintCap)) b.mintCap = STEP_MINT_CAP;
+  b.mintCap = clampInt(b.mintCap, MIN_MINT_CAP, HARD_MINT_CAP);
+  if (!Number.isFinite(b.mintedThisStep) || b.mintedThisStep < 0) b.mintedThisStep = 0;
   return b;
 }
 
@@ -107,6 +132,38 @@ export function makeBudgetApi(state) {
   function current() { return b.used; }
   function max() { return b.max; }
   function available() { return Math.max(0, b.max - b.used); }
+
+  // Mint lane: reset on the first mint call of each sim tick (state.tick is the only clock —
+  // deterministic, never wall time). Callers that never mint still get a correct lane.
+  function touchMintLane() {
+    const tick = state && Number.isFinite(state.tick) ? state.tick | 0 : 0;
+    if (b._mintTick !== tick) {
+      b._mintTick = tick;
+      b.mintedThisStep = 0;
+    }
+  }
+
+  // Mints a deferrable caller may still spend this step.
+  function mintAllowance() {
+    touchMintLane();
+    return Math.max(0, (b.mintCap | 0) - (b.mintedThisStep | 0));
+  }
+
+  // Spend up to n mints for this step. Returns the granted count — callers re-queue the
+  // debt they could not spend (the lane owes them next tick; it never drops their work).
+  function consumeMint(n = 1) {
+    touchMintLane();
+    const want = clampInt(n, 0, HARD_MINT_CAP);
+    const granted = Math.min(want, mintAllowance());
+    if (granted > 0) b.mintedThisStep = (b.mintedThisStep | 0) + granted;
+    return granted;
+  }
+
+  function mintCap() { return b.mintCap | 0; }
+  function setMintCap(v) {
+    b.mintCap = clampInt(v, MIN_MINT_CAP, HARD_MINT_CAP);
+    return b.mintCap;
+  }
 
   function request(n, requesterId) {
     // A Crucible round owns its combat population. Adventure patrols, missions
@@ -122,6 +179,10 @@ export function makeBudgetApi(state) {
     if (!rec) { rec = { count: 0, ids: new Set() }; b.reservations.set(key, rec); }
     rec.count += grant;
     b.used += grant;
+    // The grant implies same-step construction: charge the mint lane so deferrable mints
+    // (corpse decoration drains) see the construction this step is already committed to.
+    touchMintLane();
+    b.mintedThisStep = (b.mintedThisStep | 0) + grant;
     return grant;
   }
 
@@ -248,6 +309,7 @@ export function makeBudgetApi(state) {
   return {
     request, bindEntity, releaseEntity, release, releaseSome,
     ownerForEntity, current, available, max, setMax, reset,
+    mintAllowance, consumeMint, mintCap, setMintCap,
   };
 }
 

@@ -113,6 +113,9 @@ test('a witnessed civilian collision kill mints exactly one charge, one marker, 
     const payload = collisionKillPayload(run, victim);
 
     run.bus.emit('entity:killed', payload);
+    // The manifest pod mints on the deferred spawn lane — drain it where the step sweep
+    // would before counting live bodies (the one-pod stamp itself lands at enqueue).
+    run.sim.helpers.drainEntitySpawnJobs();
 
     // ONE legal aftermath: a single signed receipt, priced as the physical act it was.
     assert.equal(run.receipts.length, 1, 'one kill signs exactly one incident receipt');
@@ -133,6 +136,7 @@ test('a witnessed civilian collision kill mints exactly one charge, one marker, 
 
     // A replayed entity:killed (stale relay) must not mint a second aftermath anywhere.
     run.bus.emit('entity:killed', structuredClone(payload));
+    run.sim.helpers.drainEntitySpawnJobs();
     assert.equal(aftermathForSector(run.state, SECTOR).length, 1, 'the marker dedupes on the victim key');
     assert.equal(manifestPayloads(run.state).length, 1, 'manifestPayloadDropped holds the drop to one');
     const reportIds = new Set(run.receipts.map((r) => r.reportId));

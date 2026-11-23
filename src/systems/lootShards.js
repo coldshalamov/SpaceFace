@@ -508,15 +508,54 @@ export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
 
   enforceJettisonedCargoPodCap(
     state,
-    helpers && helpers.removeEntity,
+    helpers,
     MAX_JETTISONED_CARGO_PODS,
   );
   return entity || null;
 }
 
 /**
+ * Resolve a cap victim's entityList slot for the batched removal lane. Rows the
+ * live list cannot place fall through to the per-entity path below — identical
+ * outcome either way, the batch just skips ~20 lane indexOf+splice scans a corpse.
+ */
+function capVictimIndices(state, victims, leftover) {
+  const indices = [];
+  const list = state && Array.isArray(state.entityList) ? state.entityList : null;
+  for (const entity of victims) {
+    const idx = list ? list.indexOf(entity) : -1;
+    if (idx >= 0) indices.push(idx);
+    else leftover.push(entity);
+  }
+  return indices;
+}
+
+function enforceCapRemoval(state, helpersOrRemove, victims, reason) {
+  const removeAt = helpersOrRemove && typeof helpersOrRemove === 'object'
+    && typeof helpersOrRemove.removeEntitiesAtIndices === 'function'
+    ? helpersOrRemove.removeEntitiesAtIndices : null;
+  const removeOne = typeof helpersOrRemove === 'function' ? helpersOrRemove
+    : (helpersOrRemove && typeof helpersOrRemove.removeEntity === 'function'
+      ? helpersOrRemove.removeEntity : null);
+  let removed = 0;
+  let leftover = victims;
+  if (removeAt) {
+    leftover = [];
+    const indices = capVictimIndices(state, victims, leftover);
+    if (indices.length) removed = removeAt(indices, { immediate: true, reason });
+  }
+  for (const entity of leftover) {
+    if (removeOne) removeOne(entity.id, { immediate: true, reason });
+    else entity.alive = false;
+    removed += 1;
+  }
+  return removed;
+}
+
+/**
  * Bound live civilian-manifest payloads. Disposes oldest (lowest id) first — mirrors the
  * aftermath-wreck MAX_PER_SECTOR bounded eviction pattern without inventing a new ledger.
+ * `removeEntity` accepts the helpers object (batched index lane) or a bare removal fn.
  */
 export function enforceCivilianManifestPayloadCap(
   state,
@@ -538,21 +577,15 @@ export function enforceCivilianManifestPayloadCap(
   if (found.length <= max) return 0;
   found.sort((a, b) => (a.id | 0) - (b.id | 0));
   const drop = found.length - max;
-  let removed = 0;
-  for (let i = 0; i < drop; i++) {
-    const entity = found[i];
-    if (!entity) continue;
-    if (typeof removeEntity === 'function') {
-      removeEntity(entity.id, { immediate: true, reason: 'manifest_payload_cap' });
-    } else entity.alive = false;
-    removed += 1;
-  }
-  return removed;
+  const victims = [];
+  for (let i = 0; i < drop; i++) if (found[i]) victims.push(found[i]);
+  return enforceCapRemoval(state, removeEntity, victims, 'manifest_payload_cap');
 }
 
 /**
  * Bound live jettisoned-cargo pods. Disposes oldest (lowest id) first — same eviction as
  * civilian-manifest payloads. Unowned scraps are not given a TTL here; the cap is the bound.
+ * `removeEntity` accepts the helpers object (batched index lane) or a bare removal fn.
  */
 export function enforceJettisonedCargoPodCap(
   state,
@@ -574,16 +607,9 @@ export function enforceJettisonedCargoPodCap(
   if (found.length <= max) return 0;
   found.sort((a, b) => (a.id | 0) - (b.id | 0));
   const drop = found.length - max;
-  let removed = 0;
-  for (let i = 0; i < drop; i++) {
-    const entity = found[i];
-    if (!entity) continue;
-    if (typeof removeEntity === 'function') {
-      removeEntity(entity.id, { immediate: true, reason: 'jettisoned_cargo_pod_cap' });
-    } else entity.alive = false;
-    removed += 1;
-  }
-  return removed;
+  const victims = [];
+  for (let i = 0; i < drop; i++) if (found[i]) victims.push(found[i]);
+  return enforceCapRemoval(state, removeEntity, victims, 'jettisoned_cargo_pod_cap');
 }
 
 export const lootShards = {
@@ -1140,8 +1166,32 @@ export const lootShards = {
 
     // D2: non-hostile (civilian / traffic / convoy) hull with a real manifest → one cargo body.
     // Any killer: ambient predation and player piracy both leave a takeable body in the world.
+    // The mint drains on the deferred spawn lane when the host has one — the pod may
+    // materialize a step or three late, nothing targets it in between. The one-pod stamp
+    // lands at enqueue, not at mint: a replayed entity:killed inside the same step (stale
+    // relay, duplicate publish) sees the hull as already-spilled — economy and the custody
+    // chain read the flag that way too — and never queues a second mint. The drain re-runs
+    // eligibility because custody can change hands between emit and drain; a refused mint
+    // un-stamps so the hull is not marked for a pod it never received.
     if (!targetHostileToPlayer) {
-      this._trySpawnCivilianManifestPayload(payload, victim);
+      const deferJob = this.helpers && this.helpers.deferEntitySpawnJob;
+      if (typeof deferJob === 'function') {
+        if (victim && victim.data
+          && victim.data.manifestPayloadDropped !== true
+          && this._civilianManifestPayloadEligible(payload, victim)) {
+          victim.data.manifestPayloadDropped = true;
+          deferJob(() => {
+            if (!victim.data || victim.data.manifestPayloadDropped !== true) return;
+            if (!this._civilianManifestPayloadEligible(payload, victim)) {
+              victim.data.manifestPayloadDropped = false;
+              return;
+            }
+            this._mintCivilianManifestPayload(payload, victim);
+          });
+        }
+      } else {
+        this._trySpawnCivilianManifestPayload(payload, victim);
+      }
       return;
     }
 
@@ -1168,6 +1218,24 @@ export const lootShards = {
     });
   },
 
+  // The eligibility half of the one-pod rule, hoisted so the deferred lane can check it at
+  // enqueue AND re-check it at drain — custody can change hands between the kill emit and
+  // the materialization.
+  _civilianManifestPayloadEligible(payload, victim) {
+    if (!victim || !victim.data) return false;
+    // PQ-047 freight custody owns the physical spill for authored manifest carriers (disable/death
+    // pods through encounterScripts). Do not invent a second conserved body on the same hull.
+    if (victim.data.freightRewardOwner === 'manifest_custody') return false;
+    const custody = victim.data.freightCustody;
+    if (custody && (custody.status === 'carrier' || custody.status === 'spilled'
+      || custody.custodyId != null)) return false;
+    const manifest = victim.data.cargoManifest;
+    if (!validCivilianManifestForPayload(manifest)) return false;
+    const pos = victim.pos || (payload && payload.pos);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    return true;
+  },
+
   /**
    * Spawn exactly one payload carrying the victim's cargoManifest as salvagePool.
    * Cap: one per hull death; MAX_CIVILIAN_MANIFEST_PAYLOADS live bodies.
@@ -1176,17 +1244,15 @@ export const lootShards = {
     if (!victim || !victim.data) return null;
     // One payload per hull death — stamp survives if the dead entity lingers for a tick.
     if (victim.data.manifestPayloadDropped === true) return null;
-    // PQ-047 freight custody owns the physical spill for authored manifest carriers (disable/death
-    // pods through encounterScripts). Do not invent a second conserved body on the same hull.
-    if (victim.data.freightRewardOwner === 'manifest_custody') return null;
-    const custody = victim.data.freightCustody;
-    if (custody && (custody.status === 'carrier' || custody.status === 'spilled'
-      || custody.custodyId != null)) return null;
-    const manifest = victim.data.cargoManifest;
-    if (!validCivilianManifestForPayload(manifest)) return null;
+    if (!this._civilianManifestPayloadEligible(payload, victim)) return null;
+    return this._mintCivilianManifestPayload(payload, victim);
+  },
 
-    const pos = victim.pos || payload.pos;
-    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  // The materialization half. Callers have already passed eligibility and (for the deferred
+  // lane) hold the manifestPayloadDropped stamp; re-checking eligibility is the caller's job.
+  _mintCivilianManifestPayload(payload, victim) {
+    const pos = victim.pos || (payload && payload.pos);
+    const manifest = victim.data.cargoManifest;
 
     const pool = salvagePoolFromManifest(manifest);
     const radius = Math.max(3, Math.min(25, Math.round((Number(victim.radius) || 10) * 0.4)));
@@ -1265,7 +1331,7 @@ export const lootShards = {
 
     enforceCivilianManifestPayloadCap(
       this.state,
-      this.helpers && this.helpers.removeEntity,
+      this.helpers,
       MAX_CIVILIAN_MANIFEST_PAYLOADS,
     );
     if (this.bus && typeof this.bus.emit === 'function') {
