@@ -10239,8 +10239,22 @@ function missionObjectiveSummary(missions, trackedMissionId) {
   if (!active.length) return '';
   const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
   const mission = tracked || active[0];
-  const title = mission && (mission.title || mission.name || readableMissionType(mission.type));
+  const title = playerFacingSaveMissionTitle(mission);
   return clipSaveSummary('Mission: ' + (title || 'Active contract'));
+}
+
+function playerFacingSaveMissionTitle(mission) {
+  if (!mission) return '';
+  const filing = /Contract 47-A:\s*Mass Variance Sample/i;
+  const tagged = mission.storyTag === 'campaign47a:b0:recovery'
+    || (mission.params && mission.params.contractId === '47-A')
+    || filing.test(mission.title || mission.name || '');
+  if (tagged) {
+    return mission.params && mission.params.sampleRecovered === true
+      ? 'Deliver the 47-A sample'
+      : 'Recover the 47-A sample';
+  }
+  return mission.title || mission.name || readableMissionType(mission.type) || '';
 }
 
 function storyObjectiveSummary(story) {
