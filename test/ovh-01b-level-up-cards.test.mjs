@@ -527,7 +527,8 @@ test('level-up: LEVEL n rides the bar for ~1.2 s, the bar flashes once, a chime 
   assert.equal(survivalHud._earn, 'LEVEL 5');
   assert.ok(Math.abs(survivalHud._earnUntil - 11.2) < 1e-9, 'the line expires 1.2 s later');
   assert.ok(survivalHud._xpFlashUntil > 10 && survivalHud._xpFlashUntil < survivalHud._earnUntil);
-  assert.ok(bus.of('audio:cue').some((c) => c.id === 'ui_confirm'));
+  // The chime is the promotion chord, not the menu confirm click (a level-up is a reward).
+  assert.ok(bus.of('audio:cue').some((c) => c.id === 'sfx_promotion_chord'));
   assert.equal(state.timeScale, 1, 'a level-up never touches the clock');
   assert.equal(bus.of('ui:pushScreen').length, 0);
   survivalHud.destroy();

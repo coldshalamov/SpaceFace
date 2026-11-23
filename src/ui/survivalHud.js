@@ -202,11 +202,19 @@ export function arenaLabel(arenaId) {
  * words it. A varied kill reads `COLLISION +2`; a repeated one reads `GUN`. Null when there is
  * no cause to show, so the row stays a bare number.
  */
+/**
+ * What the last kill was, said once in Madame Kiln's voice (04_SWARM.md §4) — never a code word
+ * and a bonus count ("TERRAIN +2"). A kill of a new kind, the one that grows the chain by two,
+ * gets her exclamation.
+ */
+const CHAIN_CAUSE_WORDS = Object.freeze({
+  direct: 'Clean shot', kinetic: 'Clean shot', explosive: 'Boom', terrain: 'Off the wall',
+  collision: 'That was his friend', thrown: 'Thrown', field: 'Into the well', hazard: 'The room did that',
+});
 export function chainCauseBadge(cause, step) {
   if (typeof cause !== 'string' || cause.length === 0) return null;
-  const word = cause.replace(/_/g, ' ').toUpperCase();
-  if (step === SWARM_CHAIN_VARIED_STEP) return `${word} +2`;
-  return word;
+  const word = CHAIN_CAUSE_WORDS[cause] || cause.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  return step === SWARM_CHAIN_VARIED_STEP ? `${word}!` : word;
 }
 
 /**
@@ -264,10 +272,10 @@ export function heroManeuverHudCue(state) {
   const mode = pinball ? 'pinball' : boomerang ? 'boomerang' : 'veil_step';
   if (!model || model.mode !== mode) {
     const label = pinball ? 'PINBALL RUSH' : boomerang ? 'BOOMERANG RUN' : 'VEIL STEP';
-    return { mode, status: 'blocked', text: `${label} · syncing readiness` };
+    return { mode, status: 'blocked', text: `${label} · getting ready` };
   }
   const name = model.targetName || 'hostile lock';
-  const boost = resolveActionLabel(state, 'boost', { arrows: 'word', empty: 'unbound' });
+  const boost = resolveActionLabel(state, 'boost', { arrows: 'word', empty: 'set a key' });
   const veilModel = veil ? model.veil : null;
   const veilCue = veilModel
     ? veilModel.phase === 'aiming'
@@ -286,8 +294,8 @@ export function heroManeuverHudCue(state) {
         .filter(Boolean).join(' · ') };
   }
   if (mode === 'boomerang') {
-    const action = resolveActionLabel(state, 'bomb', { arrows: 'word', empty: 'unbound' });
-    const budget = Number.isFinite(model.energyRequired) ? ` · ${Math.ceil(model.energyRequired)} cap budget` : '';
+    const action = resolveActionLabel(state, 'bomb', { arrows: 'word', empty: 'set a key' });
+    const budget = Number.isFinite(model.energyRequired) ? ` · ${Math.ceil(model.energyRequired)} energy` : '';
     const stage = model.phase === 'bank' ? `physical bank · ${model.attackCommitted ? 'bomb away' : 'bomb reserved'}`
       : model.phase === 'return' ? `phase return · ${model.attackCommitted ? 'bomb away' : 'no bomb released'}` : null;
     const terminal = ['complete', 'attack_region_missed', 'target_lost', 'interrupted',
@@ -795,7 +803,8 @@ export const survivalHud = {
           this._styleActFams[i] = acts[i].family;
         }
         const styleMult = styleMultiplier(combo);
-        this._styleFigText = `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-links} links`;
+        // Plain words (04_SWARM.md §4): the multiplier alone, never "pending" or "links".
+        this._styleFigText = `×${styleMult.toFixed(1)}`;
       }
       this._setText(dom.styleFig, this._styleFigText);
     } else {
@@ -1009,8 +1018,9 @@ export const survivalHud = {
     this._pushEarn(`LEVEL ${level}`, LEVEL_RIDE_S);
     const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     this._xpFlashUntil = simTime + XP_FLASH_S;
-    // The chime: the existing confirm voice, short and quiet. Nothing here pauses the fight.
-    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('audio:cue', { id: 'ui_confirm', gain: 0.5 });
+    // The chime: the promotion chord (the voice a chain tier and a cleared round already use),
+    // not the menu's confirm click, so a level-up is heard as a reward. Nothing pauses the fight.
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('audio:cue', { id: 'sfx_promotion_chord', gain: 0.55 });
   },
 
   _pushEarn(text, seconds = EARN_RECEIPT_S) {

@@ -217,12 +217,12 @@ test('Hero HUD cue follows the fitted move and worker projection without sim int
   const bank = heroManeuverHudCue(state);
   assert.equal(bank.mode, 'boomerang');
   assert.match(bank.text, /Needle.*physical bank.*bomb reserved/);
-  assert.match(bank.text, /197 cap budget/,
+  assert.match(bank.text, /197 energy/,
     'active readiness shows the full phase-return and bank-dash budget, not the phase reserve alone');
   state.heroManeuverReadModel = { mode: 'boomerang', phase: 'attack_region_missed', status: 'blocked',
     targetName: 'Needle', text: 'attack region missed · no bomb released', energyRequired: 196.2 };
   const missed = heroManeuverHudCue(state);
-  assert.match(missed.text, /Needle.*attack region missed.*no bomb released.*197 cap budget/);
+  assert.match(missed.text, /Needle.*attack region missed.*no bomb released.*197 energy/);
   assert.doesNotMatch(missed.text, /4\/Y start/,
     'a terminal result does not look like a fresh activation prompt');
 
