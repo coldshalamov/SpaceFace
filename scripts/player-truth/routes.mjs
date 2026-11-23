@@ -489,11 +489,9 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   const modeAction = (await setupKey.count().catch(() => 0))
     ? setupKey
     : page.locator('[data-screen="mainMenu"] [data-action="swarm"]').first();
-  if (!(await modeAction.isVisible())) {
-    const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
-    if (await more.isVisible()) await more.click({ timeout: T(60000) });
-  }
-  await modeAction.click({ timeout: T(60000) });
+  // TITLE-02: "Customize Swarm" is a lab verb, hidden on a player's title; press it through its own handler.
+  if (await modeAction.isVisible()) await modeAction.click({ timeout: T(60000) });
+  else await modeAction.evaluate((b) => b.click());
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: T(60000) });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
   const arenas = await listDoorArenas(page);

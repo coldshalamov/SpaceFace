@@ -1,5 +1,5 @@
-// TITLE-01: the title is two doors; New Game stays reachable with and without a save, and the tooling
-// helper presses it the same way in both states.
+// TITLE-02: the title is two doors; New Game stays reachable with and without a save, and the tooling
+// helper presses it the same way in both states. Practice and test modes are off a player's title.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -8,13 +8,13 @@ import { pressNewGame, pressTitleAction } from '../scripts/lib/titleRoute.mjs';
 const MENU = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 const CSS = readFileSync(new URL('../src/ui/orrery/titleDoorsLayouts.js', import.meta.url), 'utf8');
 
-function fakePage({ moreVisible = false } = {}) {
+function fakePage({ labVisible = false } = {}) {
   const log = [];
-  const state = { moreOpen: moreVisible };
   const loc = (sel) => ({
     first: () => loc(sel),
-    isVisible: async () => (sel.includes('data-title-more') ? true : !sel.includes('[data-action="circuits"]') || state.moreOpen),
-    click: async () => { log.push(['click', sel]); if (sel.includes('data-title-more')) state.moreOpen = true; },
+    isVisible: async () => (sel.includes('[data-action="circuits"]') ? labVisible : true),
+    click: async () => { log.push(['click', sel]); },
+    evaluate: async () => { log.push(['dom-click', sel]); },
   });
   return { log, locator: loc, waitForSelector: async (sel, opts) => { log.push(['wait', sel, opts.state]); } };
 }
@@ -37,20 +37,26 @@ test('pressNewGame answers the "Start a new game?" ask that a save on disk puts 
   assert.ok(page.log.some((e) => e[0] === 'click' && e[1].includes('sf-confirm__ok')));
 });
 
-test('pressTitleAction opens More first for an action that lives behind it', async () => {
-  const page = fakePage();
-  await pressTitleAction(page, 'circuits');
-  assert.ok(page.log[0][1].includes('data-title-more'));
-  assert.ok(page.log[1][1].includes('[data-action="circuits"]'));
+test('pressTitleAction reaches a hidden lab verb through its own handler, and a shown one by a click', async () => {
+  const hidden = fakePage();
+  await pressTitleAction(hidden, 'circuits');
+  assert.ok(hidden.log.some((e) => e[0] === 'dom-click' && e[1].includes('[data-action="circuits"]')));
+  const shown = fakePage({ labVisible: true });
+  await pressTitleAction(shown, 'circuits');
+  assert.deepEqual(shown.log[0], ['click', '[data-screen="mainMenu"] [data-action="circuits"]']);
 });
 
-test('with a save the Adventure door is Continue and New Game stays a visible key on it, never behind More', () => {
-  assert.match(MENU, /hasSave \? cont : ng/);
-  assert.match(MENU, /of-title-door-secondary/);
-  assert.match(CSS, /li\.of-title-door-secondary/);
-  // New Game is not one of the actions folded behind More
-  assert.match(CSS, /const MORE_ACTIONS = \['load', 'crucible', 'archive', 'circuits', 'sandbox', 'physics'\]/);
-  // the button's own text is the core copy, so the door's word is drawn from data-door-label
-  assert.match(MENU, /doorLabel = 'Adventure'/);
+test('with a save the Adventure door is Continue and New Game steps into the small row as its plain word', () => {
+  assert.match(MENU, /const adventure = hasSave \? cont : ng/);
+  assert.match(MENU, /ng\.classList\.add\('of-title-row-item'\)/);
+  assert.match(CSS, /of-title-row-item > button\.of-door > \.of-door__plain \{ display:inline !important; \}/);
   assert.match(MENU, /Start a new game\?/);
+});
+
+test('the doors are the composition at every size, and the lab verbs are hidden unless the dev switch is on', () => {
+  assert.match(MENU, /rootEl\.classList\.add\(phone \? 'orr-title--phone' : 'orr-title', 'orr-title--doors'\)/);
+  assert.doesNotMatch(MENU, /createArcRail\(/, 'the dial is retired from the title');
+  assert.match(MENU, /const labOpen = titleLabOpen\(\);/);
+  assert.match(MENU, /for \(const li of aside\.children\) li\.hidden = !labOpen;/);
+  assert.match(MENU, /if \(!IS_DEV\) return false;/);
 });

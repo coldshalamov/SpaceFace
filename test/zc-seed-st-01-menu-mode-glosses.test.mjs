@@ -42,5 +42,5 @@ test('both rendered verb groups read the gloss table (wiring slice)', () => {
   }
   // The kit renders item.sub as the visible note element for the lit system the title uses.
   const kit = readFileSync(new URL('../src/ui/kit/dom.js', import.meta.url), 'utf8');
-  assert.match(kit, /if \(item\.sub\) li\.append\(el\('div', lit \? 'dp-lit__note'/);
+  assert.match(kit, /const noteClass = lit \? 'dp-lit__note'/);
 });

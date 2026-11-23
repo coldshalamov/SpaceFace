@@ -1,137 +1,191 @@
-// TITLE-01 — the title as two doors (design/game/20_THE_FIRST_HOUR.md storyboard, 0:09 "Title"):
-// ADVENTURE and SWARM side by side over the live hero scene, a small row under them (Settings, Help,
-// Quit) and everything else behind one quiet "More". Layout and type only: the buttons, their
-// data-action hooks, aria names and DOM order are the title's own (mainMenu.js, which also marks the two
-// door items `of-title-door` + `is-adventure` / `is-swarm`); this sheet sets them out. The Adventure door is
-// New Game for a new player and Continue when a save exists, in which case New Game stands on the door as its
-// secondary key (`of-title-door-secondary`), never behind More. No dial and no menu over the ship: the doors
-// stand in the lower left, clear of the hero.
+// TITLE-02 — the title is two doors (design/overhaul/08_INTERFACE.md §2; ledger A3, A11, A12): SWARM and
+// ADVENTURE side by side over the live hero scene, a small row of plain words under them (Load, Settings,
+// Help, Quit — and New Game when a save owns the Adventure door), the fine line (version, Credits,
+// Achievements) at the foot. The same composition at every size: the doors stand in the lower left,
+// clear of the hero; on a narrow screen they stack under the name.
+//
+// Layout and type only. The buttons, their data-action hooks, aria names and DOM order are the title's own
+// (src/ui/screens/mainMenu.js). mainMenu marks the door items `of-title-door` + `is-adventure` / `is-swarm`
+// and dresses each door button with `.of-door__art/__kicker/__name/__line/__go` spans; a door that steps
+// down into the small row (New Game with a save) carries `of-title-row-item` and shows `.of-door__plain`.
+//
+// Type: Archivo (display) for the two door names only; Instrument Sans (read) for every other word.
+// Grid: 4 px steps; doors pad 20/24; one radius (4 px). Motion: 160 ms ease-out, none under reduced motion.
 import { injectOrrery } from './tokens.js';
 
-const img = (name) => {
-  try { return new URL('../../../assets/ui/backdrops/' + name, import.meta.url).href; } catch { return '../assets/ui/backdrops/' + name; }
+const asset = (path) => {
+  try { return new URL('../../../' + path, import.meta.url).href; } catch { return '../' + path; }
 };
-const ADVENTURE_IMG = img('backdrop-title.jpg');
-const SWARM_IMG = img('backdrop-crucible-door.jpg');
+const ADVENTURE_IMG = asset('assets/ui/generated/stations/station_helios.webp');
+const SWARM_IMG = asset('assets/ui/kit/assets/tiles/tile.mode.swarm@2x.png');
 const STYLE_ID = 'sf-orrery-title-doors-layouts';
-const T = 'html body .of-title.orr-title--doors';
+const T = 'html body #screens .of-title.orr-title--doors';
 const BONE = '236 230 216';
-const LI = (action) => `${T} .of-title-actions li:has(> [data-action="${action}"])`;
-const MORE_ACTIONS = ['load', 'crucible', 'archive', 'circuits', 'sandbox', 'physics'];
-const MORE_LI = MORE_ACTIONS.map(LI).join(',\n');
-const MORE_LI_OPEN = MORE_ACTIONS
-  .map((a) => `${T} .of-title-actions.is-more-open li:has(> [data-action="${a}"])`).join(',\n');
-const DOOR_LI = `${T} .of-title-actions li.of-title-door`;
-const DOOR_BTN = `${DOOR_LI} > button`;
-const SECOND_LI = `${T} .of-title-actions li.of-title-door-secondary`;
-const ROW_BTN = `${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"]), li.of-title-door-secondary) > button`;
-// the door word fits its own door: cqw is the door's inner width (ADVENTURE is ~6.1em of Archivo 800)
-const DOOR_FONT = "800 clamp(28px, min(6vh, 15cqw), 58px)/1 var(--dp-face-display, 'Archivo')";
+const GOLD = 'var(--dp-hand, #f2b950)';
+const READ = "var(--dp-face-read, 'Instrument Sans'), system-ui, sans-serif";
+const DISPLAY = "var(--dp-face-display, 'Archivo'), system-ui, sans-serif";
+const EASE = 'cubic-bezier(.16, 1, .3, 1)';
+const LIST = `${T} .of-title-actions > ul.dp-lit:not(.of-title-aside)`;
+const DOOR_LI = `${LIST} > li.of-title-door`;
+const DOOR = `${DOOR_LI} > button.of-door`;
+const ROW_LI = `${LIST} > li:not(.of-title-door)`;
+const ROW_BTN = `${ROW_LI} > button`;
+const LAB = `${T} .of-title-actions > ul.of-title-aside`;
 
 export const TITLE_DOORS_LAYOUT_CSS = `
-/* the column becomes one grid: two doors (twelve of twenty-four columns each), then a row of small words */
+/* the stage: one column in the lower left — the doors, then the row. The frame (fixed, inset 0) is its
+   containing block, so the body box must not claim it. */
+${T} > .dp-frame__body { position:static !important; transform:none !important; contain:none !important; }
 ${T} .of-title-actions {
-  display:grid !important; grid-template-columns:repeat(24, minmax(0, 1fr)) !important; gap:14px 0 !important; column-gap:0 !important;
-  width:min(600px, 46vw) !important; margin:0 !important; align-content:end; justify-items:stretch;
   position:absolute !important; left:48px !important; right:auto !important; top:auto !important;
-  bottom:clamp(56px, 10vh, 110px) !important; transform:none !important;
-  padding:0 !important; max-width:none !important; min-height:0 !important; height:auto !important; }
-${T} .of-title-actions > ul { display:contents !important; list-style:none; margin:0; padding:0; }
-${T} .of-title-actions li { margin:0 !important; padding:0 !important; list-style:none; min-width:0; position:static !important; width:auto !important; max-width:none !important; }
-${T} .of-title-actions li[hidden] { display:none !important; }
-/* no tech words on the way in: the standing line is empty, so its lamp goes too */
+  bottom:clamp(72px, 12vh, 104px) !important; transform:none !important;
+  display:flex !important; flex-direction:column !important; gap:12px !important;
+  width:min(600px, 48vw, calc(100vw - 96px)) !important; max-width:none !important; min-height:0 !important; height:auto !important;
+  margin:0 !important; padding:0 !important; z-index:2; }
 ${T} .dp-title__eyebrow:empty { display:none !important; }
-/* the doors */
-${DOOR_LI}.is-adventure { grid-column:1 / span 12; grid-row:1; margin:0 7px 0 0 !important; --door-img:url("${ADVENTURE_IMG}"); --door-img-pos:72% 56%; --door-img-size:270% auto; }
-${DOOR_LI}.is-swarm { grid-column:13 / span 12; grid-row:1; margin:0 0 0 7px !important; --door-img:url("${SWARM_IMG}"); }
-${SECOND_LI} { grid-column:1 / span 12; grid-row:2; margin:0 7px 0 0 !important; }
-/* the door is the list item: image, border and the notch on it; the word and its line sit inside in flow */
-${DOOR_LI} {
-  display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(210px, 34vh, 330px);
-  box-sizing:border-box; position:relative !important; container-type:inline-size;
-  background:linear-gradient(0deg, rgb(6 8 12 / .82) 0%, rgb(6 8 12 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat;
-  border:1px solid rgb(${BONE} / .34); border-radius:2px;
-  clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
-  user-select:none;
-  transition:border-color .16s linear, box-shadow .16s linear; }
-${DOOR_LI}:is(:hover, :focus-within) {
-  border-color:var(--dp-hand, #f2b950); box-shadow:0 0 26px rgb(242 185 80 / .25);
-  background:linear-gradient(0deg, rgb(20 14 6 / .85) 0%, rgb(14 10 6 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat; }
-${DOOR_BTN} {
-  display:flex !important; flex:1; flex-direction:column; justify-content:flex-end; align-items:stretch; gap:0;
-  width:100% !important; padding:20px 26px 22px !important; margin:0 !important; text-align:left; cursor:pointer;
-  color:rgb(248 244 234) !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  font:${DOOR_FONT} !important; letter-spacing:.02em !important; text-transform:uppercase; text-shadow:0 1px 0 rgb(0 0 0 / .6); }
-/* the button's own text is the core copy (New Game / Continue); the door draws ADVENTURE from its data-door-label */
-${DOOR_BTN}[data-door-label] { font-size:0 !important; line-height:0 !important; letter-spacing:0 !important; }
-${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block !important; position:static !important; inset:auto !important; width:auto !important; height:auto !important;
-  margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; transform:none !important; opacity:1 !important;
-  font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; color:inherit; }
-${DOOR_BTN}:is(:hover, :focus, :focus-visible, [data-awake]) { background:none !important; outline:none !important; box-shadow:none !important; }
-${DOOR_BTN}::after, ${DOOR_LI} .dp-lit__item::after { display:none !important; content:none !important; }
-${DOOR_LI}:has(> button:focus-visible) { box-shadow:inset 0 0 0 2px var(--dp-hand, #f2b950); }
-html body #screens .of-title.orr-title--doors .of-title-actions li.of-title-door > button.dp-lit__item:is(:focus, :focus-visible) { outline:0 solid transparent !important; outline-offset:0 !important; }
-${DOOR_LI} .dp-lit__note {
-  display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
-  overflow:visible !important; margin:10px 0 0 !important; font:400 15px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
-  letter-spacing:0 !important; text-transform:none; color:rgb(${BONE} / .82) !important; }
-/* with a save: the door's line is a short Continue summary (two lines), and New Game's own line steps aside */
-${DOOR_LI}.is-adventure .dp-lit__note { display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important; }
-${SECOND_LI} .dp-lit__note { display:none !important; }
-/* the fine line under the doors: readable on the lit scene */
-${T} .dp-frame__foot, ${T} .dp-frame__foot * { color:rgb(${BONE} / .96) !important; opacity:1 !important; font-weight:600; text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 10px rgb(0 0 0 / .8); }
-/* the small row (Settings, Help, Quit) is centred by mainMenu.js from how many words show; these are the full-row defaults */
-${LI('settings')} { grid-column:1 / span 8; grid-row:2; }
-${LI('help')} { grid-column:9 / span 8; grid-row:2; }
-${LI('quit')} { grid-column:17 / span 8; grid-row:2; }
-${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 5px !important; }
+${T} .of-title-strap { margin:12px 0 0 !important; max-width:44ch; font:500 clamp(15px, 2.2vh, 18px)/1.4 ${READ}; letter-spacing:.01em;
+  color:rgb(${BONE} / .9); text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 12px rgb(0 0 0 / .7); }
+/* the attention pool and lamp beads of the light kit say "awake" a second time; the doors say it themselves */
+${T} .of-title-actions::before, ${T} .of-title-actions .dp-lit::before { display:none !important; }
+${LIST} {
+  display:flex !important; flex-wrap:wrap !important; align-items:stretch; gap:12px !important;
+  margin:0 !important; padding:0 !important; list-style:none; width:100% !important; }
+${LIST} > li { margin:0 !important; padding:0 !important; list-style:none; position:static !important; min-width:0; width:auto !important; max-width:none !important; }
+${LIST} > li[hidden], ${LAB} > li[hidden], ${LAB}[hidden] { display:none !important; }
+${LIST} > li.of-title-door { flex:1 1 calc(50% - 6px) !important; }
+${LIST} > li.of-title-door.is-swarm { order:0; }
+${LIST} > li.of-title-door.is-adventure { order:1; }
+${ROW_LI} { order:2; flex:0 0 auto !important; }
+
+/* ── THE DOORS ─────────────────────────────────────────────────────────────────────────────── */
+${DOOR} {
+  position:relative !important; isolation:isolate; overflow:hidden !important; container-type:inline-size;
+  display:flex !important; flex-direction:column !important; justify-content:flex-end !important; align-items:flex-start !important;
+  width:100% !important; height:clamp(188px, 34vh, 300px) !important; min-height:0 !important;
+  margin:0 !important; padding:20px 24px !important; box-sizing:border-box;
+  text-align:left !important; white-space:normal !important; cursor:pointer;
+  color:rgb(248 244 234) !important; background:#0a0c10 !important;
+  border:1px solid rgb(${BONE} / .26) !important; border-radius:4px !important; outline:none !important;
+  box-shadow:0 10px 32px rgb(0 0 0 / .45) !important; text-shadow:none !important;
+  font:inherit !important; letter-spacing:0 !important; text-transform:none !important;
+  transform:none !important; opacity:1 !important;
+  transition:border-color .16s ${EASE}, box-shadow .16s ${EASE}, transform .16s ${EASE} !important; }
+${DOOR}::before, ${DOOR}::after { display:none !important; content:none !important; }
+${DOOR} > .of-door__art {
+  position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:
+    linear-gradient(0deg, rgb(5 6 9 / .94) 0%, rgb(5 6 9 / .72) 34%, rgb(5 6 9 / .12) 68%, rgb(5 6 9 / .28) 100%),
+    var(--door-img) var(--door-img-pos, center) / cover no-repeat;
+  filter:saturate(.82) brightness(.84);
+  transform:scale(1.0); transform-origin:50% 60%;
+  transition:transform .32s ${EASE}, filter .16s ${EASE}; }
+${DOOR}[data-door="swarm"] > .of-door__art { --door-img:url("${SWARM_IMG}"); --door-img-pos:50% 42%; }
+${DOOR}[data-door="adventure"] > .of-door__art { --door-img:url("${ADVENTURE_IMG}"); --door-img-pos:58% 46%; }
+${DOOR} > .of-door__kicker {
+  position:absolute; top:16px; left:20px; padding:4px 8px; border-radius:2px;
+  font:600 12px/1 ${READ}; letter-spacing:.14em; text-transform:uppercase;
+  color:rgb(${BONE} / .92); background:rgb(6 8 12 / .72); border:1px solid rgb(${BONE} / .16); }
+${DOOR} > .of-door__name {
+  display:block; max-width:100%; font:800 clamp(28px, min(5.6vh, 14cqw), 52px)/1 ${DISPLAY}; letter-spacing:.015em; text-transform:uppercase;
+  color:rgb(250 247 239); text-shadow:0 2px 12px rgb(0 0 0 / .55); }
+${DOOR} > .of-door__line {
+  display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important;
+  position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
+  max-width:36ch; min-height:2.8em; margin:8px 0 0 !important; padding:0 !important;
+  font:400 15px/1.4 ${READ} !important; letter-spacing:0 !important; text-transform:none !important;
+  color:rgb(${BONE} / .9) !important; opacity:1 !important; text-shadow:0 1px 6px rgb(0 0 0 / .7) !important; }
+${DOOR} > .of-door__go {
+  display:inline-flex; align-items:center; gap:8px; margin-top:16px; padding:8px 12px 8px 14px; border-radius:2px;
+  font:600 13px/1 ${READ}; letter-spacing:.12em; text-transform:uppercase;
+  color:rgb(${BONE} / .92); background:rgb(${BONE} / .08); border:1px solid rgb(${BONE} / .24);
+  transition:color .16s ${EASE}, background-color .16s ${EASE}, border-color .16s ${EASE}; }
+${DOOR} > .of-door__go::after { content:"\\2192"; font-size:15px; letter-spacing:0; transition:transform .16s ${EASE}; }
+${DOOR} > .of-door__plain { display:none !important; }
+/* awake — the pointer moves focus, so exactly one door is ever lit */
+${DOOR}:is(:hover, :focus, [data-awake]) {
+  border-color:${GOLD} !important;
+  box-shadow:0 0 0 1px ${GOLD}, 0 14px 40px rgb(0 0 0 / .55), 0 0 36px rgb(242 185 80 / .2) !important; }
+${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art { transform:scale(1.045); filter:saturate(1) brightness(.98); }
+${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go { color:#1a1208; background:${GOLD}; border-color:${GOLD}; }
+${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go::after { transform:translateX(3px); }
+${DOOR}:focus-visible { box-shadow:0 0 0 2px ${GOLD}, 0 0 0 5px rgb(242 185 80 / .28), 0 14px 40px rgb(0 0 0 / .55) !important; }
+${DOOR}:active { transform:scale(.985) !important; transition-duration:.08s !important; }
+${DOOR}[aria-disabled="true"] { cursor:progress; }
+${DOOR}[aria-disabled="true"] > .of-door__go { opacity:.6; }
+
+/* ── THE SMALL ROW ─────────────────────────────────────────────────────────────────────────── */
 ${ROW_BTN} {
-  width:100% !important; min-height:44px; padding:8px 12px !important; text-align:center; justify-content:center;
-  font:600 14px var(--dp-face-label, 'Archivo') !important; letter-spacing:.12em !important; text-transform:uppercase;
-  color:rgb(${BONE} / .9) !important; background:rgb(8 10 14 / .6) !important; border:1px solid rgb(${BONE} / .22) !important; border-radius:2px !important;
-  text-shadow:0 1px 0 rgb(0 0 0 / .6); }
-${ROW_BTN}:is(:hover, :focus-visible, [data-awake]) { color:#fff !important; border-color:rgb(${BONE} / .6) !important; outline:none !important; }
-/* More: everything else, closed until asked */
-${MORE_LI} { display:none !important; }
-${MORE_LI_OPEN} { display:list-item !important; grid-row:auto; grid-column:auto / span 8; padding:0 5px !important; }
-${T} .of-title-actions :is(${MORE_ACTIONS.map((a) => `[data-action="${a}"]`).join(', ')}) { width:100% !important; min-height:40px; padding:6px 12px !important; text-align:left;
-  font:500 13px var(--dp-face-label, 'Archivo') !important; letter-spacing:.1em !important; text-transform:uppercase; color:rgb(${BONE} / .85) !important;
-  background:rgb(8 10 14 / .6) !important; border:1px solid rgb(${BONE} / .16) !important; border-radius:2px !important; }
-${T} .of-title-more { grid-column:1 / -1; justify-self:center; min-height:32px; padding:4px 14px !important;
-  font:500 12px var(--dp-face-label, 'Archivo') !important; letter-spacing:.14em !important; text-transform:uppercase; color:rgb(${BONE} / .7) !important;
-  background:none !important; border:0 !important; border-bottom:1px solid rgb(${BONE} / .3) !important; cursor:pointer; }
-${T} .of-title-more:is(:hover, :focus-visible) { color:#fff !important; outline:none !important; border-bottom-color:var(--dp-hand, #f2b950) !important; }
-/* the reference line that rode under the dial has no place here: its words live behind More */
-${T} .of-title-aside { display:contents !important; }
-@media (max-height:700px) {
-  ${T} .of-title-actions { bottom:clamp(40px, 7vh, 70px) !important; gap:10px 0 !important; }
-  ${DOOR_LI} { min-height:clamp(180px, 33vh, 230px); }
-  ${DOOR_BTN} { padding:16px 22px 18px !important; }
+  position:relative !important; display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  min-height:40px !important; height:40px; padding:0 16px !important; margin:0 !important; box-sizing:border-box;
+  font:600 13px/1 ${READ} !important; letter-spacing:.1em !important; text-transform:uppercase !important; white-space:nowrap;
+  color:rgb(${BONE} / .94) !important; background:rgb(8 10 14 / .72) !important;
+  border:1px solid rgb(${BONE} / .24) !important; border-radius:4px !important; outline:none !important;
+  box-shadow:none !important; text-shadow:none !important; transform:none !important; opacity:1 !important; cursor:pointer;
+  transition:color .16s ${EASE}, background-color .16s ${EASE}, border-color .16s ${EASE}, transform .16s ${EASE} !important; }
+${ROW_BTN}::before, ${ROW_BTN}::after { display:none !important; content:none !important; }
+${ROW_BTN} .dp-lit__note { display:none !important; }
+${ROW_BTN}:is(:hover, :focus, [data-awake]) { color:#fff !important; background:rgb(22 25 32 / .9) !important; border-color:rgb(${BONE} / .72) !important; }
+${ROW_BTN}:focus-visible { box-shadow:0 0 0 2px ${GOLD} !important; border-color:${GOLD} !important; }
+${ROW_BTN}:active { transform:scale(.97) !important; transition-duration:.08s !important; }
+${ROW_BTN}.dp-lit__item--danger:is(:hover, :focus) { color:#ffd2c8 !important; border-color:rgb(255 122 92 / .7) !important; }
+${ROW_BTN}[aria-disabled="true"] { color:rgb(${BONE} / .5) !important; cursor:progress; }
+/* New Game in the row (a save owns the Adventure door): the plain word, none of the door's art */
+${ROW_LI}.of-title-row-item > button.of-door { height:40px !important; padding:0 16px !important; display:inline-flex !important; width:auto !important; flex-direction:row !important; isolation:auto; }
+${ROW_LI}.of-title-row-item > button.of-door > :not(.of-door__plain) { display:none !important; }
+${ROW_LI}.of-title-row-item > button.of-door > .of-door__plain { display:inline !important; }
+
+/* ── THE LAB ROW (dev switch only: ?titleLab=1) ────────────────────────────────────────────── */
+${LAB} { display:flex !important; flex-wrap:wrap; gap:8px !important; margin:0 !important; padding:8px 0 0 !important; border-top:1px dashed rgb(${BONE} / .2); list-style:none; }
+${LAB} > li { margin:0 !important; list-style:none; position:static !important; }
+${LAB} .dp-lit__item { min-height:32px; padding:0 12px !important; font:500 12px/1 ${READ} !important; letter-spacing:.08em !important; text-transform:uppercase;
+  color:rgb(${BONE} / .8) !important; background:rgb(8 10 14 / .6) !important; border:1px dashed rgb(${BONE} / .3) !important; border-radius:4px !important; }
+${LAB} .dp-lit__item::before, ${LAB} .dp-lit__item::after { display:none !important; }
+${LAB} .dp-lit__note { display:none !important; }
+${LAB} .dp-lit__item:is(:hover, :focus) { color:#fff !important; border-color:rgb(${BONE} / .7) !important; }
+
+/* ── THE FINE LINE ─────────────────────────────────────────────────────────────────────────── */
+${T} > .dp-frame__foot { grid-area:auto !important; position:absolute !important; left:48px !important; right:auto !important; bottom:clamp(20px, 4vh, 32px) !important; top:auto !important; margin:0 !important; padding:0 !important;
+  display:flex !important; flex-wrap:wrap; align-items:center; gap:0 4px; font:500 12px/1.4 ${READ} !important; letter-spacing:.06em !important; text-transform:uppercase; opacity:1 !important; }
+${T} > .dp-frame__foot, ${T} > .dp-frame__foot * { color:rgb(${BONE} / .86) !important; text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 10px rgb(0 0 0 / .8); }
+${T} > .dp-frame__foot .dp-menu__item--fine { font:600 12px/1 ${READ} !important; letter-spacing:.06em !important; min-height:28px; padding:4px 6px !important;
+  border-radius:2px; transition:color .16s ${EASE}; background:none !important; border:0 !important; cursor:pointer; }
+${T} > .dp-frame__foot .dp-menu__item--fine:is(:hover, :focus) { color:#fff !important; text-decoration:underline; text-underline-offset:4px; text-decoration-color:${GOLD}; }
+${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${GOLD} !important; outline-offset:2px; }
+
+/* a short window: the doors give height before anything overlaps */
+@media (max-height:620px) and (min-width:701px) {
+  ${T} .of-title-actions { bottom:64px !important; }
+  ${DOOR} { height:clamp(160px, 32vh, 200px) !important; padding:16px 20px !important; }
+  ${DOOR} > .of-door__go { margin-top:12px; }
 }
-/* the phone: the two doors stacked, then the small row; More behind its toggle as on the desktop */
+/* a narrow screen: the doors stack under the name, full width, then the row */
 @media (max-width:700px) {
-  ${T} .of-title-actions { position:relative !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:100% !important; margin:18px 0 0 !important; transform:none !important; gap:14px 0 !important; }
-  ${DOOR_LI}.is-adventure, ${DOOR_LI}.is-swarm { grid-column:1 / -1 !important; margin:0 !important; min-height:clamp(132px, 19vh, 172px); clip-path:none; }
-  ${T} .dp-logotype { margin-bottom:6px; }
-  ${T} .of-title-more { margin-top:4px; }
-  ${DOOR_LI}.is-adventure { grid-row:1 !important; }
-  ${DOOR_LI}.is-swarm { grid-row:2 !important; }
-  ${SECOND_LI} { grid-column:1 / -1 !important; grid-row:auto !important; margin:0 !important; }
-  ${LI('settings')}, ${LI('help')}, ${LI('quit')} { grid-column:span 12 !important; grid-row:auto !important; }
-  ${T} .of-title-actions { align-content:start !important; }
-  ${LI('settings')}, ${LI('help')}, ${LI('quit')} { order:1; }
-  ${T} .of-title-actions { column-gap:10px !important; }
-  ${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 !important; }
-  ${MORE_LI_OPEN} { grid-column:span 12 !important; order:2; padding:0 !important; }
-  :is(${MORE_LI_OPEN}) .dp-lit__note { display:none !important; }
-  ${T} .of-title-more { order:3; }
+  ${T} .of-title-actions { position:relative !important; left:auto !important; bottom:auto !important; width:100% !important; margin:24px 0 0 !important; }
+  ${LIST} > li.of-title-door { flex:1 1 100% !important; }
+  ${DOOR} { height:auto !important; min-height:0 !important; padding:16px 20px !important; justify-content:flex-start !important; }
+  ${DOOR} > .of-door__kicker { display:none; }
+  ${T} { overflow-y:auto !important; overscroll-behavior:contain; }
+  ${T} > .dp-frame__body { overflow:visible !important; max-height:none !important; }
+  ${DOOR} > .of-door__line { min-height:0; }
+  ${T} > .dp-frame__foot { position:relative !important; left:auto !important; bottom:auto !important; margin:24px 0 0 !important; }
+  ${DOOR} > .of-door__go { margin-top:12px; }
+  ${ROW_LI} { flex:1 1 calc(50% - 6px) !important; }
+  ${ROW_BTN} { width:100% !important; min-height:44px !important; height:44px; }
+  ${ROW_LI}.of-title-row-item > button.of-door { width:100% !important; height:44px !important; }
 }
+@media (prefers-reduced-motion: reduce) {
+  ${DOOR}, ${DOOR} > *, ${ROW_BTN} { transition:none !important; }
+  ${DOOR}:is(:hover, :focus) > .of-door__art { transform:none; }
+}
+html.sf-reduce-motion ${DOOR}, html.sf-reduce-motion ${DOOR} > *, html.sf-reduce-motion ${ROW_BTN} { transition:none !important; }
+html.sf-reduce-motion ${DOOR}:is(:hover, :focus) > .of-door__art { transform:none; }
 `;
 
 export function injectTitleDoorsLayouts(doc = globalThis.document) {
   if (!doc || !doc.head || typeof doc.getElementById !== 'function' || typeof doc.createElement !== 'function') return;
   injectOrrery(doc);
-  if (doc.getElementById(STYLE_ID)) return;
+  const existing = doc.getElementById(STYLE_ID);
+  if (existing) { if (existing.textContent !== TITLE_DOORS_LAYOUT_CSS) existing.textContent = TITLE_DOORS_LAYOUT_CSS; return; }
   const style = doc.createElement('style');
   style.id = STYLE_ID;
   style.textContent = TITLE_DOORS_LAYOUT_CSS;
