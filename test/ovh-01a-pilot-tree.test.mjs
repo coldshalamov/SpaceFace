@@ -617,8 +617,10 @@ test('XP curve holds the 04 §3 checkpoints against the LIVE award sites', (t) =
   assert.ok(Math.abs(levelAt(3) - 6) <= 1, `~6 by round 3 (got ${levelAt(3)})`);
   assert.equal(levelAt(3), 6, 'pinned: level 6 at the end of round 3');
   assert.ok(Math.abs(levelAt(10) - 14) <= 1, `~14 by round 10 (got ${levelAt(10)})`);
-  assert.equal(levelAt(10), 14, 'pinned: level 14 at the end of round 10');
-  assert.equal(atRoundEnd(10), 2052, 'pinned live income through round 10');
+  assert.equal(levelAt(10), 13, 'pinned: level 13 at the end of round 10 — the approved round '
+    + 'budgets slow the kill income (approved round budgets in swarmCourseCast.js, director 2026-11-20)');
+  assert.equal(atRoundEnd(10), 1848, 'pinned live income through round 10 — approved round budgets '
+    + 'in swarmCourseCast.js (director 2026-11-20)');
 
   // Sanity for the curve function itself under the retuned constants.
   assert.equal(runLevelForXp(runXpForLevel(9)), 9);

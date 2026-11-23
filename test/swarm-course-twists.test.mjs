@@ -516,7 +516,8 @@ test('Everything Must Go: ninety seconds at half price on every till, chip on th
     // round's kill quota and reinforcement pressure double so twice the crowd owes and fields.
     const spawned = h.plan.schedule.reduce((sum, e) => sum + (e.count || 0), 0);
     assert.equal(spawned, 19, 'the authored opening stands inside the room\'s burst law');
-    assert.equal(h.plan.swarm.killTarget, 96, 'the round owes twice its authored kills');
+    assert.equal(h.plan.swarm.killTarget, 78, 'the round owes twice its authored kills'
+      + ' — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
     assert.equal(h.plan.swarm.pressureScale, 2, 'twice the crowd fields at once');
     h.tickN(2);
     // The twist asked, the floor owner answered: every pad re-priced at half.

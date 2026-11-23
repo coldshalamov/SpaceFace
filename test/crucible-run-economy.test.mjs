@@ -239,7 +239,7 @@ test('a new Easy Swarm can afford the named wall gun after three clean rounds on
   const [wallGun] = SWARM_FLOOR_PLANS[ARENA].wallGuns;
   assert.equal(wallGun.defId, 'wpn_pulse_laser_s');
   assert.equal(wallGun.wave, 2);
-  for (const [wave, cash, clearScrap] of [[1, 118, 38], [2, 289, 75], [3, 514, 113]]) {
+  for (const [wave, cash, clearScrap] of [[1, 118, 38], [2, 273, 75], [3, 490, 113]]) {
     state.run.wave = wave;
     const plan = planWave({ ...setup, arenaId: ARENA, wave });
     bus.emit('run:wavePlanned', { wave, plan });
@@ -248,7 +248,8 @@ test('a new Easy Swarm can afford the named wall gun after three clean rounds on
     assert.ok(state.run.credits < SWARM_FLOOR_WALL_GUN_PRICE);
     const clear = { wave, runWave: wave, completionKind: 'cohort', requested: count, admitted: count, killed: count, starved: false };
     bus.emit('run:waveCleared', clear);
-    assert.equal(state.run.credits, cash, `Round ${wave} pays the sweep plus its completion reward`);
+    assert.equal(state.run.credits, cash, `Round ${wave} pays the sweep plus its completion reward`
+      + ' — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
     assert.equal(bankableRunCredits(state.run), cash);
     const award = named(harness.emitted, 'run:awarded').at(-1).payload;
     assert.deepEqual([award.reason, award.credits, award.xp], ['wave_cleared', clearScrap, plan.rewards.xp]);

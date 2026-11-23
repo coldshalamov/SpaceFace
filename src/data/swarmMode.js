@@ -38,7 +38,7 @@ import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.
 import { ENEMY_TYPES } from './enemies.js';
 import { CAPITAL_BOSS_ENCOUNTERS } from './encounters/capital-boss.js';
 import { hunterTrickById } from './hunterTricks.js';
-import { swarmCastFor, swarmCastIdsFor } from './swarmCourseCast.js';
+import { swarmCastFor, swarmCastIdsFor, swarmRoundBudget } from './swarmCourseCast.js';
 
 export const SWARM_RULESET = 'swarm';
 export const SWARM_SCHEMA_VERSION = 2;
@@ -901,15 +901,23 @@ export const SWARM_OPENING_QUOTA = 15;
 /**
  * Course round 1 is "ten Wasps, one gate" (design/game/12): its quota IS the cast row's
  * body count, read from the table so the two cannot drift, and no stake or wager moves it.
- * 0 everywhere else — those rounds keep `swarmQuota`.
+ * 0 everywhere else — rounds 2-30 owe the approved round budgets (`swarmRoundBudget` in
+ * swarmCourseCast.js) and past the course `swarmQuota` keeps the endless ladder.
  */
 export function swarmCastQuota(wave, castRow) {
   return castRow && swarmWaveOf(wave) === 1 ? swarmOpeningCount(castRow.packages) : 0;
 }
 
-/** The ordinary course's base quota for a round: the cast's own count where it pins one. */
+/**
+ * The ordinary course's base quota for a round: round 1's cast count where the row pins one
+ * (it does — ten Wasps), else the director-approved round budget for rounds 2-30
+ * (swarmCourseCast.js, 2026-11-20), else the endless ladder's `swarmQuota` past the course.
+ */
 export function swarmCourseQuota(wave) {
-  return swarmCastQuota(wave, swarmCastFor(wave)) || swarmQuota(wave);
+  const castQuota = swarmCastQuota(wave, swarmCastFor(wave));
+  if (castQuota > 0) return castQuota;
+  const budget = swarmRoundBudget(swarmWaveOf(wave));
+  return budget > 0 ? budget : swarmQuota(wave);
 }
 
 /**
@@ -1714,7 +1722,10 @@ export function swarmPlanBlock(wave, bossOverride, castRow = undefined) {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
     // Finite pressure per round. Clearing the pack earns the shop; a timer cannot award it.
-    killTarget: swarmCastQuota(w, cast) || swarmQuota(w),
+    // DEMO-SWARM-BUDGET-1 — a course round owes the approved budgets: round 1 its cast count,
+    // rounds 2-30 the table. Cast-off paths (Circuit, heavies_only) pass cast === null and keep
+    // the ladder, and past 30 the endless ladder is unchanged.
+    killTarget: swarmCastQuota(w, cast) || (cast ? swarmRoundBudget(w) : 0) || swarmQuota(w),
     rewardReferenceKills: swarmQuota(w),
     durationTicks: SWARM_WAVE_DURATION_TICKS,
     concurrent: swarmConcurrent(w),

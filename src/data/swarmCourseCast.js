@@ -6,8 +6,8 @@
 //   round:  1  2  3  4  5B  6  7  8  9 10B 11 12 13 14 15B 16 17 18 19 20B 21 22 23 24 25B 26 27 28 29 30B
 //   bodies: 10 16 20 24 18 26 28 30 32 22  30 32 33 34 24  34 35 36 37 26  36 37 38 39 28  38 39 40 40 30
 //   total 912. No round adds more than +6 over the round before it (bosses excepted, which drop).
-//   The count reader today is swarmCourseQuota (src/data/swarmMode.js); the swarm lead switches it
-//   to this table once the casts sum to it.
+//   The count reader is swarmCourseQuota (src/data/swarmMode.js) — LIVE on this table since
+//   DEMO-SWARM-BUDGET-1: every course round owes exactly its budget below.
 
 // C01-04 — the course's cast table: who actually comes through the gates on each of the
 // Pit's thirty rounds. G08-02 gave every round a name and a twist line; this table is the
@@ -57,6 +57,21 @@
 import { SURVIVAL_GATE_GROUPS } from './survivalWaves.js';
 import { swarmCharacterFor } from './swarmCharacter.js';
 import { composeEncounter } from '../systems/encounterComposer.js';
+
+// The approved round budgets (header above) — bodies a course round owes, index 0 = round 1.
+// Frozen like every authored table; the swarm lead's count reader (swarmCourseQuota in
+// swarmMode.js) returns these for rounds 2-30 and the endless ladder answers past the course.
+export const SWARM_ROUND_BUDGET = Object.freeze([
+  10, 16, 20, 24, 18, 26, 28, 30, 32, 22,
+  30, 32, 33, 34, 24, 34, 35, 36, 37, 26,
+  36, 37, 38, 39, 28, 38, 39, 40, 40, 30,
+]);
+
+/** Bodies a course round owes under the approved budgets — rounds 1-30, else 0 (past the course). */
+export function swarmRoundBudget(wave) {
+  const w = Number.isInteger(wave) ? wave : 0;
+  return w >= 1 && w <= SWARM_ROUND_BUDGET.length ? SWARM_ROUND_BUDGET[w - 1] : 0;
+}
 
 function spec(entry) {
   return Object.freeze(entry);

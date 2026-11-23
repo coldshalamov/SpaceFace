@@ -241,29 +241,30 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   };
 
   const base = expectedAt(2);
-  // PIT-01 retuned the round quota to min(26 + 4w, 4 + 6w) under the same clamps, so the
-  // wave-2 ramp leg (16) sits under the concurrency floor (11 + 8 = 19): the base reads 19
-  // and every stake rides its own pressure leg off that figure.
-  assert.equal(base.killTarget, 19);
+  // DEMO-SWARM-BUDGET-1 — wave 2 owes its approved round budget (16) from
+  // swarmCourseCast.js (director 2026-11-20), and every stake rides its own pressure leg
+  // off that figure.
+  assert.equal(base.killTarget, 16,
+    'approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   assert.equal(base.concurrent, 11);
   let line = swarmNextLine(base);
   // Plain words (R18, design/overhaul/04_SWARM.md): 'up to 11 at once', not the planner's 'room cap 11'.
-  assert.match(line, /19 to clear, up to 11 at once/);
+  assert.match(line, /16 to clear, up to 11 at once/);
   assert.doesNotMatch(line, /11 in the room|admissions/i);
   // EC-Z01 — the next round's own question rides the forecast as its inbound line.
   assert.ok(line.endsWith(`· ${swarmCourseFor(2).question}`), line);
 
   run.telemetry.swarmStake = 'exhibition';
-  assert.equal(expectedAt(2).killTarget, 12);
+  assert.equal(expectedAt(2).killTarget, 10);
   run.telemetry.swarmStake = 'veteran';
-  assert.equal(expectedAt(2).killTarget, 22);
+  assert.equal(expectedAt(2).killTarget, 18);
   run.telemetry.swarmStake = 'ironbound';
-  assert.equal(expectedAt(2).killTarget, 25);
+  assert.equal(expectedAt(2).killTarget, 21);
 
   run.telemetry.swarmStake = 'contender';
   run.telemetry.threats = ['thick_pack'];
   const threatened = expectedAt(2);
-  assert.equal(threatened.killTarget, 26);
+  assert.equal(threatened.killTarget, 22);
   assert.equal(threatened.concurrent, 15);
 
   run.modifiers = [{ kind: 'weapon', offerId: 'throw', verb: 'Throw', defId: 'wpn_concussion_cannon_m', wave: 1 }];
@@ -333,7 +334,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     assert.deepEqual(run, beforeRefresh);
     assert.equal(armoryPreview.hidden, false);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
-    assert.match(armoryPreview.textContent, /19 to clear, up to 11 at once/);
+    assert.match(armoryPreview.textContent, /16 to clear, up to 11 at once/);
 
     // The planner runs only on a real shop refresh; periodic animation passes keep their early
     // return and therefore do not rebuild/consume a planner stream every frame.
@@ -347,7 +348,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     armory.screen.refresh(armory.ctx);
     refit.screen.refresh(refit.ctx);
     assert.deepEqual(run, beforeRefresh);
-    assert.match(armoryPreview.textContent, /12 to clear, up to 7 at once/);
+    assert.match(armoryPreview.textContent, /10 to clear, up to 7 at once/);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
     assert.equal(armory.ctx.state.rng.calls, 0);
     assert.equal(refit.ctx.state.rng.calls, 0);
@@ -651,7 +652,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.screen._note.textContent, 'Late fit receipt: Corsair mount is live.');
     assert.match(refit.screen._bankNote.textContent, /59 Scrap is safe even if you die\.\s*59 Scrap stays in your purse/);
-    assert.match(refit.screen._preview.textContent, /Round 11 .*27 to clear/);
+    assert.match(refit.screen._preview.textContent, /Round 11 .*20 to clear/);
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.bus.listenerCount('run:refitChanged'), 2);
     const reopenedRefitBase = refitRefreshes;
@@ -741,7 +742,7 @@ test('production domain wire, lane facade and result bridge repaint the merged s
     assert.equal(armory.screen._wallet.textContent, '214 Scrap to spend');
     assert.equal(armory.screen._note.textContent, mirroredDraft.notice);
     assert.equal(armory.screen._preview.textContent, swarmNextLine(swarmForecastForRun(mirroredRun, 2)));
-    assert.match(armory.screen._preview.textContent, /12 to clear/);
+    assert.match(armory.screen._preview.textContent, /10 to clear/);
   } finally {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
@@ -753,5 +754,5 @@ test('unavailable forecast inputs return no line rather than throwing or inventi
   assert.equal(swarmForecastForRun(null, 2), null);
   assert.equal(swarmForecastForRun(run, 0), null);
   assert.equal(swarmForecastForRun({ ...run, arenaId: 'not_a_real_arena' }, 2), null);
-  assert.equal(swarmForecastForRun({ ...run, modifiers: null, arenaMutators: null, telemetry: null }, 2)?.killTarget, 19);
+  assert.equal(swarmForecastForRun({ ...run, modifiers: null, arenaMutators: null, telemetry: null }, 2)?.killTarget, 16);
 });

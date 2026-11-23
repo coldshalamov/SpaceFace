@@ -27,6 +27,7 @@ import {
   isSwarmMassGapWave,
   pickSwarmArchetype,
   swarmConcurrent,
+  swarmCourseQuota,
   swarmQuota,
   swarmRosterFor,
 } from '../src/data/swarmMode.js';
@@ -106,9 +107,11 @@ test('quota, concurrency and hull are untouched — the shape changes, not the n
     assert.equal(plan.swarm.level, 1);
     assert.equal(plan.swarm.concurrent, swarmConcurrent(w), `wave ${w} concurrency must stay authored`);
     // 52a2ee3c4483: round 24's own twist doubles the bodies it sells — the authored
-    // course number, not mass-gap inflation.
-    const authored = w === 24 ? swarmQuota(w) * 2 : swarmQuota(w);
-    assert.equal(plan.swarm.killTarget, authored, `wave ${w} quota must stay authored`);
+    // course number, not mass-gap inflation. The course number is the approved round
+    // budget (swarmCourseCast.js, director 2026-11-20).
+    const authored = w === 24 ? swarmCourseQuota(w) * 2 : swarmCourseQuota(w);
+    assert.equal(plan.swarm.killTarget, authored, `wave ${w} quota must stay authored`
+      + ' — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   }
 });
 
