@@ -162,6 +162,9 @@ test('a contact leaving removes only its row; the row that replaces it is the on
 test('a contact arriving adds one row and leaves the surviving rows untouched', () => {
   const fx = mountHudFixture();
   try {
+    // The arrival is a hostile that hunts the player, which makes this a fight; 08 §4 keeps the
+    // list off in a fight unless the player pinned it, so the pilot here has pinned it.
+    fx.state.settings.ui.overviewOpen = true;
     fx.step(24);
     const before = rowsByName(fx);
 

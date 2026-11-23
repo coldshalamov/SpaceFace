@@ -2352,13 +2352,24 @@ export function createHud(ctx, alerts) {
   const commsTapeSlots = commsTape.querySelector('.sf-commtape__slots');
   // Order left-to-right inside the top-right utility row:
   // Field Build · Overhead · COMMS · HAIL · RADIO
+  // Class lookups ride live collections (an index into a list the DOM keeps current), so the
+  // once-a-second adoption pass never runs a selector scan.
+  const liveByClass = (cls) => {
+    let list = null;
+    return () => {
+      if (!list && typeof document.getElementsByClassName === 'function') list = document.getElementsByClassName(cls);
+      return list ? (list[0] || null) : (document.querySelector?.(`.${cls}`) || null);
+    };
+  };
+  const fieldBuildPill = liveByClass('fb-pill-btn');
+  const commBacklogBtn = liveByClass('sf-comm-backlog-btn');
   const UTILITY_ROW_SPECS = [
-    () => document.querySelector('.fb-pill-btn'),
+    () => fieldBuildPill(),
     () => {
       const rt = document.getElementById('race-tape');
       return rt && rt.dataset?.compact === 'true' ? rt : null;
     },
-    () => document.getElementById('sf-comm-backlog-btn') || document.querySelector('.sf-comm-backlog-btn'),
+    () => document.getElementById('sf-comm-backlog-btn') || commBacklogBtn(),
     () => document.getElementById('sf-contact-hail'),
     () => document.getElementById('sf-comm-trace-host'),
     () => {
@@ -5384,9 +5395,16 @@ export function createHud(ctx, alerts) {
   // (Adventure) instead of a document-wide querySelector on every frame.
   let contactCrunEl = null;
   let contactCrunQueriedAt = -Infinity;
+  // A live class collection: the DOM keeps it current, so a lookup is an index, never a
+  // selector scan (steady flight runs no querySelector at all).
+  let contactCrunList = null;
   function contactCrunElement() {
     if (typeof document === 'undefined') return null;
     if (contactCrunEl && contactCrunEl.isConnected) return contactCrunEl;
+    if (!contactCrunList && typeof document.getElementsByClassName === 'function') {
+      contactCrunList = document.getElementsByClassName('sf-crun');
+    }
+    if (contactCrunList) return (contactCrunEl = contactCrunList[0] || null);
     const now = performance.now();
     if (now - contactCrunQueriedAt < 250) return null;
     contactCrunQueriedAt = now;
@@ -6499,8 +6517,13 @@ export function createHud(ctx, alerts) {
     }
   }
 
+  let reticleLookedAt = -Infinity;
   function resolveReticle() {
-    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+    if (elReticle) return;
+    const now = performance.now();
+    if (now - reticleLookedAt < 1000) return;
+    reticleLookedAt = now;
+    elReticle = document.getElementById('aim-reticle');
   }
 
   function updateTargetArcs() {
@@ -7159,7 +7182,7 @@ export function createHud(ctx, alerts) {
       }
     }
 
-    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+    resolveReticle();
     const reticleInner = elReticle && (elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild));
     if (reticleInner) {
       setLagTranslate(reticleInner, opticalGLag.x, opticalGLag.y);
@@ -8000,9 +8023,14 @@ export function createHud(ctx, alerts) {
   // re-ask at most every 250 ms while absent, the same contract as contactCrunElement.
   let swarmColumnEl = null;
   let swarmColQueriedAt = -Infinity;
+  let swarmColumnList = null;
   function swarmColumnElement() {
     if (typeof document === 'undefined') return null;
     if (swarmColumnEl && swarmColumnEl.isConnected) return swarmColumnEl;
+    if (!swarmColumnList && typeof document.getElementsByClassName === 'function') {
+      swarmColumnList = document.getElementsByClassName('sf-sj__col');
+    }
+    if (swarmColumnList) return (swarmColumnEl = swarmColumnList[0] || null);
     const now = performance.now();
     if (now - swarmColQueriedAt < 250) return null;
     swarmColQueriedAt = now;
@@ -8952,11 +8980,16 @@ export function createHud(ctx, alerts) {
   // (one document-wide) on every frame; a live cached element is reused while it still is one.
   let dockAlertCache = null;
   let dockAlertQueriedAt = -Infinity;
+  let dockAlertList = null;
   function findDockAlert() {
     const cached = dockAlertCache;
     if (cached && cached.isConnected && cached.classList?.contains('sf-alert--dock')) return cached;
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
     if (alertsEl && (alertsEl.childElementCount ?? alertsEl.children?.length ?? 1) === 0) return null;
+    if (alertsEl && !dockAlertList && typeof alertsEl.getElementsByClassName === 'function') {
+      dockAlertList = alertsEl.getElementsByClassName('sf-alert--dock');
+    }
+    if (dockAlertList) return (dockAlertCache = dockAlertList[0] || null);
     const now = performance.now();
     if (now - dockAlertQueriedAt < 500) return null;
     dockAlertQueriedAt = now;
