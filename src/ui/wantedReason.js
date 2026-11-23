@@ -5,7 +5,7 @@
 // established. Pure and DOM-free so the no-false-witness rule is unit-testable:
 // suspicion without a receipt yields no reason, and a record carrying neither
 // witnesses nor a jurisdiction renders the kind alone — never an invented witness.
-import { heatClearSecondsForLevel, heatLevelFor, wantedTierInfo } from '../systems/heat.js';
+import { heatClearSecondsForLevel, heatLevelFor } from '../systems/heat.js';
 import { SECTORS } from '../data/sectors.js';
 
 export const WANTED_KIND_LABELS = Object.freeze({
@@ -64,12 +64,24 @@ export function wantedClearClause(value) {
   return ` · clears in ${Math.ceil(clearS)}s`;
 }
 
+/** The flight alert's short why: the convicting incident's kind alone (' · CARGO THEFT'), or ''.
+ *  The full trace (party, witnesses, jurisdiction) belongs to the screens that have room for it. */
+export function wantedKindText(packet, player) {
+  let inc = null;
+  if (packet && typeof packet === 'object' && Object.prototype.hasOwnProperty.call(packet, 'incident')) {
+    inc = packet.incident;
+  } else if (player && typeof player === 'object') {
+    inc = player.heatLastIncident || null;
+  }
+  if (!inc || typeof inc !== 'object' || !inc.incidentReceiptId) return '';
+  const kind = WANTED_KIND_LABELS[inc.kind];
+  return kind ? ' · ' + kind : '';
+}
+
+/** The flight HUD's WANTED line: a voice, so eight words at most (R18) — what, why, how long. */
 export function wantedAlertText(value, reason, refresh) {
   const why = reason || '';
   const clear = wantedClearClause(value);
-  if (refresh) {
-    const tier = wantedTierInfo(value).label;
-    return 'WANTED (' + tier + ') · HUNTERS INBOUND' + clear + why;
-  }
-  return 'WANTED · LAW ENFORCEMENT ACTIVE' + clear + why;
+  if (refresh) return 'WANTED · HUNTERS INBOUND' + why + clear;
+  return 'WANTED' + why + clear;
 }

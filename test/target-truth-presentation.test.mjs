@@ -54,7 +54,7 @@ test('selected A, hostile B on the line: contour keeps A, the panel row names B,
   const read = engagedContactReadout(state);
   assert.equal(read.subjectId, 2);
   assert.equal(read.engaged.id, 5);
-  assert.match(read.text, /LINE TARGET/);
+  assert.match(read.text, /GUNS ON/, 'the row says in plain words where the Line has put the guns');
   assert.equal(truth.leadTargetId, 5);
   // the pip must be the SAME constrained solve the fire path and the assist use
   const player = state.entities.get(1);
@@ -81,7 +81,7 @@ test('no selection and a hostile on the line: the contour and panel subject the 
   const read = engagedContactReadout(state);
   assert.equal(read.subjectIsEngaged, true);
   assert.equal(read.subjectId, 5);
-  assert.match(read.text, /NO SELECTION/);
+  assert.match(read.text, /GUNS ON THIS SHIP/, 'with nothing selected the card names its own hull as where the guns fire');
 });
 
 test('no divergence prints nothing: the guns agree with the selection', () => {

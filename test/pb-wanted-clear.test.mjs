@@ -17,8 +17,10 @@ test('seed 4242 the wanted alert names the clear time', () => {
   assert.ok(seconds > 0);
   const first = wantedAlertText(heat, '', false);
   const refresh = wantedAlertText(heat, ' · KILL', true);
-  assert.equal(first, `WANTED · LAW ENFORCEMENT ACTIVE · clears in ${seconds}s`);
-  assert.equal(refresh, `WANTED (fine/scan) · HUNTERS INBOUND · clears in ${seconds}s · KILL`);
+  // R18: the flight line is a voice: what, why, how long, eight words at most, no tier jargon.
+  assert.equal(first, `WANTED · clears in ${seconds}s`);
+  assert.equal(refresh, `WANTED · HUNTERS INBOUND · KILL · clears in ${seconds}s`);
+  for (const line of [first, refresh]) assert.ok(line.split(/\s+/).filter((w) => w !== '·').length <= 8, line);
   assert.equal(wantedAlertText(0, '', false).includes('clears in'), false);
   const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   assert.match(hud, /wantedAlertText\(v, reason, false\)/);

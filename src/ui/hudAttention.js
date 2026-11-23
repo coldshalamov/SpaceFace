@@ -144,6 +144,7 @@ export const VITAL_NUMERIC_LOW = 0.5;
 export const SHIP_GLYPH_BOX = Object.freeze({ width: 62, height: 74 });
 
 const TARGET_RECEIPT = /^\s*target\s*:/i;
+const LINE_CONTROL_DENIAL = /^\s*line (reel-in|pay-out) blocked:\s*(minimum|maximum) line length reached/i;
 const CONTROL_LAUNDRY = /\s+•\s+/;
 const BIND_WALL = /\b(thrusts?|steer|mouse aims|lmb fire|left stick flies)\b/i;
 const COMBAT_KEEP = /\b(cr|credit|cargo|rep|save|saved|cannot|insufficient|no wingmen|wanted)\b/i;
@@ -235,6 +236,11 @@ export function admitReceipt({
     }
   }
   if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
+  // The rope never refuses on the glass (08 §4): a winch at its end stop shows itself in the
+  // cable and the reel's sound. "Line reel-in blocked: minimum line length reached" every time a
+  // player holds the reel to the stop was a developer readout, not a receipt. A dead spool or a
+  // lost attachment still speaks: those are news.
+  if (LINE_CONTROL_DENIAL.test(line)) return { admit: false, reason: 'line-control' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
   if (channel === 'bark' || channel === 'chatter' || channel === 'news') {
     return { admit: false, reason: 'chatter' };

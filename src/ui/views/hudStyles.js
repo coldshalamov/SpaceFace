@@ -3327,8 +3327,10 @@ export const HUD_CSS = `
     #sf-floorpads .sf-fp--ambient,
     #sf-contact-hail
   ) { display:none !important; }
+  /* The cap is for the cards, not the lane: #alerts is itself a child of the Stage banner
+     (stage.js), and capping it pinned a 460 px lane to the left edge, over the objective card. */
   @media (min-width:1100px) {
-    #alerts > *, #sf-stage-banner > * { max-width:min(460px, calc(100vw - 680px)); }
+    #alerts > *, #sf-stage-banner > :not(#alerts) { max-width:min(460px, calc(100vw - 680px)); }
   }
 
   /* --- forced colours across the new marks: the system palette owns them, structure survives --- */

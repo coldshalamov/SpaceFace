@@ -470,20 +470,48 @@ let alertsHostEl = null;
 let floorpadsHostEl = null;
 let promptDockEl = null;
 let promptPadEl = null;
+// Live class lists on the two mounts (the browser keeps them current): while no dock alert or pad
+// quote is up, the gate reads a length instead of running a selector every preview tick.
+let dockAlertList = null;
+let floorPadList = null;
+
+function firstDockAlert(host) {
+  if (!host) return null;
+  if (typeof host.getElementsByClassName !== 'function') return host.querySelector?.('.sf-alert--dock') || null;
+  if (!dockAlertList) dockAlertList = host.getElementsByClassName('sf-alert--dock');
+  return dockAlertList.length ? dockAlertList[0] : null;
+}
+
+function firstQuotedPad(host) {
+  if (!host) return null;
+  if (typeof host.getElementsByClassName !== 'function') return host.querySelector?.('.sf-fp[data-floor-quote]') || null;
+  if (!floorPadList) floorPadList = host.getElementsByClassName('sf-fp');
+  for (let i = 0; i < floorPadList.length; i += 1) {
+    const pad = floorPadList[i];
+    if (pad.hasAttribute?.('data-floor-quote')) return pad;
+  }
+  return null;
+}
 
 /** Shared world-prompt priority gate (HUD-2 Item 7): Dock > Floor-shop pad > Line latch.
  *  Never show two world prompts on screen at the same time. */
 function higherWorldPromptActive() {
   if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return false;
   if (!(promptDockEl && promptDockEl.isConnected && promptDockEl.classList?.contains('sf-alert--dock'))) {
-    if (!alertsHostEl || !alertsHostEl.isConnected) alertsHostEl = document.getElementById('alerts') || null;
-    promptDockEl = alertsHostEl?.querySelector?.('.sf-alert--dock') || null;
+    if (!alertsHostEl || !alertsHostEl.isConnected) {
+      alertsHostEl = document.getElementById('alerts') || null;
+      dockAlertList = null;
+    }
+    promptDockEl = firstDockAlert(alertsHostEl);
   }
   const dock = promptDockEl;
   if (dock && !dock.hidden && dock.style?.display !== 'none') return true;
   if (!(promptPadEl && promptPadEl.isConnected && promptPadEl.hasAttribute?.('data-floor-quote'))) {
-    if (!floorpadsHostEl || !floorpadsHostEl.isConnected) floorpadsHostEl = document.getElementById('sf-floorpads') || null;
-    promptPadEl = floorpadsHostEl?.querySelector?.('.sf-fp[data-floor-quote]') || null;
+    if (!floorpadsHostEl || !floorpadsHostEl.isConnected) {
+      floorpadsHostEl = document.getElementById('sf-floorpads') || null;
+      floorPadList = null;
+    }
+    promptPadEl = firstQuotedPad(floorpadsHostEl);
   }
   const pad = promptPadEl;
   if (pad && !pad.hidden && pad.style?.display !== 'none' && !pad.classList?.contains?.('sf-fp--far')) {

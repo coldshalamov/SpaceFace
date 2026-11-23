@@ -526,8 +526,9 @@ export function engagedContactReadout(state) {
   const subject = liveSelection || (subjectIsEngaged ? engaged : null);
   const subjectId = subjectIsEngaged ? gunId : selId;
   let text = '';
-  if (subjectIsEngaged) text = '⌖ LINE TARGET · NO SELECTION';
-  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged, { state })}`;
+  // Plain words: the Line has the guns, so the row names where they fire.
+  if (subjectIsEngaged) text = '⌖ GUNS ON THIS SHIP';
+  else if (engaged && liveSelection) text = `⌖ GUNS ON ${targetDisplayName(engaged, { state })}`;
   return { subjectId, subject, engaged, subjectIsEngaged, text };
 }
 
@@ -1380,12 +1381,17 @@ export function createTargetPanel(ctx) {
       // not a word. Styling on [data-tier="high"] would have been dead CSS that looked correct.
       const tierNum = intel ? (intel.threatTier | 0) : 0;
       const tier = tierNum > 0 ? String(tierNum) : '';
-      const threatKey = tier + '|' + (intel ? intel.threatPips : '');
+      // The pips always carry the tier; the word drops when the name line already says it
+      // ('Raider · Light ship' over a LIGHT badge read the same word twice).
+      const tierWord = THREAT_TIER_WORD[tierNum] || 'THREAT';
+      const classSaysTier = !!(nextClass && tierNum > 0
+        && String(nextClass).toLowerCase().includes(tierWord.toLowerCase()));
+      const threatKey = tier + '|' + (intel ? intel.threatPips : '') + '|' + (classSaysTier ? 1 : 0);
       if (threatKey !== lastThreatKey) {
         lastThreatKey = threatKey;
         if (intel && tier) {
           setText(elThreatPips, String(intel.threatPips || ''));
-          setText(elThreatWord, THREAT_TIER_WORD[tierNum] || 'THREAT');
+          setText(elThreatWord, classSaysTier ? '' : tierWord);
           if (elThreat.dataset.tier !== tier) elThreat.dataset.tier = tier;
           if (elThreat.hidden) elThreat.hidden = false;
         } else if (!elThreat.hidden) {

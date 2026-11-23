@@ -30,7 +30,7 @@ import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg, hasGlyph } from './glyphs.js';
 import { itemThumbHtml, injectItemThumbnailStyles } from './icons/itemThumbnails.js';
-import { wantedAlertText, wantedReasonText } from './wantedReason.js';
+import { wantedAlertText, wantedKindText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { reservedCargoQty, salvageBayReading, sellableCargoQty, unitsPerSlotFor } from '../systems/cargo.js';
 import { freeSlotCount, packItemsIntoSlots } from '../data/cargoSlots.js';
@@ -1442,8 +1442,8 @@ const DOCTRINE_TELL_BY_ID = Object.freeze({
 const DOCTRINE_TELL_HINT = Object.freeze({
   FLYBY: 'Break the beam',
   TETHER: 'Deny the latch',
-  CHARGE: 'Close or break LOS',
-  LAUNCH: 'Mass inbound — move',
+  CHARGE: 'Close in or get behind cover',
+  LAUNCH: 'Something heavy incoming — move',
   INCOMING: 'Sidestep or send it back',
   CALL: 'Kill the caller first',
   MINES: 'Keep one flank clear',
@@ -1451,14 +1451,14 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   GHOST: 'It relocates after the shot',
   FUSE: 'It goes off where it dies',
   // CW-TELLS: the words name the player's decision, matching each cue's authored fiction.
-  BROADSIDE: 'The side is the gun — circle bow or stern',
-  VENT: 'It is venting its brood — clear the lane',
+  BROADSIDE: 'Its side is the gun — circle away',
+  VENT: 'Brood incoming — clear the lane',
   FINAL: 'It spends everything it has left',
   CURTAIN: 'Point-defense up — hold missiles',
   FURNACE: 'Cross its nose — the furnace is charging',
-  IRIS: 'The iris is the gun — the lights only drift',
+  IRIS: 'The iris is the gun, not the lights',
   STALK: 'It presses, then calls the pack',
-  SCAN: 'A sweep is on you — answer clean or break',
+  SCAN: 'You are being scanned — comply or run',
   RETURN: 'It will return your fire — keep moving',
   SEAL: 'Lane closed for audit — tear the emitters',
   // CW-TELLS (INV-21 item 5): the Enemy Mind's decisions, same chip family.
@@ -1513,6 +1513,10 @@ const TELL_WARNING_KINDS = new Set([
   'TETHER', 'LAUNCH', 'CURTAIN', 'STALK', 'SCAN', 'SEAL', 'BAIT', 'COVER', 'PEEL',
 ]);
 function tellGlyphName(tellId) {
+  // Every tell is a warning about to happen, so every chip carries the drawn triangle; the family
+  // is the mark's colour (red danger, amber caution — see .sf-tell__icon). The palette's danger
+  // mark has no drawn path and its stand-in is an X, which a stranger reads as a close button.
+  if (hasGlyph('warn')) return 'warn';
   const paletteState = TELL_WARNING_KINDS.has(tellId) ? 'warning' : 'danger';
   const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
   const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
@@ -3276,7 +3280,7 @@ export function createHud(ctx, alerts) {
   // Packet 02 target truth. ONE projection (src/combat/targetTruth.js) says what is selected and
   // what the guns will actually address; the bracket, the pip and this tag all read it. When the
   // Massline owns the guns the effective hull can differ from the selection, and a confident
-  // bracket or pip on the selected hull would lie — so that hull wears a small LINE TARGET tag
+  // bracket or pip on the selected hull would lie — so that hull wears a small GUNS tag
   // (shape + words, never colour alone) and the lead pip rides it with the tether-constrained solve.
   const targetTruth = createTargetTruth();
   const lineTargetTag = document.createElement('div');
@@ -3285,9 +3289,30 @@ export function createHud(ctx, alerts) {
   lineTargetTag.innerHTML =
     '<svg class="sf-aimtag__mark" viewBox="0 0 16 10" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
     '<path d="M0 5H9.5"/><path d="M9.5 5 12.5 2 15.5 5 12.5 8Z"/></svg>' +
-    '<span class="sf-aimtag__text">LINE TARGET</span>';
+    '<span class="sf-aimtag__text">GUNS</span>';
   root.appendChild(lineTargetTag);
   const lineTargetText = lineTargetTag.querySelector('.sf-aimtag__text');
+  // A world tag's box, estimated from its words (no layout read): the mark, the gap and the
+  // tracked capitals of the data face. Clear means inside the screen's safe margin and off every
+  // HUD panel a world label must not sit in (the shared cached avoid snapshot: read after the
+  // frame's own layout, re-read on resize and HUD invalidation, never per frame).
+  const WORLD_TAG_PAD_PX = 26;
+  const WORLD_TAG_CHAR_PX = 8;
+  const WORLD_TAG_H_PX = 18;
+  const WORLD_TAG_MARGIN_PX = 12;
+  const worldTagAvoid = createAvoidRects(document);
+  function worldTagClear(left, top, w, h) {
+    const vw = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const vh = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    if (left < WORLD_TAG_MARGIN_PX || top < WORLD_TAG_MARGIN_PX
+      || left + w > vw - WORLD_TAG_MARGIN_PX || top + h > vh - WORLD_TAG_MARGIN_PX) return false;
+    const rects = worldTagAvoid.get();
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (left < r.x + r.w + 4 && left + w > r.x - 4 && top < r.y + r.h + 4 && top + h > r.y - 4) return false;
+    }
+    return true;
+  }
   let gunLineBlocked = false; // refreshed on the overlay cadence (a line-of-sight query per 30 Hz tick)
   // Minimal contact marks (packet 02): a living contact whose hull is too small on screen to read as
   // a ship by silhouette gets one restrained mark in the radar's own IFF shapes — triangle
@@ -3498,7 +3523,13 @@ export function createHud(ctx, alerts) {
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
     .sf-tell.is-compact :is(.sf-tell__icon, .sf-tell__hint, .sf-tell__dir) { display:none; }
-    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
+    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center;
+      color:var(--k-red); }
+    .sf-tell--TETHER .sf-tell__icon, .sf-tell--LAUNCH .sf-tell__icon,
+    .sf-tell--CURTAIN .sf-tell__icon, .sf-tell--STALK .sf-tell__icon,
+    .sf-tell--SCAN .sf-tell__icon, .sf-tell--SEAL .sf-tell__icon,
+    .sf-tell--BAIT .sf-tell__icon, .sf-tell--COVER .sf-tell__icon,
+    .sf-tell--PEEL .sf-tell__icon { color:var(--k-signal); }
     .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
     .sf-tell--TETHER .sf-tell__kind, .sf-tell--LAUNCH .sf-tell__kind,
@@ -5343,7 +5374,7 @@ export function createHud(ctx, alerts) {
     on('heat:changed', (p) => {
       const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
       const wanted = v >= 0.15;
-      const reason = wantedReasonText(p, state.player);
+      const reason = wantedKindText(p, state.player);
       if (wanted && !wantedActive) {
         alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
         wantedActive = true;
@@ -5457,7 +5488,7 @@ export function createHud(ctx, alerts) {
     let used = 0;
     for (let i = 0; i < n && used < CONTACT_MARK_POOL; i++) {
       const e = contactMarkNear[i].e;
-      // the hull the guns address already wears the lead pip / LINE TARGET tag: no second mark
+      // the hull the guns address already wears the lead pip / GUNS tag: no second mark
       if (effectiveId != null && e.id === effectiveId) continue;
       const anchor = presentedEntityAnchor(e);
       if (!anchor) continue;
@@ -5807,9 +5838,12 @@ export function createHud(ctx, alerts) {
     if (overlayTick) gunLineBlocked = !!(leadEnt && leadEnt.alive && gunLineDenial(state, p, leadEnt));
     if (!leadEnt) gunLineBlocked = false;
     setAttr(leadPip, 'data-denial', gunLineBlocked ? 'blocked' : 'none');
-    setText(lineTargetText, gunLineBlocked ? 'LINE TARGET · BLOCKED' : 'LINE TARGET');
-    // LINE TARGET: shown only when the guns address a hull that is NOT the selection, so the
-    // player is never left reading a confident mark on the wrong ship.
+    const lineTagWords = gunLineBlocked ? 'GUNS BLOCKED' : 'GUNS';
+    setText(lineTargetText, lineTagWords);
+    // The GUNS tag: shown only when the guns address a hull that is NOT the selection (the Line
+    // has claimed them), so the player is never left reading a confident mark on the wrong ship.
+    // It sits under the hull, else over it, and never on an instrument: with neither side clear
+    // it drops its words and the lead pip alone rides the hull.
     let tagShown = false;
     if (truth.divergent && truth.reason === TARGET_REASON.LINE_TARGET && helpers.worldToScreen) {
       const effId = truth.effectiveGunTargetId;
@@ -5819,11 +5853,20 @@ export function createHud(ctx, alerts) {
         const effProj = projectTargetCenter(effAnchor);
         if (effProj.onScreen) {
           const effX = effProj.x;
-          const effY = effProj.y + Math.max(16, targetPixelRadius(effAnchor, Number(effEnt.radius) || 8, effProj)) + 8;
-          stampMarkLive(lineTargetTag);
-          setClass(lineTargetTag, 'visible', true);
-          setHudScreenTransform(lineTargetTag, effX, effY, { offset: 'translate(-50%,0)' });
-          tagShown = true;
+          const hullPx = Math.max(16, targetPixelRadius(effAnchor, Number(effEnt.radius) || 8, effProj)) + 8;
+          const tagW = WORLD_TAG_PAD_PX + lineTagWords.length * WORLD_TAG_CHAR_PX;
+          const below = effProj.y + hullPx;
+          const above = effProj.y - hullPx - WORLD_TAG_H_PX;
+          const effY = worldTagClear(effX - tagW / 2, below, tagW, WORLD_TAG_H_PX) ? below
+            : (worldTagClear(effX - tagW / 2, above, tagW, WORLD_TAG_H_PX) ? above : null);
+          if (effY !== null) {
+            stampMarkLive(lineTargetTag);
+            setClass(lineTargetTag, 'visible', true);
+            setHudScreenTransform(lineTargetTag, effX, effY, { offset: 'translate(-50%,0)' });
+            tagShown = true;
+          } else {
+            lineTargetTag._sfOkAt = 0;
+          }
         }
       }
     }
@@ -7974,10 +8017,47 @@ export function createHud(ctx, alerts) {
       for (const entry of bySel.values()) entry.stale = true;
     }
   }
+  // A one-class selector rides the browser's live class list instead: no selector run at all,
+  // and an absent panel that mounts later is simply there on the next read.
+  // A comma list of bare classes ('.sf-vitals, .sf-status') is the union of those live lists.
+  const KEPT_CLASS_LIST = /^\s*\.[A-Za-z0-9_-]+(\s*,\s*\.[A-Za-z0-9_-]+)*\s*$/;
+  function keptLiveClassList(scope, bySel, selector) {
+    let entry = bySel.get(selector);
+    if (!entry || !entry.lives) {
+      const lives = selector.split(',').map((part) => scope.getElementsByClassName(part.trim().slice(1)));
+      entry = { lives, raw: [], els: KEPT_EMPTY, stale: true, at: 0 };
+      bySel.set(selector, entry);
+    }
+    const lives = entry.lives;
+    const raw = entry.raw;
+    let same = !entry.stale;
+    let n = 0;
+    for (let l = 0; same && l < lives.length; l++) {
+      const live = lives[l];
+      for (let i = 0; same && i < live.length; i++, n++) if (live[i] !== raw[n]) same = false;
+    }
+    if (same && n !== raw.length) same = false;
+    if (!same) {
+      raw.length = 0;
+      const els = [];
+      for (const live of lives) {
+        for (let i = 0; i < live.length; i++) {
+          raw.push(live[i]);
+          if (!els.includes(live[i])) els.push(live[i]);
+        }
+      }
+      entry.els = els.length ? els : KEPT_EMPTY;
+      entry.stale = false;
+    }
+    return entry.els;
+  }
   function keptQueryList(scope, selector) {
     if (!scope || typeof scope.querySelectorAll !== 'function') return KEPT_EMPTY;
     let bySel = keptQueryScopes.get(scope);
     if (!bySel) keptQueryScopes.set(scope, bySel = new Map());
+    if (typeof scope.getElementsByClassName === 'function' && KEPT_CLASS_LIST.test(selector)) {
+      return keptLiveClassList(scope, bySel, selector);
+    }
     const entry = bySel.get(selector);
     const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
       ? performance.now() : Date.now();
@@ -7998,14 +8078,22 @@ export function createHud(ctx, alerts) {
 
   // Lane children are walked live rather than kept: membership changes every placement pass
   // and the walk itself is the cheap part (no selector matching).
-  function liveLaneChildren(host, cls, rejectCls) {
-    const out = [];
+  // Cards shown through the Stage door sit one level down, in the slot's .sf-stage__flow column
+  // inside the lane (stage.js flowFor): #toasts > .sf-stage__flow > .sf-toast. A walk of the
+  // lane's own children alone found no receipts in the live game, so the solver never seated
+  // the lane and its default spot printed the cards over the instrument cluster.
+  function liveLaneChildren(host, cls, rejectCls, out = [], depth = 0) {
     const kids = host && host.children;
     if (kids) {
       for (let i = 0; i < kids.length; i++) {
         const el = kids[i];
-        if (el.classList && el.classList.contains(cls)
-            && !(rejectCls && el.classList.contains(rejectCls))) out.push(el);
+        const list = el.classList;
+        if (!list) continue;
+        if (list.contains(cls)) {
+          if (!(rejectCls && list.contains(rejectCls))) out.push(el);
+        } else if (depth === 0 && list.contains('sf-stage__flow')) {
+          liveLaneChildren(el, cls, rejectCls, out, 1);
+        }
       }
     }
     return out;
