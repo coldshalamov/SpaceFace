@@ -30,6 +30,7 @@ export function createAuthoritativeStepper({
   core,
   postInputPartitions,
   getSystem = null,
+  bus = null,
 }) {
   const byName = typeof getSystem === 'function' ? getSystem : () => null;
   // E2: the permanent per-system profiler. `active` is false by default, so the production
@@ -54,6 +55,12 @@ export function createAuthoritativeStepper({
     keepalive,
 
     step(dt, tickBoundary = null) {
+      // Open the spawn-batch window for the whole step: this stepper does not call
+      // bus.beginStep (registry-only hook), so entity:spawned receipts emit inside
+      // the step would otherwise batch per-emit. The close lands in finally, after
+      // lifetimeSweep — the same tail position registry's endStep dispatches it.
+      if (bus && typeof bus.beginSpawnedBatchWindow === 'function') bus.beginSpawnedBatchWindow();
+      try {
       if (shouldSkipFullTickSystems(state)) {
         try {
           keepalive(dt);
@@ -123,6 +130,9 @@ export function createAuthoritativeStepper({
       // Between steps (RPCs, saves, a sector materialising) the resolve cache starts a fresh
       // epoch, so an edit made there is checked in full on its first read.
       advanceCollisionProxyResolveEpoch();
+      } finally {
+        if (bus && typeof bus.endSpawnedBatchWindow === 'function') bus.endSpawnedBatchWindow();
+      }
     },
 
     /** Manifest ids that this stepper can step — used by lane probes. */

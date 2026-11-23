@@ -405,7 +405,10 @@ export function createTallyho() {
       // simTime, so a sparse beat still settles the honest outcome; a real
       // update() stamps the watermark fresh each step and the pump yields to
       // it, so the lanes never double-step.
-      on('entity:spawned', () => this._pump());
+      // The pump is a clock-gap fill, not per-entity work — every verdict reads
+      // simTime and pumpMinS gates repeats inside a step, so the coalesced batch
+      // runs the same settlement a per-entity pump would, once.
+      on('entity:spawnedBatch', () => this._pump());
       this._sync();
     },
     destroy() {

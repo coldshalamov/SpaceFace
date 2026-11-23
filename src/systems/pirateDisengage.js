@@ -66,7 +66,9 @@ export const pirateDisengage = {
     this._subs = [];
     this._combatantsQuiet = null;
     this._combatantWakeSeq = 0;
-    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Combatant arrivals only trip the quiet-latch wake — aggregate bookkeeping
+    // that scans the coalesced batch once instead of paying a dispatch per spawn.
+    this._listen('entity:spawnedBatch', (p) => this._onEntitySpawnedBatch(p));
     // Boundary wakes: newGame() is not dispatched on the live route (this system is
     // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
     // A parley resolution can stamp forcePlayerTarget without a spawn — wake there too.
@@ -88,11 +90,15 @@ export const pirateDisengage = {
     this._combatantsQuiet = null;
   },
 
-  _onEntitySpawned(payload) {
-    const entity = payload && payload.entity;
-    if (!entity || !this.state) return;
-    if (!isActiveCombatant(entity, this.state)) return;
-    this.noteCombatantWake();
+  _onEntitySpawnedBatch(payload) {
+    if (!this.state) return;
+    const receipts = payload && payload.receipts;
+    if (!Array.isArray(receipts)) return;
+    const entities = this.state.entities;
+    for (const receipt of receipts) {
+      const entity = receipt && (receipt.entity || (entities && entities.get && entities.get(receipt.id)));
+      if (entity && isActiveCombatant(entity, this.state)) { this.noteCombatantWake(); return; }
+    }
   },
 
   _listen(evt, fn) {

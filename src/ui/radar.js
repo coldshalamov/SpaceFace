@@ -2155,7 +2155,9 @@ export function createRadar(ctx) {
 
   if (bus && typeof bus.on === 'function') {
     for (const [event, handler] of [
-      ['entity:spawned', markContactsDirty],
+      // Contact bookkeeping is aggregate: the dirty flag re-scans the live map,
+      // so the coalesced batch covers a materialization burst in one dispatch.
+      ['entity:spawnedBatch', markContactsDirty],
       ['entity:destroyed', markContactsDirty],
       ['game:started', markContactsDirty],
       ['save:loaded', markContactsDirty],

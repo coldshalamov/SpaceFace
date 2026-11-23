@@ -23,6 +23,18 @@ export const SECTOR_ENTER_DRAIN_BUDGET = 4;
 // slot release, generation checks — keep the per-entity 'entity:destroyed' receipts, which
 // are unchanged in order, count and timing.
 export const ENTITY_DESTROYED_BATCH_EVENT = 'entity:destroyedBatch';
+// The spawn-side twin. entity:spawned is synchronous (never queued), so receipts cannot
+// collect inside flush(): they accumulate while a collection window is open — the sim-step
+// window (beginStep→endStep, also opened by whole-sim steppers), a worker-reply replay
+// window, or an explicit beginSpawnedBatchWindow/endSpawnedBatchWindow pair — and ONE
+// 'entity:spawnedBatch' carrying { receipts, count } dispatches when the outermost window
+// closes, after every individual 'entity:spawned' delivery inside it. An emit outside any
+// window keeps the uniform contract: individual dispatch, then a one-receipt batch.
+// Latest-wins dedupe: a receipt whose id is destroyed inside the same window drops out
+// (the corpse arrives in destroyedBatch instead), and a re-spawned id keeps only its
+// newest receipt — batch consumers read the live map and see the end-of-window state.
+export const ENTITY_SPAWNED_EVENT = 'entity:spawned';
+export const ENTITY_SPAWNED_BATCH_EVENT = 'entity:spawnedBatch';
 // Presentation-tier listeners (bus.on(event, fn, { presentation: true })): burst events like
 // entity:killed / entity:destroyed fan out to ~dozen presentation-pure tails that used to run
 // inside the emit — mid-tick for synchronous events, inside the flush task for queued ones.
@@ -416,6 +428,72 @@ export function createBus() {
   let stepDeferredPlayerId = null;
   const stepDeferredQueue = [];
 
+  // entity:spawnedBatch collection state. Depth > 0 means a step window, a
+  // worker-reply replay window, or an explicit pair is collecting receipts;
+  // the batch dispatches when the outermost window closes. Receipts keyed by
+  // id give latest-wins dedupe for free: a same-window re-spawn of an id moves
+  // to the newest position, and a same-window destroy deletes the row.
+  let spawnBatchDepth = 0;
+  const spawnedReceiptsById = new Map(); // id -> payload (latest wins, insertion-ordered)
+  let spawnedReceiptsNoId = [];          // payloads without an id field (defensive)
+  let spawnReceiptReleaser = null;       // pooled-payload owner callback, captured at collect
+
+  function collectSpawnReceipt(payload) {
+    // The releaser is re-read per receipt like the destroyed path re-reads it
+    // per emit: an owner may register between windows and every collected
+    // payload is released under the newest registered lease.
+    spawnReceiptReleaser = payloadReleasers.get(ENTITY_SPAWNED_EVENT) || null;
+    const id = payload && payload.id;
+    if (id == null) { spawnedReceiptsNoId.push(payload); return; }
+    // Latest position wins for a recycled id: delete+set moves the row to the
+    // newest slot so the batch order mirrors the newest delivery order.
+    if (spawnedReceiptsById.has(id)) spawnedReceiptsById.delete(id);
+    spawnedReceiptsById.set(id, payload);
+  }
+
+  function noteWindowEntityDestroyed(payload) {
+    const id = payload && payload.id;
+    if (id != null) spawnedReceiptsById.delete(id);
+  }
+
+  function flushSpawnedBatch() {
+    if (spawnedReceiptsById.size === 0 && spawnedReceiptsNoId.length === 0) {
+      spawnReceiptReleaser = null;
+      return;
+    }
+    const receipts = new Array(spawnedReceiptsById.size + spawnedReceiptsNoId.length);
+    let i = 0;
+    for (const receipt of spawnedReceiptsById.values()) receipts[i++] = receipt;
+    for (const receipt of spawnedReceiptsNoId) receipts[i++] = receipt;
+    spawnedReceiptsById.clear();
+    spawnedReceiptsNoId = [];
+    const release = spawnReceiptReleaser;
+    spawnReceiptReleaser = null;
+    // Depth is already 0 here: a listener that emits entity:spawned inside this
+    // fanout takes the one-receipt direct path instead of joining this batch.
+    emitAll(ENTITY_SPAWNED_BATCH_EVENT, { receipts, count: receipts.length });
+    // Delivery complete — individual dispatch and the batch fanout landed;
+    // pooled receipts return to their owner now, same lease rule as destroyed.
+    if (release) for (const receipt of receipts) release(receipt);
+  }
+
+  /**
+   * Open a spawn-receipt collection window: entity:spawned payloads emitted
+   * while it is held coalesce into one entity:spawnedBatch at the close of the
+   * OUTERMOST window. Windows nest (a step inside a reply replay); only the
+   * last close dispatches. The sim step window opens one via beginStep.
+   */
+  function beginSpawnedBatchWindow() {
+    spawnBatchDepth += 1;
+  }
+
+  function endSpawnedBatchWindow() {
+    if (spawnBatchDepth <= 0) return;
+    spawnBatchDepth -= 1;
+    if (spawnBatchDepth > 0) return;
+    flushSpawnedBatch();
+  }
+
   function payloadTouchesPlayer(payload, playerId) {
     if (playerId == null || payload === null || typeof payload !== 'object') return false;
     return payload.player === true
@@ -428,6 +506,10 @@ export function createBus() {
   function beginStep(playerId) {
     stepDeferredActive = true;
     stepDeferredPlayerId = playerId != null ? playerId : null;
+    // The step is also a spawn-batch window: spawned receipts collect across
+    // the whole step and coalesce at endStep — after every individual delivery
+    // including the lifetime sweep's deferred spawn jobs.
+    beginSpawnedBatchWindow();
   }
 
   /**
@@ -465,6 +547,10 @@ export function createBus() {
       item.payload = null;
       deferredPool.push(item);
     }
+    // Leftover drains above could still emit entity:spawned — the window stays
+    // open through them and closes here, so the batch lands after the very
+    // last individual dispatch of the step.
+    endSpawnedBatchWindow();
   }
 
   function pendingStepDeferredCount() {
@@ -538,15 +624,30 @@ export function createBus() {
     // Captured before dispatch: a listener that clear()s the bus empties the releaser map,
     // but this payload's owner still needs the record back.
     const destroyedRelease = event === 'entity:destroyed' ? payloadReleasers.get(event) : null;
+    const spawnedRelease = event === ENTITY_SPAWNED_EVENT ? payloadReleasers.get(event) : null;
     emitAll(event, payload);
     // A direct (non-queued) destroyed receipt must reach batch subscribers exactly like a
     // flushed one — teardown emitters (run reset, restore cleanup, ejection) bypass the
     // deferred queue, and batch subscribers subscribe to the uniform corpse contract.
     if (event === 'entity:destroyed') {
+      // Latest-wins: a pending spawn receipt for this id is stale — the corpse
+      // wins inside the window and reports through destroyedBatch instead.
+      if (spawnBatchDepth > 0) noteWindowEntityDestroyed(payload);
       emitAll(ENTITY_DESTROYED_BATCH_EVENT, { receipts: [payload], count: 1 });
       // Delivery complete — synchronous dispatch, batch fanout and any deferred-presentation
       // snapshots all landed above; a pooled receipt can return to its owner now.
       if (destroyedRelease) destroyedRelease(payload);
+    }
+    // The spawn twin: inside a collection window the receipt joins the window's
+    // batch; outside one the direct emit keeps the uniform contract — individual
+    // dispatch above, one-receipt batch here, releaser after both.
+    if (event === ENTITY_SPAWNED_EVENT) {
+      if (spawnBatchDepth > 0) {
+        collectSpawnReceipt(payload);
+      } else {
+        emitAll(ENTITY_SPAWNED_BATCH_EVENT, { receipts: [payload], count: 1 });
+        if (spawnedRelease) spawnedRelease(payload);
+      }
     }
   }
 
@@ -723,6 +824,12 @@ export function createBus() {
     // records this batch carries were minted by the owner that registered it — their
     // release must still reach that owner's pool whether they deliver or drop.
     const destroyedRelease = payloadReleasers.get('entity:destroyed');
+    // entity:spawned never queues today (synchronous contract), but a foreign or
+    // future queue() caller gets the same batch semantics: receipts delivered in
+    // this flush join the open window, or coalesce per-flush when none is.
+    // The releaser is captured pre-dispatch for the same mid-flush clear() reason.
+    const flushedSpawnRelease = payloadReleasers.get(ENTITY_SPAWNED_EVENT);
+    let flushedSpawnReceipts = null;
     for (let i = 0; i < batch.length; i++) {
       const item = batch[i];
       if (generation !== batchGeneration) {
@@ -739,6 +846,12 @@ export function createBus() {
       emitAll(item.event, item.payload);
       if (item.event === 'entity:destroyed') {
         (destroyedReceipts || (destroyedReceipts = [])).push(item.payload);
+        // Latest-wins: this corpse supersedes any same-window spawn receipt.
+        if (spawnBatchDepth > 0) noteWindowEntityDestroyed(item.payload);
+      }
+      if (item.event === ENTITY_SPAWNED_EVENT) {
+        if (spawnBatchDepth > 0) collectSpawnReceipt(item.payload);
+        else (flushedSpawnReceipts || (flushedSpawnReceipts = [])).push(item.payload);
       }
       item.event = null;
       item.payload = null;
@@ -757,6 +870,15 @@ export function createBus() {
       // The receipts' deliveries — individual dispatch and the batch fanout — are complete
       // (delivered or generation-dropped); pooled records return to their owner now.
       if (destroyedRelease) for (const receipt of destroyedReceipts) destroyedRelease(receipt);
+    }
+    if (flushedSpawnReceipts) {
+      if (generation === batchGeneration) {
+        emitAll(ENTITY_SPAWNED_BATCH_EVENT, {
+          receipts: flushedSpawnReceipts,
+          count: flushedSpawnReceipts.length,
+        });
+      }
+      if (flushedSpawnRelease) for (const receipt of flushedSpawnReceipts) flushedSpawnRelease(receipt);
     }
   }
 
@@ -782,6 +904,18 @@ export function createBus() {
     stepDeferredActive = false;
     stepDeferredPlayerId = null;
     stepDeferredQueue.length = 0;
+    // Spawn-window receipts collected but never batched still owe their owner a
+    // release — the batch they belonged to dies with the teardown. Captured at
+    // collect time; fall back to the map in case a lease registered mid-window.
+    const spawnRelease = spawnReceiptReleaser || payloadReleasers.get(ENTITY_SPAWNED_EVENT);
+    if (spawnRelease) {
+      for (const receipt of spawnedReceiptsById.values()) spawnRelease(receipt);
+      for (const receipt of spawnedReceiptsNoId) spawnRelease(receipt);
+    }
+    spawnedReceiptsById.clear();
+    spawnedReceiptsNoId = [];
+    spawnReceiptReleaser = null;
+    spawnBatchDepth = 0;
     payloadReleasers.clear();
     sliceBudgets.clear();
     emitSlice = null;
@@ -798,6 +932,7 @@ export function createBus() {
     claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
     setPayloadSnapshot, setPayloadRelease,
     beginStep, drainStepDeferred, endStep, pendingStepDeferredCount,
+    beginSpawnedBatchWindow, endSpawnedBatchWindow,
     _listeners: listeners,
   };
 }

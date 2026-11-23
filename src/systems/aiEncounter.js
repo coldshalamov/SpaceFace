@@ -135,7 +135,9 @@ export const aiEncounter = {
     this.helpers.inspectAIEncounter = () => this.inspect();
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs = [
-        this.bus.on('entity:spawned', () => this._wakeAiEncounterQuiet()),
+        // The wake latch is aggregate bookkeeping — a spawn burst needs one wake,
+        // so the coalesced batch replaces the per-entity dispatch.
+        this.bus.on('entity:spawnedBatch', () => this._wakeAiEncounterQuiet()),
         this.bus.on('entity:destroyed', () => this._wakeAiEncounterQuiet()),
         this.bus.on('combat:damage', () => this._wakeAiEncounterQuiet()),
         this.bus.on('save:loaded', () => this._wakeAiEncounterQuiet()),

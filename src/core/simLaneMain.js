@@ -1632,12 +1632,46 @@ export function createSimLaneRuntime({
     'presentation:cue',
     'camera:shake',
   ]);
+  // Latest-wins dedupe for a stale reply: per-entity "something changed — re-read
+  // it" notifications whose newest copy supersedes every earlier one for the same
+  // entity. Only non-lifecycle refresh types are listed, and an event whose entity
+  // resolves to the player's own ship is never deduped — player-targeting and
+  // lifecycle payloads always replay.
+  const REPLY_SUPERSEDED_COSMETIC_EVENTS = new Set([
+    'ship:appearanceChanged',
+    'ship:livingHullChanged',
+    'ship:massChanged',
+    'ship:statsChanged',
+    'ship:cargoCapChanged',
+    'ship:slotsChanged',
+  ]);
   function shedStaleCosmetics(msg, now) {
     if (!Array.isArray(msg.events) || !msg.events.length) return;
     if (now - (msg.__laneArrivedAtMs || now) < REPLY_COSMETIC_STALE_MS) return;
     const widen = frameCostFixOn('shedCosmetics');
-    const kept = msg.events.filter((ev) => {
+    // Backward scan: the LAST copy of each (type, entity) key is the freshest;
+    // every earlier copy is superseded and never needs dispatch. Keys resolve the
+    // entity from shipId/id/entityId; a payload that names the player or carries
+    // player-directed fields stays out of the key set entirely.
+    let superseded = null;
+    if (widen) {
+      const playerId = state && state.playerId;
+      const seen = new Set();
+      for (let i = msg.events.length - 1; i >= 0; i--) {
+        const ev = msg.events[i];
+        if (!ev || !REPLY_SUPERSEDED_COSMETIC_EVENTS.has(ev.t)) continue;
+        const p = ev.p;
+        if (p && (p.playerInvolved === true || p.playerId != null)) continue;
+        const id = p && (p.shipId ?? p.id ?? p.entityId);
+        if (id == null || (playerId != null && id === playerId)) continue;
+        const key = ev.t + '|' + id;
+        if (seen.has(key)) (superseded || (superseded = new Set())).add(i);
+        else seen.add(key);
+      }
+    }
+    const kept = msg.events.filter((ev, i) => {
       if (!ev) return true;
+      if (superseded && superseded.has(i)) return false;
       if (ev.t === 'physics:impact') return ev.p?.playerInvolved === true;
       return !(widen && REPLY_STALE_COSMETIC_EVENTS.has(ev.t));
     });
@@ -2238,6 +2272,15 @@ export function createSimLaneRuntime({
           ? coalescedEventSkips(msg.events) : null);
       const sliceStartedAtMs = sliceBudgetMs > 0 ? nowMs() : 0;
       const sliceFirstIndex = resume ? resume.index : 0;
+      // Spawn-batch window for this replay pass: the worker's entity:spawned
+      // envelopes coalesce into ONE entity:spawnedBatch per pass — the aggregate
+      // fanout behind a sector materialization pays one dispatch, not ~75. A
+      // parked slice closes the window it opened (bounded, no cross-frame lease);
+      // the resume pass opens a fresh one for the remaining tail.
+      const spawnWindowApi = typeof bus.beginSpawnedBatchWindow === 'function'
+        && typeof bus.endSpawnedBatchWindow === 'function';
+      if (spawnWindowApi) bus.beginSpawnedBatchWindow();
+      try {
       for (let evIndex = sliceFirstIndex; evIndex < msg.events.length; evIndex++) {
         const ev = msg.events[evIndex];
         if (skip && skip.has(evIndex)) continue;
@@ -2319,6 +2362,12 @@ export function createSimLaneRuntime({
             workerSlowEvents.push({ t: ev.t, ms: eventMs, atMs: nowMs(), wallMs: Date.now() });
           }
         }
+      }
+      } finally {
+        // Balanced on every exit: loop completion, a parked slice, or a throw.
+        // The batch dispatches after this pass's individual deliveries — the
+        // same tail-of-window ordering the step window keeps.
+        if (spawnWindowApi) bus.endSpawnedBatchWindow();
       }
     }
     if (!resume) {

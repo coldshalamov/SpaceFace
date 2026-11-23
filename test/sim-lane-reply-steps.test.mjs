@@ -314,6 +314,52 @@ test('shedCosmetics: a stale reply drops fire-and-forget cues, keeps state event
     'the flag-off path must keep cosmetic cues (only stale impacts shed)');
 });
 
+test('shedCosmetics: a stale reply drops superseded same-entity events, keeps newest', async (t) => {
+  globalThis.__sfRfx = { shedCosmetics: true };
+  const { bus, state, pump, receive, diag } = makeLane(t);
+  state.playerId = 7; // the player's own ship is never deduped
+  const seen = [];
+  for (const type of ['ship:appearanceChanged', 'ship:statsChanged',
+    'entity:killed', 'probe:tail']) {
+    bus.on(type, (p) => seen.push([type, p && (p.id ?? p.shipId)]));
+  }
+  const spin = () => { const t0 = performance.now(); while (performance.now() - t0 < 1.5) { /* cue cost */ } };
+  bus.on('probe:slow', spin);
+  pump();
+  receive(clockReply(1, {
+    events: Array.from({ length: 200 }, () => ({ t: 'probe:slow', p: {} })),
+  }));
+  receive(clockReply(2, {
+    events: [
+      { t: 'ship:appearanceChanged', p: { id: 42 } },   // superseded by the later copy for 42
+      { t: 'ship:appearanceChanged', p: { id: 7 } },    // player-owned: never deduped
+      { t: 'ship:statsChanged', p: { shipId: 42 } },    // superseded by the later copy
+      { t: 'ship:appearanceChanged', p: { id: 42 } },   // newest for (appearanceChanged, 42)
+      { t: 'ship:appearanceChanged', p: { id: 7 } },    // player's second copy still replays
+      { t: 'ship:statsChanged', p: { shipId: 42 } },    // newest for (statsChanged, 42)
+      { t: 'entity:killed', p: { id: 42 } },            // lifecycle: never deduped
+      { t: 'ship:appearanceChanged', p: { id: 9 } },    // different entity: kept
+      { t: 'probe:tail', p: {} },
+    ],
+  }));
+  // Reply 1's parked event phase ages reply 2 past the 250 ms stale window.
+  let guard = 0;
+  while (!seen.some(([type]) => type === 'probe:tail') && guard++ < 500) {
+    pump();
+    await sleep(10);
+  }
+  assert.deepEqual(seen, [
+    ['ship:appearanceChanged', 7],
+    ['ship:appearanceChanged', 42],
+    ['ship:appearanceChanged', 7],
+    ['ship:statsChanged', 42],
+    ['entity:killed', 42],
+    ['ship:appearanceChanged', 9],
+    ['probe:tail', undefined],
+  ], 'superseded same-entity copies replayed, or newest/order/player/lifecycle lost');
+  assert.ok(diag().replyQueue.cosmeticShed >= 2, 'the two superseded copies were not shed');
+});
+
 // replyOnFrame (2026-11-22): while a real animation-frame loop is running, a reply that arrives
 // between frames is only enqueued; the next frame boundary applies it. With no frame loop
 // (headless, hidden tab, a test feeding replies by hand) a reply still applies as it arrives.
