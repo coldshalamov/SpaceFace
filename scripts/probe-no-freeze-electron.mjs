@@ -860,6 +860,10 @@ try {
     });
   }
   writeFileSync(join(OUT, 'samples.json'), JSON.stringify(samples));
+  // The whole worker profile is kept beside the report (open it in DevTools, or aggregate it
+  // with summarizeCpuProfile in scripts/lib/cpuProfileSummary.mjs) — the worst stretches alone
+  // miss steady cost.
+  if (report.__cpuProfile) writeFileSync(join(OUT, 'worker.cpuprofile'), JSON.stringify(report.__cpuProfile));
   delete report.__cpuProfile;
   writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 1));
   console.log(`no-freeze probe: ${ROUTE}${LEGACY ? ' LEGACY (fix off)' : ''}${PAD ? ` pad=${PAD}` : ''}${REAL_PROFILE ? ' real-profile' : ''}${VISIBLE ? ' visible' : ' inactive-window'} realmEnd ${JSON.stringify(report.realmEnd)}, load ${report.loadS}s, hand ${JSON.stringify(report.hand)}, page errors ${report.errors.length}`);
