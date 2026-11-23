@@ -555,6 +555,16 @@ export class Sg02DynamicBodyOwner {
   publishCompletedOrchardContacts(token,publisher) { return publishOrchardCompletedContacts(this,ORCHARD_OWNER_CAPABILITIES.get(this),token,publisher); }
   completedOrchardTail() { return ORCHARD_OWNER_TAILS.get(this) || null; }
 
+  /** A scripted teleport of a live body (physics' world:playerRelocated seam): push the entity's
+   * pose into its native body now instead of at the next sync, so no step in between can write
+   * the body's old pose back over it. False when the entity has no current record here. */
+  resyncEntityPose(entity) {
+    if (!entity || entity.alive === false || !orchardNativeMutationReady(this)) return false;
+    const rec = this.records.get(entity.id);
+    if (!rec || rec.entity !== entity || !rec.body || recordBelongsToPriorLife(rec, entity)) return false;
+    return this._maybeResyncBodyPose(rec, entity);
+  }
+
   rebindEntity(entity) {
     if(!orchardNativeMutationReady(this))return false;
     if (!entity || entity.alive === false) return false;

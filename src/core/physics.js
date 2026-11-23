@@ -235,6 +235,7 @@ export const physics = {
       offs.push(this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); }));
       offs.push(this.bus.on('game:newGame', () => clearPhysicalEffects(this.state)));
       offs.push(this.bus.on('sector:exit', () => clearPhysicalEffects(this.state)));
+      offs.push(this.bus.on('world:playerRelocated', () => this._seatRelocatedPlayerBody()));
     }
     const facade = this;
     let colliderCount = 0;
@@ -1128,6 +1129,23 @@ export const physics = {
       const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, options);
       return dp > 0;
     }
+  },
+
+  // A same-sector relocation (a Swarm arena seat, a race reset, a venue return) is a teleport, so
+  // the pilot's native body moves with it now. Leaving it to the owner's next entity sync was a
+  // race: a Swarm pilot is spawned at the origin, its body is built there by the reset prepare,
+  // and only then does the arena seat it at the Foundry. When the first flight steps stepped that
+  // body before syncing the seat, the solver's pose was written back over the entity and the
+  // first run of a session opened 2.9 km from the fight in empty space.
+  _seatRelocatedPlayerBody() {
+    const state = this.state;
+    const owner = this._sg02;
+    if (!state || !owner || typeof owner.resyncEntityPose !== 'function') return false;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false) return false;
+    this._syncSg02FrameOrigin(state);
+    return owner.resyncEntityPose(player);
   },
 
   _syncSg02FrameOrigin(state) {

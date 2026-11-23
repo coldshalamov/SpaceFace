@@ -6,13 +6,29 @@
 //
 // The rehearsal is its own host with its own state, bus, rng and entities; nothing it does
 // reaches the real game. Storage it writes lands in the realm's staged snapshot, which the
-// caller clears before the real init stages the player's keys.
+// caller clears before the real init stages the player's keys. The player's shared save store
+// (the loopback drawer both shells read) is held shut for the whole rehearsal, including its save
+// system's async boot sync: a mirror PUT is a network write the caller cannot clear, and it was
+// how the rehearsal's checkpoint opening reached a brand-new player's door as "Resume round 3".
 import { createSimCommandRing, pushLaneCommand } from './simCommandChannel.mjs';
+import { holdSharedPlayerStore } from '../../src/save/sharedPlayerStore.js';
 import { createBus } from '../../src/core/eventBus.js';
 import { SWARM_RULESET } from '../../src/data/swarmMode.js';
 import { crucibleSetupFor, requestCrucibleRun } from '../../src/ui/crucibleLaunch.js';
 
 const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+const macrotask = () => new Promise((resolve) => { setTimeout(resolve, 0); });
+
+// The rehearsal host's save system starts an async shared-store sync at init (collect, merge,
+// mirror). Under the hold it finds no store, but its tail still ends in a push call; let it finish
+// while the hold is open, bounded so a stuck sync can never hold the boot.
+async function settleRehearsalSaveSync(lane, budgetMs = 2000) {
+  const save = lane && lane.host && lane.host.registry && typeof lane.host.registry.get === 'function'
+    ? lane.host.registry.get('save') : null;
+  if (!save || typeof save.isSharedStoreSyncPending !== 'function') return;
+  const until = now() + budgetMs;
+  while (save.isSharedStoreSyncPending() && now() < until) await macrotask();
+}
 
 function swarmOptions() {
   const bus = createBus();
@@ -33,6 +49,7 @@ export async function rehearseSimWorkload(createSimHost, { scenarioContract = nu
   let stepped = 0;
   let peak = 0;
   let bootMs = 0; let activeAt = -1; let shots = 0; let deaths = 0;
+  const releaseStore = holdSharedPlayerStore();
   try {
     const opts = swarmOptions();
     if (!opts) return { ok: false, ms: now() - t0, steps: 0, peakEntities: 0, reason: 'no-setup' };
@@ -97,6 +114,10 @@ export async function rehearseSimWorkload(createSimHost, { scenarioContract = nu
   } catch (err) {
     return { ok: false, ms: now() - t0, steps: stepped, peakEntities: peak, reason: String(err && err.message || err).slice(0, 160) };
   } finally {
+    try { await settleRehearsalSaveSync(lane); } catch (_) { /* bounded; never fails the boot */ }
     try { if (lane) lane.shutdown(); } catch (_) { /* a rehearsal never fails the boot */ }
+    // Shutdown's exit save and any listener it wakes run inside the hold too.
+    await macrotask();
+    releaseStore();
   }
 }
