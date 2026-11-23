@@ -36,7 +36,9 @@ function harness(rng = 0.5) {
       .reduce((n, e) => n + (e.data?.salvagePool?.[FUEL] || 0), 0),
     damage: () => context._spillHaulerCargoFromViolence(courier, raider),
     death: () => lootShards._trySpawnCivilianManifestPayload.call(
-      { state, helpers, bus: { emit: d.emit } }, { id: courier.id, pos: courier.pos }, courier) };
+      // The eligibility/mint split lives on the system: a bare ctx loses the methods.
+      Object.assign(Object.create(lootShards), { state, helpers, bus: { emit: d.emit } }),
+      { id: courier.id, pos: courier.pos }, courier) };
   return h;
 }
 const held = h => h.courier.data.cargo[FUEL];

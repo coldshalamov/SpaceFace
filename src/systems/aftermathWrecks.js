@@ -1371,7 +1371,7 @@ export const aftermathWrecks = {
     if (!wreck || wreck.alive === false || !wreck.data) return;
     if (!isDynamicPhysicsBodyEntity(wreck)) return;
     const data = wreck.data;
-    const count = Number(data.impactChipCount) || 0;
+    const count = (Number(data.impactChipCount) || 0) + (Number(data.impactChipPending) || 0);
     if (count >= IMPACT_TEAROFF_LAW.maxPerVictim) return;
     const mass = Math.max(0.1, Number(wreck.physicsBody && wreck.physicsBody.mass) || Number(wreck.mass) || 1);
     if (mass < IMPACT_TEAROFF_LAW.minVictimMass) return;
@@ -1402,17 +1402,18 @@ export const aftermathWrecks = {
     // Chip admission stays synchronous AND reserves its tally at admit time: a second impact
     // on this wreck inside the same step must read the committed count/cooldown, not wait on
     // the drain — the deferred mint would otherwise let same-step contacts over-spray past
-    // maxPerVictim and the cooldown that used to reject them instantly.
-    data.impactChipCount = count + note.count;
+    // maxPerVictim and the cooldown that used to reject them instantly. The reservation rides
+    // its own field: breakupConsumed reads impactChipCount as a spent stamp, so stamping it
+    // before the mint would refuse this very spray.
+    data.impactChipPending = (Number(data.impactChipPending) || 0) + note.count;
     data.lastImpactChipAt = now;
     const finish = (spawned) => {
       const got = spawned && spawned.length ? spawned.length : 0;
-      // Reconcile the reservation to the bodies actually minted; a no-mint also refunds the
+      data.impactChipPending = Math.max(0, (Number(data.impactChipPending) || 0) - note.count);
+      // Reconcile the tally to the bodies actually minted; a no-mint also refunds the
       // cooldown stamp so the wreck is not denied a spray it never received.
-      if (got !== note.count) {
-        data.impactChipCount = (Number(data.impactChipCount) || 0) - (note.count - got);
-        if (got === 0) data.lastImpactChipAt = lastAt;
-      }
+      data.impactChipCount = (Number(data.impactChipCount) || 0) + got;
+      if (got === 0) data.lastImpactChipAt = lastAt;
     };
     const deferJob = this.helpers && this.helpers.deferEntitySpawnJob;
     if (typeof deferJob === 'function') deferJob(() => finish(spawnCollisionTearOff(ctx, note)));

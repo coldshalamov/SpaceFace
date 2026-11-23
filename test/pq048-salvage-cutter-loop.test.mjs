@@ -343,6 +343,9 @@ test('loaded cutter loss drops one persistent manifest payload without respawnin
     ctx.sim.bus.emit('entity:killed', {
       id: salvor.id, killerId: ctx.player.id, type: 'ship', pos: { ...salvor.pos }, targetHostileToPlayer: false,
     });
+    // Kill decorations mint on the next step's lane (owe, never drop) — drain it where the
+    // step's lifetimeSweep would have run before counting payloads.
+    ctx.sim.helpers.drainEntitySpawnJobs?.();
     const payloads = (ctx.state.entityList || []).filter((entity) => entity && entity.alive !== false
       && entity.type === 'payload' && entity.data && entity.data.payloadType === CIVILIAN_MANIFEST_PAYLOAD_TYPE);
     assert.equal(payloads.length, 1);
