@@ -122,7 +122,8 @@ test('objective distance is measured in the GLOBAL frame from the live player po
   assert.equal(ctx.objective.label, 'Tethys Station');
   assert.equal(ctx.objective.distanceWU, 500);
   assert.equal(ctx.rows[1].tone, NAV_ROW_TONE.TRACKED);
-  assert.equal(ctx.rows[1].detail, '500 u');
+  // Tests follow df01ea648d: a distance the player reads is meters, never the internal "u".
+  assert.equal(ctx.rows[1].detail, '500 m');
 });
 
 test('a sector-local goal position would be caught: the same numbers in Helios give a different distance', () => {
@@ -395,10 +396,11 @@ test('the context and its actions are deeply frozen and never mutate their input
 });
 
 test('formatDistanceWU stays readable across the whole lattice', () => {
-  assert.equal(formatDistanceWU(0), '0 u');
-  assert.equal(formatDistanceWU(499.6), '500 u');
-  assert.equal(formatDistanceWU(9999), '10.0k u');
-  assert.equal(formatDistanceWU(12288), '12k u');
+  // Tests follow df01ea648d: distances read m and km. 9999 m is 10.0 km; 12288 m is 12 km.
+  assert.equal(formatDistanceWU(0), '0 m');
+  assert.equal(formatDistanceWU(499.6), '500 m');
+  assert.equal(formatDistanceWU(9999), '10.0 km');
+  assert.equal(formatDistanceWU(12288), '12 km');
   assert.equal(formatDistanceWU(NaN), '—');
   assert.equal(formatDistanceWU(null), '—');
 });
