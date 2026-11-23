@@ -12,8 +12,9 @@ import { paintTutorialTrackerCaption, tutorialTrackerCaptionText } from '../src/
 
 const PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 const WEAPON = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
-// The tether mark is authored as optional: the tracked 47-A job owns the objective slot.
-const TETHER_LINE = 'Optional: Latch the loose rock.';
+// The loose rock is the game's first instruction (demo route 2026-11-23): stated plainly, not
+// as an optional side lesson under the tracked 47-A job.
+const TETHER_LINE = 'Latch the loose rock.';
 
 function makeState(overrides = {}) {
   const player = makeEntity({

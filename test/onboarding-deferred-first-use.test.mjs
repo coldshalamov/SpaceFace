@@ -71,6 +71,21 @@ test('new first-use hints join behind a currently visible hint instead of replac
   assert.deepEqual(shown, ['shield', 'boost']);
 });
 
+test('a tip the rail held past its moment is dropped unseen, so it can speak when it is relevant again', () => {
+  const { owner, state, shown, setRailOwnsVoice } = fixture();
+  owner._showHint('firstHub', 'The rail lists what this berth offers.');
+  state.simTime = 15;
+  owner._showHint('firstCombat', 'Hostile on scope.');
+  state.simTime = 30;
+  setRailOwnsVoice(false);
+  owner._drainHintQueue();
+  assert.deepEqual(shown, ['firstCombat'], 'the 30-second-old tip is history; the fresh one speaks');
+  assert.deepEqual(state.player.hints, { firstCombat: true }, 'the dropped tip is not marked seen');
+  owner._firstUseHintUntilS = -Infinity;
+  owner._showHint('firstHub', 'The rail lists what this berth offers.');
+  assert.deepEqual(shown, ['firstCombat', 'firstHub'], 'the dropped tip speaks the next time its situation comes round');
+});
+
 test('teardown discards contextual hints tied to the previous world', () => {
   const { owner } = fixture();
   owner._deferredHints = new Map([['station', { text: 'Dock here.', payload: { entityId: 7 } }]]);

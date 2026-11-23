@@ -101,6 +101,8 @@ import {
 
 // Keep the next first-use hint queued until the current seven-second HUD/toast window ends.
 const FIRST_USE_HINT_DISPLAY_S = 7;
+// A queued tip older than this is dropped unseen: it is shown when relevant or not at all.
+const FIRST_USE_HINT_STALE_S = 20;
 import {
   RESCUE_GATE,
   RESCUE_ORDER,
@@ -325,15 +327,9 @@ const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long befor
 // the static pacing/one-voice checks still read this literal from source so the audit sees the
 // authored copy, not the imported object.
 export const BEATS = [
-  { // FIRST HOUR (director ruling 2026-11-21): the game opens in sight of Helios and the first
-    // objective is the berth — the arrival page, the first job and the shops all live there. The
-    // line names the live fly-to-berth key; the berth autopilot flies the approach from any
-    // distance. (The later B4 'dock' beat is the sample delivery, unchanged.)
-    key: 'berth',
-    line: 'Dock at Helios Station.',
-    done: 'docked',
-  },
-  { // FIRST TETHER — the signature verb. Attach lands inside the first minutes of control.
+  { // FIRST TETHER — the signature verb, first (demo route 2026-11-23: rope a rock and throw it,
+    // then dock, then take a job). The game opens in sight of Helios with the light loose rock
+    // already on screen beside the seat; the first latch is the lesson and hands to the swing.
     key: 'tether',
     // OPENING-1b: the first latch is the light rescue rock 90 wu out (the derelict sits just
     // beyond it), and the first latch IS the lesson — the swing verb takes the held line.
@@ -345,6 +341,14 @@ export const BEATS = [
       { on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' },
     ],
     done: 'tether:released',
+  },
+  { // FIRST BERTH — after the throw. The game opens in sight of Helios; the arrival page, the
+    // first job and the shops all live at the berth. The line names the live fly-to-berth key; the
+    // berth autopilot flies the approach from any distance. A pilot who docks before being asked
+    // has done it (see dock:docked). The later B4 'dock' beat is the sample delivery, unchanged.
+    key: 'berth',
+    line: 'Dock at Helios Station.',
+    done: 'docked',
   },
   { // THE RAID — enemy becomes a projectile: latch, swing, release into the rock.
     key: 'raid',
@@ -499,7 +503,9 @@ export function taughtVerbLine(state, id, line) {
 // fills the gap before the job choice. Composed here — rescueOpening.js's own map stays
 // untouched for its audit consumers; the onboarding route owns which drill beat each verb gates.
 const RESCUE_GATE_ROUTE = Object.freeze({
-  swing: 'raid',       // while the rock swing is current, the raid waits its turn
+  // While the rock swing is current, the berth and the raid wait their turn: the throw lands
+  // before the next instruction (one voice), whichever of the two is next.
+  swing: Object.freeze(['berth', 'raid']),
   shove: 'disengage',
   grab: 'choice',      // while the pod run is current, the job choice waits
 });
@@ -726,6 +732,7 @@ export const onboarding = {
     // Objective completion hooks (real events verified against the systems).
     this._unsubs.push(bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
+      this._creditEarlyBerth();
       this._onBeatEvent('dock:docked', p);
       // A berth arrival after the rail still earns the rack pointer — during the rail the B5
       // line owns this same floor, so the sale/payout triggers below carry it there instead.
@@ -1350,7 +1357,7 @@ export const onboarding = {
       || now < this._firstUseHintUntilS)) {
       if (!this._deferredHints) this._deferredHints = new Map();
       if (this._deferredHints.size < 12 && !this._deferredHints.has(key)) {
-        this._deferredHints.set(key, { text, payload });
+        this._deferredHints.set(key, { text, payload, queuedAtS: now });
       }
       return;
     }
@@ -1372,6 +1379,9 @@ export const onboarding = {
       const [key, rec] = queue.entries().next().value;
       queue.delete(key);
       if (queue.size === 0) this._deferredHints = null;
+      // A tip held past its moment is history, not help (a burst of stale tips used to drain at the
+      // first dock). Drop it unseen, so it speaks the next time its situation comes round.
+      if (Number.isFinite(rec.queuedAtS) && now - rec.queuedAtS > FIRST_USE_HINT_STALE_S) continue;
       // Seen keys and hints whose settings/venue gate changed while queued are skipped;
       // the first hint that can speak claims the HUD window and leaves the tail queued.
       const before = this._firstUseHintUntilS;
@@ -2046,7 +2056,8 @@ export const onboarding = {
     const rescueGate = RESCUE_GATE_ROUTE[rescueKey] != null
       ? RESCUE_GATE_ROUTE[rescueKey]
       : (rescueKey ? RESCUE_GATE[rescueKey] : null);
-    if (rescueGate != null && rescueGate === BEATS[nextIndex].key) return;
+    if (rescueGate != null && (Array.isArray(rescueGate)
+      ? rescueGate.includes(BEATS[nextIndex].key) : rescueGate === BEATS[nextIndex].key)) return;
     // Missing-three gate (PQ-163.02): boost, stroke, and the well ride the grab run's exit behind
     // the first dock — the choice beat waits while one is current (MISSING_THREE_GATE_ROUTE).
     // OPENING-1: under the old order the 'seam' default held the rail's last beat while the verb
@@ -2395,6 +2406,17 @@ export const onboarding = {
       this._beatDone(beat);
       if (done === 'docked' && eventName === 'dock:docked') this._tryAdvanceBeat({ atBerth: true });
     }
+  },
+
+  // A pilot who docks before the rail asks for the berth has done the berth: record it so the
+  // rail never sends them back to a station they already visited (the skip in _tryAdvanceBeat
+  // passes over beats with a DONE stamp). The current beat resolves through its own DONE path.
+  _creditEarlyBerth() {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || !ob.active || ob.finished || !ob.beatDoneAt || ob.beatDoneAt.berth != null) return;
+    const berthIndex = BEATS.findIndex((beat) => beat.key === 'berth');
+    if (berthIndex < 0 || ob.currentBeat >= berthIndex) return;
+    ob.beatDoneAt.berth = this.state.simTime || 0;
   },
 
   // Mark a beat DONE and, if it was the choice beat, finish the tutorial.
@@ -3355,7 +3377,9 @@ export const onboarding = {
     const player = st.entities && st.entities.get(st.playerId);
     if (!rescue || !rescue.active || !player || !player.pos
       || !this.helpers || !this.helpers.spawnEntity) return null;
-    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    // The first rock sits beside the nose, on screen at rest and clear of the berth ahead.
+    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st),
+      { beside: Number.isFinite(player.rot) ? player.rot : null });
     makeRescueRockTowable(specs.rock);
     const actors = {};
     for (const slot of Object.keys(specs)) {
@@ -5541,9 +5565,11 @@ export const onboarding = {
     }
     // HUD mission tracker reads wp.reason || wp.label as the sole persistent actionable line
     // (hud.js Tutorial Objective branch). Prefer the beat verb in reason; keep short nav label.
+    // The loose rock is the game's first instruction (demo route 2026-11-23), so it is stated
+    // plainly; the 47-A contract stays tracked underneath and takes the slot back after the latch.
     st.nav.waypoint = buildOnboardingObjectiveWaypoint({
       ...beat,
-      line: beat.key === 'tether' ? `Optional: ${ob.beatAction || beat.line}` : ob.beatAction || beat.line,
+      line: ob.beatAction || beat.line,
     }, target);
   },
 

@@ -152,7 +152,8 @@ test('first-pull cue yields to tracked work and stays at its home sector across 
   const target = owner._derelictId;
   owner._setObjectiveWaypoint(false);
   assert.equal(state.nav.waypoint.markerId, 'onboarding:tether');
-  assert.match(state.nav.waypoint.reason, /^Optional:/);
+  // The loose rock is the game's first instruction (2026-11-23): stated plainly, never "Optional:".
+  assert.match(state.nav.waypoint.reason, /^Latch the loose rock/);
   assert.equal(state.onboarding.tetherSectorId, 'sector_helios_prime');
 
   state.ui.trackedMissionId = '47a';
