@@ -4386,6 +4386,11 @@ export const crucibleResultsScreen = {
       const killer = runOverKiller(result);
       row('Killed by', killer.name, killer.detail);
     }
+    // A cash-out's headline is the payout: name the banked Scrap before the run's story.
+    if (kind === 'extracted') {
+      const banked = Math.max(0, Math.trunc(Number(result && result.bankedBounty) || 0));
+      if (banked > 0) row('Banked', `${banked.toLocaleString('en-US')} Scrap`);
+    }
     row('Best moment', runOverBestMoment(result));
     plate.appendChild(rows);
 
@@ -4449,6 +4454,21 @@ export const crucibleResultsScreen = {
         ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
       });
       foot.appendChild(takeWin);
+      // The same quiet Skip the run-over plates carry: the win's staged film plays behind the
+      // plate too, and the player may not want to sit through it to reach Keep going.
+      if (ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+        const skip = el('button', 'sf-runover__quiet sf-runover__skip', 'Skip replay');
+        skip.type = 'button';
+        skip.dataset.action = 'skip';
+        skip.addEventListener('click', () => {
+          skipKillcamPlayback();
+          const ui = ctx.state && ctx.state.ui;
+          if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') ui.stageRequest = null;
+          rootEl.dataset.kStage = 'plate';
+          skip.hidden = true;
+        });
+        foot.appendChild(skip);
+      }
       plate.appendChild(foot);
       rootEl.appendChild(plate);
       this._runOverKey = (event) => {
