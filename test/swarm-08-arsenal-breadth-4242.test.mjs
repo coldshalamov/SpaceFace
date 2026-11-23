@@ -110,7 +110,9 @@ test('the cycler stacks on the shelf and the ledger sets the rate', () => {
   assert.ok(SWARM_PASSIVE_CATALOG.length >= 2, 'the stacking shelf holds more than one passive');
   assert.equal(swarmPassiveFireRateScale(null), 1, 'no run reads stock cadence');
 
-  const h = shop({ cash: 500, wave: 5 }); // the first shop round (R3: every fifth)
+  // Tests follow d4db73990f: the armory is the Bench, every tenth round (04_SWARM.md §2) —
+  // there is no shop after the round-five boss.
+  const h = shop({ cash: 500, wave: 10 });
   assert.equal(swarmPassiveGunRateScale(h.state), 1, 'no coils reads stock cadence');
   const offers = survivalDraft.currentOffers();
   const row = offers.find((offer) => offer.id === 'passive_gun_cycler');
