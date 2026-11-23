@@ -102,16 +102,16 @@ function trackedMissionDockableStation(state) {
   return null;
 }
 
-/** The station the pilot or active objective picked: the pilot's own selected target first, else
- *  the tracked objective's station. Pressing E after targeting a station must not fly somewhere
- *  else because a mission marker names a different berth. */
+/** The station the pilot or the tracked waypoint picked: the pilot's own selected target first,
+ *  else the waypoint's station. Pressing E after targeting a station must not fly somewhere else
+ *  because a mission marker names a different berth. An active mission's destination is not a
+ *  pick: the 47-A contract names Helios for the whole opening, and counting it as chosen kept
+ *  "Fly to berth" on the glass through the raid fight. */
 export function chosenDockableStation(state) {
   const picked = entityById(state, state && state.player && state.player.targetId);
   if (isDockableStation(picked)) return picked;
   const fromWaypoint = stationMatchingWaypoint(state, state && state.nav && state.nav.waypoint);
   if (fromWaypoint) return fromWaypoint;
-  const fromMission = trackedMissionDockableStation(state);
-  if (fromMission) return fromMission;
   return null;
 }
 
@@ -135,12 +135,16 @@ export function nearestDockableStation(state) {
 }
 
 /**
- * The berth E flies to and why: `{ station, chosen }` (chosen = the pilot selected or tracks it),
- * or null when there is no dockable station in the sector.
+ * The berth E flies to and why: `{ station, chosen }` (chosen = the pilot selected it or the
+ * tracked waypoint names it), or null when there is no dockable station in the sector. An active
+ * job's local destination outranks a merely nearer station but is a suggestion (chosen false), so
+ * a fight or a timed run still hides it.
  */
 export function berthOfferStation(state) {
   const chosen = chosenDockableStation(state);
   if (chosen) return { station: chosen, chosen: true };
+  const fromMission = trackedMissionDockableStation(state);
+  if (fromMission) return { station: fromMission, chosen: false };
   const nearest = nearestDockableStation(state);
   return nearest ? { station: nearest, chosen: false } : null;
 }

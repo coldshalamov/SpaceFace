@@ -61,7 +61,28 @@ test('a mission that sends the pilot to Customs Gate still offers that berth', (
   assert.equal(isDockableStation(customs), true, 'a Customs Gate is a dockable body with real doors');
   const offer = berthOfferStation(state);
   assert.equal(offer.station, customs, 'the tracked mission\'s own destination is the berth, not a different station');
-  assert.equal(offer.chosen, true);
+  assert.equal(offer.chosen, false,
+    'a job\'s destination outranks a nearer station but is a suggestion, not the pilot\'s pick');
+});
+
+test('a fight hides the berth chip even while the tracked job ends at a local station', () => {
+  // The 47-A contract names Helios for the whole opening. Counting that as "chosen" kept
+  // '[E] Fly to berth Helios Station' on the glass through the raid fight.
+  const helios = station(10, 900, 0, { stationId: 'station_helios', name: 'Helios Station' });
+  helios.homeSectorId = 'sector_helios_prime';
+  const raider = { id: 20, type: 'ship', alive: true, pos: { x: 200, z: 0 }, data: { hostile: true } };
+  const state = world({
+    stations: [helios, raider],
+    targetId: 20,
+    extra: { state: {
+      world: { currentSectorId: 'sector_helios_prime' },
+      nav: { autopilot: null, waypoint: { kind: 'mission', label: 'Drive off the raider', pos: { x: 200, z: 0 }, targetEntityId: 20 } },
+      missions: { active: [{ id: 'contract_47a', status: 'active', destStationId: 'station_helios' }] },
+    } },
+  });
+  assert.equal(resolveBerthOffer(state, { fight: true }), null, 'a fight is not the moment to suggest leaving');
+  const calm = resolveBerthOffer(state, { fight: false });
+  assert.equal(calm && calm.station, helios, 'out of the fight the job\'s station is the berth E flies to');
 });
 
 test('a mission waypoint in another sector never offers a berth here', () => {
