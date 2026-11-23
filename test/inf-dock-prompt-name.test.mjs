@@ -19,7 +19,7 @@ function makeEl(tag = 'div') {
     appendChild(c) { c.parentNode = el; el.children.push(c); return c; },
     append(...ns) { ns.forEach((n) => el.appendChild(n)); },
     prepend(c) { c.parentNode = el; el.children.unshift(c); return c; },
-    removeChild(c) { const i = el.children.indexOf(c); if (i >= 0) el.children.splice(i, 1); return c; },
+    removeChild(c) { const i = el.children.indexOf(c); if (i >= 0) { el.children.splice(i, 1); c.parentNode = null; } return c; },
     remove() { if (el.parentNode) el.parentNode.removeChild(el); },
     addEventListener() {}, querySelector() { return null; },
     get textContent() { return el._text; },

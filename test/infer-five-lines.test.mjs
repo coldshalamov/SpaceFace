@@ -204,6 +204,9 @@ function installAlertDom() {
     this.className = '';
     this._text = '';
     this.id = '';
+    // A real HTMLElement always carries a style object — the pooled alert nodes clear
+    // animation-name through it when removeAttribute is absent.
+    this.style = {};
   }
   FakeElement.prototype.appendChild = function appendChild(child) {
     child.parentNode = this;
