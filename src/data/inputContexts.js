@@ -265,7 +265,7 @@ export function contextHelpRows(state, resolveKey = null) {
   if (ctx === 'swarm') return SWARM_HELP_ROWS.map(([stock, verb, action]) => {
     if (!action || typeof resolveKey !== 'function') return [stock, verb];
     const key = resolveKey(action);
-    return [action === 'tether' && key && key !== 'RMB' ? `${key} / RMB` : key || 'Unbound', verb];
+    return [action === 'tether' && key && key !== 'RMB' ? `${key} / RMB` : key || 'Not set', verb];
   });
   const specs = CARD_SPECS[ctx] || CARD_SPECS.flight;
   const rows = [];
