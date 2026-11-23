@@ -16,6 +16,19 @@ export function openingQuiet(state) {
   return true;
 }
 
+// Demo route (2026-11-23): the game's first instruction is the loose rock. Until it has been latched
+// and thrown, the "[E] Fly to berth" chip stays off the glass so the screen asks one thing at a time
+// (the E key itself still flies to the berth; a pilot who docks early is credited the berth). Once
+// the throw lands, the berth is the instruction and the chip returns with it.
+export function openingHoldsBerthOffer(state) {
+  if (!openingQuiet(state)) return false;
+  const ob = state.onboarding;
+  const done = ob.beatDoneAt || {};
+  if (done.berth != null) return false;
+  if (done.tether == null) return true;
+  return !!(ob.rescue && ob.rescue.current === 'swing');
+}
+
 // OPENING-1b: until the raid is done no NPC tractor may take a body the pilot is latched to, nor work
 // within reach of the pilot's line (a passing hauler must not steal the first rock or the swing).
 export const OPENING_NPC_TOW_KEEPOUT_WU = 420;

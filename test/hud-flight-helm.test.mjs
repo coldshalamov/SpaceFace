@@ -39,6 +39,19 @@ test('the nearest-station offer steps aside in a fight; a station the pilot pick
   assert.equal(resolveBerthOffer(world({ stations: [st] }), { dockInRange: true }), null, 'in range the Dock prompt owns E');
 });
 
+test('the opening asks one thing at a time: no berth chip until the loose rock is latched and thrown', () => {
+  const st = station(10, 340, 0);
+  const opening = (beatDoneAt, rescue = null) => world({ stations: [st],
+    extra: { state: { onboarding: { active: true, finished: false, beatDoneAt, rescue } } } });
+  assert.equal(resolveBerthOffer(opening({})), null, 'the rock is the first instruction');
+  assert.equal(resolveBerthOffer(opening({ tether: 5 }, { current: 'swing' })), null, 'and the throw is still owed');
+  assert.ok(resolveBerthOffer(opening({ tether: 5 }, { current: null })), 'the throw landed: the berth is next');
+  assert.ok(resolveBerthOffer(opening({ berth: 3 })), 'a pilot who already docked keeps the offer');
+  const picked = world({ stations: [st], targetId: 10,
+    extra: { state: { onboarding: { active: true, finished: false, beatDoneAt: {} } } } });
+  assert.ok(resolveBerthOffer(picked), 'a station the pilot picked is always offered');
+});
+
 test('the berth run is live only while the autopilot flies that station; a stale marker never counts', () => {
   const st = station(10, 3000, 0);
   const flying = world({ stations: [st], berthRun: 10, autopilot: { active: true, targetEntityId: 10, label: 'Station 10' } });

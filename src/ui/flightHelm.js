@@ -18,6 +18,7 @@ import { resolveAutopilotTarget } from '../core/flight/flightPresentationReads.j
 import { activeRaceMission } from '../systems/racingSteer.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { berthAutopilotStation, berthOfferStation, stationDisplayName } from './berthOffer.js';
+import { openingHoldsBerthOffer } from '../onboarding/openingQuiet.js';
 import { formatDistance } from './units.js';
 import { promptLabel } from './bindings.js';
 
@@ -88,6 +89,8 @@ export function resolveBerthOffer(state, { fight = false, dockInRange = false } 
   // neither is a timed run. A station the pilot picked is an answer to their own question and
   // stays offered.
   if (!offer.chosen && (fight || activeRaceMission(state))) return null;
+  // The opening asks one thing at a time: the loose rock first, then the berth.
+  if (!offer.chosen && openingHoldsBerthOffer(state)) return null;
   return offer;
 }
 
