@@ -431,6 +431,9 @@ function gameNewOptionsForSandboxConfig(config) {
       zeroScrapOpening: config.zeroScrapOpening,
       retryOpeningEquipment: config.retryOpeningEquipment,
       swarmResume: config.swarmResume,
+      // The boot rehearsal's marker must ride the serialized setup too — the worker lane never
+      // reads this module's pendingConfig.
+      bootRehearsal: config.bootRehearsal,
     });
   }
   // Sandbox writes belong to the simulation lane. In worker mode, carry the complete validated
