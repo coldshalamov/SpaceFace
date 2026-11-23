@@ -37,6 +37,8 @@ import { capPins, platePins, channelPins }
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
 // Launch with no interaction emits the exact legacy ship_kestrel payload.
+/** The New Game screen's one line: what Adventure is. */
+export const NEW_GAME_PITCH = 'Adventure: start as hired labour in the Helios harbour. Rope rocks, take jobs, own asteroids.';
 const DEFAULT_STARTER = starterById(DEFAULT_STARTER_ID) || NEW_GAME_STARTERS[0];
 const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 const FITTABLE_BY_ID = new Map();
@@ -417,7 +419,8 @@ export const newGameScreen = {
     const heading = el('h1', 'k-display k-t-title fh-title', 'New game');
     paintMarking(heading);
     title.appendChild(heading);
-    title.appendChild(el('p', 'k-t-emph k-62', 'Choose your starting ship and pilot credentials.'));
+    // What Adventure is, in one line: a stranger arrives here from the ADVENTURE door.
+    title.appendChild(el('p', 'k-t-emph k-62 sf-ng-pitch', NEW_GAME_PITCH));
     rootEl.appendChild(title);
 
     // The form hangs on the left. `.sf-ng-body` is the scrolling region the layout probe measures.

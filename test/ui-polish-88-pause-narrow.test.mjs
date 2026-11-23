@@ -6,6 +6,13 @@ import test from 'node:test';
 import { pauseScreen } from '../src/ui/screens/pause.js';
 import { spatialFocusTarget, padFocusTarget } from '../src/ui/input.js';
 
+// TITLE-02: the measured layouts below were taken with the lab rows (Physics challenges, Sandbox) on the
+// pause menu. A player build hides them behind the dev switch; this file turns the switch on so the
+// measurements still describe the list it mounts.
+if (!globalThis.localStorage) {
+  globalThis.localStorage = { getItem: (k) => (k === 'sf.titleLab' ? '1' : null), setItem() {}, removeItem() {} };
+}
+
 function installMiniDom({ desktop = true, width = 1280 } = {}) {
   const previous = { document: globalThis.document, window: globalThis.window, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame, matchMedia: globalThis.matchMedia };
   class Mini {

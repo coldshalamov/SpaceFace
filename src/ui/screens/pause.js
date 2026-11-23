@@ -26,7 +26,7 @@ import { canQuit, requestQuit } from '../quitGame.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
-import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
+import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion, titleLabOpen } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
@@ -1213,13 +1213,16 @@ export const pauseScreen = {
     }, { group: 'Media', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    if (!inRun) mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+    // TITLE-02: practice and test modes (Physics challenges, Circuits, Sandbox) are not on a player's
+    // pause menu; the dev switch (?titleLab=1) that shows them on the title shows them here.
+    const labOpen = titleLabOpen();
+    if (labOpen && !inRun) mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
     // MOB-02: the phone flight HUD dropped its "View & circuits" chip; the board (routes, best times, chase/overhead)
     // is reached from here instead, so the phone loses no verb.
-    if (isPhoneLayout() && !inRun) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
+    if (labOpen && isPhoneLayout() && !inRun) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
     if (!inRun && ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (!inRun && ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
-    if (IS_DEV && !inRun) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
+    if (labOpen && !inRun) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     this._retireAtMount = pauseSurvivalRunActive(ctx && ctx.state);
     mk(this._retireAtMount ? 'End run' : coreText('mainMenu'), async () => {

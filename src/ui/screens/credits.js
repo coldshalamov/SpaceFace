@@ -284,7 +284,7 @@ export const creditsScreen = {
           made.appendChild(el('p', 'k-row__sub fh-fine', 'design, code and art'));
           sec.appendChild(made);
           sec.appendChild(el('p', 'k-sentence k-measure fh-body orr-cr-line',
-            'SpaceFace is a Three.js browser and desktop space game: fly, mine, trade, fight, upgrade, and build a living universe.'));
+            'A space brawler where everything has mass. Rope it, throw it, wreck it: survive the Swarm, or work your way up in the Helios Reach.'));
           break;
         }
         case 'type':

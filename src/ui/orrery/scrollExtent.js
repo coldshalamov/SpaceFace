@@ -106,7 +106,7 @@ export const SCROLL_EXTENT_CSS = `
   content:"MORE ▾";
   display:block;
   position:static; left:auto; top:auto; right:auto; bottom:auto; width:auto; height:auto;
-  font:650 12px var(--dp-face-num, ui-monospace, monospace); letter-spacing:.18em;
+  font:650 12px var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif; letter-spacing:.14em;
   color:rgb(236 230 216 / .72); background:rgb(7 11 16 / .94);
   border:1px solid rgb(236 230 216 / .22); border-radius:2px; box-shadow:none;
   padding:2px 8px;

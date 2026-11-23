@@ -494,7 +494,10 @@ export function rigStations(state) {
       const codes = resolveActionCodes(state, s.action);
       // A wheel slice with no key seat stays reachable — the card names the wheel. A core verb
       // the player unbound (forward, boost…) has no wheel seat and stays a dead "not bound".
-      if (!codes.length) kb = s.action === 'fire'
+      // Steering with no key of its own is the mouse: the ship turns toward the aim. The card says
+      // so instead of printing a dead "not bound" on the first screen a stranger reads.
+      if (!codes.length && (s.action === 'yawLeft' || s.action === 'yawRight')) kb = { main: 'Mouse', alt: 'aim' };
+      else if (!codes.length) kb = s.action === 'fire'
         ? { main: resolveActionLabel(state, 'fire') }
         : WHEEL_SLICE_ACTIONS.has(s.action)
           ? { main: `hold ${wheelKey}`, alt: 'wheel' }

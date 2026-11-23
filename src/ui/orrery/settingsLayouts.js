@@ -112,6 +112,9 @@ ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s e
 ${S} > .orr-set-more:hover { color:rgb(${BONE}) !important; }
 @keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
 @media (prefers-reduced-motion:reduce) { ${S} > .orr-set-more.is-on { animation:none; } }
+/* one scroll cue, not two: the shared rim cue (scrollExtent's "MORE" foot) stands down here, where the
+   pane's own clickable More chip already says the rows continue */
+${S} .orr-extent--foot { display:none !important; }
 ${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
   mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
 ${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
