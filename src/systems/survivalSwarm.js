@@ -66,10 +66,8 @@ export function isSwarmRuleset(ruleset) {
 }
 
 /**
- * Does this wave end in a menu?
- *
- * Every Swarm round has a cash armory. Refit/extraction stops add a bench at
- * their cadence; the player explicitly launches the next round after shopping.
+ * Does this wave end in a menu? Only the Bench's rounds (every tenth): the equipment stop and the
+ * refit. Every other round flows on through the level-up breath (04_SWARM.md §2).
  */
 export function swarmWaveEndsInMenu(wave) {
   return isSwarmDraftWave(wave) || isSwarmRefitWave(wave);

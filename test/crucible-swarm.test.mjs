@@ -447,10 +447,11 @@ test('a fast clear never overfills the finite round budget', () => {
   assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });
 
-test('the shop opens after each boss (every fifth round), never every round', () => {
-  // Owner, R3 (2026-11-18): "No shop stop every round" — gear on the floor, skills on cards.
-  for (let wave = 1; wave <= 40; wave++) assert.equal(swarmWaveEndsInMenu(wave), wave % 5 === 0, `round ${wave}`);
-  assert.equal(SWARM_DRAFT_EVERY, 5);
+test('the only menu in a run is the Bench every tenth round, boss rounds included', () => {
+  // Rewritten to the new rule — superseded by design/overhaul/04_SWARM.md section 2: level-up cards
+  // are the stop, gear is on the floor, the Bench every tenth round is the one menu.
+  for (let wave = 1; wave <= 40; wave++) assert.equal(swarmWaveEndsInMenu(wave), wave % 10 === 0, `round ${wave}`);
+  assert.equal(SWARM_DRAFT_EVERY, 10);
 });
 
 test('a swarm refit wave gives BOTH the card and the bench, in that order', () => {

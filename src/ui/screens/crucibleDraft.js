@@ -29,6 +29,7 @@ import { fortifyAvailable } from '../swarmFortifyPanel.js';
 // with its key in fine print; the focused one bright. The refit is a column of hardpoint rows.
 
 import { MODULES } from '../../data/modules.js';
+import { SWARM_DRAFT_EVERY } from '../../data/swarmMode.js';
 import { arsenalIdentity } from '../../data/arsenalIdentity.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
 import { summarizeRunBuild } from '../../data/runModifiers.js';
@@ -758,7 +759,7 @@ export function circuitPanelLines(run) {
   };
 }
 
-const FIRST_SWARM_SHOP_WAVE = 5;
+const FIRST_SWARM_SHOP_WAVE = SWARM_DRAFT_EVERY;
 
 // One short handoff on the existing Armory subtitle. Reads the same currentOffers
 // receipt as the shelf; it neither quotes repairs itself nor owns a purchase.
@@ -770,7 +771,7 @@ export function firstSwarmIntermission(run, offers) {
   if (run.wave === 0 && offers.length === 0) {
     return 'Before round 1 — no stock is available. Keep your current loadout and launch when ready.';
   }
-  // The first shop is after round 5's boss (the shop opens every fifth round, R3).
+  // The first equipment stop is the Bench after round 10 (04_SWARM.md §2).
   if (run.wave !== FIRST_SWARM_SHOP_WAVE) return null;
   const wallet = Number.isFinite(run.credits) && run.credits >= 0 ? run.credits : null;
   const buyable = offer => offer?.available === true && offer.purchased !== true

@@ -395,11 +395,10 @@ export const survivalRun = {
     this._phaseTicks = 0;
     this._clearReceiptLatches();
 
-    // EVERY WAVE OPENS THE ARMORY NOW — SWARM_DRAFT_EVERY is 1, so the swarm leg of this latch is
-    // dormant. It stays written because `cleanup` may still only lead to draft, refit or victory:
-    // if the armory cadence ever thins again, a swarm run passes THROUGH `draft` on the off waves
-    // and must resolve it on arrival rather than flash a menu. The legs that still fire today are
-    // draftless contracts and the boss circuit.
+    // Only the Bench (every SWARM_DRAFT_EVERY = 10 rounds) opens the equipment stop. `cleanup` may
+    // only lead to draft, refit or victory, so every other swarm round passes THROUGH `draft` and
+    // resolves it on arrival rather than flashing a menu; the level-up breath still holds there.
+    // Draftless contracts and the boss circuit resolve the same way.
     if (phase === 'draft' && (
       compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft
       || isBossCircuitRuleset(run.ruleset)

@@ -1,3 +1,5 @@
+// Rewritten to the new rule — superseded by design/overhaul/04_SWARM.md section 2: the equipment
+// stop opens only at the Bench, every tenth round, so the shop round these tests open is 10.
 // The armory's hull patch — the counter's metered mend. Between waves a hurt pilot who cannot
 // reach the weld's flat rate still has a "pay to live" row: a bounded repair priced by the
 // scar it closes. Deterministic: seeded state, manual phase transitions, no wall clock.
@@ -123,7 +125,7 @@ test('the quote prices the scar it closes and caps at the patch bound', () => {
 
 test('a hurt hull sees a buyable patch row priced under the weld', () => {
   const h = boot({ hull: HULL_MAX * 0.5 });
-  waveArmory(h, null, 5);
+  waveArmory(h, null, 10);
   const row = patchRow(h);
   assert.ok(row, 'the patch is on the service counter');
   assert.equal(row.service, 'hull_patch');
@@ -140,7 +142,7 @@ test('a hurt hull sees a buyable patch row priced under the weld', () => {
 
 test('buying the patch heals under the hullMax clamp and charges the wallet once', () => {
   const h = boot({ hull: HULL_MAX * 0.5 });
-  waveArmory(h, null, 5);
+  waveArmory(h, null, 10);
   const credits = h.state.run.credits;
   const row = patchRow(h);
   const expected = swarmHullPatchQuote(HULL_MAX * 0.5, HULL_MAX);
@@ -164,14 +166,14 @@ test('buying the patch heals under the hullMax clamp and charges the wallet once
 
   // The clamp: a 30-point scar under the bound tops the hull to exactly max, never over.
   const h2 = boot({ hull: HULL_MAX - 30 });
-  waveArmory(h2, null, 5);
+  waveArmory(h2, null, 10);
   assert.equal(survivalDraft.resolvePick({ offerId: SWARM_HULL_PATCH.offerId }), true);
   assert.equal(h2.player.hull, HULL_MAX);
 });
 
 test('a sound hull gets no sale — the row is blocked and the wallet is never asked', () => {
   const h = boot({ hull: HULL_MAX });
-  waveArmory(h, null, 5);
+  waveArmory(h, null, 10);
   const row = patchRow(h);
   assert.ok(row, 'the counter still shows the row, plainly dead');
   assert.equal(row.available, false);
@@ -209,7 +211,7 @@ test('the authored arc has no service counter — the Gauntlet never sees the pa
 
 test('No Re-rolls strikes the bench, not the counter: the patch still sells', () => {
   const h = boot({ hull: HULL_MAX * 0.5 });
-  waveArmory(h, ['no_rerolls'], 5);
+  waveArmory(h, ['no_rerolls'], 10);
   const info = survivalDraft.rerollState();
   assert.equal(info.available, false);
   assert.equal(info.reason, 'no_reroll');

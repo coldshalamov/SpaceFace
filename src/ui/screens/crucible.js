@@ -784,8 +784,8 @@ function renderRecordRows(profile, hooks = {}) {
 
 /**
  * The two rulesets behind one door. Swarm is first and is the default: it is the fast game — the
- * room never empties, the wave rolls on a kill count, and only every fifth wave stops for an
- * upgrade. Gauntlet is the authored thirty-wave arc, kept because it asks a different question.
+ * room never empties, the wave rolls on a kill count, and only the Bench every tenth round stops
+ * for an upgrade. Gauntlet is the authored thirty-wave arc, kept because it asks a different question.
  */
 const CRUCIBLE_MODE_CARDS = Object.freeze([
   {

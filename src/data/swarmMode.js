@@ -57,12 +57,13 @@ export const SWARM_WAVE_MAX = 30;
 export const SWARM_DEEP_WAVE_MAX = 999;
 
 /**
- * The shop opens every fifth round — after each boss falls — and the refit bench joins it every
- * tenth (R3, 04_SWARM.md §2: "No shop stop every round"; director 2026-11-20: "a shop every few
- * rounds rather than every round"). Between the other rounds the run passes straight through
- * `draft`: skills arrive as the level-up cards in the breath, and gear is bought on the floor.
+ * THE BENCH, EVERY TENTH ROUND, IS THE ONLY MENU IN A RUN (04_SWARM.md §2, R3). Rounds 10 and 20
+ * stop at the Bench: the equipment stop (change ship, buy) and then the refit. Every other round,
+ * the boss rounds included, passes straight through `draft`: skills arrive as the level-up cards
+ * in the breath, and gear is bought on the floor by flying to it. (Was every fifth round, which
+ * put a shop after each boss.)
  */
-export const SWARM_DRAFT_EVERY = 5;
+export const SWARM_DRAFT_EVERY = 10;
 export const SWARM_REFIT_EVERY = 10;
 
 /** The design's cadence: the first champion arrives at wave 5, then every fifth round —
