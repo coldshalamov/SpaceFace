@@ -13,8 +13,9 @@ import { paintTutorialTrackerCaption, tutorialTrackerCaptionText } from '../src/
 const PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 const WEAPON = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
 // The loose rock is the game's first instruction (demo route 2026-11-23): stated plainly, not
-// as an optional side lesson under the tracked 47-A job.
-const TETHER_LINE = 'Latch the loose rock.';
+// as an optional side lesson under the tracked 47-A job. Since ef8f2a6 the waypoint names the key
+// it is taught with (taughtVerbLine), so the live line ends in the bracket, not a bare verb.
+const TETHER_LINE = 'Latch the loose rock. (F)';
 
 function makeState(overrides = {}) {
   const player = makeEntity({
