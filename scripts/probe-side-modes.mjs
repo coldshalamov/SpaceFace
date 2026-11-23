@@ -544,7 +544,7 @@ async function fillWork(page, shot) {
   b.linkedCard = await cardText();
   await shot('05m-linked-rock-card');
   // Hold for the raiders: two claims and nothing guarding them. They test the belt every three minutes.
-  b.raidSeen = await page.waitForFunction(() => /Raiders took/.test(window.SF.state.sites?.empire?.raidStatus?.lastMessage || ''),
+  b.raidSeen = await page.waitForFunction(() => /Raiders/.test(window.SF.state.sites?.empire?.raidStatus?.lastMessage || '') && (window.SF.state.sites?.empire?.raidStatus?.pressure || 0) > 0,
     null, { timeout: 230000 }).then(() => true).catch(() => false);
   b.raidStatus = await page.evaluate(() => window.SF.state.sites?.empire?.raidStatus || null);
   b.raidNews = await page.evaluate(() => {

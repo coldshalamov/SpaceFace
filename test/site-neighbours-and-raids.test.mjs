@@ -14,7 +14,7 @@ import { machineSeating, seatingGrade, siteSeating, neighbourLift, buildRockRepo
 import { raidWorstGuardedRock } from '../src/systems/beltEmpireSystem.js';
 import { asteroidSiteReadMethods } from '../src/systems/asteroidSiteReadModel.js';
 import { stepContinuousRecipe, processSpeedParts } from '../src/systems/siteProduction.js';
-import { rockReportLines, claimedRockLine } from '../src/ui/asteroid/rockReport.js';
+import { rockReportLines, claimedRockLine, rockHelpLines } from '../src/ui/asteroid/rockReport.js';
 import { rockName } from '../src/ui/asteroid/rockNames.js';
 import { ghostLensModel, machineLensModel } from '../src/ui/asteroid/inspector.js';
 import { registerWorldBeats } from '../src/ui/worldNewsBeats.js';
@@ -377,4 +377,25 @@ test('a machine with no power makes nothing, and the card says so instead of its
   view.siteForAsteroid = () => null;
   assert.deepEqual(report(view).makes, [], 'a fresh read view agrees');
   assert.equal(report(view).limit.kind, 'power');
+});
+
+test('the card names the claim that could fix what this one lacks', () => {
+  const rep = (netMw, makes = [], wants = []) => ({ netMw, makes, wants, lift: { rows: [], linked: 0 }, seating: {} });
+  const nameOf = (id) => ({ 1: 'Bent Widow', 2: 'Late Hammer', 3: 'Quiet Anvil' })[id];
+  const smelter = rep(-6, [{ goodId: 'cmdty_refined_metals', perMin: 1 }], [{ goodId: 'cmdty_ore_iron', perMin: 2 }]);
+  const mine = { siteId: 'a', asteroidId: 1, links: [], report: rep(6, [{ goodId: 'cmdty_ore_iron', perMin: 2.4 }]) };
+  const idle = { siteId: 'c', asteroidId: 3, links: [], report: rep(0) };
+  const lines = rockHelpLines(smelter, [idle, mine], { nameOf, siteId: 'b' }).map((l) => l.value);
+  assert.deepEqual(lines, [
+    'Bent Widow has 6 MW to spare. Run a power line from it to here',
+    'Bent Widow makes iron ore. Run a cargo line from it to here',
+  ]);
+  // Seen from the mine: it has what the smelter lacks.
+  const hammer = { siteId: 'b', asteroidId: 2, links: [], report: smelter };
+  assert.deepEqual(rockHelpLines(mine.report, [hammer], { nameOf, siteId: 'a' }).map((l) => l.value),
+    ['Late Hammer is short 6 MW. A power line from here would feed it']);
+  // A line that already runs is not suggested again.
+  mine.links = [{ targetSiteId: 'b', kind: 'power', active: true }, { targetSiteId: 'b', kind: 'material', active: true }];
+  assert.deepEqual(rockHelpLines(smelter, [mine], { nameOf, siteId: 'b' }), []);
+  assert.deepEqual(rockHelpLines(smelter, [], { nameOf }), []);
 });

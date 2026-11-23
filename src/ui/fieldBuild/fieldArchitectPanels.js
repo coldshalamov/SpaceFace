@@ -18,7 +18,7 @@ import {
 import { rotateCellOffset } from '../../systems/asteroidInteriorPuzzle.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { rockName } from '../asteroid/rockNames.js';
-import { rockReportLines, rockReportSentence } from '../asteroid/rockReport.js';
+import { rockReportLines, rockReportSentence, rockHelpLines } from '../asteroid/rockReport.js';
 
 export const ARCHITECT_TABS = Object.freeze([
   Object.freeze({ id: 'site', label: 'Rock' }),
@@ -287,7 +287,12 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     const repSec = el('div', 'fb-section fb-rock-report');
     repSec.appendChild(el('h4', 'fb-sec-title', 'What this rock is now'));
     const raidPressure = Number(vm.empire?.raidStatus?.pressure) || 0;
-    for (const line of rockReportLines(site.report, { nameOf: rockName, raidPressure })) {
+    const reportLines = [
+      ...rockReportLines(site.report, { nameOf: rockName, raidPressure }),
+      // Which other claim could fix what this one lacks: the belt's puzzle, said out loud.
+      ...rockHelpLines(site.report, vm.peerSites, { nameOf: rockName, siteId: site.siteId }),
+    ];
+    for (const line of reportLines) {
       const row = el('div', `fb-kv-row fb-report-row${line.tone ? ` is-${line.tone}` : ''}`);
       row.append(el('span', '', line.label), el('span', 'fb-kv-val', line.value));
       repSec.appendChild(row);

@@ -132,3 +132,36 @@ export function claimedRockLine(entity, state) {
   if (out) parts.push(`${count(out, 'line')} out`);
   return parts.join(' · ');
 }
+
+/**
+ * What another claim in this belt could do for this one, said out loud: the rock that has the
+ * power this one is short of, the rock that makes what this one needs. This is the belt's puzzle
+ * (which rocks to join, and which way) read off the same reports the cards show.
+ * @param report  this rock's report
+ * @param peers   the belt's other claims: [{ siteId, asteroidId, report, links }]
+ * @param opts.siteId  this rock's site id (to skip a line that already runs)
+ */
+export function rockHelpLines(report, peers, { nameOf = () => 'a rock', siteId = null } = {}) {
+  if (!report || !Array.isArray(peers) || !peers.length) return [];
+  const others = peers.filter((p) => p && p.report);
+  const runs = (peer, kind) => (Array.isArray(peer.links) ? peer.links : [])
+    .some((l) => l && l.active !== false && l.targetSiteId === siteId && l.kind === kind);
+  const out = [];
+  const short = Math.round(-(Number(report.netMw) || 0));
+  if (short > 0) {
+    const giver = others.filter((p) => p.report.netMw >= 1 && !runs(p, 'power')).sort((a, b) => b.report.netMw - a.report.netMw)[0];
+    if (giver) out.push(`${nameOf(giver.asteroidId)} has ${Math.round(giver.report.netMw)} MW to spare. Run a power line from it to here`);
+  }
+  for (const want of report.wants.slice(0, 2)) {
+    const maker = others
+      .map((p) => ({ p, rate: (p.report.makes.find((m) => m.goodId === want.goodId) || {}).perMin || 0 }))
+      .filter((row) => row.rate > 0 && !runs(row.p, 'material'))
+      .sort((a, b) => b.rate - a.rate)[0];
+    if (maker) out.push(`${nameOf(maker.p.asteroidId)} makes ${goodName(want.goodId)}. Run a cargo line from it to here`);
+  }
+  if (!out.length && Number(report.netMw) >= 1) {
+    const needy = others.filter((p) => p.report.netMw <= -1).sort((a, b) => a.report.netMw - b.report.netMw)[0];
+    if (needy) out.push(`${nameOf(needy.asteroidId)} is short ${Math.round(-needy.report.netMw)} MW. A power line from here would feed it`);
+  }
+  return out.map((value, i) => ({ id: `help${i}`, label: 'Could help', value, tone: 'good' }));
+}
