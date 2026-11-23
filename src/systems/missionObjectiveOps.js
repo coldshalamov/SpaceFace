@@ -44,6 +44,14 @@ import { ensureSpineBreakWorksite, isSpineBreakOperation, noteSpineBreakDisposit
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { counted } from '../core/numberFormat.js';
 
+// Hoisted out of _onEntityDestroyed: a destroyed receipt used to allocate this Set on every
+// corpse in a burst. One frozen module-level row is identical — the membership test is all
+// the call site ever needed.
+const IGNORED_SPINE_BREAK_REMOVAL_REASONS = new Set([
+  'run_reset', 'save_restore', 'spine_break_retry',
+  'spine_break_stale_cast', 'spine_break_duplicate_cast',
+]);
+
 
 export const missionObjectiveOps = {
   // =========================================================================================
@@ -642,10 +650,7 @@ export const missionObjectiveOps = {
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
     // The Book 4 mission owns its train and retries one complete cast before it can fail.
     // Do not treat Continue cleanup or the owner's retry retirement as a real loss.
-    const ignoredSpineBreakRemoval = new Set([
-      'run_reset', 'save_restore', 'spine_break_retry',
-      'spine_break_stale_cast', 'spine_break_duplicate_cast',
-    ]).has(p.reason);
+    const ignoredSpineBreakRemoval = IGNORED_SPINE_BREAK_REMOVAL_REASONS.has(p.reason);
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!isSpineBreakOperation(m) || m.status !== 'active' || ignoredSpineBreakRemoval) continue;

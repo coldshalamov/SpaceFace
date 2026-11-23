@@ -415,6 +415,9 @@ export function createTacticalAISystem({
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
   let quietLatch = null;
   let counterplayBindingVersion = -1;
+  // Reused filtered-lane buffer for update()'s counterplay strip — never exposed while
+  // hasCounterplay is false (shipLikeList stays the live index lane, same as before).
+  const shipLikeScratch = [];
   // The pack brain (src/ai/pack/packBrain.js): one shared pass for every ordinary Swarm ship.
   // Production only — injected-port fixtures keep their historical stack-only behavior.
   let pack = null;
@@ -512,6 +515,7 @@ export function createTacticalAISystem({
     lastDecisionEntityRefs.clear();
     quietLatch = null;
     counterplayBindingVersion = -1;
+    shipLikeScratch.length = 0;
     if (pack) pack.reset();
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
@@ -724,8 +728,31 @@ export function createTacticalAISystem({
       // is fetched once here and threaded through instead of re-scanning (and re-classifying each
       // entity) four to six times per fixed step.
       const allShipLike = indexedShipLikeScan(state);
-      const hasCounterplay = allShipLike.some((entity) => isCounterplayOwned(entity, state));
-      const shipLikeList = hasCounterplay ? allShipLike.filter((entity) => !isCounterplayOwned(entity, state)) : allShipLike;
+      // One classified pass replaces `.some` + `.filter`: counterplay ownership is stamped
+      // entirely on entity.data (counterplayDoctrineId on the actor, counterplayControllerId
+      // on cast mates), so an unstamped entity can never be owned and the map-lookup predicate
+      // only runs on stamped candidates. The first owned hull flips the pass into fill mode —
+      // a no-counterplay tick (the common case) does zero pushes, allocates nothing, and keeps
+      // the live index lane exactly as before; a counterplay tick fills the scratch with the
+      // same order `.filter` produced.
+      let hasCounterplay = false;
+      let shipLikeList = allShipLike;
+      for (let i = 0; i < allShipLike.length; i++) {
+        const entity = allShipLike[i];
+        const data = entity && entity.data;
+        if (!data || (data.counterplayControllerId == null
+          && (!data.ai || data.ai.counterplayDoctrineId == null))
+          || !isCounterplayOwned(entity, state)) {
+          if (hasCounterplay) shipLikeScratch.push(entity);
+          continue;
+        }
+        if (!hasCounterplay) {
+          hasCounterplay = true;
+          shipLikeScratch.length = 0;
+          for (let j = 0; j < i; j++) shipLikeScratch.push(allShipLike[j]);
+          shipLikeList = shipLikeScratch;
+        }
+      }
       if (hasCounterplay) driveCounterplay({ ctx: ctxRef, entities: allShipLike,
         sensorPort: sensors || ctxRef.helpers.aiSensors,
         maneuverPort: heavyAwareManeuverPort(maneuver || ctxRef.helpers.aiManeuver, () => state) });

@@ -183,9 +183,13 @@ function sectorWreckMarkers(state, sectorId) {
   });
 }
 
-function compactRecord(state, entity, payload, outcome, reason) {
+function compactRecord(state, entity, payload, outcome, reason, sourceEvent, entityId) {
   const data = entity && entity.data || {};
-  const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
+  // `entityId`/`sourceEvent` ride beside `payload` now — the callers used to mint a
+  // `{ ...payload, entityId, sourceEvent }` literal per event just to carry these two
+  // overrides; the field values are identical, nothing is spread.
+  const mergedEntityId = entityId !== undefined ? entityId : (payload && payload.entityId);
+  const id = entity && entity.id != null ? entity.id : mergedEntityId || (payload && payload.id);
   return {
     schemaVersion: STATE_VERSION,
     entityId: id,
@@ -200,7 +204,7 @@ function compactRecord(state, entity, payload, outcome, reason) {
     victimClass: (payload && payload.victimClass) || data.shipClass || data.class || (entity && entity.type) || null,
     label: data.name || data.shipName || data.callsign || data.callSign || (payload && payload.label) || null,
     bountyCr: Math.max(0, Math.round(Number((payload && payload.bountyCr) || data.bountyCr || 0) || 0)),
-    sourceEvent: payload && payload.sourceEvent || null,
+    sourceEvent: sourceEvent !== undefined ? sourceEvent : (payload && payload.sourceEvent || null),
     destruction: outcome === 'killed' ? compactKillCausality(payload, state.playerId) : null,
   };
 }
@@ -344,7 +348,7 @@ export const combatOutcome = {
       if (prior && sameOccupant(prior, entity)) continue;
       const ai = entity.data && entity.data.ai;
       if (ai && (ai.forceFlee || ai.fsm === 'flee') && isCandidate(entity, state)) {
-        this._record(entity, { entityId: entity.id, sourceEvent: 'forceFlee' }, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee');
+        this._record(entity, null, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee', 'forceFlee', entity.id);
         recorded++;
       }
     }
@@ -394,14 +398,14 @@ export const combatOutcome = {
   _killed(payload) {
     const entity = entityFor(this.state, payload.id);
     if (!isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, sourceEvent: 'entity:killed' }, 'killed', 'entity:killed');
+    this._record(entity, payload, 'killed', 'entity:killed', 'entity:killed');
   },
 
   _flee(payload) {
     const entityId = payload.entityId != null ? payload.entityId : payload.id;
     const entity = entityFor(this.state, entityId);
     if (!entity || !isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, entityId, sourceEvent: 'ai:flee' }, 'fled', 'ai:flee');
+    this._record(entity, payload, 'fled', 'ai:flee', 'ai:flee', entityId);
   },
 
   _disabled(payload) {
@@ -414,20 +418,22 @@ export const combatOutcome = {
     if (!DISABLE_OUTCOME_SUBSYSTEMS.has(subsystemId)) return;
     const entity = entityFor(this.state, entityId);
     if (!entity || !isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, entityId, sourceEvent: 'combat:subsystemDisabled' }, 'disabled', subsystemId);
+    this._record(entity, payload, 'disabled', subsystemId, 'combat:subsystemDisabled', entityId);
   },
 
   _surrendered(payload) {
     const entityId = payload.entityId != null ? payload.entityId : payload.id;
     const entity = entityFor(this.state, entityId);
     if (!entity || !isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, entityId, sourceEvent: 'combat:surrendered' }, 'surrendered', 'combat:surrendered');
+    this._record(entity, payload, 'surrendered', 'combat:surrendered', 'combat:surrendered', entityId);
   },
 
-  _record(entity, payload, outcome, reason) {
+  _record(entity, payload, outcome, reason, sourceEvent, entityId) {
     const state = this.state;
     const own = ensureState(state);
-    const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
+    // Same merged `entityId || id` the old `{ ...payload, entityId }` literal produced.
+    const mergedEntityId = entityId !== undefined ? entityId : (payload && payload.entityId);
+    const id = entity && entity.id != null ? entity.id : mergedEntityId || (payload && payload.id);
     if (id == null) return null;
     const prior = own.byEntity[id];
     if (prior && entity && !sameOccupant(prior, entity)) {
@@ -438,7 +444,7 @@ export const combatOutcome = {
     } else if (prior) {
       // A later death marks this same body. A despawn does not set dead.
       // The receipt stays one object, but this death is now the latest salvage.
-      if (payload && payload.sourceEvent === 'entity:killed') {
+      if (sourceEvent === 'entity:killed') {
         prior.dead = true;
         // A trimmed receipt is still in byEntity and would block this death. Put it
         // back at the end so the latest destruction is the salvage again.
@@ -452,7 +458,7 @@ export const combatOutcome = {
       this._publishAftermath();
       return null;
     }
-    const record = compactRecord(state, entity, payload, outcome, reason);
+    const record = compactRecord(state, entity, payload, outcome, reason, sourceEvent, entityId);
     own.byEntity[id] = record;
     own.outcomes.push(record);
     if (own.outcomes.length > MAX_OUTCOMES) own.outcomes.splice(0, own.outcomes.length - MAX_OUTCOMES);

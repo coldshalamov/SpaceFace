@@ -61,6 +61,28 @@ function isSwarmFortifyStructure(target) {
     && Number.isInteger(data.ordinal) && data.ordinal > 0);
 }
 
+// The `{ actorId, ...origin }` merge for an environmental body's heat add, without the mint:
+// addEnvironmentHeat deep-copies the origin into any queued reaction row and never retains the
+// caller's object, so this scratch can be rewritten per call. Written keys are tracked so a
+// field the next origin lacks cannot leak in from the previous hit.
+const _envHeatOriginScratch = {};
+const _envHeatOriginKeys = [];
+function mergedEnvHeatOrigin(actorId, origin) {
+  const s = _envHeatOriginScratch, keys = _envHeatOriginKeys;
+  for (let i = 0; i < keys.length; i++) delete s[keys[i]];
+  keys.length = 0;
+  s.actorId = actorId;
+  keys.push('actorId');
+  if (origin && typeof origin === 'object') {
+    for (const key in origin) {
+      if (!Object.hasOwn(origin, key)) continue;
+      s[key] = origin[key];
+      if (key !== 'actorId') keys.push(key);
+    }
+  }
+  return s;
+}
+
 /**
  * AL-FIGHT-1 / AL-HF-02: a reckless NPC's weapon round (direct bolt or splash) on a same-team
  * non-lawful NPC ship is real damage. Everything else keeps the friendly-fire law.
@@ -202,8 +224,12 @@ export function createDamageRouter(context, statusService, options = {}) {
           const remainder = routeDamage({ ...input, packet: scaled(1 - share),
             origin: { ...origin, swarmWardRedirected: true } });
           if (link.linkEnergy <= 0) breakSwarmGuard(screen, state.tick | 0);
-          return { ...remainder, swarmGuardRedirected: guard?.totalApplied || 0,
-            warderId: screen.id, wardedId: aimed.id };
+          // Same fields/order as `{ ...remainder, ... }` — remainder is this call's fresh
+          // result literal, so stamping it in place mints nothing.
+          remainder.swarmGuardRedirected = guard?.totalApplied || 0;
+          remainder.warderId = screen.id;
+          remainder.wardedId = aimed.id;
+          return remainder;
         }
         // A zero-damage packet cannot bypass the finite guard pool or carry conditions for free.
       } else input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
@@ -256,18 +282,31 @@ export function createDamageRouter(context, statusService, options = {}) {
     // The opening cohort stays a live physical problem until this wave's first pilot act.
     // Gun holds alone cannot stop idle hulls from dying to terrain contacts or room blasts.
     if (target.data?.runCohort === 'survival' && !swarmPilotHasActed(state)) {
-      return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
+      const rejectedResult = rejected('swarm_waiting_for_input', input, packet);
+      rejectedResult.impulseApplied = impulseResult.applied;
+      return rejectedResult;
     }
-    if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
+    if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), mergedEnvHeatOrigin(input && input.attackerId, origin));
     if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target) && !isSwarmFortifyStructure(target)) {
-      const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
-      if (marks.length) {
-        const runtime = ensureCombatant(state, target, catalog);
-        for (const status of marks) statusService.schedule(target, runtime, status, { attackerId: input && input.attackerId });
+      // Same forward order the .filter() + forEach gave — statuses are post-normalize
+      // objects, so the match test needs no array of its own.
+      const statuses = packet.statuses;
+      let marksRuntime = null;
+      let markedTarget = false;
+      for (let i = 0; i < statuses.length; i++) {
+        const status = statuses[i];
+        if (status.id !== GRAVITY_MARK_STATUS_ID) continue;
+        if (!marksRuntime) marksRuntime = ensureCombatant(state, target, catalog);
+        statusService.schedule(target, marksRuntime, status, { attackerId: input && input.attackerId });
+        markedTarget = true;
+      }
+      if (markedTarget) {
         const marked = state.combat.markedEnvironment || (state.combat.markedEnvironment = []);
         if (!marked.includes(target.id)) marked.push(target.id);
       }
-      return { ...rejected('target_not_damageable', input, packet), impulseApplied: impulseResult.applied };
+      const rejectedResult = rejected('target_not_damageable', input, packet);
+      rejectedResult.impulseApplied = impulseResult.applied;
+      return rejectedResult;
     }
     // PQ-011: 'massSeed' joins the damageable deployed-device family (mine parity) — the anchor
     // is shootable in every phase by ordinary hostile fire; own-team fire stays gated by the
@@ -574,6 +613,10 @@ export function createDamageRouter(context, statusService, options = {}) {
       if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('combat:damage', snapshotDamagePayload);
       if (input && input.wardFromId != null) {
         const hit = packet.hit;
+        // Fresh literal, not a pooled record: shield-effect subscribers legitimately retain
+        // this receipt past the emit (swarm-warden-custody collects one per shot), and the
+        // event is rare enough that pooling buys nothing. hit.pos/normal/approach are
+        // fresh-per-packet normalized children — copied out so the receipt is self-contained.
         const warded = {
           escortId: target.id,
           targetId: input.wardFromId,
@@ -598,7 +641,9 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.type = dominantChannel(packet.channels, model.channelOrder);
       dp.damageType = empHit ? 'emp' : null;
       dp.emp = empHit;
-      dp.channels = { ...packet.channels };
+      // packet.channels is already fresh-per-packet — the same object appendCombatTrace
+      // holds by reference — so the pooled record shares it rather than re-copying per emit.
+      dp.channels = packet.channels;
       dp.shieldDamage = shieldDamage;
       dp.armorDamage = armorDamage;
       dp.hullDamage = hullDamage;
@@ -612,7 +657,16 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.brokeShield = shieldBroke;
       dp.shieldAbsorbed = shieldDamage > 0;
       dp.isPlayer = target.id === state.playerId;
-      dp.pos = packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z };
+      // hit.pos is fresh-per-packet and shared as-is; the no-contact fallback writes the
+      // pooled scratch child instead of minting {x,z} per hit.
+      const hitPos = packet.hit && packet.hit.pos;
+      if (hitPos) dp.pos = hitPos;
+      else {
+        const sp = dp._posScratch;
+        sp.x = target.pos.x;
+        sp.z = target.pos.z;
+        dp.pos = sp;
+      }
       dp.approach = packet.hit && packet.hit.approach || null;
       dp.normal = packet.hit && packet.hit.normal || null;
       dp.factionId = target.factionId || null;
@@ -804,14 +858,18 @@ const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
 // Per-hit 'combat:damage' record — refilled every accepted packet. Listeners consume it
 // synchronously within the emit; the deferred presentation lane snapshots top-level fields at
 // _emitCue entry. Every field must be rewritten on each use or removed; nested sub-objects
-// (channels, before, after, pos, approach, normal, origin) are never pooled.
-// Deferred presentation tails queue this pooled record past the emit — the shallow clone
-// below freezes every field they can read (nested refs are fresh-per-packet per above).
+// (channels, before, after, pos, approach, normal, origin) are fresh-per-packet or
+// externally owned — never pooled. The one exception is _posScratch, the pooled fallback
+// for hits with no contact point.
+// Deferred presentation tails queue this pooled record past the emit — the clone below
+// freezes every field they can read (nested refs are fresh-per-packet per above), with the
+// scratch child copied out so a queued tail sees this emit's pose, not the next refill's.
 function snapshotDamagePayload(p) {
-  return { ...p };
+  const pos = p.pos === p._posScratch ? { x: p.pos.x, z: p.pos.z } : p.pos;
+  return { ...p, pos };
 }
 function createDamageEmitPayload() {
-  return {
+  const payload = {
     targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
     damageType: null, emp: false, channels: null,
     shieldDamage: 0, armorDamage: 0, hullDamage: 0, subsystemDamage: 0,
@@ -822,6 +880,11 @@ function createDamageEmitPayload() {
     factionId: null, factionLawful: false, targetHostileToPlayer: false,
     subsystemId: null, origin: null, weaponId: null,
   };
+  // Non-enumerable so the pooled scratch never shows up in listener key scans,
+  // snapshotDamagePayload spreads, or any serialized copy of the emitted record.
+  Object.defineProperty(payload, '_posScratch',
+    { value: { x: 0, z: 0 }, writable: true, enumerable: false, configurable: true });
+  return payload;
 }
 // A combat:damage listener can synchronously route another hit (volatileExposure ruptures a pod a
 // thermal hit just pushed past its threshold). One shared record let that nested emit rewrite the
@@ -1103,13 +1166,15 @@ function normalizeImpulse(impulse) {
 function normalizeHit(hit) {
   if (!hit || typeof hit !== 'object') return null;
   const out = {};
-  if (hit.pos) out.pos = { x: Number(hit.pos.x) || 0, z: Number(hit.pos.z) || 0 };
+  // A set-flag answers what Object.keys(out).length did, without the key array per hit.
+  let any = false;
+  if (hit.pos) { out.pos = { x: Number(hit.pos.x) || 0, z: Number(hit.pos.z) || 0 }; any = true; }
   const approach = normalizeHitDirection(hit.approach);
   const normal = normalizeHitDirection(hit.normal);
-  if (approach) out.approach = approach;
-  if (normal) out.normal = normal;
-  if (typeof hit.subsystemId === 'string') out.subsystemId = hit.subsystemId;
-  return Object.keys(out).length ? out : null;
+  if (approach) { out.approach = approach; any = true; }
+  if (normal) { out.normal = normal; any = true; }
+  if (typeof hit.subsystemId === 'string') { out.subsystemId = hit.subsystemId; any = true; }
+  return any ? out : null;
 }
 
 function normalizeHitDirection(value) {

@@ -195,25 +195,59 @@ export function createAlerts(ctx) {
   let nextExpiryAt = Infinity;
   let blockedMills = new Set();
 
-  function ensureEl(rec) {
-    if (rec.el) return rec.el;
+  // Pill elements are pooled like floatingText/swarmJuiceHud nodes: a raised record's (el, lens,
+  // text) trio is created once and recycled by class/text swap on clear/expiry instead of three
+  // createElement calls per pill. The free list is bounded; record churn beyond it GCs as before.
+  const alertNodeFree = [];
+  const ALERT_NODE_POOL_MAX = 8;
+  function acquireAlertNode() {
+    const node = alertNodeFree.pop();
+    if (node) return node;
     const el = document.createElement('div');
-    // dp-annunc: the annunciator is a machined strip with a lamp lens (deckplate components).
-    // Persistent condition chips (ttl Infinity) are lit controls — --status, never a blinker.
-    el.className = `sf-alert sf-alert--${rec.sev} dp-annunc`;
     // Persistent condition chips are discoverable status text, never a second automatic voice.
     // Transient/danger speech belongs to the single arbiter floor below.
     el.setAttribute('role', 'group');
     el.setAttribute('aria-live', 'off');
     el.setAttribute('aria-atomic', 'true');
     const lens = document.createElement('span');
-    lens.className = `dp-annunc__lens dp-lamp${rec.sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     lens.setAttribute('aria-hidden', 'true');
     const txt = document.createElement('span');
     txt.className = 'sf-alert__text';
     el.append(lens, txt);
-    rec._lens = lens;
-    rec._txt = txt;
+    return { el, lens, txt };
+  }
+  function releaseAlertNode(node) {
+    if (!node) return;
+    const { el } = node;
+    // Per-record chrome the base shape does not carry (the dock key chip) and any state pinned
+    // on the element — suppressEntrance's inline animation-name, [hidden], dock data attrs —
+    // must not ride the next record's card.
+    for (const child of Array.from(el.children)) {
+      if (child !== node.lens && child !== node.txt) el.removeChild(child);
+    }
+    el.className = 'sf-alert';
+    el.hidden = false;
+    el.style.animationName = '';
+    // Optional-call: Mini-DOM harnesses may not implement removeAttribute.
+    if (typeof el.removeAttribute === 'function') {
+      el.removeAttribute('data-dock-station');
+      el.removeAttribute('data-dock-key');
+    }
+    if (alertNodeFree.length < ALERT_NODE_POOL_MAX) alertNodeFree.push(node);
+  }
+
+  function ensureEl(rec) {
+    if (rec.el) return rec.el;
+    const node = acquireAlertNode();
+    const el = node.el;
+    // dp-annunc: the annunciator is a machined strip with a lamp lens (deckplate components).
+    // Persistent condition chips (ttl Infinity) are lit controls — --status, never a blinker.
+    el.className = `sf-alert sf-alert--${rec.sev} dp-annunc`;
+    node.lens.className = `dp-annunc__lens dp-lamp${rec.sev === 'danger' ? ' dp-lamp--danger' : ''}`;
+    rec._node = node;
+    rec._lens = node.lens;
+    rec._txt = node.txt;
+    rec._dockKey = null;
     rec.el = el;
     return el;
   }
@@ -246,6 +280,8 @@ export function createAlerts(ctx) {
     if (!rec) return;
     if (rec.stageHandle) { rec.stageHandle.clear(); rec.stageHandle = null; }
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    releaseAlertNode(rec._node);
+    rec._node = null; rec.el = null; rec._lens = null; rec._txt = null; rec._dockKey = null;
     map.delete(key);
     recomputeNextExpiry();
   }
@@ -353,6 +389,8 @@ export function createAlerts(ctx) {
       if (!rec) continue;
       if (rec.stageHandle) { rec.stageHandle.clear(); rec.stageHandle = null; }
       if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      releaseAlertNode(rec._node);
+      rec._node = null; rec.el = null; rec._lens = null; rec._txt = null; rec._dockKey = null;
       map.delete(rec.key);
       dirty = true;
     }

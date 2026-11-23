@@ -535,6 +535,65 @@ function applyPilotHeatDrum(state, e, w, def) {
   }
 }
 
+// ── combat:fire pooled receipts ───────────────────────────────────────────────
+// Every combat:fire listener consumes the receipt synchronously inside the emit.
+// The retention audit covered the whole subscriber set: audio _onFire/_startBeam
+// and vfx _combatBeams.upsert/_weaponPresenter.handleFire copy scalars into their
+// own records; presentationOrchestrator._emitCue shallow-clones the top level for
+// its deferred lanes; telemetry/contractClauses/plants/law read fields in-line;
+// eventTrace deep-sanitizes; the worker bridge flattens at emit time. Nothing
+// stores the envelope itself, so one refilled record per site shape replaces the
+// per-shot literal. Nested children (origin/from/to) stay FRESH literals per
+// emit — the deferred-cue contract keeps them emit-unique, so they are never
+// pooled. The deploy site (_spawnVectorMine) keeps its literal on purpose: its
+// `origin` aliases the mine entity's live pos, a different contract entirely.
+//
+// Re-entrancy: a combat:fire listener can synchronously produce another shot's
+// receipt (impulseCharges' detonator commit nests one inside entity:killed
+// delivery; a doctrine phase can re-service a gun). A single shared record would
+// let the nested emit rewrite fields under listeners still waiting on the outer
+// emit, so each shape pools one record per dispatch depth — the damage.js
+// acquireDamageEmitPayload precedent. Depth 0 reuses a stable object; a nested
+// emit takes the next slot until its own emit returns.
+//
+// Deferred presentation tails queue a pooled record past the emit — the snapshot
+// freezes the top level (nested refs are already emit-unique per above). Re-armed
+// on every emit for the same reason physics does: a bus.clear() wipes
+// payloadSnapshots where this module cannot observe it, and the bus's own contract
+// is that pool owners re-arm cheaply.
+function snapshotFirePayload(p) { return { ...p }; }
+function armFirePayloadSnapshot(bus) {
+  if (bus && typeof bus.setPayloadSnapshot === 'function') {
+    bus.setPayloadSnapshot('combat:fire', snapshotFirePayload);
+  }
+}
+function createFireGunPayload() {
+  return { ownerId: null, weaponId: null, hardpointIdx: null, origin: null, dir: null };
+}
+function createFireBeamPayload() {
+  return {
+    ownerId: null, weaponId: null, hardpointIdx: null, origin: null, from: null,
+    to: null, dir: null, range: 0, damageType: null, beamKey: null,
+    continuous: false, phase: null,
+  };
+}
+const _fireGunEmitPool = [createFireGunPayload()];
+let _fireGunEmitDepth = 0;
+function acquireFireGunEmitPayload() {
+  if (_fireGunEmitDepth >= _fireGunEmitPool.length) _fireGunEmitPool.push(createFireGunPayload());
+  const p = _fireGunEmitPool[_fireGunEmitDepth];
+  _fireGunEmitDepth += 1;
+  return p;
+}
+const _fireBeamEmitPool = [createFireBeamPayload()];
+let _fireBeamEmitDepth = 0;
+function acquireFireBeamEmitPayload() {
+  if (_fireBeamEmitDepth >= _fireBeamEmitPool.length) _fireBeamEmitPool.push(createFireBeamPayload());
+  const p = _fireBeamEmitPool[_fireBeamEmitDepth];
+  _fireBeamEmitDepth += 1;
+  return p;
+}
+
 
 export const weapons = {
   name: 'weapons',
@@ -975,9 +1034,18 @@ export const weapons = {
 
   // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
   _quenchHooks() {
+    // Cached scratch: applyCryoQuench only ever calls hooks.fields/hooks.emit
+    // synchronously, so the same record serves every ship and every tick — no
+    // per-call {fields, emit}+closure allocation. `fields` still re-resolves each
+    // call (a late-registered fields system binds exactly like before), and the
+    // emit arrow reads this.bus live at dispatch time.
+    const hooks = this._quenchHooksScratch || (this._quenchHooksScratch = {
+      fields: null,
+      emit: (type, payload) => this.bus.emit(type, payload),
+    });
     const fields = this.ctx && this.ctx.registry && this.ctx.registry.get('fields');
-    const emit = (type, payload) => this.bus.emit(type, payload);
-    return { fields: fields && typeof fields.registerThermal === 'function' ? fields : null, emit };
+    hooks.fields = fields && typeof fields.registerThermal === 'function' ? fields : null;
+    return hooks;
   },
 
   _tickWeapons(dt, state) {
@@ -1540,9 +1608,18 @@ export const weapons = {
     w._cooldown = armedCooldown(!!state && e.id === state.playerId, rof, 0.2, state);
     launchEmergent(state, e, def, aim);
     const origin = this._muzzle ? this._muzzle(e, w, aim) : { x: e.pos.x, z: e.pos.z };
-    this.bus.emit('combat:fire', {
-      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir: aim,
-    });
+    armFirePayloadSnapshot(this.bus);
+    const fp = acquireFireGunEmitPayload();
+    fp.ownerId = e.id;
+    fp.weaponId = w.defId;
+    fp.hardpointIdx = w.slotIndex;
+    fp.origin = origin;
+    fp.dir = aim;
+    try {
+      this.bus.emit('combat:fire', fp);
+    } finally {
+      _fireGunEmitDepth -= 1;
+    }
     return capLeft;
   },
 
@@ -1642,11 +1719,27 @@ export const weapons = {
         opticFamilyId: beamMeta.opticFamilyId,
       });
     }
-    this.bus.emit('combat:fire', {
-      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
-      origin, from: origin, to, dir, range, damageType,
-      beamKey, continuous: true, phase,
-    });
+    armFirePayloadSnapshot(this.bus);
+    const bp = acquireFireBeamEmitPayload();
+    bp.ownerId = e.id;
+    bp.weaponId = w.defId;
+    bp.hardpointIdx = w.slotIndex;
+    bp.origin = origin;
+    // from/origin alias the same fresh literal exactly like the retired object
+    // literal did — consumers that compare the two refs still see identity.
+    bp.from = origin;
+    bp.to = to;
+    bp.dir = dir;
+    bp.range = range;
+    bp.damageType = damageType;
+    bp.beamKey = beamKey;
+    bp.continuous = true;
+    bp.phase = phase;
+    try {
+      this.bus.emit('combat:fire', bp);
+    } finally {
+      _fireBeamEmitDepth -= 1;
+    }
     return capLeft;
   },
 
@@ -1907,9 +2000,18 @@ export const weapons = {
     }
 
     const origin = this._muzzle(e, w, dir);
-    this.bus.emit('combat:fire', {
-      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir,
-    });
+    armFirePayloadSnapshot(this.bus);
+    const fp = acquireFireGunEmitPayload();
+    fp.ownerId = e.id;
+    fp.weaponId = w.defId;
+    fp.hardpointIdx = w.slotIndex;
+    fp.origin = origin;
+    fp.dir = dir;
+    try {
+      this.bus.emit('combat:fire', fp);
+    } finally {
+      _fireGunEmitDepth -= 1;
+    }
     return capLeft;
   },
 
@@ -1994,6 +2096,17 @@ export const weapons = {
     // trajectory, and never a second draw on heat or capacitor. Guns only: a thrown
     // torpedo is not a "shot" and never doubles.
     const echoOwned = e.id === state.playerId && !isMissile && swarmRunOwnsLegendary(state, 'echo');
+    // Reserve the whole volley's seats once — emitted roots plus the echo doubles —
+    // instead of rescanning the projectile lane inside every _spawnProjectile.
+    // Reserving N retires exactly the oldest the interleaved reserve(1)s would
+    // have; the per-spawn reserve stays as the safety net.
+    const echoShots0 = (w._echoShots || 0);
+    const echoExtra = echoOwned && volley.emitted.length
+      ? Math.floor((echoShots0 + volley.emitted.length) / 5) - Math.floor(echoShots0 / 5)
+      : 0;
+    if (volley.emitted.length + echoExtra > 0) {
+      reserveProjectileCapacity(state, volley.emitted.length + echoExtra);
+    }
     for (const root of volley.emitted) {
       const spawnOpts = {
         payloadScale,
@@ -3323,6 +3436,11 @@ function trackOpticProjectile(host, book, projectile) {
 
 function spawnOpticChildren(host, book, parent, rays) {
   if (!rays || typeof host.helpers?.spawnEntity !== 'function') return;
+  // One reservation for the whole fan — reserving N up front retires the same
+  // oldest-beyond-cap set the per-ray reserve(1)s would have, without rescanning
+  // the projectile lane per child. The per-child reserve stays as the safety net
+  // (a spawn listener could mint another projectile mid-fan).
+  if (rays.length) reserveProjectileCapacity(host.state, rays.length);
   for (const ray of rays) {
     reserveProjectileCapacity(host.state, 1);
     const child = host.helpers.spawnEntity(opticChildSpec(parent, ray));
@@ -3601,6 +3719,10 @@ function spawnSplitChildren(host, parent, spec, children, payload) {
   const heading = Math.atan2(vz, vx);
   const count = children.length;
   const pos = (payload && payload.pos) || parent.pos || { x: 0, z: 0 };
+  // Same burst reservation as the optic fan: N up front retires exactly the
+  // oldest the interleaved reserve(1)s would have; the in-loop reserve stays as
+  // the safety net for listener-minted projectiles.
+  if (count) reserveProjectileCapacity(host.state, count);
   for (let i = 0; i < count; i++) {
     const child = children[i];
     const scale = Number.isFinite(child.payloadScale) ? child.payloadScale : 0.55;

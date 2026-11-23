@@ -294,8 +294,8 @@ export const flightV3 = {
       // resource-gated value; re-deriving it from raw input would desync audio/VFX when energy
       // cuts boost mid-hold (same fix as the legacy controller, src/systems/flight.js:95-101).
       const wasBoosting = player._wasBoosting || false;
-      if (player.flags.boosting && !wasBoosting) this.bus.emit('ship:boostStart', { shipId: player.id });
-      else if (!player.flags.boosting && wasBoosting) this.bus.emit('ship:boostStop', { shipId: player.id });
+      if (player.flags.boosting && !wasBoosting) emitBoostToggle(this.bus, 'ship:boostStart', player.id);
+      else if (!player.flags.boosting && wasBoosting) emitBoostToggle(this.bus, 'ship:boostStop', player.id);
       player._wasBoosting = player.flags.boosting;
     } else if (player) {
       settleBank(player, dt);
@@ -948,7 +948,7 @@ export const flightV3 = {
     if (boost.energy > 1) {
       boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
       if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
+        emitBoostPreKick(this.bus, e.id, BOOST_PREKICK_S);
       }
     }
     queuePhysicsImpulse(e, { x: dirX * scaled * mass, y: 0, z: dirZ * scaled * mass });
@@ -1027,7 +1027,7 @@ export const flightV3 = {
     e.flags.boosting = false;
     e._wasBoosting = false;
     if (wasBoosting && this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('ship:boostStop', { shipId: e.id });
+      emitBoostToggle(this.bus, 'ship:boostStop', e.id);
     }
   },
 
@@ -2356,12 +2356,72 @@ function emitThrustCue(bus, state, entity, input, frame) {
   P.strafe = strafe;
   P.boost = !!(entity.flags && entity.flags.boosting);
   thrustNozzles(throttle, strafe, brake, P.nozzles, _thrustNozzlePool);
+  // Re-arm per emit like physics:impact's: a bus.clear() wipes payloadSnapshots where this
+  // module cannot observe it, and the bus's own contract is that pool owners re-arm cheaply.
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('ship:thrust', snapshotThrustPayload);
   bus.emit('ship:thrust', P);
 }
 
 // Retained emit payload — all ship:thrust subscribers read synchronously during emit.
 const _thrustPayload = { id: null, shipId: null, throttle: 0, reverse: 0, strafe: 0, boost: false, nozzles: [] };
 const _thrustNozzlePool = Array.from({ length: 4 }, () => ({ role: '', strength: 0, angle: 0 }));
+
+// A deferred presentation tail queues past the emit — clone the record AND each pooled
+// nozzle entry so the tail reads this emit's values, not the next refill's.
+function snapshotThrustPayload(p) {
+  const nozzles = Array.isArray(p.nozzles) ? p.nozzles.map((n) => (n ? { ...n } : n)) : p.nozzles;
+  return { ...p, nozzles };
+}
+
+// ship:boostStart/ship:boostStop pooled toggle receipts — every subscriber reads shipId
+// synchronously inside the emit (vfx _onBoost, telemetry verbs, cruise cancel, eventTrace
+// sanitize, the worker bridge's emit-time flatten); nothing retains the record. One record
+// per dispatch depth, the combat:damage precedent: a boost listener that drives a boost
+// transition mid-dispatch takes the next slot rather than rewriting the outer receipt.
+// Deferred presentation tails get the scalar clone below; re-armed per emit because a
+// bus.clear() wipes the snapshot map where this module cannot observe it.
+function snapshotBoostTogglePayload(p) { return { ...p }; }
+function createBoostTogglePayload() { return { shipId: null }; }
+const _boostToggleEmitPool = [createBoostTogglePayload()];
+let _boostToggleEmitDepth = 0;
+function acquireBoostTogglePayload() {
+  if (_boostToggleEmitDepth >= _boostToggleEmitPool.length) _boostToggleEmitPool.push(createBoostTogglePayload());
+  const p = _boostToggleEmitPool[_boostToggleEmitDepth];
+  _boostToggleEmitDepth += 1;
+  return p;
+}
+function emitBoostToggle(bus, event, shipId) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot(event, snapshotBoostTogglePayload);
+  const p = acquireBoostTogglePayload();
+  p.shipId = shipId;
+  try {
+    bus.emit(event, p);
+  } finally {
+    _boostToggleEmitDepth -= 1;
+  }
+}
+
+// ship:boostPreKick carries windowS on top of shipId, so it gets its own depth pool
+// rather than a ghost field on the start/stop record (physics:impact's optional-field
+// rule: no stale keys on the receipt).
+function createBoostPreKickPayload() { return { shipId: null, windowS: 0 }; }
+const _boostPreKickEmitPool = [createBoostPreKickPayload()];
+let _boostPreKickEmitDepth = 0;
+function emitBoostPreKick(bus, shipId, windowS) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('ship:boostPreKick', snapshotBoostTogglePayload);
+  if (_boostPreKickEmitDepth >= _boostPreKickEmitPool.length) _boostPreKickEmitPool.push(createBoostPreKickPayload());
+  const p = _boostPreKickEmitPool[_boostPreKickEmitDepth];
+  _boostPreKickEmitDepth += 1;
+  p.shipId = shipId;
+  p.windowS = windowS;
+  try {
+    bus.emit('ship:boostPreKick', p);
+  } finally {
+    _boostPreKickEmitDepth -= 1;
+  }
+}
 
 function thrustNozzles(throttle, strafe, brake, out, pool) {
   let n = 0;

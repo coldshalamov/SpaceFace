@@ -216,12 +216,12 @@ export function validateRunStateForTick(run, tick) {
   const t = tick | 0;
   const cached = RUN_STATE_TICK_CACHE.get(run);
   if (cached && cached.tick === t) return cached.result;
-  const result = validateRunState(run);
+  const result = validateRunStateInner(run, { skipNonJson: true });
   RUN_STATE_TICK_CACHE.set(run, { tick: t, result });
   return result;
 }
 
-function validateRunStateInner(run) {
+function validateRunStateInner(run, opts = {}) {
   const issues = [];
   if (!run || typeof run !== 'object' || Array.isArray(run)) {
     return { ok: false, issues: ['(root): expected object'] };
@@ -339,7 +339,7 @@ function validateRunStateInner(run) {
     }
   }
 
-  collectNonJsonIssues(run, issues, [], []);
+  if (!opts || opts.skipNonJson !== true) collectNonJsonIssues(run, issues, [], []);
   return { ok: issues.length === 0, issues };
 }
 
