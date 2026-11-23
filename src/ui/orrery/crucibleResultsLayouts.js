@@ -428,3 +428,109 @@ export function injectCrucibleResultsLayouts(doc = globalThis.document) {
   style.textContent = CRUCIBLE_RESULTS_LAYOUT_CSS;
   doc.head.appendChild(style);
 }
+
+// RUN OVER (04_SWARM.md §8): the Swarm death plate. Six lines in one column at the left — Kiln's
+// line, what killed you, the best moment, four big figures, the build — then Again (gold, Enter)
+// and the quiet keys; the death dial stands at the right as the still of the blow. Archivo for the
+// title and the numerals only; Instrument Sans for every word; Spline Sans Mono in the key cap.
+const RUN_OVER_STYLE_ID = 'sf-run-over-style';
+const RO = 'html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover';
+export const RUN_OVER_CSS = `
+${RO} { display:block !important; padding:0 !important; margin:0 !important; overflow:hidden !important;
+  background:linear-gradient(90deg, rgb(8 9 12 / .95) 0%, rgb(8 9 12 / .9) 44%, rgb(8 9 12 / .62) 100%) !important;
+  color:var(--dp-ink, #e8e2d4); font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); }
+${RO}::before, ${RO}::after { display:none !important; }
+${RO} > .sf-runover__plate { position:absolute; left:clamp(24px, 5vw, 72px); top:50%; transform:translateY(-50%);
+  width:min(600px, calc(52vw - 24px)); max-height:calc(100% - 32px); overflow:auto; overscroll-behavior:contain;
+  display:flex; flex-direction:column; scrollbar-width:thin; z-index:2; }
+${RO} .sf-runover__title { margin:0; font:800 56px/.95 var(--dp-face-display, "Archivo", sans-serif); letter-spacing:0;
+  text-transform:uppercase; color:#f6f1e6; }
+${RO} .sf-runover__kiln { margin:12px 0 0; display:flex; flex-direction:column; gap:4px; }
+${RO} .sf-runover__quote { font:500 22px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif); color:var(--dp-lamp-hot, #ffd98c); }
+${RO} .sf-runover__by { font:600 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.16em;
+  text-transform:uppercase; color:var(--dp-ink-mute, #b0aea6); }
+${RO} .sf-runover__note { margin:8px 0 0; font:400 14px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif); color:var(--dp-ink-dim, #b7b4a6); }
+${RO} .sf-runover__rows { margin-top:20px; display:flex; flex-direction:column; gap:12px; }
+${RO} .sf-runover__row { display:grid; grid-template-columns:112px minmax(0, 1fr); column-gap:16px; align-items:baseline; }
+${RO} .sf-runover__row--build { margin-top:16px; }
+${RO} .sf-runover__label { margin:0; font:600 12px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dp-ink-mute, #b0aea6); }
+${RO} .sf-runover__body { min-width:0; }
+${RO} .sf-runover__main { margin:0; font:600 18px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif); color:#f6f1e6; }
+${RO} .sf-runover__detail { margin:4px 0 0; font:400 14px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif); color:var(--dp-ink-dim, #b7b4a6); }
+${RO} .sf-runover__figures { margin-top:20px; display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); gap:8px; }
+${RO} .sf-runover__figure { margin:0; padding:12px 16px; display:flex; flex-direction:column; gap:4px;
+  background:rgb(14 17 22 / .86); border:1px solid rgb(232 226 212 / .1); border-radius:4px; }
+${RO} .sf-runover__n { font:800 40px/1 var(--dp-face-display, "Archivo", sans-serif); font-variant-numeric:tabular-nums;
+  color:#f6f1e6; white-space:nowrap; }
+${RO} .sf-runover__w { font:600 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dp-ink-mute, #b0aea6); }
+${RO} .sf-runover__build { margin:0; padding:0; background:none; border:0; border-bottom:1px solid rgb(232 226 212 / .28);
+  border-radius:0; box-shadow:none; cursor:pointer; text-align:left; text-transform:none; letter-spacing:0;
+  font:600 18px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif); color:#f6f1e6;
+  transition:color 140ms ease-out, border-color 140ms ease-out; }
+${RO} .sf-runover__build:hover { color:var(--dp-lamp-hot, #ffd98c); border-color:var(--dp-lamp, #f2b950); }
+${RO} .sf-runover__build:focus-visible { outline:2px solid var(--dp-lamp, #f2b950); outline-offset:4px; }
+${RO} .sf-runover__take { margin:12px 0 0; font:400 14px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif); color:var(--dp-ink-dim, #b7b4a6); }
+${RO} .sf-runover__foot { margin-top:24px; display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; }
+${RO} .sf-runover__again { flex:1 1 240px; height:56px; margin:0; display:flex; align-items:center; justify-content:center; gap:16px;
+  cursor:pointer; border:0; border-radius:4px; color:#17120a; background:linear-gradient(180deg, #f8c962 0%, #e3a73f 100%);
+  font:700 20px/1 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.18em; text-transform:uppercase;
+  box-shadow:0 8px 24px rgb(242 185 80 / .24), inset 0 1px 0 rgb(255 240 200 / .6);
+  transition:transform 140ms ease-out, box-shadow 160ms ease-out, filter 140ms ease-out; }
+${RO} .sf-runover__again:hover { filter:brightness(1.08); box-shadow:0 10px 32px rgb(242 185 80 / .38), inset 0 1px 0 rgb(255 240 200 / .7); }
+${RO} .sf-runover__again:focus-visible { outline:2px solid #ffe7b0; outline-offset:3px; }
+${RO} .sf-runover__again:active { transform:translateY(1px) scale(.995); filter:brightness(.96); }
+${RO} .sf-runover__again:disabled { filter:saturate(.4) brightness(.8); cursor:default; }
+${RO} .sf-runover__key { display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:3px;
+  border:1px solid rgb(23 18 10 / .4); font:600 12px/1 var(--dp-face-code, "Spline Sans Mono", ui-monospace, monospace);
+  letter-spacing:.06em; text-transform:uppercase; }
+${RO} .sf-runover__quiet { height:56px; margin:0; padding:0 20px; cursor:pointer; background:rgb(14 17 22 / .86);
+  border:1px solid rgb(232 226 212 / .18); border-radius:4px; box-shadow:none; color:var(--dp-ink, #e8e2d4);
+  font:600 15px/1 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.04em; text-transform:none;
+  transition:border-color 140ms ease-out, background-color 140ms ease-out, transform 120ms ease-out; }
+${RO} .sf-runover__quiet:hover { border-color:rgb(232 226 212 / .4); background:rgb(28 30 36 / .94); }
+${RO} .sf-runover__quiet:focus-visible { outline:2px solid var(--dp-lamp, #f2b950); outline-offset:2px; }
+${RO} .sf-runover__quiet:active { transform:translateY(1px); }
+${RO} .sf-runover__quiet[hidden] { display:none !important; }
+${RO} > .sf-runover__dial .orr-deathdial__groups { display:none; }
+${RO} .sf-runover__legend { margin:4px 0 0; text-align:center; font:600 12px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:.06em; color:var(--dp-ink-mute, #b0aea6); }
+${RO} > .sf-runover__dial { position:absolute; top:32px; bottom:32px; right:clamp(16px, 4vw, 64px); width:min(40vw, 560px); z-index:1; }
+@media (max-height:700px) {
+  ${RO} .sf-runover__title { font-size:46px; }
+  ${RO} .sf-runover__quote { font-size:19px; }
+  ${RO} .sf-runover__rows { margin-top:16px; gap:8px; }
+  ${RO} .sf-runover__figures { margin-top:16px; }
+  ${RO} .sf-runover__figure { padding:8px 12px; }
+  ${RO} .sf-runover__n { font-size:34px; }
+  ${RO} .sf-runover__row--build { margin-top:12px; }
+  ${RO} .sf-runover__foot { margin-top:16px; }
+  ${RO} :is(.sf-runover__again, .sf-runover__quiet) { height:48px; }
+}
+@media (max-width:760px) {
+  ${RO} { overflow:auto !important; background:rgb(8 9 12 / .95) !important; }
+  ${RO} > .sf-runover__plate { position:static; transform:none; width:auto; max-height:none; overflow:visible; padding:24px 16px; }
+  ${RO} .sf-runover__title { font-size:44px; }
+  ${RO} .sf-runover__row { grid-template-columns:minmax(0, 1fr); row-gap:4px; }
+  ${RO} .sf-runover__figure { padding:8px 12px; }
+  ${RO} .sf-runover__n { font-size:28px; }
+  ${RO} .sf-runover__key { display:none; }
+  ${RO} .sf-runover__again { flex-basis:100%; }
+  ${RO} .sf-runover__quiet { flex:1 1 0; padding:0 12px; }
+  ${RO} > .sf-runover__dial { display:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  ${RO} :is(.sf-runover__again, .sf-runover__quiet, .sf-runover__build) { transition:none; }
+}
+html.sf-reduce-motion ${RO} :is(.sf-runover__again, .sf-runover__quiet, .sf-runover__build) { transition:none; }
+`;
+
+export function injectRunOverLayouts(doc = globalThis.document) {
+  if (!doc?.head || doc.getElementById(RUN_OVER_STYLE_ID)) return;
+  injectOrrery(doc);
+  const style = doc.createElement('style');
+  style.id = RUN_OVER_STYLE_ID;
+  style.textContent = RUN_OVER_CSS;
+  doc.head.appendChild(style);
+}

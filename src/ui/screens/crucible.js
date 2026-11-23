@@ -17,6 +17,7 @@ import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
   buildCrucibleRetryRequest,
+  buildSwarmAgainRequest,
   crucibleHullChoices,
   crucibleHullSetupFor,
   crucibleSetupFor,
@@ -84,7 +85,8 @@ import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
-import { injectCrucibleResultsLayouts } from '../orrery/crucibleResultsLayouts.js';
+import { injectCrucibleResultsLayouts, injectRunOverLayouts } from '../orrery/crucibleResultsLayouts.js';
+import { PILOT_BRANCHES, PILOT_EVOLUTIONS } from '../../data/pilotTree.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -104,6 +106,7 @@ import {
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
   SWARM_WAVE_MAX,
+  isSwarmBossWave,
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
@@ -3017,9 +3020,15 @@ export function weaponDisplayName(weaponId) {
     .join(' ');
 }
 
+// A hit with neither a weapon nor a recorded cause still names itself by what it did — the plate
+// never prints "?" or "unknown" (04_SWARM.md §8). Older records predate the recorder's own naming.
+const HIT_TYPE_WORDS = Object.freeze({
+  kinetic: 'Impact', thermal: 'Heat', ion: 'Ion fire', plasma: 'Plasma', phase: 'Phase fire', collision: 'Collision',
+});
 function hitSourceName(entry) {
   if (typeof entry.causeLabel === 'string' && entry.causeLabel) return entry.causeLabel;
-  return weaponDisplayName(typeof entry.weaponId === 'string' ? entry.weaponId : null);
+  if (typeof entry.weaponId === 'string' && entry.weaponId) return weaponDisplayName(entry.weaponId);
+  return HIT_TYPE_WORDS[String(entry.type || '').toLowerCase()] || 'Impact';
 }
 
 /**
@@ -4028,6 +4037,9 @@ export const crucibleResultsScreen = {
 
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
+    if (typeof rootEl.classList?.remove === 'function') rootEl.classList.remove('sf-runover');
+    if (this._runOverKey && typeof rootEl.removeEventListener === 'function') rootEl.removeEventListener('keydown', this._runOverKey);
+    this._runOverKey = null;
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
     if (ORRERY) { injectOrreryScreens(); injectCrucibleResultsLayouts(); rootEl.classList.add('orr-crucible'); }
     // PQ-146 Phase 3: retry launches start here, so the callout layer re-ensures with the plate.
@@ -4060,6 +4072,12 @@ export const crucibleResultsScreen = {
     // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
     // idempotent and gets exactly this tape. A seal failure must never take down the plate.
     try { if (result?.stopReason !== 'player_retired') takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
+
+    // RUN OVER (04_SWARM.md §8): a Swarm death reads in six lines, then Again under Enter.
+    if (isSwarmRunOver(result)) {
+      this._mountRunOver(rootEl, ctx, result);
+      return;
+    }
 
     // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
     // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
@@ -4349,6 +4367,164 @@ export const crucibleResultsScreen = {
     }
   },
 
+  /**
+   * RUN OVER for a Swarm death (04_SWARM.md §8): Kiln's line, what killed you (always named),
+   * your best moment, round/kills/chain/time big, your build in one line — then Again under
+   * Enter, the exact seed as a second key when Again deals a fresh layout, Hangar, Menu. The
+   * death dial stands at the right as the still of the blow. The full ledger stays on the record.
+   */
+  _mountRunOver(rootEl, ctx, result) {
+    rootEl.classList.add('sf-runover');
+    const doc = rootEl.ownerDocument || document;
+    const plate = el('section', 'sf-runover__plate');
+    const title = el('h1', 'sf-runover__title', 'Run over');
+    title.id = 'sf-crucible-results-title';
+    const kiln = el('p', 'sf-runover__kiln');
+    kiln.appendChild(el('span', 'sf-runover__quote', `“${kilnRunOverLine(result)}”`));
+    kiln.appendChild(el('span', 'sf-runover__by', 'Madame Kiln'));
+    plate.appendChild(title);
+    plate.appendChild(kiln);
+    if (result.recordRules?.mode === 'practice') plate.appendChild(el('p', 'sf-runover__note', 'Practice run. No ranked score or rewards.'));
+
+    const rows = el('div', 'sf-runover__rows');
+    const row = (label, main, detail = '') => {
+      const r = el('div', 'sf-runover__row');
+      r.appendChild(el('p', 'sf-runover__label', label));
+      const body = el('div', 'sf-runover__body');
+      body.appendChild(el('p', 'sf-runover__main', main));
+      if (detail) body.appendChild(el('p', 'sf-runover__detail', detail));
+      r.appendChild(body);
+      rows.appendChild(r);
+      return r;
+    };
+    const killer = runOverKiller(result);
+    row('Killed by', killer.name, killer.detail);
+    row('Best moment', runOverBestMoment(result));
+    plate.appendChild(rows);
+
+    const figs = el('div', 'sf-runover__figures');
+    for (const [word, value] of runOverFigures(result)) {
+      const fig = el('p', 'sf-runover__figure');
+      fig.appendChild(el('span', 'sf-runover__n', value));
+      fig.appendChild(el('span', 'sf-runover__w', word));
+      figs.appendChild(fig);
+    }
+    plate.appendChild(figs);
+
+    const pilot = ctx?.state?.run?.pilot || null;
+    const player = ctx?.state?.player;
+    const ship = Array.isArray(player?.ownedShips) ? player.ownedShips[player.activeShipIndex || 0] : null;
+    const hullId = result.openingEquipment?.hullId || ship?.defId || lastCrucibleSetup()?.hullId || null;
+    const hullName = (SHIPS.find((s) => s.id === hullId) || {}).name || null;
+    const buildRow = el('div', 'sf-runover__row sf-runover__row--build');
+    buildRow.appendChild(el('p', 'sf-runover__label', 'Your build'));
+    const buildBody = el('div', 'sf-runover__body');
+    const gunId = result.openingEquipment?.gun?.defId || null;
+    const buildText = runOverBuildLine(pilot, hullName, gunId ? weaponDisplayName(gunId) : null);
+    if (pilot && Array.isArray(pilot.nodes) && pilot.nodes.length) {
+      const tree = el('button', 'sf-runover__build', buildText);
+      tree.type = 'button';
+      tree.dataset.action = 'pilot-tree';
+      tree.setAttribute('aria-label', `${buildText}. Open this run's Pilot Tree.`);
+      tree.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'pilotTree', source: 'crucible-results' }));
+      buildBody.appendChild(tree);
+    } else {
+      buildBody.appendChild(el('p', 'sf-runover__main', buildText));
+    }
+    buildRow.appendChild(buildBody);
+    plate.appendChild(buildRow);
+    const take = runOverTakeLine(result);
+    if (take) plate.appendChild(el('p', 'sf-runover__take', take));
+
+    // The ways out. Again is the one primary: Enter presses it from anywhere on the plate.
+    const foot = el('div', 'sf-runover__foot');
+    const again = el('button', 'sf-runover__again');
+    again.type = 'button';
+    again.dataset.action = 'again';
+    again.appendChild(el('span', 'sf-runover__again-word', 'Again'));
+    again.appendChild(el('span', 'sf-runover__key', 'Enter'));
+    const request = buildSwarmAgainRequest(result, lastCrucibleSetup(), lastCrucibleRuleset());
+    const launch = (retry, button) => {
+      if (!retry) { leaveCrucibleResults(ctx, true); return; }
+      if (button.disabled) return;
+      try { clearKillcamTape(); } catch { /* the replay is optional */ }
+      button.disabled = true;
+      const setup = retry.setup;
+      if (setup.dailyDateKey || setup.weeklyMutatorId) {
+        queueSurvivalChallenge({
+          seed: setup.seed, ruleset: retry.ruleset,
+          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
+          dailyDateKey: setup.dailyDateKey, weeklyMutatorId: setup.weeklyMutatorId, ghostHash: setup.ghostHash,
+        });
+      } else if (setup.ghostHash != null) {
+        queueGhostPlayback(setup.ghostHash);
+      } else {
+        clearQueuedChallenge();
+      }
+      cue('confirm');
+      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) button.disabled = false;
+    };
+    again.setAttribute('aria-label', request?.sameSeed ? 'Again: round 1, a fresh layout' : 'Again: back to round 1');
+    again.addEventListener('click', () => launch(request, again));
+    foot.appendChild(again);
+    const quiet = (label, cls) => {
+      const b = el('button', `sf-runover__quiet ${cls}`, label);
+      b.type = 'button';
+      b.dataset.action = cls.replace('sf-runover__', '');
+      foot.appendChild(b);
+      return b;
+    };
+    if (request?.sameSeed) {
+      const same = quiet('Same seed', 'sf-runover__same');
+      same.setAttribute('aria-label', `Same seed: replay seed ${result.seed} exactly`);
+      same.addEventListener('click', () => launch(request.sameSeed, same));
+    }
+    if (result?.stopReason !== 'player_retired' && ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+      const skip = quiet('Skip replay', 'sf-runover__skip');
+      skip.addEventListener('click', () => {
+        skipKillcamPlayback();
+        const ui = ctx.state && ctx.state.ui;
+        if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') ui.stageRequest = null;
+        rootEl.dataset.kStage = 'plate';
+        skip.hidden = true;
+      });
+    }
+    quiet('Hangar', 'sf-runover__hangar').addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx, true); });
+    quiet('Menu', 'sf-runover__menu').addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx); });
+    plate.appendChild(foot);
+    rootEl.appendChild(plate);
+    this._runOverKey = (event) => {
+      if (event.key !== 'Enter' || event.repeat) return;
+      const target = event.target;
+      if (target && target !== again && String(target.tagName).toUpperCase() === 'BUTTON') return;
+      event.preventDefault(); event.stopPropagation();
+      again.click();
+    };
+    if (typeof rootEl.addEventListener === 'function') rootEl.addEventListener('keydown', this._runOverKey);
+
+    // The still of the blow: the ship, the bearing, the last hits (each one named).
+    this._dial = null;
+    if (ORRERY && result.defeat) {
+      // Its own class only: the full plate's dial seat (.sf-crres__dial under .has-deathdial)
+      // would pull this root into that composition.
+      const dialHost = el('div', 'sf-runover__dial');
+      dialHost.setAttribute('aria-hidden', 'true');
+      const spec = deathDialSpec(result, ctx);
+      this._dial = createDeathDial({ host: dialHost, ...spec, caption: null });
+      if (this._dial.active()) {
+        rootEl.appendChild(dialHost);
+        // The initials under the hit strip, spelled out once.
+        const legend = abbreviatedHitLegend(result);
+        const capEl = legend && dialHost.querySelector ? dialHost.querySelector('.orr-deathdial__caption') : null;
+        if (capEl) capEl.appendChild(el('p', 'sf-runover__legend', legend));
+      }
+    }
+    injectRunOverLayouts(doc);
+    this._regions = { title, story: plate, ledger: plate, foot, again };
+    rootEl.dataset.kReady = '1';
+    try { again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+  },
+
   // S14 — the victory variant of this plate: the champion's name in the title, its authored
   // lesson in the band, the same three ways out. Keep going is the focused word because the
   // run underneath is still live; Again and Main menu share the ordinary record's wiring.
@@ -4636,6 +4812,165 @@ export function resultCelebration(result) {
   return band;
 }
 
+/* ------------------------------------------------------------------------------------------------
+ * RUN OVER — the Swarm death plate's words (04_SWARM.md §8). Pure and DOM-free so a node test can
+ * read every line. Nothing here may print "?", "unknown", a faction or a ledger word.
+ * --------------------------------------------------------------------------------------------- */
+
+/** A Swarm death that gets the six-line plate (a retire, a win or a boss beat keep their own). */
+export function isSwarmRunOver(result) {
+  return !!result && result.ruleset === SWARM_RULESET && result.outcome === 'defeat'
+    && result.stopReason !== 'player_retired';
+}
+
+function runOverRound(result) {
+  return Math.max(Number(result && result.deepestWave) || 0, Number(result && result.wave) || 0);
+}
+
+/** Madame Kiln's one line about what the pilot did — eight words or fewer, never a stat dump. */
+export function kilnRunOverLine(result) {
+  const round = runOverRound(result);
+  const kills = Number(result && result.kills) || 0;
+  const chain = Number(result && result.bestChain) || 0;
+  const moment = result && result.bestMoment;
+  if (round <= 1 && kills < 5) return 'Round one. The doors barely opened.';
+  if (isSwarmBossWave(round)) return 'The boss sends its regards.';
+  if (moment && moment.kind === 'stunt' && kills >= 6) return 'You made my room do the killing.';
+  if (chain >= 15) return `A chain of ${chain}. The crowd noticed.`;
+  if (round >= 20) return 'Twenty rounds. You are getting expensive.';
+  if (round >= 10) return 'Past round ten. Now I am watching.';
+  if (kills === 0) return 'Not one kill. Bold choice.';
+  return `Round ${round}. Bring a better plan.`;
+}
+
+const RUN_OVER_BEARING = Object.freeze({
+  FRONT: 'head-on', AFT: 'from behind', PORT: 'from the left', STARBOARD: 'from the right', CONTACT: 'point blank',
+});
+const RUN_OVER_LAYER = Object.freeze({ hull: 'through the hull', armor: 'through the armor', shield: 'through the shields' });
+const NAMELESS = /^(unknown contact|unidentified( attacker| fire)?|environmental hazard|own ship)$/i;
+/** A death with no shooter names the thing that did it, as a player would say it. */
+const RUN_OVER_CAUSE_NAMES = Object.freeze({
+  'arena impact': 'The wall', 'hull ram': 'A ram', 'thrown mass': 'Something thrown', blast: 'A blast',
+  crush: 'A crush', 'dart blast': 'A dart blast', collision: 'A collision', impact: 'An impact',
+});
+const capFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+
+/** What killed you: a name always (the attacker, else the weapon, else the room) and how. */
+export function runOverKiller(result) {
+  const defeat = result && result.defeat;
+  const trail = Array.isArray(result && result.damageTrail) ? result.damageTrail : [];
+  let last = null;
+  for (let i = trail.length - 1; i >= 0 && !last; i -= 1) if (trail[i] && Number(trail[i].amount) > 0) last = trail[i];
+  const lastSource = last ? hitSourceName(last) : null;
+  if (!defeat) {
+    const cause = result?.death?.causeText;
+    return { name: lastSource ? capFirst(lastSource) : 'The room', detail: typeof cause === 'string' && !/unknown|\?/i.test(cause) ? cause : '' };
+  }
+  const environmental = defeat.source?.kind === 'environment';
+  let name = environmental ? (defeat.source.label || null) : (defeat.attacker || defeat.source?.label || null);
+  if (!name || NAMELESS.test(String(name))) name = null;
+  const how = defeat.physicalLabel || defeat.weapon || lastSource || null;
+  const detail = [];
+  if (!name) name = how ? (RUN_OVER_CAUSE_NAMES[String(how).toLowerCase()] || capFirst(how)) : 'The room';
+  else if (how) detail.push(capFirst(how));
+  const bearing = RUN_OVER_BEARING[String(defeat.direction || '').toUpperCase()];
+  if (bearing) detail.push(bearing);
+  const layer = RUN_OVER_LAYER[String(defeat.dominantLayer || '').toLowerCase()];
+  if (layer) detail.push(layer);
+  return { name, detail: detail.join(' · ') };
+}
+
+const anArticle = (name) => (/^[aeiou]/i.test(name) ? `an ${name}` : `a ${name}`);
+const RUN_OVER_MOMENT = Object.freeze({
+  rock_discovery: (v) => `You put ${anArticle(v)} into a rock`,
+  wrecking_ball: (v) => `You swung ${anArticle(v)} into its friends`,
+  bolas: (v) => `You threw ${anArticle(v)} to its death`,
+  well_golf: (v) => `You sank ${anArticle(v)} in a Pull well`,
+});
+
+/** The run's best moment in one sentence ("You put a Wasp into a rock in round 4."). */
+export function runOverBestMoment(result) {
+  const moment = result && result.bestMoment;
+  const inRound = (wave) => (Number.isInteger(wave) && wave > 0 ? ` in round ${wave}` : '');
+  if (moment && moment.kind === 'stunt') {
+    const victim = moment.victim && !NAMELESS.test(moment.victim) ? moment.victim : 'ship';
+    const phrase = RUN_OVER_MOMENT[moment.trickId];
+    // The trick's own name leads: the word the in-flight callout taught the pilot.
+    if (phrase && moment.name) return `${moment.name}: ${phrase(victim).replace(/^Y/, 'y')}${inRound(moment.wave)}.`;
+    if (phrase) return `${phrase(victim)}${inRound(moment.wave)}.`;
+    return `${moment.name || 'A room kill'} on ${anArticle(victim)}${inRound(moment.wave)}.`;
+  }
+  if (moment && moment.kind === 'chain') return `${moment.count} kills in one chain${inRound(moment.wave)}.`;
+  if (moment && moment.kind === 'round' && moment.kills > 0) {
+    return `${counted(moment.kills, 'kill', 'kills')}${inRound(moment.wave)}, your busiest.`;
+  }
+  const chain = Number(result && result.bestChain) || 0;
+  if (chain >= 5) return `${chain} kills in one chain.`;
+  const kills = Number(result && result.kills) || 0;
+  if (kills > 0) return `${counted(kills, 'kill', 'kills')} before the end.`;
+  return 'No kills yet. The room is a weapon: use it.';
+}
+
+/** Round, kills, best chain and time — the four big figures. */
+export function runOverFigures(result) {
+  const seconds = Number(result && result.durationS);
+  const time = Number.isFinite(seconds) && seconds >= 0
+    ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}` : '0:00';
+  const figures = [
+    ['Round', String(runOverRound(result))],
+    ['Kills', String(Number(result && result.kills) || 0)],
+    ['Best chain', String(Number(result && result.bestChain) || 0)],
+  ];
+  // A record with no run clock (older saves) shows three figures, never a fake 0:00.
+  if (Number.isFinite(seconds) && seconds > 0) figures.push(['Time', time]);
+  return figures;
+}
+
+/** The build in one line: an evolution if one was taken, the hull, then the branches by depth. */
+export function runOverBuildLine(pilot, hullName = null, gunName = null) {
+  if (hullName && gunName) hullName = `${hullName} + ${gunName}`;
+  const points = pilot && pilot.points && typeof pilot.points === 'object' ? pilot.points : {};
+  const branches = PILOT_BRANCHES
+    .filter((branch) => Number.isInteger(points[branch.id]) && points[branch.id] > 0)
+    .sort((a, b) => points[b.id] - points[a.id])
+    .map((branch) => `${branch.name} ${points[branch.id]}`);
+  const nodes = Array.isArray(pilot && pilot.nodes) ? pilot.nodes : [];
+  const evolution = nodes.map((id) => PILOT_EVOLUTIONS.find((row) => row.id === id)).find(Boolean);
+  const head = [evolution && evolution.name, hullName].filter(Boolean).join(' · ') || 'Your ship';
+  return branches.length ? `${head} — ${branches.join(' · ')}` : `${head} — no cards taken`;
+}
+
+/** What the run paid toward the next one: new stars, an unlock, the next room's gate. */
+export function runOverTakeLine(result) {
+  if (!result || result.recordRules?.mode === 'practice') return null;
+  const parts = [];
+  const zones = result.ladderDelta && typeof result.ladderDelta.zones === 'object' ? result.ladderDelta.zones : {};
+  const gained = Object.values(zones).reduce((sum, row) => sum + Math.max(0, Number(row && row.gained) || 0), 0);
+  if (gained > 0) parts.push(`★ ${counted(gained, 'new star', 'new stars')}`);
+  const cp = result.ladderDelta && result.ladderDelta.newCheckpoint;
+  if (cp && Number.isInteger(cp.startWave)) parts.push(`next run can start at round ${cp.startWave}`);
+  for (const row of Array.isArray(result.unlocksEarned) ? result.unlocksEarned : []) {
+    const id = typeof row === 'string' ? row : row && (row.id || row.defId);
+    const entry = SURVIVAL_UNLOCK_CATALOG.find((item) => item && item.id === id);
+    const label = (entry && entry.label) || (row && typeof row === 'object' && (row.label || row.name)) || null;
+    if (label) { parts.push(`unlocked ${label}`); break; }
+  }
+  try {
+    const profile = loadCrucibleMeta();
+    const stars = swarmLadderStarTotal(profile && profile.ladder);
+    for (const arenaId of SWARM_LADDER_ARENA_ORDER) {
+      const gate = SWARM_ARENA_STAR_GATES[arenaId];
+      if (!Number.isInteger(gate) || stars >= gate) continue;
+      const name = (ARENA_DESCRIPTIONS[arenaId] || [])[0];
+      if (name) parts.push(`${name} opens at ${counted(gate, 'star', 'stars')}, ${gate - stars} to go`);
+      break;
+    }
+  } catch { /* the profile read is optional */ }
+  if (!parts.length) return null;
+  const text = parts.join(' · ');
+  return text[0] === '★' ? text : capFirst(text);
+}
+
 /** The run in four figures, for the head of the plate beside the death dial. */
 function resultFigures(result) {
   const swarm = result.ruleset === SWARM_RULESET;
@@ -4678,7 +5013,7 @@ export function deathDialSpec(result, ctx) {
   return {
     hullId: result.hullId || (ships[index] && ships[index].defId) || null,
     direction: defeat.direction || null,
-    vitals: [['Shield', vitals.shield], ['Armour', vitals.armor], ['Hull', vitals.hull]]
+    vitals: [['Shield', vitals.shield], ['Armor', vitals.armor], ['Hull', vitals.hull]]
       .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
       .map(([word, value]) => ({ word, value })),
     hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
@@ -4686,7 +5021,7 @@ export function deathDialSpec(result, ctx) {
       .map(hitSourceName),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
     hitSummary: breakdown.hits ? `Last ${counted(breakdown.hits, 'hit', 'hits')} · ${breakdown.total} damage` : '',
-    engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
+    engraving: Number(result.deepestWave || result.wave) > 0 ? `${result.ruleset === SWARM_RULESET ? 'Round' : 'Wave'} ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',
       name: rows.get('Killed by') || 'Unidentified attacker',

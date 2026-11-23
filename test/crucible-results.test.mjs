@@ -369,9 +369,10 @@ test('the Foundry rim death report uses the hit, while a Wasp gun kill names the
   assert.equal(rows.get('Damage cause'), 'arena impact');
   assert.equal(rows.get('It came from'), 'To starboard');
   assert.equal(rows.has('Its weapon'), false);
+  // Run Over (04_SWARM.md §8) names the killer and says the bearing in plain words.
   const { lines } = mountResults(result);
   assert.ok(lines.includes('Foundry rim'));
-  assert.ok(lines.some(line => line.includes('To starboard')));
+  assert.ok(lines.some(line => line.includes('from the right')));
 
   const gun = boot(4242);
   beginActive(gun, 'swarm');
@@ -546,7 +547,8 @@ test('the damage trail aggregates by weapon, heaviest first, and rounds once at 
   assert.equal(hits, 5);
   assert.equal(total, 74); // 54.7 + 12.2 + 7.1 = 74.0
   assert.equal(rows.length, 3);
-  assert.deepEqual(rows.map((r) => r.weapon), ['Heavy Autocannon M', 'Pulse Laser M', 'Unidentified fire']);
+  // A hit with no weapon names what it did (04_SWARM.md §8: never "unknown"); untyped reads Impact.
+  assert.deepEqual(rows.map((r) => r.weapon), ['Heavy Autocannon M', 'Pulse Laser M', 'Impact']);
   assert.equal(rows[0].hits, 3);
   assert.equal(rows[0].amount, 55); // 54.7 rounds once, at the end, not per hit
   assert.ok(rows[0].share > rows[1].share, 'the share drives the bar and follows the damage');
@@ -809,16 +811,12 @@ test('the first Swarm results describe the free gun as starting equipment', () =
 
     const result = survivalResults.lastResult();
     assert.equal(result.openingEquipment?.gun?.defId, defId);
+    // Rewritten to Run Over (04_SWARM.md §8): the build is one line — hull, free starting gun,
+    // the Pilot Tree branches. The between-round armory's draft ledger is retired (§2).
     const { lines } = mountResults(result);
-    assert.ok(lines.includes('Starting equipment'));
-    assert.ok(lines.includes('You started with a free Autocannon S.'));
+    assert.ok(lines.includes('Your build'));
+    assert.ok(lines.some(line => line.includes('Hornet') && line.includes('Autocannon S')), lines.join('\n'));
     assert.doesNotMatch(lines.join('\n'), /draft changed|Every shot arrived|Build code W1|W1:Autocannon S/);
-
-    const upgraded = mountResults({ ...result, buildName: 'Pierce Railgun',
-      picks: [...result.picks, { verb: 'Pierce', defId: 'wpn_railgun_m', wave: 2 }] });
-    assert.ok(upgraded.lines.includes('You started with a free Autocannon S.'));
-    assert.ok(upgraded.lines.includes('1 draft changed what your guns do:'));
-    assert.ok(upgraded.lines.includes('Pierce'));
   } finally { survivalResults.destroy(); runSession.destroy(); }
 });
 
@@ -846,7 +844,7 @@ test('a wave-6 death plate explains every link of the kill', () => {
   assert.ok(text.includes('Heavy Autocannon M'));
   assert.ok(text.includes('3 hits'));
   assert.ok(text.includes('55 damage'));
-  assert.ok(text.includes('Unidentified fire'));
+  assert.ok(text.includes('Collision'), 'a weaponless hit names what it did, never "unidentified"');
   assert.ok(text.includes('1 hit\n'), 'a single hit is not pluralised');
 
   // The ledger and the build both survive.
@@ -1021,7 +1019,8 @@ test('Back from the Swarm hangar after a fatal hit returns to the title', () => 
       if (accessibleName) assert.equal(button.getAttribute('aria-label'), accessibleName);
       button.click();
     };
-    click('crucibleResults', 'Back to the hangar');
+    // Run Over's ways out are Again, Hangar, Menu (04_SWARM.md §8).
+    click('crucibleResults', 'Hangar');
     assert.equal(manager.top(), 'crucible');
     click('crucible', 'Back', 'Back');
     assert.equal(manager.top(), 'mainMenu');
@@ -1051,8 +1050,11 @@ test('Retry after a fatal hit requests one fresh run on the chosen Swarm hull', 
     const result = survivalResults.lastResult();
     assert.equal(result.stopReason, 'player_death');
     const plate = mountResults(result);
-    const retry = plate.buttons.find(button => button.textContent === 'Run it again — same seed');
+    // Run Over (04_SWARM.md §8): seed 7 is no Course seed, so Again deals a fresh layout and
+    // Same seed is the exact replay this test pins.
+    const retry = plate.buttons.find(button => button.dataset.action === 'same');
     assert.ok(retry);
+    assert.ok(plate.buttons.some(button => button.dataset.action === 'again'));
     for (const fn of retry.listeners.click) {
       fn();
       fn();

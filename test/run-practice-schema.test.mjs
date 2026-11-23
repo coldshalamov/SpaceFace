@@ -176,7 +176,11 @@ test('Best Line and same-seed Retry stay out of ranked records and payouts acros
     const debriefCopy = textLines(plate.root).join(' ');
     assert.match(debriefCopy, /Practice run\. No ranked score or rewards\./);
     assert.doesNotMatch(debriefCopy, /Defeat banks/);
-    click(plate, 'Run it again — same seed');
+    // Run Over's Again (04_SWARM.md §8): a practice attempt replays exactly as it began.
+    const again = plate.buttons.find(b => b.dataset.action === 'again');
+    assert.ok(again, 'missing action Again');
+    globalThis.document = plate.doc;
+    try { again.listeners.click[0](); } finally { globalThis.document = oldDocument; }
     const retry = bootRequest(plate);
     assert.deepEqual(retry.crucibleSetup.survivalSetup, original.crucibleSetup.survivalSetup);
     await prepare(retry, true);

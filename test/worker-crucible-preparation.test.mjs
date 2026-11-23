@@ -293,7 +293,9 @@ test('ordinary Swarm, including a shared v2 opening, offers one permanent gun or
       try {
         const plate = mountScreen(results, { ctx: { state }, registryGet: name => name === 'survivalResults'
           ? { lastResult: () => result } : null });
-        const again = plate.buttons.find(button => button.textContent === 'Run it again — same seed');
+        // Run Over (04_SWARM.md §8): 4242 is no Course seed, so Again deals a fresh layout and
+        // Same seed is the exact replay whose opening gun this test follows.
+        const again = plate.buttons.find(button => button.dataset.action === 'same');
         assert.ok(again, 'the settled defeat offers a visible Retry');
         again.click();
         const requests = plate.emitted.filter(row => row.event === 'game:new');

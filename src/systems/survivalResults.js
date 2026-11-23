@@ -319,6 +319,58 @@ export function resolveDeathTelegraph({
  * The run told as a story: sentences with numbers, each from tracked telemetry. Fixed priority
  * order, bounded length. A run with nothing tracked tells nothing — null-safe throughout.
  */
+/**
+ * Every hit names its source (04_SWARM.md §8: "the damage owner must always know its source").
+ * A hit with no weapon and no recognised physical tag is named from what the packet does carry:
+ * its origin kind (a hazard, a brood, a blast), else the attacker's body (a ram), else its
+ * damage channel. Never null, so the plate can never print "?" or "Unknown weapon".
+ */
+const HIT_ORIGIN_WORDS = Object.freeze({
+  hazard_radiation: 'radiation', hazard_debris: 'flying debris', swarm_brood: 'brood swarm',
+  hull_burst: 'hull burst', deep_core_gas: 'core gas', collision: 'collision', bomb: 'blast',
+  mine: 'mine', storm_discharge: 'lightning', swarm_tap_hot_core: 'hot core', material_blast: 'blast',
+  light_cookoff: 'cook-off blast', fuel_cell_cook: 'fuel cell blast', volatile_exposure_rupture: 'rupture',
+  tumble_rake: 'tumbling wreck', thrown_mass: 'thrown mass', impulse_charge: 'blast', status: 'burn',
+  salvage_reactor: 'reactor blast', salvage_core: 'core blast', freight: 'freight', crusher: 'crusher',
+  furnace: 'furnace', traffic_service: 'traffic', planet_reentry: 'reentry heat',
+});
+const HIT_CHANNEL_WORDS = Object.freeze({
+  kinetic: 'impact', thermal: 'heat', ion: 'ion fire', plasma: 'plasma', phase: 'phase fire',
+});
+export function hitSourceFallback(packet = {}, attackerName = null) {
+  const record = packet && typeof packet === 'object' ? packet : {};
+  const origin = record.origin && typeof record.origin === 'object' ? record.origin : null;
+  const kind = origin && (origin.kind || origin.tag);
+  if (typeof kind === 'string' && HIT_ORIGIN_WORDS[kind]) return HIT_ORIGIN_WORDS[kind];
+  if (typeof kind === 'string' && /hazard|machin|furnace|crush|press/.test(kind)) return 'the room';
+  const named = typeof attackerName === 'string' && attackerName
+    && attackerName !== 'Unknown contact' && attackerName !== 'Environmental hazard' && attackerName !== 'Own ship';
+  if (named && (record.type === 'kinetic' || !record.type)) return 'ram';
+  return HIT_CHANNEL_WORDS[record.type] || 'impact';
+}
+
+/** The run's one best moment, structured: a room kill, else a chain, else a busy round. */
+export function bestMomentFor({ stuntKills = [], bestChain = 0, chainWave = null, waveStats = [] } = {}) {
+  let best = null;
+  for (const row of Array.isArray(stuntKills) ? stuntKills : []) {
+    if (!row || typeof row !== 'object') continue;
+    if (!best || (Number(row.points) || 0) > (Number(best.points) || 0)) best = row;
+  }
+  if (best) {
+    return { kind: 'stunt', trickId: best.trickId || null, name: best.name || null,
+      victim: typeof best.victim === 'string' && best.victim ? best.victim : null,
+      wave: Number.isInteger(best.wave) && best.wave > 0 ? best.wave : null };
+  }
+  const chain = Number(bestChain) || 0;
+  if (chain >= 5) return { kind: 'chain', count: chain, wave: Number.isInteger(chainWave) && chainWave > 0 ? chainWave : null };
+  let top = null;
+  for (const entry of Array.isArray(waveStats) ? waveStats : []) {
+    if (entry && (Number(entry.kills) || 0) > (Number(top && top.kills) || 0)) top = entry;
+  }
+  if (top) return { kind: 'round', kills: Number(top.kills) || 0, wave: Number(top.wave) || null };
+  return null;
+}
+
 export function storyMomentsFor(summary = {}) {
   const input = summary && typeof summary === 'object' ? summary : {};
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -629,6 +681,7 @@ export const survivalResults = {
     this._deathMark = null;
     this._defeatReceipt = null;
     this._stuntKills = [];
+    this._lastVictim = null;
     this._deepContinued = false;
     this._lastKillReplay = null;
     this._deadHull = null;
@@ -728,7 +781,9 @@ export const survivalResults = {
       || (Array.isArray(trick.victimLives) && trick.victimLives.some((v) => v && v.dead))
     );
     if (!isKill) return;
+    let provisional = null;
     if (trick.targetId != null) {
+      provisional = this._stuntKills.find((row) => row && row.provisional === true && row.victimId === trick.targetId) || null;
       this._stuntKills = this._stuntKills.filter((row) => !(row && row.provisional === true && row.victimId === trick.targetId));
     }
     const name = trick.name || (trick.trickId && TRICK_DEFINITIONS[trick.trickId]?.name) || trick.trickId || 'Stunt';
@@ -743,6 +798,8 @@ export const survivalResults = {
       tick: this._tickNow(),
       simTime: this._simNow(),
       episodeId: trick.episodeId || null,
+      victim: provisional ? provisional.victim : null,
+      wave: provisional ? provisional.wave : (Number.isInteger(this.state.run?.wave) ? this.state.run.wave : null),
     };
     if (existingIndex >= 0) {
       this._stuntKills[existingIndex] = record;
@@ -771,6 +828,12 @@ export const survivalResults = {
     const stunt = payload.stunt || (payload.presentation && payload.presentation.stunt);
     const stuntName = payload.stuntName || (stunt && stunt.name);
     const cause = payload.cause || (payload.presentation && payload.presentation.cause);
+    // Run Over's best moment names the body and the round ("You put a Wasp into a rock in
+    // round 4"), so a room kill keeps what it killed and when.
+    let victimName = null;
+    try { victimName = attackerLabel(this.state, payload.id); } catch { victimName = null; }
+    if (victimName === 'Unknown contact' || victimName === 'Environmental hazard') victimName = null;
+    this._lastVictim = { id: payload.id, victim: victimName, wave };
     // SF-075: the room did the killing — a thrown hull, a slam, a rock, a well. Counted for the
     // rematch comparison so "cleaner throws" is a number, not a vibe. In production only the two
     // collision causes are reachable (KillCause clamps to generic/kinetic/explosive/terrain_/
@@ -788,6 +851,8 @@ export const survivalResults = {
         points: Number(stunt && (stunt.points || stunt.baseScore)) || 0,
         tick: this._tickNow(),
         simTime: this._simNow(),
+        victim: victimName,
+        wave,
       });
     } else if (cause === 'terrain_collision' || cause === 'shove') {
       this._pushProvisionalStunt(payload.id, {
@@ -871,12 +936,15 @@ export const survivalResults = {
 
   _pushProvisionalStunt(victimId, fields) {
     if (victimId != null && this._stuntKills.some((row) => row && row.victimId === victimId && row.provisional !== true)) return;
+    const last = this._lastVictim && this._lastVictim.id === victimId ? this._lastVictim : null;
     this._stuntKills.push({
       ...fields,
       tick: this._tickNow(),
       simTime: this._simNow(),
       provisional: true,
       victimId: victimId ?? null,
+      victim: last ? last.victim : null,
+      wave: last ? last.wave : null,
     });
   },
 
@@ -905,7 +973,7 @@ export const survivalResults = {
       label = null;
     }
     const weaponId = payload.weaponId || null;
-    const causeLabel = weaponId ? null : physicalWeaponLabelFromDamage(payload);
+    const causeLabel = weaponId ? null : (physicalWeaponLabelFromDamage(payload) || hitSourceFallback(payload, label));
     const applied = Number.isFinite(payload.applied) ? payload.applied : Number(payload.amount);
     const simTime = this._simNow();
     this._damageTrail.push({
@@ -1180,6 +1248,14 @@ export const survivalResults = {
       }),
       // PQ-174.06: the build the player converged on, and its shareable code — both read from
       // the draft the run recorded, never a constant.
+      // Run Over's best moment (04_SWARM.md §8): the run's best room kill, else its best chain,
+      // else its busiest round — structured, so the plate words it.
+      bestMoment: bestMomentFor({
+        stuntKills: this._stuntKills,
+        bestChain: this._bestChain,
+        chainWave: this._chainPeak && this._chainPeak.wave,
+        waveStats: this._waveStats,
+      }),
       buildName: buildNameFor(pickEntries),
       buildCode: buildCodeFor(pickEntries),
       // PQ-174.06: when the run ended, so a retry can be measured from the death moment.

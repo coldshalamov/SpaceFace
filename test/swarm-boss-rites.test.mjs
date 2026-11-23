@@ -172,15 +172,16 @@ test('a fatal hit overtakes a queued first-champion celebration and offers real 
       ctx: { state: h.state }, registryGet: name => name === 'survivalResults' ? results : null,
     });
     assert.equal(root.dataset.outcome, 'defeat');
-    assert.match(textLines(root).join(' '), /An arena collision destroyed your ship on round 5/);
+    // Run Over (04_SWARM.md §8): the killer is named as a thing, and Again replays the Course.
+    assert.match(textLines(root).join(' '), /Killed by The wall/);
     assert.ok(!buttons.some(button => button.textContent === 'Keep going'));
-    const retry = buttons.find(button => button.textContent === 'Run it again — same seed');
+    const retry = buttons.find(button => button.dataset.action === 'again');
     retry.listeners.click[0]();
     const launch = emitted.find(e => e.event === 'game:new')?.payload.crucibleSetup;
     assert.equal(launch?.survivalSetup?.seed, seed);
     assert.equal(launch.survivalSetup.hullId, 'ship_hornet');
 
-    const back = buttons.find(button => button.textContent === 'Back to the hangar');
+    const back = buttons.find(button => button.textContent === 'Hangar');
     back.listeners.click[0]();
     assert.ok(emitted.some(e => e.event === 'game:exitToMenu' && e.payload.source === 'crucible_results'));
     assert.ok(emitted.some(e => e.event === 'ui:pushScreen' && e.payload.id === 'crucible'));
