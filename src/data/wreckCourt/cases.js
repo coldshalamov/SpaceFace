@@ -916,7 +916,7 @@ export const WRECK_COURT_CASES = [
     access: 'anthology',
     playerStart: { x: 420, z: 300 },
     briefing: 'A ship is clear of a station pylon. Both are damaged. The station says the pilot rammed the clamp. File what the bodies support.',
-    uncertainty: 'Which face is torn decides the direction of the force. A coarse look only says "damaged." The station is too heavy for this tow.',
+    uncertainty: 'Which face is torn decides the direction of the force. A coarse look only says "damaged." The station is beyond towing.',
     build(ctx) {
       const j = ctx.j;
       return {
