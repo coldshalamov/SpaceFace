@@ -28,7 +28,11 @@ test('flight help lists travel burn and the five powers from the live binding ma
   const travelRow = flight[1].find((row) => row[1] === 'travelBurn');
   assert.match(String(travelRow[2] || ''), /context wheel/, 'travel burn names the wheel');
   const brakeRow = flight[1].find((row) => row[1] === 'brake');
-  assert.match(String(brakeRow[2] || ''), /context wheel/, 'brake names the wheel');
+  // Tests follow a289310ab0: S and X brake. A bound brake names X at paint time;
+  // the context-wheel note is only for verbs that ship with no key.
+  assert.ok(brakeRow, 'brake has a flight row');
+  assert.equal(brakeRow[2], undefined, 'the bound brake row does not carry a context-wheel note');
+  assert.deepEqual(DEFAULTS.BINDINGS.brake, ['KeyX'], 'X is full stop');
   assert.deepEqual(DEFAULTS.BINDINGS.travelBurn, [], 'travel burn ships on the wheel');
   assert.deepEqual(DEFAULTS.BINDINGS.shove, ['Digit2'], 'the SHOVE hotbar seat is a real binding');
 });
