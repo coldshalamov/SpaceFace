@@ -32,53 +32,63 @@ export const SWARM_TAP_MAX_PURCHASES = SWARM_TAP_PRICES.length;
  */
 export const SWARM_TAP_MODS = Object.freeze([
   Object.freeze({
-    id: 'overbore', name: 'Overbore', icon: '◉',
+    id: 'overbore', name: 'Overbore', plainName: 'Heavy Knock', icon: '◉',
+    shortText: '2× knockback, slower fire',
     text: 'knockback ×2.0, fire rate ×0.5',
     give: { knockMult: 2.0 }, take: { rofMult: 0.5 },
   }),
   Object.freeze({
-    id: 'hair_trigger', name: 'Hair Trigger', icon: '✚',
+    id: 'hair_trigger', name: 'Hair Trigger', plainName: 'Rapid Fire', icon: '✚',
+    shortText: '2× fire rate, hotter guns',
     text: 'fire rate ×2.0, knockback ×0.7, heat gain ×1.5',
     give: { rofMult: 2.0 }, take: { knockMult: 0.7, heatMult: 1.5 },
   }),
   Object.freeze({
-    id: 'long_reel', name: 'Long Reel', icon: '⌁',
+    id: 'long_reel', name: 'Long Reel', plainName: 'Long Line', icon: '⌁',
+    shortText: 'Longer Line, slower reel',
     text: 'Line max length ×1.5, reel speed ×0.7',
     give: { tetherLenMult: 1.5 }, take: { reelRateMult: 0.7 },
   }),
   Object.freeze({
-    id: 'hot_core', name: 'Hot Core', icon: '☀',
+    id: 'hot_core', name: 'Hot Core', plainName: 'Hot Booster', icon: '☀',
+    shortText: '2× boost time, burns hull at top speed',
     text: 'boost duration ×2, boost drain ×0.5; burns 2 hull/s at top speed',
     give: { boostDurMult: 2.0, boostDrainMult: 0.5 },
     take: { hotCoreBurnPerS: 2 },
   }),
   Object.freeze({
-    id: 'ballast', name: 'Ballast', icon: '▣',
+    id: 'ballast', name: 'Ballast', plainName: 'Heavy Hull', icon: '▣',
+    shortText: 'Heavier mass, slower turns',
     text: 'player mass ×1.6, turn rate ×0.75',
     give: { massMult: 1.6 }, take: { turnMult: 0.75 },
   }),
   Object.freeze({
-    id: 'stripped', name: 'Stripped', icon: '▢',
+    id: 'stripped', name: 'Stripped', plainName: 'Light Frame', icon: '▢',
+    shortText: 'Faster turns & speed, lighter hull',
     text: 'acceleration and turn rate ×1.25, mass ×0.65',
     give: { accelMult: 1.25, turnMult: 1.25 }, take: { massMult: 0.65 },
   }),
   Object.freeze({
-    id: 'magnet_hull', name: 'Magnet Hull', icon: '◍',
+    id: 'magnet_hull', name: 'Magnet Hull', plainName: 'Magnet Hull', icon: '◍',
+    shortText: 'Pulls nearby scrap and enemy mines',
     text: 'pickups within 260 m drift to you; enemy mines within 260 m do too',
     give: { magnetPickupRange: 260 }, take: { mineMagnetRange: 260 },
   }),
   Object.freeze({
-    id: 'glass_cannon', name: 'Glass Cannon', icon: '◇',
+    id: 'glass_cannon', name: 'Glass Cannon', plainName: 'Glass Cannon', icon: '◇',
+    shortText: 'Harder knockback, half max hull',
     text: 'knockback ×1.4, max hull ×0.5',
     give: { knockMult: 1.4 }, take: { hullMaxMult: 0.5 },
   }),
   Object.freeze({
-    id: 'bumper_rails', name: 'Bumper Rails', icon: '▤',
+    id: 'bumper_rails', name: 'Bumper Rails', plainName: 'Ram Rails', icon: '▤',
+    shortText: '2× ram damage, lower top speed',
     text: 'ram damage dealt ×2 and taken ×0.5, top speed ×0.85',
     give: { ramDealtMult: 2.0, ramTakenMult: 0.5 }, take: { topSpeedMult: 0.85 },
   }),
   Object.freeze({
-    id: 'wide_bore', name: 'Wide Bore', icon: '◎',
+    id: 'wide_bore', name: 'Wide Bore', plainName: 'Wide Powers', icon: '◎',
+    shortText: 'Wider powers, slower cooldown',
     text: 'power radius ×1.4, power cooldowns ×1.35',
     give: { powerRadiusMult: 1.4 }, take: { powerCdMult: 1.35 },
   }),
@@ -122,7 +132,9 @@ export function swarmForgePierceRank(defId) {
   return hero && Number.isInteger(hero.pierce) ? hero.pierce : 0;
 }
 
-/** A pad's price line: the current step's offer and what it charges, in floor voice. */
+/** A pad's price line: the current step's offer and what it charges, in plain words. */
 export function swarmTapLabel(mod, price) {
-  return mod ? `TAP · ${String(mod.name).toUpperCase()} · ${price}` : `TAP · SOLD OUT`;
+  if (!mod) return 'MODS SOLD OUT';
+  const title = String(mod.plainName || mod.name || 'Mod').toUpperCase();
+  return `${title} · ${price}`;
 }

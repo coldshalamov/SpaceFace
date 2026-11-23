@@ -647,7 +647,7 @@ export function createSwarmFloorDirector(ctx) {
     const rec = pad.rec;
     if (swarmTapsSoldOut(run)) {
       refreshTapRec(pad);
-      _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
+      _refuseText(pad, run, 'sold_out', 'MODS SOLD OUT');
       return;
     }
     // If the ledger changed, show the fresh quote and require a new intent.
@@ -656,7 +656,7 @@ export function createSwarmFloorDirector(ctx) {
     if (!rec.modId || owned) { refreshTapRec(pad); return; }
     const mod = rec.modId ? swarmTapModById(rec.modId) : null;
     if (!mod) {
-      _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
+      _refuseText(pad, run, 'sold_out', 'MODS SOLD OUT');
       return;
     }
     const price = tapPriceNow();
@@ -688,7 +688,7 @@ export function createSwarmFloorDirector(ctx) {
     });
     const at = pad ? { x: pad.spot.x, z: pad.spot.z } : null;
     emit('audio:cue', { id: BUY_CUE, gain: 0.8, position: at });
-    emit('toast', { text: `TAP · ${mod.name} — ${mod.text}`, kind: 'good', ttl: 4 });
+    emit('toast', { text: `${mod.plainName || mod.name} — ${mod.shortText || mod.text}`, kind: 'good', ttl: 4 });
     emit('swarm:floorPadBought', {
       padId: job.padId, kind: 'tap', modId: mod.id, price: job.price, pos: at,
     });

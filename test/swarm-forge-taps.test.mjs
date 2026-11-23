@@ -217,7 +217,8 @@ test('the Forge pad and two Taps install at their authored spots with live label
     for (const tap of [tapW, tapE]) {
       assert.equal(tap.data.swarmFloorPad.kind, 'tap');
       assert.equal(tap.data.swarmFloorPad.price, SWARM_TAP_PRICES[0]);
-      assert.ok(/^TAP · [A-Z ]+ · 1500$/.test(tap.data.swarmFloorPad.label),
+      // Plain-voice labels: the pad reads <plain name> · <price>, no TAP prefix.
+      assert.ok(/^[A-Z ]+ · 1500$/.test(tap.data.swarmFloorPad.label),
         `tap shows its round offer and the first price step: ${tap.data.swarmFloorPad.label}`);
     }
     // The pair never pours the same bottle in the same round.
@@ -340,9 +341,9 @@ test('the shared till sells four bottles at stepping prices, then offers no purc
     }
     assert.deepEqual(priceSeen, [1500, 2000, 2500, 3000], 'the till steps 1500→3000');
     assert.equal(h.state.run.credits, 100000 - 9000);
-    // The till is dry: both pads read SOLD OUT and there is no decision to arm.
-    assert.equal(tapW().data.swarmFloorPad.label, 'TAP · SOLD OUT');
-    assert.equal(tapE().data.swarmFloorPad.label, 'TAP · SOLD OUT');
+    // The till is dry: both pads read MODS SOLD OUT and there is no decision to arm.
+    assert.equal(tapW().data.swarmFloorPad.label, 'MODS SOLD OUT');
+    assert.equal(tapE().data.swarmFloorPad.label, 'MODS SOLD OUT');
     assert.equal(swarmFloorPadQuote(tapW()), null);
     assert.equal(h.collect(tapW()).acceptedAmount, 0);
     assert.equal(h.events.bought.length, 4);
