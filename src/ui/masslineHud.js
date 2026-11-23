@@ -1729,8 +1729,11 @@ export const masslineHud = {
     const cueY = pinned ? pinned.y : targetScreen.y;
     // World markers stay out of HUD rects (including the power bar and vitals, padded for the
     // 24px diamond so neither the mark nor the chip ever paints over a power tile).
+    // A latch candidate off the screen paints nothing: a diamond pinned in empty sky read as a
+    // stray marker (owner, 2026-11-23). The objective arrow already points at what the route wants.
+    if (offscreen) return this._hideAcquisitionPreview(dom);
     const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
-    if (!offscreen && pointUnderHud(cueX, cueY, liveObstacles, 18)) return this._hideAcquisitionPreview(dom);
+    if (pointUnderHud(cueX, cueY, liveObstacles, 18)) return this._hideAcquisitionPreview(dom);
     const ready = selected.status === 'ready';
     const readyDetonator = ready && target.alive === true && target.data?.lootTableId === 'detonator_dart'
       && selected.occupantGeneration != null && selected.occupantGeneration === target.occupantGeneration
