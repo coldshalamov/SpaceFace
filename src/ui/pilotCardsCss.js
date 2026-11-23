@@ -110,9 +110,16 @@ export const PILOT_CARDS_CSS = `
 html.sf-reduce-motion .pc__card, .sf-reduce-motion .pc__card { animation:none; }
 @media (prefers-reduced-motion: reduce) { .pc__card { animation:none; } }
 @media (max-width: 760px) {
-  .pc { justify-content:flex-start; overflow-y:auto; padding-top:18px; }
-  .pc__hand { flex-direction:column; align-items:stretch; max-width:420px; }
-  .pc__card { max-width:none; min-height:0; }
+  /* A phone stacks the hand and scrolls the overlay: every card keeps its own height (flex-basis
+     0 in a column collapsed them onto each other and under the re-roll bar). */
+  .pc { justify-content:flex-start; overflow-y:auto; gap:16px; padding:20px 16px 24px; }
+  .pc__head, .pc__hand, .pc__bar, .pc__status { flex:0 0 auto; }
+  .pc__hand { flex-direction:column; align-items:stretch; gap:12px; max-width:420px; }
+  .pc__card { flex:0 0 auto; max-width:none; min-height:0; row-gap:8px; padding:14px 16px 12px; }
+  .pc__icon { width:44px; height:44px; }
+  .pc__name { font-size:22px; }
+  .pc__text { font-size:16px; }
+  .pc__bar { gap:12px 16px; }
 }
 @media (forced-colors: active) {
   .pc__card { border:1px solid CanvasText; background:Canvas; forced-color-adjust:none; color:CanvasText; box-shadow:none; }
