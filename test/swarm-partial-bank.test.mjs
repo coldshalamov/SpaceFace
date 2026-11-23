@@ -118,8 +118,8 @@ test('a partial bank secures half the purse and the run keeps flying', () => {
     // The window's other doors still stand beside it: launch, and the full walk-away.
     const lines = refitFootLines(h.state.run);
     assert.equal(lines.primary, 'Launch round 11');
-    assert.equal(lines.extract, 'Extract — end the run here');
-    assert.equal(lines.bank, 'Bank 25 cr, keep flying', 'the offer re-prices off the live purse');
+    assert.equal(lines.extract, 'Cash out — end the run here');
+    assert.equal(lines.bank, 'Bank 25 Scrap, keep flying', 'the offer re-prices off the live purse');
 
     // Closing the bench launches the next round — the banked salvage is already home.
     h.bus.emit('run:refitClosed', {});
@@ -231,26 +231,28 @@ test('the foot words and the extract preview price the seat and name the banked 
     kind: 'survival', phase: 'refit', ruleset: 'swarm', wave: 10,
     score: 3040, credits: 212, telemetry: {},
   };
+  // Swarm's Bench speaks Scrap, rounds and points only — no salvage, hangar bounty or
+  // campaign-credit ledger words (superseded by design/overhaul/04_SWARM.md section 5, R18).
   const lines = refitFootLines(run);
-  assert.equal(lines.bank, 'Bank 106 cr, keep flying');
-  assert.match(lines.bankNote, /106 cr is secured for the hangar/);
-  assert.match(lines.bankNote, /106 cr stays in the purse/);
-  assert.match(lines.bankNote, /Defeat banks half of the remaining earned credits/);
-  assert.equal(lines.extract, 'Extract — end the run here');
-  assert.match(lines.extractNote, /212/);
+  assert.equal(lines.bank, 'Bank 106 Scrap, keep flying');
+  assert.match(lines.bankNote, /106 Scrap is safe even if you die/);
+  assert.match(lines.bankNote, /106 Scrap stays in your purse/);
+  assert.equal(lines.extract, 'Cash out — end the run here');
+  assert.match(lines.extractNote, /round 10 with 3040 points/);
   assert.match(lines.primaryNote, /round 11/);
+  for (const text of [lines.bank, lines.bankNote, lines.extractNote, lines.primaryNote]) {
+    assert.doesNotMatch(text, /\bcr\b|salvage|hangar|campaign credits/i, text);
+  }
 
   run.telemetry.nonBankableCredits = 100;
   const restricted = refitFootLines(run);
-  assert.equal(restricted.bank, 'Bank 56 cr, keep flying');
-  assert.match(restricted.bankNote, /156 cr stays in the purse/);
-  assert.match(restricted.extractNote, /112 cr of earned salvage/);
+  assert.equal(restricted.bank, 'Bank 56 Scrap, keep flying');
+  assert.match(restricted.bankNote, /156 Scrap stays in your purse/);
 
-  // Once salvage is banked, the preview says so — the confirmed settlement matches it.
+  // Once Scrap is banked, the preview says so — the confirmed settlement matches it.
   run.telemetry.securedBounty = 106;
   const preview = extractionPreviewLines(run);
-  assert.match(preview.amounts, /106 cr is already secured for the hangar/);
-  assert.match(preview.amounts, /never become campaign credits/);
+  assert.match(preview.amounts, /106 Scrap is already safe/);
 });
 
 /* -------- the settle law, pinned directly on the bank input -------- */

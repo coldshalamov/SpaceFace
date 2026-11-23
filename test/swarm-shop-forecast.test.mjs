@@ -247,10 +247,11 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   assert.equal(base.killTarget, 19);
   assert.equal(base.concurrent, 11);
   let line = swarmNextLine(base);
-  assert.match(line, /room cap 11/);
+  // Plain words (R18, design/overhaul/04_SWARM.md): 'up to 11 at once', not the planner's 'room cap 11'.
+  assert.match(line, /19 to clear, up to 11 at once/);
   assert.doesNotMatch(line, /11 in the room|admissions/i);
   // EC-Z01 — the next round's own question rides the forecast as its inbound line.
-  assert.ok(line.endsWith(`· inbound: ${swarmCourseFor(2).question}`), line);
+  assert.ok(line.endsWith(`· ${swarmCourseFor(2).question}`), line);
 
   run.telemetry.swarmStake = 'exhibition';
   assert.equal(expectedAt(2).killTarget, 12);
@@ -332,7 +333,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     assert.deepEqual(run, beforeRefresh);
     assert.equal(armoryPreview.hidden, false);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
-    assert.match(armoryPreview.textContent, /clear 19 · room cap 11/);
+    assert.match(armoryPreview.textContent, /19 to clear, up to 11 at once/);
 
     // The planner runs only on a real shop refresh; periodic animation passes keep their early
     // return and therefore do not rebuild/consume a planner stream every frame.
@@ -346,7 +347,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     armory.screen.refresh(armory.ctx);
     refit.screen.refresh(refit.ctx);
     assert.deepEqual(run, beforeRefresh);
-    assert.match(armoryPreview.textContent, /clear 12 · room cap 7/);
+    assert.match(armoryPreview.textContent, /12 to clear, up to 7 at once/);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
     assert.equal(armory.ctx.state.rng.calls, 0);
     assert.equal(refit.ctx.state.rng.calls, 0);
@@ -422,7 +423,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     assert.equal(armoryPreview.hidden, false);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
     assert.match(armoryPreview.textContent, /Round 17/);
-    assert.match(armoryPreview.textContent, /room cap/);
+    assert.match(armoryPreview.textContent, /at once/);
   } finally {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
@@ -589,7 +590,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     await flushUiMicrotasks();
     assert.equal(refitRefreshes, beforeRefitIntent + 2);
     assert.equal(refit.screen._note.textContent, 'That fitting will not fit this hardpoint.');
-    assert.match(refit.screen._bankNote.textContent, /140 cr is secured for the hangar when this run ends\.\s*140 cr stays in the purse/);
+    assert.match(refit.screen._bankNote.textContent, /140 Scrap is safe even if you die\.\s*140 Scrap stays in your purse/);
 
     const beforeBankReject = refitRefreshes;
     refit.publish({ credits: 280, notice: 'The bank window closed before the spend landed.' });
@@ -649,8 +650,8 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     refit.publish({ refitRows: [] });
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.screen._note.textContent, 'Late fit receipt: Corsair mount is live.');
-    assert.match(refit.screen._bankNote.textContent, /59 cr is secured for the hangar when this run ends\.\s*59 cr stays in the purse/);
-    assert.match(refit.screen._preview.textContent, /Round 11 .*clear 27/);
+    assert.match(refit.screen._bankNote.textContent, /59 Scrap is safe even if you die\.\s*59 Scrap stays in your purse/);
+    assert.match(refit.screen._preview.textContent, /Round 11 .*27 to clear/);
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.bus.listenerCount('run:refitChanged'), 2);
     const reopenedRefitBase = refitRefreshes;
@@ -740,7 +741,7 @@ test('production domain wire, lane facade and result bridge repaint the merged s
     assert.equal(armory.screen._wallet.textContent, '214 Scrap to spend');
     assert.equal(armory.screen._note.textContent, mirroredDraft.notice);
     assert.equal(armory.screen._preview.textContent, swarmNextLine(swarmForecastForRun(mirroredRun, 2)));
-    assert.match(armory.screen._preview.textContent, /clear 12/);
+    assert.match(armory.screen._preview.textContent, /12 to clear/);
   } finally {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;

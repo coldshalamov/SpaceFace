@@ -111,7 +111,10 @@ test('real Armory refresh reads delayed offer receipts, then withdraws the repai
 test('newer upstream specialist warning survives the candidate factual forecast renderer', () => {
   const forecast = swarmForecastForRun(run(), 2);
   assert.ok(forecast);
-  assert.doesNotMatch(swarmNextLine({ ...forecast, specialistBrief: null }), /prepare:/);
+  assert.doesNotMatch(swarmNextLine({ ...forecast, specialistBrief: null }), /line of sight/);
   const brief = { threat: 'A specialist approaches.', counter: 'Break its line of sight.' };
-  assert.match(swarmNextLine({ ...forecast, specialistBrief: brief }), /prepare: A specialist approaches\. Break its line of sight\./);
+  // The warning survives as its counter, in plain words (R18): no "prepare:" label, no design brief.
+  const line = swarmNextLine({ ...forecast, specialistBrief: brief });
+  assert.match(line, /Break its line of sight\./);
+  assert.doesNotMatch(line, /prepare:/);
 });

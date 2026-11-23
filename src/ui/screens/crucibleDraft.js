@@ -624,6 +624,15 @@ export function extractionPreviewLines(run) {
   // Swarm counts rounds everywhere else on screen (the armory, the launch key, the results hero).
   const unit = run.ruleset === 'swarm' ? 'round' : 'wave';
   const banked = securedBountyOf(run);
+  // Swarm's Bench speaks in rounds, points and Scrap only (04_SWARM.md section 5, R18): no
+  // salvage, hangar bounty or campaign-credit ledger words.
+  if (run.ruleset === 'swarm') {
+    return {
+      secured: `Ends the run at round ${wave} with ${score} points on the board.`,
+      risk: `Fly on to round ${wave + 1}. Death ends the run where it falls.`,
+      amounts: banked > 0 ? `${banked} Scrap is already safe.` : '',
+    };
+  }
   return {
     secured: `Records score ${score} and ${unit} ${wave}. ${salvage} cr of earned salvage can go to the hangar.`,
     risk: `Fly on to ${unit} ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
@@ -657,7 +666,8 @@ export function refitFootLines(run) {
   }
   let finishes = false;
   try { finishes = r.phase === 'refit' && survivalRun._isLastWave(r) === true; } catch { finishes = false; }
-  const unit = r.ruleset === 'swarm' ? 'round' : 'wave';
+  const swarm = r.ruleset === 'swarm';
+  const unit = swarm ? 'round' : 'wave';
   const extractOk = !finishes && canExtract(r);
   const contOk = canContinueSurvivalEndless({ run: r });
   const preview = extractOk ? extractionPreviewLines(r) : null;
@@ -674,13 +684,13 @@ export function refitFootLines(run) {
     contNote: contOk
       ? `Wave ${wave + 1} and on, with no finish line. Death ends the run where it falls.`
       : '',
-    extract: extractOk ? 'Extract — end the run here' : '',
-    extractNote: preview ? `${preview.secured} ${preview.amounts}` : '',
-    bank: offer ? `Bank ${offer.amount} cr, keep flying` : '',
-    bankNote: offer
-      ? `${offer.amount} cr is secured for the hangar when this run ends. `
-        + `${offer.remaining} cr stays in the purse for the shop. Defeat banks half of the remaining earned credits.`
-      : '',
+    extract: extractOk ? (swarm ? 'Cash out — end the run here' : 'Extract — end the run here') : '',
+    extractNote: preview ? `${preview.secured}${preview.amounts ? ` ${preview.amounts}` : ''}` : '',
+    bank: offer ? (swarm ? `Bank ${offer.amount} Scrap, keep flying` : `Bank ${offer.amount} cr, keep flying`) : '',
+    bankNote: !offer ? ''
+      : swarm ? `${offer.amount} Scrap is safe even if you die. ${offer.remaining} Scrap stays in your purse.`
+        : `${offer.amount} cr is secured for the hangar when this run ends. `
+          + `${offer.remaining} cr stays in the purse for the shop. Defeat banks half of the remaining earned credits.`,
   };
 }
 
@@ -853,18 +863,19 @@ export function swarmForecastForRun(run, nextWave) {
 /** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
 export function swarmNextLine(next) {
   if (!next) return '';
+  // Plain words (R18): how many come and how many at once, who is new, and the round's own
+  // question — not the planner's "clear 42 · room cap 23" or the specialist's design brief.
   const bits = [
     `Round ${next.wave} — ${next.zone.name}`,
-    `clear ${next.killTarget}`,
-    `room cap ${next.concurrent}`,
+    `${next.killTarget} to clear, up to ${next.concurrent} at once`,
   ];
-  if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
-  if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
-  if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
+  else if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.boss) bits.push(`boss: ${next.boss.label}`);
-  if (next.course?.question) bits.push(`inbound: ${next.course.question}`);
-  return `Next — ${bits.join(' · ')}`;
+  if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
+  if (next.specialistBrief?.counter) bits.push(next.specialistBrief.counter);
+  if (next.course?.question) bits.push(next.course.question);
+  return `Next: ${bits.join(' · ')}`;
 }
 
 /** The shared read-only preview painter. Circuit owns its own next-round language. */
@@ -1580,7 +1591,8 @@ export const crucibleDraftScreen = {
     this._browseGeneration = generation;
     rootEl.classList.toggle('sf-crucible-armory', shop);
     this._title.textContent = shop ? 'Ship equipment' : 'Rearm';
-    if (this._visualArmory) this._visualArmory.wallet(runNow?.credits, shop, starterOnly);
+    // Swarm has one money word (04_SWARM.md section 5): the wallet reads Scrap whenever the shop is a Swarm one.
+    if (this._visualArmory) this._visualArmory.wallet(runNow?.credits, shop, shop);
     const canRearrange = loadoutRows.some(row => row.defId || row.spares?.length);
     setWordShown(this._refitBtn, shop && (!starterOnly || canRearrange));
     setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
@@ -1632,7 +1644,7 @@ export const crucibleDraftScreen = {
           ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
           : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
             : `Wave ${wave} cleared. Choose a new weapon.`)
-      : `Wave ${wave} cleared. Nothing new fits this hull.`);
+      : `${shop ? 'Round' : 'Wave'} ${wave} cleared. Nothing new fits this hull.`);
 
     // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
     // the opener), so the preview is always wave + 1. Zone/event remain authored ladder copy;
