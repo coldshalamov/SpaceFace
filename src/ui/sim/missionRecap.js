@@ -114,6 +114,32 @@ export function contract47aReadout(m) {
   return { objective, where };
 }
 
+const INTERNAL_47A_TITLE = /Contract 47-A:\s*Mass Variance Sample/i;
+
+function isContract47AFiling(m) {
+  if (!m || typeof m !== 'object') return false;
+  if (m.storyTag === CONTRACT_47A_B0_TAG) return true;
+  if (m.params && m.params.contractId === CONTRACT_47A_B0_BODY.contractId) return true;
+  return INTERNAL_47A_TITLE.test(m.title || m.name || '');
+}
+
+/** The name Pause and Load show: the job, not the filing title. */
+export function playerFacingContractTitle(m) {
+  if (isContract47AFiling(m)) {
+    return m.params && m.params.sampleRecovered === true
+      ? 'Deliver the 47-A sample'
+      : 'Recover the 47-A sample';
+  }
+  return (m && (m.title || m.name)) || prettyType(m && m.type) || 'Contract';
+}
+
+/** Rewrite a saved summary line that still carries the filing title. */
+export function playerFacingObjectiveSummary(text) {
+  const src = String(text || '');
+  if (!src) return '';
+  return src.replace(INTERNAL_47A_TITLE, 'Recover the 47-A sample');
+}
+
 /** Build a human-readable objective description from the mission instance. */
 export function objectiveText(m) {
   const registry = registryContactReadout(m);

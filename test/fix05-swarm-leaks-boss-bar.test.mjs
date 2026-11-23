@@ -328,7 +328,8 @@ test('the same tracked mission still owns the Adventure pause brief', () => {
     entities: new Map(),
   };
   const lines = pauseStatusLines(state);
-  assert.ok(/TRACKED · Contract 47-A/.test(lines.objective), `objective: ${lines.objective}`);
+  assert.ok(/TRACKED · Recover the 47-A sample/.test(lines.objective), `objective: ${lines.objective}`);
+  assert.ok(!/Mass Variance Sample/.test(lines.objective), `filing title leaked: ${lines.objective}`);
 });
 
 test('a paused Swarm Circuit names the rule that closes it, not the pack', () => {

@@ -36,7 +36,7 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
-import { contract47aReadout } from '../sim/missionRecap.js';
+import { contract47aReadout, playerFacingContractTitle } from '../sim/missionRecap.js';
 import { swarmCircuitClosingLine } from '../../systems/survivalAnnounce.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
@@ -181,7 +181,7 @@ function missionId(m) {
 }
 
 function missionTitle(m) {
-  return (m && (m.title || m.name)) || prettyId(m && m.type) || 'Contract';
+  return playerFacingContractTitle(m);
 }
 
 function fmtTime(seconds) {

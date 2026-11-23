@@ -19,6 +19,7 @@ import { SHIPS, shipDisplayName as shipLabel } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { rankFromRep } from '../../systems/factions.js';
 import { localizeText } from '../../localization/sourceText.js';
+import { playerFacingObjectiveSummary } from '../sim/missionRecap.js';
 import { pluralWord } from '../numberFormat.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { boundSlotThumbnail } from '../../save/slotStill.js';
@@ -425,7 +426,8 @@ export async function importValidatedSave(sys, text, slot) {
 
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
-  return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+  const raw = meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+  return playerFacingObjectiveSummary(raw);
 }
 
 // An empty slot says "empty" once: one heading plus one sentence. The berth

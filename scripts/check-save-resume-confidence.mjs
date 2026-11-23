@@ -42,8 +42,10 @@ assert.match(menu, /function objectiveSummaryText\(meta\)/,
   'mainMenu must accept nav, mission, or story resume metadata from the save index');
 assert.match(localizedCoreCopy, /continueSummary:\s*\{\s*label:\s*'Continue: \{summary\}'\s*\}/,
   'localized core copy must explicitly label what Continue will load');
-assert.match(menu, /coreText\('continueSummary',\s*\{\s*summary\s*\}\)/,
-  'mainMenu must render the localized Continue summary with the selected save metadata');
+assert.match(menu, /continueDoorLine\(latest\.meta\)/,
+  'mainMenu Continue door shows the ship, place and time from the selected save');
+assert.match(menu, /saveSummaryText\(latest\.slot, latest\.meta\)/,
+  'Continue still carries the full save record as its accessible title');
 // 2026-09-30 cb8320ea7 (perf wave 7 restore guards): the click frame reads the summary's cached
 // `this._latestSave` first and only falls back to a fresh scan — the slot it loads is still the
 // one the title summary displays, which is the contract this pin guards.
@@ -211,6 +213,9 @@ assert.equal(slotObjectiveSummary({ missionSummary: 'Mission: Supply Run', story
   'saveLoad should prefer active mission context over story context');
 assert.equal(slotObjectiveSummary({ navObjectiveSummary: 'Route: Helios Gate', missionSummary: 'Mission: Supply Run' }), 'Route: Helios Gate',
   'saveLoad should prefer active navigation context over mission context');
+assert.equal(slotObjectiveSummary({ missionSummary: 'Mission: Contract 47-A: Mass Variance Sample' }),
+  'Mission: Recover the 47-A sample',
+  'Load shows the player-facing 47-A job, not the filing title');
 assert.deepEqual(slotBadges('quick', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Current', 'v5'],
   'current occupied slot should get current and version badges');
 assert.deepEqual(slotBadges('auto', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Latest', 'v5'],
