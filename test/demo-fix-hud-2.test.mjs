@@ -196,7 +196,7 @@ function walk(el, cls, out) {
   return out;
 }
 
-test('a pack tag is written once as the plural, demo review 2026-11-23', () => {
+test('a pack tag is written once as Wasp ×N, demo review 2026-11-23', () => {
   const mock = haloDocument();
   const previous = globalThis.document;
   globalThis.document = mock.document;
@@ -239,8 +239,8 @@ test('a pack tag is written once as the plural, demo review 2026-11-23', () => {
     halo.update(player, state, offRight);
     halo.update(player, state, offRight);
     const shown = kinds.map((el) => el.textContent).filter(Boolean);
-    assert.deepEqual(shown, ['Wasps'], `one pack word, got ${JSON.stringify(shown)}`);
-    assert.equal(writes, 1, `the pack word is written once per change, got ${writes}`);
+    assert.deepEqual(shown, ['Wasp ×2'], `one pack count, got ${JSON.stringify(shown)}`);
+    assert.equal(writes, 1, `the pack count is written once per change, got ${writes}`);
     halo.destroy();
   } finally {
     if (previous === undefined) delete globalThis.document;

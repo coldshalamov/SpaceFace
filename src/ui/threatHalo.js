@@ -693,20 +693,14 @@ export function createThreatHalo(root, busOrOpts) {
   // its arrow and drops its words. Along-edge spans: a top/bottom tag is a line of text wide.
   const tagEdge = new Array(HOSTILE_LIMIT);
   const tagAlong = new Float64Array(HOSTILE_LIMIT);
-  // A pack arriving from one side is one tag in the plural ('Wasps  340 m', the lead arrow's
-  // distance) instead of three stacked lines of text down the screen edge; the arrows stay. No
-  // number: only HOSTILE_LIMIT arrows are drawn, so a count of merged arrows would undercount a pack.
+  // A pack arriving from one side is one tag that counts it ('Wasp ×3  340 m', the lead arrow's
+  // distance) instead of three stacked lines of text down the screen edge; the arrows stay.
   const tagSlot = new Array(HOSTILE_LIMIT);
   const tagKindWord = new Array(HOSTILE_LIMIT);
   const tagDistText = new Array(HOSTILE_LIMIT);
   const tagCount = new Int32Array(HOSTILE_LIMIT);
   const TAG_CLEAR_ALONG_H = 104;
   const TAG_CLEAR_ALONG_V = 64;
-  function pluralKind(word) {
-    if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
-    if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
-    return `${word}s`;
-  }
   function applyEdgeTag(slot, i, labelled) {
     const tag = slot._sfTag;
     if (!tag) return labelled;
@@ -732,7 +726,7 @@ export function createThreatHalo(root, busOrOpts) {
     // The tag never lands on the HUD: try the screen side of the arrow, then beside it along the
     // edge; a tag that fits nowhere drops its words (the arrow stays). Width is estimated from the
     // text so seating costs no layout read.
-    // Spare characters: a pack's plural ('Wasps') is written onto this tag after it is seated.
+    // Three spare characters: a pack's count (' ×3') is written onto this tag after it is seated.
     const side = show ? edgeTagSide(edge, placement.x, placement.y, kind.length + dist.length + 4) : '';
     show = show && side !== '';
     setDisplay(tag, show, 'inline-flex');
@@ -752,7 +746,7 @@ export function createThreatHalo(root, busOrOpts) {
       const slot = tagSlot[k];
       if (!slot || !slot._sfTagKind) continue;
       const word = tagKindWord[k] || '';
-      const text = tagCount[k] > 1 ? pluralKind(word) : word;
+      const text = tagCount[k] > 1 ? `${word} ×${tagCount[k]}` : word;
       const dist = tagDistText[k] || '';
       if (slot._sfTagKindText !== text) {
         slot._sfTagKindText = text;
