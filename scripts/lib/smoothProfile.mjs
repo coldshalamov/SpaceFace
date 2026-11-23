@@ -106,6 +106,10 @@ export function summarizeSmoothProfile({ profile, syncs, ticks, liveAt, frames, 
     for (const name of ['all', b]) { B[name].frames++; B[name].intervalMs += windowMs(f); B[name].cbMs += f.cb || 0; }
   });
   const add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
+  // Hitches (a frame window of HITCH_MS or more): each one keeps its own inclusive table, so the
+  // owner of a single 300 ms frame is named instead of averaged into the 4+ bucket.
+  const HITCH_MS = 150;
+  const hitch = new Map(); // frame index -> { incl: Map, self: Map, total }
   let used = 0; let droppedNotLive = 0; let droppedNoFrame = 0; let k = 1;
   for (let i = 0; i < n; i++) {
     const p = pageMs(i);
@@ -129,6 +133,12 @@ export function summarizeSmoothProfile({ profile, syncs, ticks, liveAt, frames, 
       if (scr && scr[k] > 0) b.screens += dt;
       add(b.self, leaf.fn, dt); add(b.file, leaf.file, dt); add(b.entry, st.entry, dt);
       for (const key of st.keys) add(b.incl, key, dt);
+    }
+    if (windowMs(frames[fi]) >= HITCH_MS) {
+      let h = hitch.get(fi);
+      if (!h) hitch.set(fi, h = { incl: new Map(), self: new Map(), total: 0 });
+      h.total += dt; add(h.self, leaf.fn, dt);
+      for (const key of st.keys) add(h.incl, key, dt);
     }
   }
   out.usedMs = +used.toFixed(0); out.droppedNotLiveMs = +droppedNotLive.toFixed(0); out.droppedNoFrameMs = +droppedNoFrame.toFixed(0);
@@ -156,6 +166,14 @@ export function summarizeSmoothProfile({ profile, syncs, ticks, liveAt, frames, 
   out.byFile = table('file', 40, 15);
   out.inclusive = table('incl', 110, 40);
   out.entryPoints = table('entry', 14, 8);
+  // Worst frames first; per frame the inclusive owners (wrappers that hold the whole frame are
+  // dropped: they name nothing) and the top self-time leaves.
+  out.hitches = [...hitch.entries()].map(([fi, h]) => {
+    const f = frames[fi]; const w = windowMs(f);
+    const incl = [...h.incl.entries()].filter(([, ms]) => ms < h.total * 0.97).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([fn, ms]) => ({ fn, ms: r2(ms) }));
+    const self = [...h.self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([fn, ms]) => ({ fn, ms: r2(ms) }));
+    return { at: f.at, windowMs: r2(w), sampledMs: r2(h.total), incl, self };
+  }).sort((a, b) => b.windowMs - a.windowMs).slice(0, 12);
   out.ok = true;
   return out;
 }
@@ -189,6 +207,15 @@ export function formatSmoothProfile(p, { title = '' } = {}) {
   section('SELF TIME BY FILE', p.byFile, 50);
   section('SELF TIME BY FUNCTION', p.self, 110);
   section('INCLUSIVE TIME BY FUNCTION (a function and everything it calls)', p.inclusive, 170);
+  if (Array.isArray(p.hitches) && p.hitches.length) {
+    L.push('');
+    L.push('WORST FRAMES (150 ms or longer), each with what owned it: inclusive ms (wrappers holding the whole frame left out), then self ms');
+    for (const h of p.hitches) {
+      L.push(`frame at ${h.at} ms: ${h.windowMs} ms window, ${h.sampledMs} ms sampled`);
+      for (const r of h.incl) L.push(`  ${pad(r.ms.toFixed(1), 7)}  ${r.fn}`);
+      L.push(`  self: ${h.self.map((r) => `${r.fn} ${r.ms.toFixed(1)}`).join(' | ')}`);
+    }
+  }
   return `${L.join('\n')}\n`;
 }
 

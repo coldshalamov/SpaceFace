@@ -377,7 +377,8 @@ try {
           for (const e of s.entityList || []) {
             if (!e || e.alive === false) continue;
             const k = e.type === 'pickup' || e.type === 'projectile' || e.type === 'payload'
-              ? e.type + ':' + ((e.data && (e.data.kind || e.data.weaponId || e.data.commodityId)) || '-') : e.type;
+              ? e.type + ':' + ((e.data && (e.data.kind || e.data.weaponId || e.data.commodityId)) || '-')
+              : e.type === 'asteroid' ? (e.data && e.data.materialFragment ? 'asteroid:fragment' : 'asteroid') : e.type;
             by[k] = (by[k] || 0) + 1;
           }
           return { wave: s.run && s.run.wave, mode: s.mode, total: (s.entityList || []).length, by };
