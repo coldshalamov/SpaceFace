@@ -642,6 +642,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     const throwCue = heldHere ? ml2ThrowCueElement() : null;
     const heldThrowShown = throwCue && throwCue.style.display !== 'none'
       && throwCue.textContent === throwActionCue(state);
+    // One voice on the body (08 §4): the held body's aim tag (RMB · THROW) sits where this card
+    // would, so the card steps aside entirely while that tag is painted.
+    if (heldThrowShown) { tag.el.hidden = true; return; }
     const disabledRaider = entity.data?.onboardingRaid === true && entity.data?.ai?.passive === true;
     const desktopVisor = isAdventureFlight(state) && document.body?.dataset?.hudSkin === 'orrery'
       && document.documentElement?.dataset?.sfMobileFlight !== '1';
@@ -664,7 +667,16 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (key !== previewTextKey) {
       previewTextKey = key;
       tag.nameEl.textContent = fight ? '' : name;
-      tag.metaEl.textContent = fight ? '' : classWord(entity) + ' · ' + relationLabel + rangeTxt
+      // The meta line adds only what the name does not say: no class word that repeats the name
+      // ('Asteroid · Asteroid'), and a relation only for things that can take a side.
+      const cls = classWord(entity);
+      const sided = entity.type === 'ship' || entity.type === 'station' || entity.type === 'drone'
+        || relation === 'You' || disabledRaider;
+      const metaParts = [];
+      if (cls && cls.toLowerCase() !== String(name || '').toLowerCase()) metaParts.push(cls);
+      if (sided) metaParts.push(relationLabel);
+      const metaHead = metaParts.join(' · ');
+      tag.metaEl.textContent = fight ? '' : (metaHead ? metaHead + rangeTxt : rangeTxt.replace(/^ · /, ''))
         + (status ? ' · ' + status : '');
       tag.hintEl.textContent = hint.text;
       tag.el.dataset.beam = hint.beam ? '1' : '0';

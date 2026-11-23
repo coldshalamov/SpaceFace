@@ -672,9 +672,13 @@ test('a visible held throw cue takes priority over the same rock hover verb', ()
     const tag = hudEl.children[0];
     const hint = tag.children.find((c) => c.className === 'sf-woi__hint');
     assert.equal(hint.textContent, '');
-    assert.ok(tag.children[0].textContent, 'the object name remains');
+    // One voice on the body (08 §4): while the held body's RMB · THROW tag is painted, the hover
+    // card steps aside instead of printing a second card over the same spot.
+    assert.equal(tag.hidden, true, 'the card steps aside for the held body aim tag');
     cue.style.display = 'none';
     tick(1);
+    assert.equal(tag.hidden, false, 'the card returns when the held cue is hidden');
+    assert.ok(tag.children[0].textContent, 'the object name is back');
     assert.match(hint.textContent, /RMB.*throw/i, 'the hover hint fills in when the held cue is hidden');
     cue.style.display = 'block';
     state.player.tether.targetId = hostile.id;

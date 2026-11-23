@@ -11,6 +11,7 @@
 // is failing? No damage numbers, speech, modal, or sim mutation lives here.
 
 import { getFlashReduced, getMotionReduced } from './accessibility.js';
+import { createAvoidRects } from './hudAvoidRects.js';
 
 const STYLE_ID = 'sf-dmgind-style';
 const MAX_MARKERS = 3;
@@ -177,6 +178,19 @@ export function createDamageIndicators() {
 
   // Retained worldToScreen scratch — projection results are consumed synchronously.
   const _diScreen = { x: 0, y: 0, onScreen: false };
+  // The HUD panels a hit wedge must not land on (the shared cached avoid snapshot, read after the
+  // frame's own layout pass — never a rect read here). A wedge whose spot on the ring falls on an
+  // instrument slides inward along its own direction until it is clear.
+  const avoid = typeof document !== 'undefined' ? createAvoidRects(document) : null;
+  const WEDGE_HALF_PX = 18;
+  function onInstrument(x, y, rects) {
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (x + WEDGE_HALF_PX > r.x && x - WEDGE_HALF_PX < r.x + r.w
+        && y + WEDGE_HALF_PX > r.y && y - WEDGE_HALF_PX < r.y + r.h) return true;
+    }
+    return false;
+  }
   const markers = [];
   for (let index = 0; index < MAX_MARKERS; index++) {
     const element = document.createElement('div');
@@ -320,6 +334,7 @@ export function createDamageIndicators() {
     const extentX = width * 0.36;
     const extentY = height * 0.36;
     const reduced = getFlashReduced() || getMotionReduced();
+    const instruments = avoid ? avoid.get() : null;
 
     for (const marker of markers) {
       if (marker.age === Infinity || !marker.cue) continue;
@@ -356,8 +371,13 @@ export function createDamageIndicators() {
         dx = -Math.cos(marker.angle);
         dy = Math.sin(marker.angle);
       }
-      const x = width * 0.5 + dx * extentX;
-      const y = height * 0.5 + dy * extentY;
+      let reach = 1;
+      while (instruments && instruments.length && reach > 0.3
+        && onInstrument(width * 0.5 + dx * extentX * reach, height * 0.5 + dy * extentY * reach, instruments)) {
+        reach -= 0.05;
+      }
+      const x = width * 0.5 + dx * extentX * reach;
+      const y = height * 0.5 + dy * extentY * reach;
       const screenAngle = Math.atan2(dy, dx);
       const fadeIn = reduced ? 1 : Math.min(1, marker.age / FADE_IN_S);
       const fadeOut = Math.max(0, 1 - marker.age / marker.cue.ttl);
