@@ -339,6 +339,9 @@ function normalizePromotedRecord(raw) {
  */
 export function causalSurvivorPodsGatedOut(state) {
   if (!state) return true;
+  // A Swarm run lives in its own arena (OVH-04, 04_SWARM §6.1): the rescue economy — mayday hail,
+  // tow voice, station bubble, salvage fee — is Adventure's, and an arena has nowhere to deliver.
+  if (state.world && state.world.swarmArenaOnly) return true;
   const scenario = state.scenario;
   if (scenario && scenario.active) return true;
   if (scenario && typeof scenario.scenarioId === 'string' && scenario.scenarioId) return true;
