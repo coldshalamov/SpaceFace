@@ -801,7 +801,8 @@ test('a restore that never rode game:load arms the slate honestly and names it o
     // An import / rollback / lane-sync restore emits no game:load and no envelopePrepared —
     // the slate must not keep showing the last trip's name while it works.
     f.bus.emit('save:restoring', { slot: 2, source: 'import' });
-    assert.equal(slate.textContent, 'Restoring destination');
+    // LOADING-02: the placeholder is the verb the player pressed, not a status phrase.
+    assert.equal(slate.textContent, 'Continue');
     f.state.world = {
       currentSectorId: 'sector_tethys_junction',
       sectors: { sector_tethys_junction: { name: 'Tethys Junction' } },

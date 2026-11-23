@@ -17,6 +17,8 @@ const BOOT_DESTINATION = 'Command deck';
 const UNKNOWN_DESTINATION = 'Uncharted destination';
 // The ordinary Adventure route before its sector is named: the route is known, the place is not yet.
 const ADVENTURE_DESTINATION = 'Adventure';
+// A Continue before its save names the sector: the verb the player pressed, never 'Restoring destination'.
+const RESTORE_DESTINATION = 'Continue';
 // An Adventure embark carries the pilot's picks (name / hull / starter / difficulty). A bare
 // payload is a toy or sandbox launch with no named route, so it gets the generic slate instead of
 // borrowing the Adventure opening's sector name.
@@ -36,6 +38,39 @@ const ROUTE_DISPLAY_NAMES = Object.freeze({ Crucible: 'Swarm' });
 // two different runs, so the slate names the one launching. 'scored' is the Gauntlet's internal id
 // and stays internal exactly the way "Crucible" does.
 const CRUCIBLE_RULESET_DISPLAY_NAMES = Object.freeze({ [SWARM_RULESET]: 'Swarm', scored: 'Gauntlet' });
+// LOADING-02 (design/overhaul/08_INTERFACE.md §3, ledger A6): a launch shows a real picture of where
+// the player is going, a progress line and one controls card — never the boot film's wireframe sweep.
+// The cold boot keeps its authored film; every New Game / Continue / Swarm launch gets its place.
+const assetUrl = (rel) => {
+  try { return new URL('../../' + rel, import.meta.url).href; } catch { return rel; }
+};
+export const LOADING_SCENE_ART = Object.freeze({
+  swarm: 'assets/ui/kit/assets/tiles/tile.arena.ricochet-foundry@2x.png',
+  adventure: 'assets/ui/generated/stations/station_helios.webp',
+  space: 'assets/ui/backdrops/backdrop-space.jpg',
+});
+// Each Swarm room's own picture (the same renders the Swarm setup screen shows).
+const SWARM_ARENA_ART = Object.freeze({
+  helios_core: 'assets/ui/kit/assets/tiles/tile.arena.ricochet-foundry@2x.png',
+  lagrange_crucible: 'assets/ui/kit/assets/tiles/tile.arena.lagrange-crucible@2x.png',
+  cinder_sluice: 'assets/ui/kit/assets/tiles/tile.arena.cinder-sluice@2x.png',
+  cryo_drift: 'assets/ui/kit/assets/tiles/tile.arena.cryo-drift@2x.png',
+  storm_lattice: 'assets/ui/kit/assets/tiles/tile.arena.storm-lattice@2x.png',
+});
+export const LOADING_SCENE_LINE = Object.freeze({
+  swarm: 'Round 1 · Madame Kiln’s Foundry',
+  adventure: 'The Helios harbour',
+  restore: 'Back where you left off',
+  space: '',
+});
+/** The one controls card: the five verbs a first minute needs, in the game's default keys. */
+export const LOADING_CONTROLS = Object.freeze([
+  Object.freeze(['W A S D', 'Fly']),
+  Object.freeze(['Mouse', 'Aim']),
+  Object.freeze(['LMB', 'Fire']),
+  Object.freeze(['RMB', 'Line: latch, swing, throw']),
+  Object.freeze(['Shift', 'Boost']),
+]);
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
@@ -114,7 +149,92 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let loadPending = false;
   let restoredNamed = false;
   let loadingSlot = null;
+  // LOADING-02: the place this launch is going ('swarm' | 'adventure' | 'restore' | 'space'), its
+  // picture, and the nodes that show them. null = the cold boot (the authored film plays).
+  let scene = null;
+  let sceneArt = '';
+  let sceneNodes = null;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
+
+  /** The picture, its shade and the controls card, built once behind the lockup. */
+  function ensureSceneNodes() {
+    if (sceneNodes) return sceneNodes;
+    if (!document || typeof document.createElement !== 'function') return null;
+    // Decoration: a shim document without full DOM methods simply gets no picture.
+    try { return buildSceneNodes(); } catch (_) { return null; }
+  }
+  function buildSceneNodes() {
+    const add = (parent, ...kids) => { for (const kid of kids) parent.appendChild(kid); return parent; };
+    const make = (tag, cls, text) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text != null) node.textContent = text;
+      return node;
+    };
+    const root = make('div', 'boot-dest');
+    root.setAttribute('aria-hidden', 'true');
+    const art = make('img', 'boot-dest__art');
+    art.alt = '';
+    art.decoding = 'async';
+    const shade = make('div', 'boot-dest__shade');
+    const keys = make('aside', 'boot-dest__keys');
+    keys.appendChild(make('p', 'boot-dest__keys-title', 'Controls'));
+    const list = make('ul', 'boot-dest__keys-list');
+    for (const [key, verb] of LOADING_CONTROLS) {
+      const row = make('li', 'boot-dest__key');
+      const caps = make('span', 'boot-dest__caps');
+      for (const cap of key.split(' ')) caps.appendChild(make('kbd', '', cap));
+      add(row, caps, make('span', 'boot-dest__verb', verb));
+      list.appendChild(row);
+    }
+    keys.appendChild(list);
+    add(root, art, shade, keys);
+    if (typeof overlay.insertBefore === 'function') overlay.insertBefore(root, overlay.firstChild || null);
+    else overlay.appendChild?.(root);
+    const line = make('span', 'boot-dest__line');
+    line.setAttribute('data-loading-scene-line', '');
+    const host = lockup || overlay;
+    const dest = destinationNode();
+    if (dest && dest.parentNode === host && typeof host.insertBefore === 'function') host.insertBefore(line, dest.nextSibling);
+    else host?.appendChild?.(line);
+    sceneNodes = { root, art, line };
+    return sceneNodes;
+  }
+  /** Latch where this launch is going. The picture starts decoding at once, before the veil needs it. */
+  function setScene(kind, artRel) {
+    scene = kind || null;
+    sceneArt = scene ? assetUrl(artRel || LOADING_SCENE_ART[scene === 'restore' ? 'adventure' : scene] || LOADING_SCENE_ART.space) : '';
+    if (scene) paintScene();
+  }
+  function paintScene() {
+    const nodes = ensureSceneNodes();
+    if (!nodes) return;
+    if (sceneArt && nodes.art.getAttribute?.('src') !== sceneArt) {
+      nodes.art.classList?.remove('is-ready');
+      nodes.art.src = sceneArt;
+      const ready = () => nodes.art.classList?.add('is-ready');
+      if (typeof nodes.art.decode === 'function') nodes.art.decode().then(ready, ready);
+      else ready();
+    }
+    const words = LOADING_SCENE_LINE[scene] || '';
+    if (nodes.line.textContent !== words) nodes.line.textContent = words;
+  }
+  /** Show the place (a launch) or give the overlay back to the boot film (null). */
+  function applyScene(on) {
+    if (on && scene) {
+      paintScene();
+      if (overlay.dataset.loadingScene !== scene) overlay.dataset.loadingScene = scene;
+    } else if (overlay.dataset && overlay.dataset.loadingScene != null) {
+      delete overlay.dataset.loadingScene;
+    }
+  }
+  // Both pictures are warm in the cache well before a door is pressed.
+  host.setTimeout?.(() => {
+    if (disposed || typeof host.Image !== 'function') return;
+    for (const rel of [LOADING_SCENE_ART.swarm, LOADING_SCENE_ART.adventure]) {
+      try { const warm = new host.Image(); warm.decoding = 'async'; warm.src = assetUrl(rel); } catch (_) { /* decoration */ }
+    }
+  }, 3000);
 
   /** The one destination span, found in the authored lockup or created beside its label. Reuses the
    *  shell's own type (`.boot-detail`); no inline layout and no new stylesheet. */
@@ -187,6 +307,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     restoredNamed = false;
     loadingSlot = null;
     paintDestination();
+    scene = null; sceneArt = '';
+    applyScene(false);
   }
   /** An Adventure embark names the pilot's picks; a bare payload is a toy/sandbox launch. */
   function looksLikeAdventureEmbark(opts) {
@@ -210,20 +332,26 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       const rulesetName = mark === 'crucibleLaunch' && setup
         ? CRUCIBLE_RULESET_DISPLAY_NAMES[setup.survivalRuleset] || null : null;
       setDestination(routeName, rulesetName || routeName);
+      if (mark === 'crucibleLaunch') {
+        const arenaId = setup && setup.survivalSetup && setup.survivalSetup.arenaId;
+        setScene('swarm', SWARM_ARENA_ART[arenaId] || LOADING_SCENE_ART.swarm);
+      } else setScene('space');
       return;
     }
     // A plain Sandbox/toy launch (pendingConfig without a route mark) rides game:new with no
     // embark picks: it is not the Adventure opening and not one of the named modes, so it reads
     // the friendly generic slate.
-    if (!looksLikeAdventureEmbark(opts)) { setDestination(null, UNKNOWN_DESTINATION); return; }
+    if (!looksLikeAdventureEmbark(opts)) { setDestination(null, UNKNOWN_DESTINATION); setScene('space'); return; }
     refreshOrdinaryDestination();
+    setScene('adventure');
   }
   function beginRestore(payload = {}) {
     ordinarySectorName = '';
     ordinarySectorUnnamed = false;
     loadPending = true;
     loadingSlot = payload && payload.slot != null ? String(payload.slot) : null;
-    setDestination('restore', 'Restoring destination');
+    setDestination('restore', RESTORE_DESTINATION);
+    setScene('restore');
   }
   function nameRestore(payload = {}) {
     // Correlate to the most recent game:load: the receipt carries no generation, so the slot is the
@@ -233,7 +361,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     if (loadingSlot != null && slot != null && slot !== loadingSlot) return;
     loadPending = false;
     const name = sectorNameFromEnvelope(payload);
-    setDestination('restore', name ? `Continue · ${name}` : 'Restoring destination');
+    setDestination('restore', name ? `Continue · ${name}` : RESTORE_DESTINATION);
     restoredNamed = true;
   }
   /** game:scenePrepared and loading-time sector:enter refresh ONLY the ordinary Adventure slate. */
@@ -352,15 +480,25 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     if (detail) detail.textContent = '';
     // Row 473: the initial boot stages are the command deck coming up, not a place in the world.
     // The discriminator is the same one the mode:changed handler uses for boot stages.
-    if (String(stage.id || '').startsWith('boot-')) {
+    const bootStage = String(stage.id || '').startsWith('boot-');
+    if (bootStage) {
       ordinarySectorName = '';
       ordinarySectorUnnamed = false;
       setDestination(null, BOOT_DESTINATION);
+      scene = null; sceneArt = '';
     }
+    // LOADING-02: a launch with a known place shows it; the boot film never plays under it.
+    const placeShown = !bootStage && !!scene;
+    applyScene(placeShown);
     ring?.report(stage, { reset: fresh }); ring?.start();
     if (!ring || !raf) {
       const amount = Math.max(0, Math.min(.997, Number(stage.progress) || 0));
       paint(amount, `${(Math.floor(amount * 1000) / 10).toFixed(1)}%`);
+    }
+    if (placeShown) {
+      // The film stays paused under a place; its owner is kept for the next cold boot.
+      if (terminalArt) { terminalArt.stop(); detachPointer(); }
+      return;
     }
     const needsStart = wasHidden || !terminalArt;
     const art = artwork(); if (needsStart) art.start(); attachPointer();
@@ -670,6 +808,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
           // The ruleset name latched at game:new owns the slate; this later receipt must not
           // flatten a Gauntlet launch back to the route default.
           if (destinationRoute === null) setDestination('Crucible', 'Crucible');
+          if (scene !== 'swarm') setScene('swarm');
         }
         show(stage);
       }
@@ -747,7 +886,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     // session latched while mode:changed re-showed the overlay. Re-arm the generic words at
     // restore start and, once the world has applied, name the sector it actually resumed at.
     bus.on('save:restoring', () => {
-      if (!restoredNamed) setDestination('restore', 'Restoring destination');
+      if (!restoredNamed) setDestination('restore', RESTORE_DESTINATION);
     }),
     bus.on('save:loaded', () => {
       if (destinationRoute === 'restore' && !restoredNamed) {

@@ -962,12 +962,6 @@ function ensureBenchLoadingDom() {
         <span class="boot-wordmark">SPACEFACE</span>
         <span class="boot-label" data-loading-label>Getting ready</span>
         <span class="boot-detail" data-loading-detail></span>
-        <div class="boot-keys" aria-hidden="true">
-          <div class="boot-key-card" style="--i:0"><span class="boot-keys__row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span class="boot-keys__word">Fly</span></div>
-          <div class="boot-key-card" style="--i:1"><span class="boot-keys__row"><kbd>Mouse</kbd></span><span class="boot-keys__word">Aim</span></div>
-          <div class="boot-key-card" style="--i:2"><span class="boot-keys__row"><kbd>RMB</kbd></span><span class="boot-keys__word">Line: latch, swing, let go</span></div>
-          <div class="boot-key-card" style="--i:3"><span class="boot-keys__row"><kbd>Space</kbd></span><span class="boot-keys__word">Boost</span></div>
-        </div>
         <div class="boot-progress-row" aria-hidden="true">
           <span class="boot-progress"><span data-loading-progress></span></span>
           <span class="boot-progress-pct" data-loading-pct>0%</span>
@@ -987,7 +981,7 @@ function hideBenchLoading() {
   }
 }
 
-async function mountLoadingShot() {
+async function mountLoadingShot(shot = {}) {
   const overlay = ensureBenchLoadingDom();
   overlay.classList.remove('hidden');
   overlay.style.display = 'flex';
@@ -1012,6 +1006,14 @@ async function mountLoadingShot() {
   }
   try { benchLoadingPresenter?.destroy(); } catch { /* a re-mounted shot replaces the presenter */ }
   benchLoadingPresenter = createLoadingPresenter({ document, bus, state });
+  // LOADING-02: the launch names its place first, as the game's own game:new / game:load do.
+  const kind = (shot && shot.loading) || 'restore';
+  // The presenter follows the game's mode: a launch is 'loading' (the bench state otherwise flies).
+  const benchPriorMode = state.mode;
+  if (kind !== 'boot') state.mode = 'loading';
+  if (kind === 'swarm') bus.emit('game:new', { crucibleLaunch: true, crucibleSetup: { survivalRuleset: 'swarm', survivalSetup: { arenaId: 'helios_core' } } });
+  else if (kind === 'adventure') bus.emit('game:new', { name: 'Wren', shipId: 'starter_hitch' });
+  else if (kind === 'restore') bus.emit('game:load', { slot: 'quick' });
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   for (const stage of BENCH_LOADING_STAGES) {
     bus.emit('game:loadingProgress', { ...stage });
@@ -1019,6 +1021,7 @@ async function mountLoadingShot() {
   }
   // The bar chases each stage through the presenter's easing; hold the shot until it has settled.
   await sleep(1500);
+  state.mode = benchPriorMode;
   note('— loading mounted (4 stages, ring at 62%)');
 }
 
@@ -1313,7 +1316,7 @@ async function goto(rawId) {
       screensEl.innerHTML = '';
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
-      await mountLoadingShot();
+      await mountLoadingShot(shot);
       current = id;
       currentScreen = null;
     } else if (id === 'flight' || id === 'crucibleHud' || id === 'mobileFlight') {

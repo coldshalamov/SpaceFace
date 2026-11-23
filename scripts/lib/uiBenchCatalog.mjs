@@ -162,7 +162,12 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'base-claimed', screen: 'base', backdrop: 'shell', base: 'claimed' },
   // The boot overlay mid-load: ring at 62% with 4 stage ticks over the tableaux field.
   // Not a screen — the bench stages #boot-overlay directly (mountLoadingShot).
+  // `loading` is Continue (the Helios harbour); -swarm is the Swarm door's Foundry room; -adventure a
+  // New Game; -boot the cold boot's film and ring (LOADING-02: launches show their place).
   { id: 'loading', screen: 'bootOverlay', backdrop: 'title' },
+  { id: 'loading-swarm', screen: 'bootOverlay', backdrop: 'title', loading: 'swarm' },
+  { id: 'loading-adventure', screen: 'bootOverlay', backdrop: 'title', loading: 'adventure' },
+  { id: 'loading-boot', screen: 'bootOverlay', backdrop: 'title', loading: 'boot' },
   { id: 'automation', screen: 'automation', backdrop: 'shell', outposts: 'stocked' },
   { id: 'automation-outposts', screen: 'automation', backdrop: 'shell', outposts: 'stocked', focus: 'outposts' },
 
