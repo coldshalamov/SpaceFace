@@ -179,17 +179,19 @@ test('the stake purse lands in the run wallet before the opening armory', () => 
   assert.equal(run.phase, 'loadout');
   assert.equal(run.telemetry.swarmStake, 'exhibition');
   landPurse(h, 'exhibition');
-  // The wallet speaks pre-armory: the loadout phase still stands when the purse lands.
-  // (runSession commits a fresh run object on every award — always read state.run again.)
-  assert.equal(h.state.run.credits, 2400);
+  // Tests follow 6726efe18b: every Swarm run starts at zero — no stake purse reaches the run,
+  // so an Exhibition walk-in lands nothing and the armory opens on what the pilot has earned.
+  assert.equal(h.state.run.credits, 0, 'the stake purse no longer funds the run');
   assert.equal(h.state.run.phase, 'loadout');
-  // The armory opens on it: walk loadout → draft and the shop sees the whole purse.
+  // The armory still opens on it: walk loadout → draft and the shelf reads the whole wallet.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
+  assert.equal(h.state.run.credits, 2400, 'round loot is the wallet');
   transition(h, 'loadout', 'draft');
   assert.equal(h.state.run.phase, 'draft');
   const offers = survivalDraft.currentOffers();
   assert.ok(offers.length > 40, 'the swarm shelf is wide');
   const affordable = offers.filter((o) => o.available);
-  assert.ok(affordable.length > 0, 'a 2400 cr purse can buy');
+  assert.ok(affordable.length > 0, 'a 2400 Scrap wallet can buy');
 });
 
 test('an ironbound run opens with nothing but the hull', () => {
@@ -368,6 +370,8 @@ test('a stale installation quote spends nothing and the current quote installs e
   const h = boot();
   beginSwarm(h, { stake: 'exhibition' });
   landPurse(h, 'exhibition');
+  // Tests follow 6726efe18b: the wallet is banked round loot, never a stake purse.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
   transition(h, 'loadout', 'draft');
   const offer = survivalDraft.currentOffers().find(item => item.available && Number.isInteger(item.slotIndex));
   assert.ok(offer);
@@ -387,6 +391,8 @@ test('buying the demoed slot retires the trial — the run keeps it', () => {
   const h = boot();
   beginSwarm(h, { stake: 'exhibition' });
   landPurse(h, 'exhibition');
+  // Tests follow 6726efe18b: no stake purse funds a run, so the wallet is banked round loot.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
   transition(h, 'loadout', 'draft');
   const offers = survivalDraft.currentOffers();
   // The keep-path is a weapon: swarm re-offers guns already mounted (battery building is legal),
@@ -394,7 +400,7 @@ test('buying the demoed slot retires the trial — the run keeps it', () => {
   const buyable = offers.find((o) =>
     Number.isInteger(o.slotIndex) && o.available && o.kind === 'number'
     && WEAPONS.some((w) => w.id === o.defId));
-  assert.ok(buyable, 'a 2400 cr purse makes a gun buyable');
+  assert.ok(buyable, 'a 2400 Scrap wallet makes a gun buyable');
   const { defId } = buyable;
   h.bus.emit('run:draftPickRequested', { offerId: buyable.id, demo: true });
   assert.ok(activeFittings(h).includes(defId), 'the demo copy is fitted');
@@ -604,6 +610,8 @@ test('a demoed module stays buyable — the trial is not a lock', () => {
   const h = boot();
   beginSwarm(h, { stake: 'exhibition' });
   landPurse(h, 'exhibition');
+  // Tests follow 6726efe18b: the wallet is banked round loot, never a stake purse.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
   transition(h, 'loadout', 'draft');
   const card = survivalDraft.currentOffers().find((o) =>
     Number.isInteger(o.slotIndex) && o.kind === 'number'
