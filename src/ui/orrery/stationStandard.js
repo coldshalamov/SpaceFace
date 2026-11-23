@@ -1753,6 +1753,20 @@ ${PA} .sx-dock__back-key {
   ${PA} .sx-dh__vitals { justify-content:flex-start; }
   ${PA} .sx-dock__back-key { display:none; }
 }
+
+/* ==== CLEAN EXCHANGE (08_INTERFACE §7, 2026-11-23) ===========================================
+   The market is a list, a detail and a trade: what it costs, what it pays, how many, Buy or Sell.
+   What has no data is not shown, and the analyst furniture leaves the detail: the chart's key
+   words (estimated/observed/forecast), the driver words (Local/Spread/Sector), the spread
+   bracket, the regime/age readout, the market-pulse ledger, the dockside notice, the quote
+   breakdown and the "Price history unavailable" placeholder. The price line itself stays. */
+${PA} .sx-mkt.orr-market :is(.sx-mkt-chart-key, .orr-mkt-subkey, .orr-mkt-spread, .sx-mkt-cone-read, .so-trade-breakdown, [data-ad-board], .orr-mkt-demand-key) {
+  display:none !important;
+}
+${PA} .sx-mkt.orr-market .sx-mkt__quote > p.k-empty { display:none !important; }
+${PA} .sx-mkt.orr-market .so-route-disclosure:has(> .sx-mkt__pulse) { display:none !important; }
+${PA} .sx-mkt.orr-market .sx-mkt-cause { font-family:${UI} !important; font-size:13px !important; color:rgb(${BONE} / .78) !important; }
+${PA} .sx-mkt.orr-market .sx-mkt-row__stock { white-space:nowrap !important; }
 `;
 
 export function injectStationStandard(doc = globalThis.document) {

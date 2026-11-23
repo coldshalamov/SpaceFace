@@ -927,7 +927,8 @@ export function quoteAgeWord(_state, _sid, _commodityId) {
 
 function marketDecisionHtml(state, stationId) {
   if (!stationId) return '';
-  const shown = presentSurfaceDecisions(state, stationId, 'market');
+  // Repair is the hub's Service strip, not a card on the exchange (08_INTERFACE §7).
+  const shown = presentSurfaceDecisions(state, stationId, 'market').filter((decision) => decision && decision.kind !== 'repair');
   if (!shown.length) return '';
   return shown.map((decision) => (
     `<section class="sx-decision">` +

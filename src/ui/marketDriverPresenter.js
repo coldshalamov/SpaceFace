@@ -293,6 +293,7 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
     });
   }
   const regime = (regimeState && regimeState.kind) || 'steady';
-  if (!pilotHas(state, 'trader_market_sense')) return Object.freeze({ text: 'Last move: no news, just trading', eventId: null, kind: 'cycle' });
+  // No news is not a line: the exchange shows a cause only when there is one to name.
+  if (!pilotHas(state, 'trader_market_sense')) return Object.freeze({ text: '', eventId: null, kind: 'cycle' });
   return Object.freeze({ text: `Last move: ${regimeLabel(regime)}`, eventId: null, kind: 'cycle' });
 }
