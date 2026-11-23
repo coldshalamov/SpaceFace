@@ -5,6 +5,7 @@
 // Renderer attachments are kept in a WeakMap compatibility membrane, outside the authoritative
 // entity graph. Legacy render code may still address entity.mesh/entity.view while it migrates to
 // its own id -> view registry, but those references are never enumerable, cloneable, or serializable.
+import { simCoreFlag } from './simCoreFlags.js';
 
 export const EntityTypes = ['ship', 'asteroid', 'station', 'projectile', 'pickup', 'drone', 'payload', 'wreck', 'fx'];
 
@@ -252,7 +253,11 @@ export function scrubRestoredNumericFields(spec) {
 
 /** Build a fully-formed simulation entity from a partial spec. Does not assign or insert an id. */
 export function makeEntity(spec = {}) {
-  const e = Object.assign(Object.create(ENTITY_PROTO), {
+  // One literal holds every default field. Copying 45 fields onto an empty Object.create() shell
+  // (the legacy shape) tips V8 into dictionary mode, so every `entity.x` read in every system was a
+  // hash-table probe. Re-parenting the literal itself keeps it a fast object whose default fields
+  // live in-object. Same own keys, order, values and prototype either way.
+  const fields = {
     id: 0, type: 'fx', alive: true, factionId: null,
     pos: v3(spec.pos), vel: v3(spec.vel), prevPos: new SimVector3(),
     rot: spec.rot || 0, prevRot: spec.rot || 0, angVel: 0,
@@ -267,7 +272,11 @@ export function makeEntity(spec = {}) {
     team: 0, ownerId: null,
     flags: { boosting: false, docked: false, invuln: false, noInterp: false },
     data: null,
-  });
+  };
+  const fast = simCoreFlag('fastEntityShape');
+  const e = fast
+    ? Object.setPrototypeOf(fields, ENTITY_PROTO)
+    : Object.assign(Object.create(ENTITY_PROTO), fields);
   for (const k in spec) {
     if (k === 'pos' || k === 'vel' || k === 'rot') continue;
     if (k === 'flags' && spec.flags) { Object.assign(e.flags, spec.flags); continue; }
@@ -278,6 +287,13 @@ export function makeEntity(spec = {}) {
   e.prevRot = e.rot;
   e.prevBank = e.bank;
   e.prevPitch = e.pitch;
+  if (fast) {
+    // The accessor functions are part of the hidden class: fresh closures per entity forbid V8
+    // from sharing the transition and normalize the entity to dictionary mode on the second spawn.
+    Object.defineProperty(e, 'hp', HP_ACCESSOR);
+    Object.defineProperty(e, 'maxHp', MAX_HP_ACCESSOR);
+    return e;
+  }
   Object.defineProperty(e, 'hp', {
     get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,
   });
@@ -286,6 +302,13 @@ export function makeEntity(spec = {}) {
   });
   return e;
 }
+
+const HP_ACCESSOR = Object.freeze({
+  get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,
+});
+const MAX_HP_ACCESSOR = Object.freeze({
+  get() { return this.hullMax; }, set(v) { this.hullMax = v; }, configurable: true, enumerable: false,
+});
 
 function defaultEntityMass(type) {
   if (type === 'pickup') return 0.1;
