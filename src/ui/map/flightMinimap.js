@@ -18,8 +18,13 @@ import {
 } from './tacticalMapGrammar.js';
 
 const TAU = Math.PI * 2;
-// Contacts closer than this on the scope (px) merge into one glyph with a count.
+// Contacts closer than this on the scope (px) merge into one glyph. Traffic, salvage and wrecks
+// merge wider than hostiles and only number a real stack (3+), in quiet ink, so a busy harbour is a
+// few marks; a hostile pack numbers from 2 in its own colour, because the count is the threat.
 const CLUSTER_CELL_PX = 14;
+const NEUTRAL_CLUSTER_CELL_PX = 26;
+const NEUTRAL_COUNT_MIN = 3;
+const NEUTRAL_COUNT_INK = '#c9d6dc';
 // Sensor ping: a thin ring leaves the ship every PING_PERIOD_MS, crosses the scope in the first
 // PING_TRAVEL_FRAC of the period, then rests. Contacts brighten as it passes and settle back.
 export const PING_PERIOD_MS = 3800;
@@ -1625,7 +1630,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       const role = classifyContactRole(entity);
       if (!selected && (role === 'loot' || role === 'wreck')
         && Math.hypot(at.x - cx, at.y - cy) > nearLootPx) continue;
-      const cell = `${Math.floor(at.x / CLUSTER_CELL_PX)}:${Math.floor(at.y / CLUSTER_CELL_PX)}`;
+      const cell = `${Math.floor(at.x / NEUTRAL_CLUSTER_CELL_PX)}:${Math.floor(at.y / NEUTRAL_CLUSTER_CELL_PX)}`;
       const held = neutralCells.get(cell);
       if (held && !selected) { held.count += 1; continue; }
 
@@ -1662,7 +1667,9 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       if (!held) neutralCells.set(cell, { x: at.x, y: at.y, color, count: 1 });
       registerHoverable(entity, role, at.x, at.y, color, Math.sqrt(mark.distanceSq || 0));
     }
-    for (const c of neutralCells.values()) drawClusterCount(c.x, c.y, c.count, c.color);
+    for (const c of neutralCells.values()) {
+      if (c.count >= NEUTRAL_COUNT_MIN) drawClusterCount(c.x, c.y, c.count, NEUTRAL_COUNT_INK);
+    }
 
     // 9. Hostiles (12-role silhouettes + velocity tails + sweep phosphor + off-edge rim pins)
     const visibleHostiles = [];
