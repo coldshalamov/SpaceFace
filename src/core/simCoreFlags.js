@@ -39,6 +39,14 @@ const DEFAULTS = Object.freeze({
    * needs a wake on every path that expects it to move before this can ship.
    */
   s0BodySleep: false,
+  /**
+   * Broken rock is debris with a budget (FREEZE lane, 2026-11-23): a rock too small to split
+   * into throwable pieces crumbles to grit, and past ROCK_FRAGMENT_BUDGET live fragments the
+   * oldest ones out of the player's sight crumble away. DEFAULT ON. Off restores unbounded
+   * fragments (every break makes four pieces that live 90 s and can break again), which filled
+   * a Swarm arena from 22 to 83 rocks by round 5.
+   */
+  fragmentBudget: true,
 });
 
 let overrides = null;
