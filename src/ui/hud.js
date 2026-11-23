@@ -141,6 +141,8 @@ import {
 } from './hudAttention.js';
 import { getStage } from './stage.js';
 import { counted, pluralWord } from './numberFormat.js';
+import { verbChipKey } from './controlPrompts.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
@@ -1142,7 +1144,10 @@ export function contactOverflowSummary(contacts, visibleCount) {
  * Wave G7 — automatic reveals wait for a lock. An explicit pin can open a populated
  * list before the pilot has selected a contact.
  */
-export function contactRosterVisible({ locked = false, pinned = false, eligibleContactCount = 0, fight = false } = {}) {
+export function contactRosterVisible({ locked = false, pinned = false, eligibleContactCount = 0, fight = false, opening = false } = {}) {
+  // The opening rail is the one voice. Unscanned wrecks, site-collar prompts and the
+  // "+N wrecks · others" census wait until that rail is finished.
+  if (opening === true) return false;
   // 08 §4: scanner lists are off during a fight (the target card and the radar carry it); a
   // deliberate pin still holds. In calm flight a lock mounts the list (G7).
   if (fight === true) return pinned === true && eligibleContactCount > 0;
@@ -1440,6 +1445,35 @@ export function splitTrackerActionKey(actionLine) {
   const keyed = TRACKER_KEY_SUFFIX.exec(line);
   if (!keyed) return null;
   return { text: keyed[1], key: keyed[2] };
+}
+// A latch line's key cap uses the aim chip's resolver (verbChipKey). Keyboard copy says F and
+// the chip on the rock says RMB; the tracker names the chip's key so one verb has one label.
+const TRACKER_LATCH_LINE = /\blatch\b/i;
+export function resolveTrackerActionKey(state, actionLine) {
+  const keyed = splitTrackerActionKey(actionLine);
+  if (!keyed || !TRACKER_LATCH_LINE.test(keyed.text)) return keyed;
+  const chip = verbChipKey(state, 'tether');
+  return chip ? { text: keyed.text, key: chip } : keyed;
+}
+/** True when a world tag's subject centre already sits inside a HUD avoid rect. */
+export function worldTagCenterCovered(x, y, rects) {
+  if (!rects) return false;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (!r) continue;
+    const rx = r.x ?? r.left;
+    const ry = r.y ?? r.top;
+    const w = r.w ?? r.width;
+    const h = r.h ?? r.height;
+    if (x >= rx && x <= rx + w && y >= ry && y <= ry + h) return true;
+  }
+  return false;
+}
+/** Degrees for the tell chip's chevron, or null when the chip is already the edge arrow. */
+export function tellBearingMark(placement) {
+  if (!placement || placement.onScreen || placement.edgeAnchored) return null;
+  const deg = Number(placement.directionDeg);
+  return Number.isFinite(deg) ? deg : null;
 }
 // M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
 const DOCTRINE_TELL_BY_KIND = Object.freeze({
@@ -2749,16 +2783,16 @@ export function createHud(ctx, alerts) {
   const existingSectorLaw = document.getElementById('sf-sector-law');
   if (existingSectorLaw && document.documentElement?.dataset?.sfMobile !== '1') rightDock.prepend(existingSectorLaw);
 
-  // Target Arcs Overlay (§3)
+  // Target Status Micro-Bars Overlay (no concentric circles around targets — owner 2026-11-23)
   const targetArcs = document.createElement('div');
   targetArcs.id = 'sf-target-arcs';
   targetArcs.className = 'sf-target-arcs';
   targetArcs.style.display = 'none';
   targetArcs.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" style="display:block; overflow:visible;">
-      <circle class="sf-arc-shield" />
-      <circle class="sf-arc-armor" />
-      <circle class="sf-arc-hull" />
+      <line class="sf-arc-shield" />
+      <line class="sf-arc-armor" />
+      <line class="sf-arc-hull" />
     </svg>
   `;
   root.appendChild(targetArcs);
@@ -3592,9 +3626,11 @@ export function createHud(ctx, alerts) {
        instead of losing its last words to an ellipsis. */
     html[data-sf-mobile-flight="1"] .sf-tell { white-space:normal; }
     html[data-sf-mobile-flight="1"] .sf-tell__hint { text-overflow:clip; }
-    .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
-    .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
-    .sf-tell:not(.is-offscreen) .sf-tell__dir { display:none; }
+    .sf-tell__dir { color:var(--k-bone-62); margin-left:2px; flex:0 0 auto; transform-origin:50% 50%; }
+    .sf-tell__dir svg { display:block; width:10px; height:10px; }
+    .sf-tell.is-offscreen:not(.is-edge) .sf-tell__dir { display:inline-flex; }
+    .sf-tell:not(.is-offscreen) .sf-tell__dir,
+    .sf-tell.is-edge .sf-tell__dir { display:none; }
     .sf-tell.is-pulse { animation:sf-tell-pulse .45s ease-out 1; }
     @keyframes sf-tell-pulse {
       0% { filter:brightness(1.35); }
@@ -3657,7 +3693,9 @@ export function createHud(ctx, alerts) {
       '<span class="sf-tell__icon" aria-hidden="true"></span>' +
       '<span class="sf-tell__kind"></span>' +
       '<span class="sf-tell__hint"></span>' +
-      '<span class="sf-tell__dir" aria-hidden="true">▸</span>';
+      '<span class="sf-tell__dir" aria-hidden="true">' +
+      '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.6 7.2 5 3 8.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</span>';
     tellRoot.appendChild(el);
     tellSlots.push({
       el, linkEl, layoutOffset: null, geometry: { width: TELL_VISUAL_WIDTH, height: TELL_VISUAL_HEIGHT },
@@ -3924,9 +3962,14 @@ export function createHud(ctx, alerts) {
       slot.layoutOffset = null;
       setDisplay(slot.el, true, 'inline-flex');
       setClass(slot.el, 'is-offscreen', !placement.onScreen || !!placement.edgeAnchored);
+      setClass(slot.el, 'is-edge', !!placement.edgeAnchored);
       setHudScreenTransform(slot.el, placement.x, placement.y, tellTransformCentered);
       slot.linkEl.hidden = true;
-      if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
+      const bearing = tellBearingMark(placement);
+      if (slot.dirEl) {
+        setHidden(slot.dirEl, bearing == null);
+        if (bearing != null) setStyle(slot.dirEl, 'transform', `rotate(${bearing.toFixed(1)}deg)`);
+      }
       setHidden(slot.el, false);
       setClass(slot.el, 'is-on', true);
     }
@@ -5910,8 +5953,12 @@ export function createHud(ctx, alerts) {
           const tagW = WORLD_TAG_PAD_PX + lineTagWords.length * WORLD_TAG_CHAR_PX;
           const below = effProj.y + hullPx;
           const above = effProj.y - hullPx - WORLD_TAG_H_PX;
-          const effY = worldTagClear(effX - tagW / 2, below, tagW, WORLD_TAG_H_PX) ? below
-            : (worldTagClear(effX - tagW / 2, above, tagW, WORLD_TAG_H_PX) ? above : null);
+          // The hull's own centre inside an instrument (the player's schematic) drops the
+          // words the same way a blocked seat does. The lead pip stays on the hull.
+          const centreBlocked = worldTagCenterCovered(effX, effProj.y, worldTagAvoid.get());
+          const effY = centreBlocked ? null
+            : (worldTagClear(effX - tagW / 2, below, tagW, WORLD_TAG_H_PX) ? below
+              : (worldTagClear(effX - tagW / 2, above, tagW, WORLD_TAG_H_PX) ? above : null));
           if (effY !== null) {
             stampMarkLive(lineTargetTag);
             setClass(lineTargetTag, 'visible', true);
@@ -6462,7 +6509,10 @@ export function createHud(ctx, alerts) {
 
     const pinned = state.settings?.ui?.overviewOpen === true;
     const fight = root.getAttribute('data-hud-attention') === 'fight';
-    const visible = contactRosterVisible({ locked, pinned, eligibleContactCount: contacts.length, fight });
+    const visible = contactRosterVisible({
+      locked, pinned, eligibleContactCount: contacts.length, fight,
+      opening: openingQuiet(state),
+    });
     if (!mountContactRoster(rightDock, elOverview, radar.el, visible)) return;
     // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
     // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
@@ -7092,7 +7142,7 @@ export function createHud(ctx, alerts) {
         setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
       }
       const actionLine = objective === dest.line ? dest.compactAction || action : action;
-      const keyed = splitTrackerActionKey(actionLine);
+      const keyed = resolveTrackerActionKey(state, actionLine);
       setText(mtActionText, keyed ? keyed.text : actionLine);
       setText(mtActionKey, keyed ? keyed.key : '');
       setHidden(mtActionKey, !keyed);
