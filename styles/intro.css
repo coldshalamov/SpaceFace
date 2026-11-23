@@ -584,7 +584,11 @@ html.sf-reduce-motion .boot-dest__art.is-ready { animation:none; transform:none;
   text-transform:uppercase; color:rgb(236 230 216 / .7); }
 .boot-dest__keys-list { display:grid; grid-template-columns:auto 1fr; gap:8px 16px; align-items:center; margin:0; padding:0; list-style:none; }
 .boot-dest__key { display:contents; }
-.boot-dest__caps { display:flex; gap:4px; }
+.boot-dest__caps { display:flex; gap:4px; align-items:center; }
+.boot-dest__caps-sep {
+  display:inline-flex; align-items:center; padding:0 2px;
+  font:500 12px/1 "Instrument Sans", system-ui, sans-serif;
+  color:rgb(236 230 216 / .7); }
 .boot-dest__caps kbd {
   display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; min-width:24px; height:24px; padding:0 6px;
   font:500 12px/1 "Spline Sans Mono", ui-monospace, monospace; color:rgb(248 244 234);
