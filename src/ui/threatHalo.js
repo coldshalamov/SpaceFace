@@ -1,7 +1,6 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
 import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scannerReadModel.js';
-import { contactCensus } from './contactCensus.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { countArmedOwnerMines } from '../systems/mines.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -1520,27 +1519,24 @@ export function createThreatHalo(root, busOrOpts) {
   function collectHostiles(player, state, worldToScreen) {
     hostileCount = 0;
     tetherPass += 1;
-    // Ship-like contacts + hostility come from the shared per-tick census
-    // (src/ui/contactCensus.js) instead of a private bucket walk: the combat HUD's contact
-    // marks and the roster scan the same set this frame. Rows are treated as id hints exactly
-    // like the old index.ships bucket — resolved to the live map entity before use.
-    const census = contactCensus(state, player);
+    const index = state.entityIndex;
+    const indexedShips = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships);
+    const ships = indexedShips
+      ? index.ships
+      : (state.entityList || []);
+    const playerTeam = player.team;
     const playerVelX = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
     const playerVelZ = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
 
-    for (let i = 0; i < census.rows.length; i++) {
-      const row = census.rows[i];
-      let entity = row.e;
-      if (census.indexed && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
+    for (let i = 0; i < ships.length; i++) {
+      let entity = ships[i];
+      if (indexedShips && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
       if (!entity || entity === player || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;
-      const distSq = entity === row.e ? row.distSq : dx * dx + dz * dz;
+      const distSq = dx * dx + dz * dz;
       if (distSq > HALO_RANGE_SQ) continue;
-      // row.hostile was computed on the bucket entry; when the index hint resolved to a
-      // replacement object the live entity's hostility is the one that counts (the old code
-      // checked the resolved entity too).
-      const hostile = entity === row.e ? row.hostile : isHostileToPlayer(entity, player.team, state);
+      const hostile = isHostileToPlayer(entity, playerTeam, state);
       if (!hostile) continue;
 
       // The submitted root is frame-local and may trail the simulation by one fixed tick.
