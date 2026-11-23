@@ -19,6 +19,7 @@ import { overrideDirectiveForWingOrder, perceptionForWingOrderCombatDoctrine } f
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { TABLE_AI_AUTHORITY_WU } from '../render/tabletopPolicy.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
@@ -83,6 +84,10 @@ export class TacticalAIStack {
     this.memberBatchSpreadTicks = normalizePositiveInt(runtimeConfig.memberBatchSpreadTicks, 1);
     this.memberBatchEnabled = !!this.memberBatchSize || this.memberBatchTargetTicks > 1;
     this.memberCursor = 0;
+    // aiRefreshCadence: the per-hull refresh stagger is evaluated over every tick since the last
+    // think, so a 20 Hz stack still honours each hull's id bucket (read once per stack).
+    this.refreshCadenceWindow = simCoreFlag('aiRefreshCadence');
+    this.refreshFromTick = 0;
     this.perceptionCache = new Map();
     this.lastDecisionByEntity = new Map();
     this.perceptionsByEntityScratch = new Map();
@@ -110,6 +115,9 @@ export class TacticalAIStack {
   update(tick, authoredEncounter = {}) {
     if (!Number.isInteger(tick) || tick < 0) throw new RangeError('AI tick must be a non-negative integer');
     if (tick <= this.lastTick) throw new RangeError(`AI tick must advance monotonically (last=${this.lastTick}, next=${tick})`);
+    // The refresh window is every tick since the previous think (just this tick on the first one,
+    // or with the legacy schedule). A hull whose stagger slot fell inside it is due now.
+    this.refreshFromTick = this.refreshCadenceWindow && this.lastTick >= 0 ? this.lastTick + 1 : tick;
     this.lastTick = tick;
 
     const rosterSource = !this.freezeResults && typeof this.ports.roster.liveListSquads === 'function'
@@ -131,13 +139,13 @@ export class TacticalAIStack {
       refreshIds.length = 0;
       for (const member of orderedMembers) {
         const cached = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-        if (!this.memberBatchEnabled || !cached || memberRefreshDue(member, tick, activeMembers, farOrigin)) refreshIds.push(member.id);
+        if (!this.memberBatchEnabled || !cached || memberRefreshDue(member, tick, activeMembers, farOrigin, this.refreshFromTick)) refreshIds.push(member.id);
       }
       liveFrames = this.ports.sensors.liveFramesFor(refreshIds, tick, this.liveSensorBatchOptions);
     }
     for (const member of orderedMembers) {
       let perception = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-      if (!this.memberBatchEnabled || !perception || memberRefreshDue(member, tick, activeMembers, farOrigin)) {
+      if (!this.memberBatchEnabled || !perception || memberRefreshDue(member, tick, activeMembers, farOrigin, this.refreshFromTick)) {
         const frame = liveFrames && liveFrames.has(member.id)
           ? liveFrames.get(member.id)
           : !this.freezeResults && typeof this.ports.sensors.liveFrameFor === 'function'
@@ -227,7 +235,7 @@ export class TacticalAIStack {
         const effectiveDirective = applyEnemyMindDirective(
           combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive, mind, freeze);
         const priorDecision = this.lastDecisionByEntity.get(member.id);
-        if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers, farOrigin)
+        if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers, farOrigin, this.refreshFromTick)
           && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)
           && !enemyMindDecisionChanged(priorDecision.enemyMind || null, mind)) {
           let cached = retickDecision(priorDecision, tick, combatDoctrine);
@@ -353,10 +361,17 @@ export class TacticalAIStack {
     const configured = this.memberBatchSize || Math.ceil(count / this.memberBatchTargetTicks);
     const batchSize = Math.max(1, Math.min(count, configured));
     if (this.memberBatchSpreadTicks > 1 && this.memberBatchSize) {
-      const phase = tick % this.memberBatchSpreadTicks;
-      if (phase < batchSize) selected.add(orderedMembers[(this.memberCursor + phase) % count].id);
-      if (phase === this.memberBatchSpreadTicks - 1) {
-        this.memberCursor = (this.memberCursor + batchSize) % count;
+      // Walk every tick since the last think (at most one full spread window), so a stack that
+      // thinks every third tick still selects one member per elapsed phase and advances the
+      // cursor once per window, exactly as the per-tick schedule would have.
+      const spread = this.memberBatchSpreadTicks;
+      const from = this.refreshFromTick < tick ? Math.max(this.refreshFromTick, tick - spread + 1) : tick;
+      for (let t = from; t <= tick; t++) {
+        const phase = t % spread;
+        if (phase < batchSize) selected.add(orderedMembers[(this.memberCursor + phase) % count].id);
+        if (phase === spread - 1) {
+          this.memberCursor = (this.memberCursor + batchSize) % count;
+        }
       }
       return this._sleepInactiveMembers(selected, orderedMembers, tick);
     }
@@ -611,7 +626,7 @@ function clearCachedDoctrineEdges(doctrine) {
 const FAR_DOCTRINE_WU = 1200;
 const FAR_DOCTRINE_WU_SQ = FAR_DOCTRINE_WU * FAR_DOCTRINE_WU;
 
-function doctrineRefreshDue(member, tick, farOrigin = null) {
+function doctrineRefreshDue(member, tick, farOrigin = null, fromTick = tick) {
   if (!member || normalizeCombatDoctrineId(member.combatDoctrineId) == null) return false;
   const id = member.id;
   let bucket = 0;
@@ -626,22 +641,28 @@ function doctrineRefreshDue(member, tick, farOrigin = null) {
     }
     bucket = hash % DOCTRINE_REFRESH_TICKS;
   }
-  if (bucket !== tick % DOCTRINE_REFRESH_TICKS) return false;
+  let far = false;
   if (farOrigin) {
     const pos = member.pos || (member.self && member.self.pos);
     if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
       const dx = pos.x - farOrigin.x, dz = pos.z - farOrigin.z;
-      if (dx * dx + dz * dz > FAR_DOCTRINE_WU_SQ) {
-        return (Math.floor(tick / (DOCTRINE_REFRESH_TICKS * 2)) & 1) === (bucket & 1);
-      }
+      far = dx * dx + dz * dz > FAR_DOCTRINE_WU_SQ;
     }
   }
-  return true;
+  // Due when this hull's slot tick (tick % 3 === bucket, and for a far hull only on alternate
+  // six-tick windows) fell anywhere in (last think, this think]. A stack that thinks every tick
+  // sees a one-tick window, which is exactly the original per-tick test.
+  const from = Number.isFinite(fromTick) && fromTick < tick ? Math.max(fromTick, tick - DOCTRINE_REFRESH_TICKS * 2 + 1) : tick;
+  for (let t = from; t <= tick; t++) {
+    if (bucket !== t % DOCTRINE_REFRESH_TICKS) continue;
+    if (!far || (Math.floor(t / (DOCTRINE_REFRESH_TICKS * 2)) & 1) === (bucket & 1)) return true;
+  }
+  return false;
 }
 
-function memberRefreshDue(member, tick, activeMembers, farOrigin = null) {
+function memberRefreshDue(member, tick, activeMembers, farOrigin = null, fromTick = tick) {
   return normalizeCombatDoctrineId(member && member.combatDoctrineId) != null
-    ? doctrineRefreshDue(member, tick, farOrigin)
+    ? doctrineRefreshDue(member, tick, farOrigin, fromTick)
     : activeMembers.has(member.id);
 }
 

@@ -28,6 +28,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 import { cloakHidesEntityFrom, cloakRuntimeFor, cloakTimeS } from './cloak.js';
 import { modelTruthPlanarRadius } from '../data/modelTruth.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
@@ -809,7 +810,8 @@ export const aiPorts = {
   _recentEventsFor(entity, tick, freeze = Object.freeze) {
     if (this._recentEventCacheTick !== tick) {
       this._recentEventCacheTick = tick;
-      this._recentEventsByTarget = recentEventIndexFor(this.state, tick);
+      if (this._aiSensorCaches === undefined) this._aiSensorCaches = simCoreFlag('aiSensorCaches');
+      this._recentEventsByTarget = recentEventIndexFor(this.state, tick, this._aiSensorCaches);
     }
     const list = this._recentEventsByTarget.get(entity && entity.id) || EMPTY_ATTACHMENTS;
     if (freeze === identity) return list;
@@ -1769,12 +1771,58 @@ function tetherTags(ownedBySelf, attachment, owner, target) {
   return slack >= 6 ? Object.freeze([...tags, 'slack']) : tags;
 }
 
-function recentEventIndexFor(state, tick) {
+// aiSensorCaches: the combat trace keeps up to 4096 events, and the recent-event index only wants
+// the last RECENT_EVENT_TICKS. Events are appended in tick order, so the newest-first walk may stop
+// at the first event older than the window, but only while that order is proven: every event is
+// checked once, as it arrives, for an integer seq and a non-decreasing integer tick. Any event that
+// breaks the order (or a trace rebuilt under the same array) drops that array back to the full walk.
+const TRACE_TICK_ORDER = new WeakMap();
+
+function traceTickOrdered(events) {
+  let rec = TRACE_TICK_ORDER.get(events);
+  if (!rec) {
+    rec = { lastSeq: -Infinity, lastTick: -Infinity, ordered: true };
+    TRACE_TICK_ORDER.set(events, rec);
+  }
+  if (!rec.ordered) return false;
+  const last = events.length ? events[events.length - 1] : null;
+  if (!last) {
+    if (events.length === 0) { rec.lastSeq = -Infinity; rec.lastTick = -Infinity; return true; }
+    rec.ordered = false;
+    return false;
+  }
+  if (!Number.isInteger(last.seq) || last.seq < rec.lastSeq) {
+    // The array was refilled from an earlier sequence: re-prove it from the start.
+    rec.lastSeq = -Infinity;
+    rec.lastTick = -Infinity;
+  }
+  let start = events.length;
+  while (start > 0) {
+    const event = events[start - 1];
+    if (event && Number.isInteger(event.seq) && event.seq <= rec.lastSeq) break;
+    start--;
+  }
+  for (let index = start; index < events.length; index++) {
+    const event = events[index];
+    if (!event || !Number.isInteger(event.seq) || !Number.isInteger(event.tick)
+      || event.seq <= rec.lastSeq || event.tick < rec.lastTick) {
+      rec.ordered = false;
+      return false;
+    }
+    rec.lastSeq = event.seq;
+    rec.lastTick = event.tick;
+  }
+  return true;
+}
+
+function recentEventIndexFor(state, tick, earlyExit = false) {
   const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
     ? state.combat.trace.events : [];
   const byTarget = new Map();
+  const ordered = earlyExit === true && traceTickOrdered(events);
   for (let index = events.length - 1; index >= 0; index--) {
     const event = events[index];
+    if (ordered && tick - event.tick > RECENT_EVENT_TICKS) break;
     if (!event || event.targetId == null) continue;
     const age = tick - (Number.isInteger(event.tick) ? event.tick : tick);
     if (age < 0 || age > RECENT_EVENT_TICKS) continue;

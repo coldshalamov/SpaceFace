@@ -132,4 +132,8 @@ test('two fresh sims on the same seed produce identical first-fire ticks', () =>
   assert.equal(ticks[0], ticks[1]);
 });
 
-const NON_GRUDGE_FIRST_FIRE_TICK = 65; // measured HEAD-parity first-fire tick for this fixture
+// Measured first-fire tick for this fixture. 61 since 2026-11-23 (aiRefreshCadence): the 20 Hz
+// stack used to refresh this hull's picture only when its id bucket matched the think phase, so it
+// fired at 65 on a stale contact; it now sees the world every think and fires the tick after its
+// 1 s response window.
+const NON_GRUDGE_FIRST_FIRE_TICK = 61;

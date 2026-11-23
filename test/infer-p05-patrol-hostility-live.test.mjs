@@ -54,7 +54,7 @@ test('a lawful patrol is a lawful patrol on the live backend', async () => {
 });
 
 test('a patrol fires at a wanted player, then stops firing and stops closing once the warrant lapses', async () => {
-  const { sim, state, patrol, counts, distance } = await rig();
+  const { sim, state, patrol, counts } = await rig();
   state.player.heat = 0.6;
   // The patrol flies its owed attack telegraph (engine_flare, f07ab9045abe) and holds fire while
   // its committed aim is off-bore, so the first round lands ~6 s in: the window covers the warning.
@@ -64,10 +64,21 @@ test('a patrol fires at a wanted player, then stops firing and stops closing onc
   state.player.heat = 0;
   sim.runTicks(15); // the lapse is noticed within a quarter of a second
   const firesAtLapse = counts.fires;
-  const distanceAtLapse = distance();
   sim.runTicks(60 * 4);
   assert.equal(counts.fires, firesAtLapse, 'no round leaves the patrol once the warrant has lapsed');
-  assert.ok(distance() >= distanceAtLapse - 5, 'it does not press the attack on a player who is no longer wanted');
+  // It stops pressing the attack: the squad drops the player as an objective and the hull flies
+  // its own post (a formation hold), not an intercept. This used to be read off the distance,
+  // which a stale contact picture passed by accident (the patrol kept FOCUS on the clean player
+  // for 4 s and only happened to be extending away); since aiRefreshCadence the hull sees the
+  // lapse within one think and turns back to its post, which can sit nearer the player.
+  const decision = sim.registry.get('tacticalAI').stack.lastResult.decisions
+    .find((row) => row.entityId === patrol.id);
+  assert.ok(decision, 'the patrol is still on the tactical roster');
+  const objective = decision.directive && decision.directive.objective && decision.directive.objective.kind;
+  assert.ok(objective !== 'focus' && objective !== 'engage',
+    `it does not press the attack on a player who is no longer wanted (objective ${objective})`);
+  assert.notEqual(decision.maneuver && decision.maneuver.kind, 'intercept',
+    'it does not fly an intercept at a player who is no longer wanted');
   assert.equal(patrol.data.ai.roe, 'lawful_wanted_only');
 });
 

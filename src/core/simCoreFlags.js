@@ -53,6 +53,35 @@ const DEFAULTS = Object.freeze({
    * the bus. DEFAULT ON. Off restores one receipt per pair per step.
    */
   impactCoalesce: true,
+  /**
+   * Entities are fast V8 objects (sim performance, 2026-11-23): makeEntity re-parents its default
+   * literal instead of copying 45 fields onto an empty shell, which had put every entity in
+   * dictionary mode (each property read a hash probe, in every system). DEFAULT ON. Same keys,
+   * order, values and prototype; off restores the legacy construction for matched A/B runs.
+   */
+  fastEntityShape: true,
+  /**
+   * Leaner physics bookkeeping around the Rapier solve (sim performance, 2026-11-23): native body
+   * records share one hidden class, and per-step work that cannot change the step's result is
+   * skipped. DEFAULT ON. Result-identical (check:sim and the bench hash hold); off restores the
+   * legacy path for matched A/B runs.
+   */
+  physicsBookkeeping: true,
+  /**
+   * Every tactical hull refreshes what it sees on its own beat (AI lane, 2026-11-23). The stack
+   * thinks every third tick (20 Hz), and its per-hull refresh stagger (id % 3, and the 3-per-window
+   * member batch) assumed it ran every tick, so the two cadences aliased: only hulls whose id bucket
+   * matched the decision phase ever refreshed, and the rest flew on a contact picture up to 16 s
+   * old. DEFAULT ON: a hull is due when its bucket tick fell anywhere in the ticks since the last
+   * think. Off restores the aliased schedule for matched A/B runs.
+   */
+  aiRefreshCadence: true,
+  /**
+   * Cheaper tactical sensor frames, same contents (AI lane, 2026-11-23): the recent-event index
+   * stops walking the 4096-event combat trace at the first event older than its 90-tick window
+   * once the trace's tick order is proven. DEFAULT ON. Result-identical; off restores the full walk.
+   */
+  aiSensorCaches: true,
 });
 
 let overrides = null;
