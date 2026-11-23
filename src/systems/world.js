@@ -391,6 +391,10 @@ function setVecXZTow(vec, x, z) {
 const GATE_COOLDOWN = 0;
 const DRIVE_COOLDOWN = 6.0;     // s
 const JUMPING_DURATION = 1.2;   // s tunnel/blackout
+// Deferred-enter drain slice: phase bricks advanced per JUMPING tick. Sim-step
+// budget, never wall time — the ~1.2 s tunnel spreads whole-sector
+// materialization across ~72 ticks instead of one multi-frame-equivalent step.
+const ENTER_DEFER_STEPS_PER_TICK = 4;
 const UNFILED_JUMP_ORIGIN = 'sector_ashfall_reach';
 const UNFILED_JUMP_RETURN = 'sector_helios_prime';
 const SCAN_RANGE = 400;         // wu POI auto-detect radius
@@ -883,6 +887,8 @@ export const world = {
       // reach (now - sinceT goes negative), so the border switch stalls while the player sits
       // across the line. Re-arm the dwell against the loaded clock instead.
       this._membershipCandidate = null;
+    this._activeContinuousEnter = null;
+    this._activeEnter = null;
       // Spawn decisions belong to the incoming restore's materialize lane — a pre-load
       // deferral would answer a record the restore envelope already owns.
       if (this._deferredCriticalRecordIds) this._deferredCriticalRecordIds.clear();
@@ -1260,14 +1266,130 @@ export const world = {
    * Free-flight continuous transitions use { continuous:true, noTeleport:true } and never
    * place the player or global-wipe entities.
    * @param {string} sectorId
-   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean, restoreDurableRecords?:boolean}} [opts]
+   * @param {{fromJump?:boolean, via?:string, fromSectorId?:string, continuous?:boolean, noTeleport?:boolean, placePlayer?:boolean, restoreDurableRecords?:boolean, defer?:boolean}} [opts]
    */
   enterSector(sectorId, opts = {}) {
+    this._activeContinuousEnter = null;
+    // A fresh enter supersedes any parked deferred one: the parked producer's own
+    // (world, epoch) fences retire it cleanly once a newer serial is minted.
+    this._activeEnter = null;
+    if (opts && opts.defer === true) {
+      // Deferred lane for the gate/drive jump tunnel: mint the chunked producer now;
+      // _tickJumping drains ENTER_DEFER_STEPS_PER_TICK phase bricks per tunnel tick
+      // and runs the atomic 'enter-pre-emit' emit tail on the arrival step. Returns
+      // the drain record, not the sector bag — the caller reads rec.result.
+      const rec = this._activeEnter = {
+        toSectorId: sectorId,
+        via: opts.via || null,
+        world: this.state && this.state.world,
+        fromSectorId: opts.fromSectorId != null
+          ? opts.fromSectorId
+          : (this.state && this.state.world ? this.state.world.currentSectorId || null : null),
+        opts,
+        gen: this.enterSectorChunked(sectorId, opts),
+        phase: 'materialize',
+        done: false,
+        result: undefined,
+      };
+      return rec;
+    }
     // Sync lane: drain the generator twin — every batch inline, identical order.
-    let done = null;
-    const gen = this.enterSectorChunked(sectorId, opts);
-    while (!(done = gen.next()).done) { /* inline */ }
-    return done.value;
+    // The materialization is one spawn-batch window (boot, gate sync enter, the
+    // restore fallback): ~75 entity:spawned emits coalesce into a single
+    // entity:spawnedBatch for aggregate listeners instead of a per-entity fanout.
+    const bus = this.bus;
+    if (bus && typeof bus.beginSpawnedBatchWindow === 'function') bus.beginSpawnedBatchWindow();
+    try {
+      let done = null;
+      const gen = this.enterSectorChunked(sectorId, opts);
+      while (!(done = gen.next()).done) { /* inline */ }
+      return done.value;
+    } finally {
+      if (bus && typeof bus.endSpawnedBatchWindow === 'function') bus.endSpawnedBatchWindow();
+    }
+  },
+
+  /**
+   * Fixed-step drain for the deferred enter lane (gate/drive jump tunnels). The
+   * generator mints on the first tunnel tick and advances at most maxSteps phase
+   * bricks per call — sim-time driven, no wall clock. holdTail parks at the
+   * producer's 'enter-pre-emit' yield so the sector:enter emit tail stays atomic:
+   * the next next() after that yield runs discovery, membership, and sector:enter
+   * in one unbroken step, exactly like the sync lane's final drain. The update
+   * safety lane passes holdTail=false — a parked producer that outlived its jump
+   * still owns a live epoch and must land rather than leave the world
+   * half-transitioned.
+   */
+  _drainDeferredSectorEnter(maxSteps = ENTER_DEFER_STEPS_PER_TICK, holdTail = true) {
+    const rec = this._activeEnter;
+    if (!rec || rec.done) return false;
+    const state = this.state;
+    if (!state || state.world !== rec.world) {
+      if (this._activeEnter === rec) this._activeEnter = null;
+      return false;
+    }
+    if (holdTail && rec.phase === 'pre-emit') return false;
+    const limit = Math.max(1, Math.floor(Number(maxSteps) || 0));
+    for (let i = 0; i < limit; i++) {
+      const step = rec.gen.next();
+      if (step.done) {
+        rec.done = true;
+        rec.result = step.value === undefined ? null : step.value;
+        return true;
+      }
+      if (holdTail && step.value === 'enter-pre-emit') {
+        rec.phase = 'pre-emit';
+        return true;
+      }
+    }
+    return true;
+  },
+
+  /**
+   * The jump's deferred enter record. Minted lazily on the first tunnel tick so
+   * the residency plan drains under the blackout; a parked record keeps serving
+   * only while the same jump still points at the same target — anything else
+   * mints a fresh producer and the old one's own epoch fences retire it.
+   */
+  _jumpEnterRecord(jump, state) {
+    const rec = this._activeEnter;
+    if (rec && rec.world === state.world
+      && rec.toSectorId === jump.targetSectorId
+      && rec.via === jump.via) {
+      return rec;
+    }
+    if (rec) this._activeEnter = null;
+    if (!jump || jump.state !== 'JUMPING' || !jump.targetSectorId) return null;
+    return this.enterSector(jump.targetSectorId, {
+      fromJump: true,
+      via: jump.via,
+      fromSectorId: jump._departedSectorId != null
+        ? jump._departedSectorId
+        : (state.world.currentSectorId || null),
+      defer: true,
+    });
+  },
+
+  // Continuous membership handoff drains on the same fixed-step budget as the
+  // deferred jump lane: a wall-clock slice would mint a different amount of
+  // sector content per tick run to run and break replay determinism.
+  _drainContinuousSectorEnter(maxSteps = ENTER_DEFER_STEPS_PER_TICK) {
+    const active = this._activeContinuousEnter;
+    if (!active) return false;
+    const state = this.state;
+    if (!state || state.world !== active.world || state.mode !== 'flight') {
+      this._activeContinuousEnter = null;
+      return false;
+    }
+    const limit = Math.max(1, Math.floor(Number(maxSteps) || 0));
+    for (let i = 0; i < limit; i++) {
+      const step = active.gen.next();
+      if (step.done) {
+        this._activeContinuousEnter = null;
+        return false;
+      }
+    }
+    return true;
   },
 
   /**
@@ -1652,6 +1774,10 @@ export const world = {
         reason: opts.reason || 'residency',
         membershipSectorId,
         noTeleport: !!opts.noTeleport,
+        // Early-retirement handoff: FULL→REDUCED demotions already captured and
+        // stripped this bag inline; without it the queue's tier sync re-runs the
+        // capture + extras walk a second time.
+        retiredBag: retiredBags.get(id) || null,
         world: state.world,
         enterEpoch: state.world.enterSerial,
       }));
@@ -1714,7 +1840,8 @@ export const world = {
       jobs.shift();
       this._ensureSectorMaterialized(job.sectorId, job.tier, { restoreDurableRecords: false });
       this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
-      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._syncSectorTierContent(job.sectorId, job.tier,
+        { restoreDurableRecords: false, retiredBag: job.retiredBag || undefined });
       ran++;
     }
     if (!jobs.length && !abandoned) {
@@ -1764,7 +1891,8 @@ export const world = {
       if (stale()) return;
       this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
       if (stale()) return;
-      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._syncSectorTierContent(job.sectorId, job.tier,
+        { restoreDurableRecords: false, retiredBag: job.retiredBag || undefined });
       if (stale()) return;
       yield 'residency-job';
       // A supersession can land during the paint boundary: re-validate before the
@@ -3003,6 +3131,8 @@ export const world = {
     const next = sectorMembershipAtGlobal(player.pos, CORRIDOR_SECTOR_IDS);
     const current = state.world.currentSectorId;
     if (!next || next === current) { this._membershipCandidate = null; return; }
+    if (this._activeContinuousEnter && this._activeContinuousEnter.toSectorId === next
+      && this._activeContinuousEnter.world === state.world) return;
     // Only auto-switch when both current and next are corridor (or current is unset/corridor).
     if (current && !isCorridorSector(current)) return;
     // Hysteresis: the player must penetrate a pair-scaled margin past the Voronoi edge and hold
@@ -3028,11 +3158,17 @@ export const world = {
     }
     if (now - this._membershipCandidate.sinceT < MEMBERSHIP_DWELL_S) return;
     this._membershipCandidate = null;
-    this.enterSector(next, {
-      continuous: true,
-      noTeleport: true,
-      fromSectorId: current,
-    });
+    this._activeContinuousEnter = null;
+    this._activeContinuousEnter = {
+      toSectorId: next,
+      world: state.world,
+      gen: this.enterSectorChunked(next, {
+        continuous: true,
+        noTeleport: true,
+        fromSectorId: current,
+      }),
+    };
+    this._drainContinuousSectorEnter(3);
   },
 
   // --- coordinate helpers (sector-local authored → galactic-global, once at spawn) ----------
@@ -5897,6 +6033,7 @@ export const world = {
   update(dt, state) {
     this._resetAdoptedSalvorApproachOnClockRewind(state);
     if (state.mode !== 'flight') return;
+    this._drainContinuousSectorEnter(3);
     this._drainResidencyQueue(ARRIVAL_RESIDENCY_BUDGET);
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') {
       this._tickFrameOrigin(state);
@@ -5914,6 +6051,11 @@ export const world = {
       case 'CHARGING': this._tickCharging(dt, state); break;
       case 'JUMPING':  this._tickJumping(dt, state); break;
       default: break;
+    }
+    // A deferred enter that outlived its tunnel still owns a live epoch — finish
+    // it rather than leave the world half-transitioned (jump superseded mid-drain).
+    if (this._activeEnter && !this._activeEnter.done && jump.state !== 'JUMPING') {
+      this._drainDeferredSectorEnter(ENTER_DEFER_STEPS_PER_TICK, false);
     }
 
     const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
@@ -7076,6 +7218,9 @@ export const world = {
       jump.state = 'JUMPING';
       jump.chargeT = 0;
       jump._jumpT = 0;
+      // Stamp the origin now: the deferred enter flips currentSectorId under the
+      // tunnel, so the arrival payload cannot re-read it at tunnel end.
+      jump._departedSectorId = state.world.currentSectorId || null;
       const player = state.entities.get(state.playerId);
       const fromPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
       const startPayload = {
@@ -7109,22 +7254,77 @@ export const world = {
     const jump = state.jump;
     jump._jumpT = (jump._jumpT || 0) + dt;
     jump.blend = Math.max(0, Math.min(1, jump._jumpT / JUMPING_DURATION));
-    if (jump._jumpT < JUMPING_DURATION) return;
-    jump.blend = 0;
 
     const target = jump.targetSectorId;
     const via = jump.via;
     const unfiled = jump._unfiled === true;
     const departureWorld = state.world;
-    const fromSectorId = departureWorld.currentSectorId;
-    const sector = departureWorld.sectors[target] || SECTOR_BY_ID.get(target);
-    const warning = via === 'drive' ? jump._interdiction : null;
+    // Capture the origin before _jumpEnterRecord mints or drains: the deferred
+    // lane (and harness stubs that replace enterSector) flips currentSectorId to
+    // the target under the tunnel, so it cannot be re-read at tunnel end.
+    const originSectorId = (jump._departedSectorId != null
+      ? jump._departedSectorId
+      : departureWorld.currentSectorId) || null;
     const ownsJump = () => state.world === departureWorld && state.jump === jump
       && jump.state === 'JUMPING' && jump.targetSectorId === target && jump.via === via;
 
+    // Deferred enter: minted on the first tunnel tick, then drained a fixed
+    // sim-step slice per tick — the residency plan's spawn bricks land under the
+    // blackout instead of the multi-frame-equivalent step the inline drain paid.
+    const rec = this._jumpEnterRecord(jump, state);
+    if (!ownsJump()) return;
+    if (rec && !rec.done && rec.phase !== 'pre-emit') {
+      this._drainDeferredSectorEnter();
+      if (!ownsJump()) return;
+    }
+    if (jump._jumpT < JUMPING_DURATION) return;
+    jump.blend = 0;
+    // Short-jump deficit: the nominal tunnel ending before the drain parks never
+    // pays the remainder atomically — this hold stretches JUMPING (blend stays
+    // pinned at 1, so the blackout covers the overrun) and each later tick keeps
+    // draining ENTER_DEFER_STEPS_PER_TICK bricks. The emit tail stays atomic:
+    // once materialization parks at the generator's 'enter-pre-emit' boundary,
+    // one step runs the whole tail (discovery → world:membership → sector:enter)
+    // exactly like the sync lane's final drain call — bounded, no spawn bricks.
+    if (rec && !rec.done && rec.phase !== 'pre-emit') return;
+
+    const fromSectorId = originSectorId != null
+      ? originSectorId
+      : (rec ? rec.fromSectorId : null);
+    const sector = departureWorld.sectors[target] || SECTOR_BY_ID.get(target);
+    const warning = via === 'drive' ? jump._interdiction : null;
+
     // Intentional jump: residency plan + place player at target entry. Does not global-wipe
     // other bounded residents (scoped demote/evict only when over the materialization cap).
-    const entered = this.enterSector(target, { fromJump: true, via, fromSectorId });
+    let entered = null;
+    if (rec && !rec.done) {
+      const step = rec.gen.next();
+      entered = step.done ? (step.value === undefined ? null : step.value) : null;
+      rec.done = true;
+      rec.result = entered;
+    } else if (rec) {
+      entered = rec.result === undefined ? null : rec.result;
+    } else {
+      // rec==null only when no parked producer was minted — a mid-tunnel
+      // supersession cleared it, or a harness swapped enterSector for a sync
+      // stub. Mint through the deferred lane so a real producer still drains in
+      // bounded bricks under the blackout: the hold above then stretches the
+      // tunnel until it parks at 'enter-pre-emit', and the atomic emit tail
+      // runs on a later arrival step exactly like the parked-record path. A
+      // non-record return is a stub's sync contract — the bag is the entered
+      // result verbatim.
+      const minted = this.enterSector(target, { fromJump: true, via, fromSectorId, defer: true });
+      if (minted && typeof minted === 'object' && minted.toSectorId === target
+        && minted.gen && typeof minted.gen.next === 'function'
+        && this._activeEnter === minted) {
+        // First drain slice now; the parked record owns arrival through the
+        // ordinary rec path from the next _tickJumping on.
+        this._drainDeferredSectorEnter();
+        return;
+      }
+      entered = minted === undefined ? null : minted;
+    }
+    if (this._activeEnter === rec) this._activeEnter = null;
     if (!ownsJump()) return;
     const arrivalEpoch = departureWorld.enterSerial;
     const arrivalBag = departureWorld.activeSector;
@@ -7156,6 +7356,7 @@ export const world = {
       : DRIVE_COOLDOWN * driveCooldownMultiplier(state.player);
     jump.targetSectorId = null;
     jump.via = null;
+    jump._departedSectorId = null;
     jump.chargeNeeded = 0;
     jump._fuelCost = 0;
     jump._unfiled = false;
@@ -8222,6 +8423,12 @@ export const world = {
     const station = quote.station;
     const currentSectorId = state.world && state.world.currentSectorId;
     if (station.sectorId && station.sectorId !== currentSectorId && typeof this.enterSector === 'function') {
+      // Sync lane by contract: the tow has no charge/tunnel window to drain under
+      // (this runs inside the accept emit, mid-flight, and a charging drive is
+      // stood down above), and the berth lookup + player placement + dock:docked
+      // below need the new activeSector in this same call. The whole enter lands
+      // bounded on this one tick — the sync drain runs every batch inline, in
+      // order — the same unit of work the deferred lane spreads across a tunnel.
       this.enterSector(station.sectorId, {
         via: 'tow',
         fromSectorId: currentSectorId || null,
@@ -9270,6 +9477,8 @@ export const world = {
     this._nextCriticalSpawnTick = 0;
     if (this._deferredCriticalRecordIds) this._deferredCriticalRecordIds.clear();
     this._membershipCandidate = null;
+    this._activeContinuousEnter = null;
+    this._activeEnter = null;
     // simTime restarts at 0 on a new run — drop the wire-report cooldown map with it, or every
     // stamped sector suppresses its first report for up to WIRE_REPORT_COOLDOWN_S.
     this._wireReportAt = new Map();

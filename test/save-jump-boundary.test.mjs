@@ -64,7 +64,11 @@ test('both write lanes refuse a jump in transit and save again after it settles'
   assert.equal(h.bytes.has('sf.save.quick'), false);
 
   h.state.mode = 'flight';
-  h.world._tickJumping(2, h.state);
+  // Deferred enter: the tunnel drains a fixed sim-step slice per tick and lands the
+  // atomic emit tail once materialization parks — pump until the tunnel exits.
+  for (let i = 0; i < 256 && h.state.jump.state === 'JUMPING'; i++) {
+    h.world._tickJumping(2, h.state);
+  }
   assert.equal(h.state.world.currentSectorId, 'sector_tethys_junction');
   assert.equal(h.save.save('quick'), true);
   const stored = JSON.parse(h.bytes.get('sf.save.quick'));

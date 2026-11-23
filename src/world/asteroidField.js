@@ -811,12 +811,9 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
   return ent;
 }
 
-/** Shelve a live optic lattice body back into the compact field (far-actor style). */
-export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'optic-shelve') {
-  if (!state || !entity || entity.type !== 'asteroid') return null;
-  if (!isOpticRockData(entity.data)) return null;
+function opticShelveSnapshot(entity) {
   const id = entity.id;
-  const snapshot = {
+  return {
     id,
     pos: entity.pos ? { x: finite(entity.pos.x), z: finite(entity.pos.z) } : { x: 0, z: 0 },
     vel: entity.vel ? { x: finite(entity.vel.x), z: finite(entity.vel.z) } : { x: 0, z: 0 },
@@ -829,17 +826,67 @@ export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'opt
     homeSectorId: entity.homeSectorId || (entity.data && entity.data.homeSectorId) || null,
     data: entity.data && typeof entity.data === 'object' ? { ...entity.data } : {},
   };
+}
+
+/**
+ * Batch twin of demoteOpticAsteroidToField: snapshots every victim first (rows must
+ * read live bodies), removes the whole set through one index pass, then inserts the
+ * field rows in the caller's victim order. Rows still claim their own reserved ids —
+ * the bodies are gone first, so the re-armed lock and the recyclable id keep the same
+ * semantics the sequential remove+insert pairs had.
+ */
+export function demoteOpticAsteroidsToField(state, entities, helpers, reason = 'optic-shelve') {
+  if (!state || !Array.isArray(entities) || entities.length === 0) return [];
+  const tag = String(reason || 'optic-shelve');
+  const staged = [];
+  for (const entity of entities) {
+    if (!entity || entity.type !== 'asteroid') continue;
+    if (!isOpticRockData(entity.data)) continue;
+    staged.push({ entity, snapshot: opticShelveSnapshot(entity) });
+  }
+  if (!staged.length) return [];
+  const removeAt = helpers && typeof helpers.removeEntitiesAtIndices === 'function'
+    ? helpers.removeEntitiesAtIndices : null;
   const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
-  // The demote removes before the field row claims the id, so the removal path sees a
-  // recyclable id and drops the player's lock — re-arm it on the row that still resolves
-  // (the reserved claim needs the body gone first, so a reorder cannot fix this).
-  const wasTargeted = !!(state.player && state.player.targetId === id);
-  if (remove) remove(id, { immediate: true, reason: String(reason || 'optic-shelve') });
-  else entity.alive = false;
-  snapshot.data.opticShelveReason = String(reason || 'optic-shelve');
-  const row = insertAsteroidFieldRock(state, snapshot);
-  if (wasTargeted && row && row.id === id) state.player.targetId = id;
-  return row;
+  const targetedId = state.player && state.player.targetId != null ? state.player.targetId : null;
+  if (removeAt && Array.isArray(state.entityList)) {
+    const indices = [];
+    const leftover = [];
+    for (const { entity } of staged) {
+      const idx = state.entityList.indexOf(entity);
+      if (idx >= 0) indices.push(idx);
+      else leftover.push(entity);
+    }
+    if (indices.length) removeAt(indices, { immediate: true, reason: tag });
+    for (const entity of leftover) {
+      if (remove) remove(entity.id, { immediate: true, reason: tag });
+      else entity.alive = false;
+    }
+  } else {
+    for (const { entity } of staged) {
+      if (remove) remove(entity.id, { immediate: true, reason: tag });
+      else entity.alive = false;
+    }
+  }
+  const rows = [];
+  for (const { snapshot } of staged) {
+    snapshot.data.opticShelveReason = tag;
+    const row = insertAsteroidFieldRock(state, snapshot);
+    if (!row) continue;
+    rows.push(row);
+    // The removal path dropped the player's lock on a recycled id — re-arm it on the
+    // row that still resolves (same post-insert restore as the single demote).
+    if (targetedId != null && row.id === targetedId) state.player.targetId = targetedId;
+  }
+  return rows;
+}
+
+/** Shelve a live optic lattice body back into the compact field (far-actor style). */
+export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'optic-shelve') {
+  if (!state || !entity || entity.type !== 'asteroid') return null;
+  if (!isOpticRockData(entity.data)) return null;
+  const rows = demoteOpticAsteroidsToField(state, [entity], helpers, reason);
+  return rows.length ? rows[0] : null;
 }
 
 function opticTableRadii(state, player) {
@@ -958,6 +1005,8 @@ export function tickOpticFieldRocks(state, helpers) {
   // projectile on every demote pass while the index already carries exactly this filter.
   const index = state.entityIndex;
   const list = (index && Array.isArray(index.asteroids)) ? index.asteroids : (state.entityList || []);
+  const demoteSet = tickOpticFieldRocks._demoteScratch || (tickOpticFieldRocks._demoteScratch = []);
+  demoteSet.length = 0;
   for (let i = list.length - 1; i >= 0; i--) {
     const entity = list[i];
     if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
@@ -967,10 +1016,12 @@ export function tickOpticFieldRocks(state, helpers) {
     const dz = entity.pos.z - pz;
     if (dx * dx + dz * dz <= radii.exit2) continue;
     // Symmetric budget: a mass exit shelves N more bodies next tick rather
-    // than paying N removal fans inside this step.
-    if (shelved >= OPTIC_DEMOTE_PER_TICK) continue;
-    if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
+    // than paying N removal fans inside this step — and the collected set goes
+    // through one batched removal instead of ~20 lane scans per corpse.
+    if (demoteSet.length >= OPTIC_DEMOTE_PER_TICK) continue;
+    demoteSet.push(entity);
   }
+  if (demoteSet.length) shelved = demoteOpticAsteroidsToField(state, demoteSet, helpers, 'optic-exit').length;
 
   if (OPTIC_FAR_QUIET_LATCH !== false && promoted === 0 && shelved === 0 && !opticInterest) {
     const wakeR = Math.max(32, radii.enter * 0.15);

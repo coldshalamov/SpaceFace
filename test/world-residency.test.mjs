@@ -66,6 +66,27 @@ function dwellMembership(state, world) {
   world.update(1 / 60, state);                                   // held lead matures → continuous enterSector
 }
 
+// Arrival materialization is deliberately deferred: neighbor residency drains one
+// job per world tick (sliceArrival) and the continuous/deferred enter lanes drain a
+// fixed number of sim steps per tick. Assertions that need the landed layout settle
+// the lanes directly instead of ticking the world dozens of times.
+function drainArrivals(world) {
+  for (let i = 0; i < 512; i++) {
+    let more = false;
+    if (world._activeContinuousEnter
+      && world._drainContinuousSectorEnter(1024)) more = true;
+    if (world._activeEnter && !world._activeEnter.done) {
+      world._drainDeferredSectorEnter(1024, false);
+      more = more || !world._activeEnter.done;
+    }
+    if (world._pendingResidency && world._pendingResidency.length) {
+      world._drainResidencyQueue(1024);
+      more = more || world._pendingResidency.length > 0;
+    }
+    if (!more) return;
+  }
+}
+
 function residencySnapshot(state) {
   const rs = state.world.residentSectors || {};
   const out = {};
@@ -105,6 +126,7 @@ function aliveIds(state) {
 test('Helios to Tethys retires the outgoing FULL sector once before promotion', (t) => {
   const { state, world, player } = bootWorld();
   world.enterSector(HELIOS);
+  drainArrivals(world);
   const anchors = structuralIdsForSector(state, HELIOS);
   assert.equal(state.world.residentSectors[TETHYS].tier, RESIDENCY_TIER.REDUCED);
   const capture = t.mock.method(world, '_captureSectorDurableRecords');
@@ -113,6 +135,7 @@ test('Helios to Tethys retires the outgoing FULL sector once before promotion', 
   player.pos.x = helios.x + (tethys.x - helios.x) * 0.95;
   player.pos.z = helios.z + (tethys.z - helios.z) * 0.95;
   dwellMembership(state, world);
+  drainArrivals(world);
 
   assert.equal(state.world.currentSectorId, TETHYS);
   assert.equal(state.world.residentSectors[TETHYS].tier, RESIDENCY_TIER.FULL);
@@ -183,6 +206,7 @@ test('corridor outer bounds are center-aware and larger than a single sector dis
 test('Helios boot remains single-sector UI compatible via activeSector', () => {
   const { state, world } = bootWorld(7);
   world.enterSector(HELIOS);
+  drainArrivals(world);
   assert.equal(state.world.currentSectorId, HELIOS);
   assert.ok(state.world.activeSector);
   assert.ok(state.world.activeSector.stations.length >= 1);
@@ -227,6 +251,7 @@ test('free-flight membership never teleports, zeros velocity, or sets noInterp',
   assert.ok(heliosStructuralBefore.length > 0);
 
   dwellMembership(state, world);
+  drainArrivals(world);
 
   assert.equal(state.world.currentSectorId, CERES);
   assert.equal(player.pos.x, (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45);
@@ -309,6 +334,7 @@ test('spawned sector entities carry stable homeSectorId; demotion is sector-scop
 test('sector content RNG is stable across membership jitter; state.rng untouched', () => {
   const { state, world, player } = bootWorld(17);
   world.enterSector(HELIOS);
+  drainArrivals(world);
 
   const rngRef = state.rng;
   // Draw once to pin stream position; free-flight must not consume state.rng.
@@ -329,11 +355,13 @@ test('sector content RNG is stable across membership jitter; state.rng untouched
   player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45;
   player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.45;
   dwellMembership(state, world);
+  drainArrivals(world);
   assert.equal(state.world.currentSectorId, CERES);
 
   player.pos.x = 0;
   player.pos.z = 0;
   dwellMembership(state, world);
+  drainArrivals(world);
   assert.equal(state.world.currentSectorId, HELIOS);
 
   const ceresStationsAfter = (state.world.sectorContents[CERES].stations || [])
@@ -344,6 +372,7 @@ test('sector content RNG is stable across membership jitter; state.rng untouched
   // Fresh boot with same seed materializes identical Ceres anchors (epoch-stable).
   const b2 = bootWorld(17);
   b2.world.enterSector(HELIOS);
+  drainArrivals(b2.world);
   const ceresFresh = (b2.state.world.sectorContents[CERES].stations || [])
     .map((s) => ({ id: s.stationId, x: s.pos.x, z: s.pos.z }));
   assert.deepEqual(ceresFresh, ceresStationsBefore);
@@ -367,7 +396,12 @@ test('gate jump places player but does not wipe other bounded residents', () => 
   const receipts = [];
   bus.on('world:membership', (p) => receipts.push(p));
 
-  world.update(1 / 60, state);
+  // The deferred enter drains a fixed number of sim steps per world tick; pump
+  // until the tunnel finishes materializing and the atomic emit tail lands.
+  for (let i = 0; i < 512 && state.jump.state === 'JUMPING'; i++) {
+    world.update(1 / 60, state);
+  }
+  drainArrivals(world);
 
   assert.equal(state.world.currentSectorId, CERES);
   // Gate path may place at entry (teleport intentional).
@@ -543,6 +577,7 @@ test('enterSector does not call global-wipe helper path for continuous membershi
 test('multi-sector materialization preserves per-sector bags without clobbering activeSector view', () => {
   const { state, world } = bootWorld(31);
   world.enterSector(HELIOS);
+  drainArrivals(world);
   assert.ok(state.world.sectorContents[HELIOS]);
   assert.ok(state.world.sectorContents[CERES]);
   assert.ok(state.world.sectorContents[TETHYS]);
@@ -553,6 +588,7 @@ test('multi-sector materialization preserves per-sector bags without clobbering 
   assert.ok(ceresStationCount >= 1);
   // Re-entering membership sector does not wipe neighbor bags.
   world.enterSector(HELIOS, { continuous: true, noTeleport: true });
+  drainArrivals(world);
   assert.equal(state.world.sectorContents[CERES].stations.length, ceresStationCount);
   assert.equal(aliveIds(state).length > 1, true);
 });

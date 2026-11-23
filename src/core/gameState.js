@@ -235,6 +235,12 @@ export function createGameState(seed) {
       discovery: {}, scanPings: {}, frontierRumors: { schemaVersion: 1, byId: {}, receipts: [] },
       entryPoint: { x: 0, z: 0, heading: 0 },
       coordinateSchema: 'global_v1', frameOrigin: { x: 0, z: 0 }, frameOriginSeq: 0,
+      // Residency arrivals slice across ticks (1 neighbor materialization per world tick —
+      // ARRIVAL_RESIDENCY_BUDGET) instead of landing inside one step. The presentation lane
+      // always set this on its own state; the worker lane's sim state never received it, so
+      // every worker-lane enter materialized the whole plan inline — the multi-hundred-ms
+      // single step behind the freeze family (owner bug 2026-11-21).
+      sliceArrival: true,
     },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },

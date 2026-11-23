@@ -29,6 +29,9 @@ export function armRacingGrid({ state, bus, missions, world }, { offer, sectorId
 
   if (currentSectorId !== sectorId) {
     if (!allowEnterSector) return fail('superseded');
+    // Sync lane by contract: the grid arm has no tunnel window to drain under
+    // and `entered` is needed synchronously below — the enter lands bounded on
+    // this one call.
     // enterSector mints one serial up front. An error after that mint can
     // still belong to us, but a nested entry or restore mints past it.
     const entrySerial = (Number(state.enterSerialSeq) || 0) + 1;

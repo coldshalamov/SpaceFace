@@ -1159,6 +1159,9 @@ export const combat = {
     const currentSectorId = currentWorld?.currentSectorId;
     if (plan && plan.sectorId && plan.sectorId !== currentSectorId) {
       const world = this.registry && typeof this.registry.get === 'function' ? this.registry.get('world') : null;
+      // Sync lane by contract: recovery fires from the after-action flow with no
+      // charge/tunnel window to drain under, and the berth commit below needs the
+      // entered bag this same call — the whole enter lands bounded on this tick.
       const entered = world?.enterSector?.(plan.sectorId, {
         via: 'recovery',
         fromSectorId: currentSectorId || null,
