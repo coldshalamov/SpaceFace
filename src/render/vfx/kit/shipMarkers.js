@@ -234,7 +234,11 @@ export class ShipMarkers {
         else { const l = toLocal(e.pos.x, e.pos.z, this.local); x = l.x; z = l.z; }
         const rad = Math.max(5, Math.min(60, Number.isFinite(e.radius) ? e.radius : 10));
         const isPlayer = e.id === playerId || e.isPlayer;
-        const hostile = !isPlayer && e.team != null && e.team !== 0 && e.team !== myTeam;
+        // The scanner's rule (systems/scannerReadModel.js isHostileToPlayer): team 2 is civilian
+        // traffic and a passive actor is a lesson body; neither wears a threat ring. Every working
+        // ship in the Helios harbour used to wear one, so the calm opening read as an ambush.
+        const hostile = !isPlayer && e.team != null && e.team !== 0 && e.team !== 2 && e.team !== myTeam
+          && !(e.data && e.data.ai && e.data.ai.passive === true);
         const heading = isPlayer && Number.isFinite(playerHeading) ? playerHeading : (Number.isFinite(e.rot) ? e.rot : 0);
         const spin = reduced ? 0 : time * 0.6 + (e.id % 7);
         if (isPlayer) {
