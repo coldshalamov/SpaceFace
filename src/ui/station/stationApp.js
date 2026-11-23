@@ -526,28 +526,29 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   };
   window.addEventListener('keydown', onEscCapture, true);
 
-  const onDigitShortcut = (ev) => {
-    if (!shown || commands.isOpen || !popEl.hidden || kiteOpen) return;
-    if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.repeat) return;
+  /** The door keys: 1 Jobs, 2 Market, 3 Shipyard, 4 People. True when the key was taken. */
+  const handleDigitKey = (ev) => {
+    if (!shown || commands.isOpen || !popEl.hidden || kiteOpen) return false;
+    if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.repeat) return false;
     const t = ev.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
-    if (activeId === 'bar') return; // Bar owns 1–3 for dialogue choices
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return false;
+    if (activeId === 'bar') return false; // Bar owns 1–3 for dialogue choices
     const m = /^(?:Digit|Numpad)([1-5])$/.exec(ev.code || '') || /^([1-5])$/.exec(ev.key || '');
-    if (!m) return;
+    if (!m) return false;
     const n = Number(m[1]);
-    if (activeId === 'concourse') {
-      if (concourseScreen.openDoorByKey(n)) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      return;
-    }
+    if (activeId === 'concourse') return !!concourseScreen.openDoorByKey(n);
     const target = RAIL_ORDER[n - 1];
-    if (target) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      navigate(target);
-    }
+    if (!target) return false;
+    navigate(target);
+    return true;
+  };
+  // In the game the UI input owner stops a modal screen's keys at the document, so they reach the
+  // station through the screen's onKey (stationScreen.js), never this window listener: the door
+  // keys printed on the hub and the rail did nothing in a real dock. The window listener remains
+  // for hosts without that owner (the UI bench).
+  const onDigitShortcut = (ev) => {
+    if (ev.defaultPrevented) return;
+    if (handleDigitKey(ev)) { ev.preventDefault(); ev.stopPropagation(); }
   };
   window.addEventListener('keydown', onDigitShortcut);
 
@@ -1949,6 +1950,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     refresh,
     navigate,
     back,
+    /** The screen's onKey: the door keys 1-4. True when the key was taken. */
+    handleKey(ev) { return !!(ev && handleDigitKey(ev)); },
     onShow() {
       shown = true; commands.setEnabled(true); effects.show();
       lawFineDesk.setActive(true);

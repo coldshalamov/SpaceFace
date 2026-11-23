@@ -23,6 +23,9 @@ export const stationScreen = {
   // Esc backs out: inside a door it returns to the hub; on the hub it falls through to the
   // ordinary exit (the departure check, then undock).
   onEscape() { return !!(app && typeof app.back === 'function' && app.back()); },
+  // The door keys (1 Jobs, 2 Market, 3 Shipyard, 4 People) printed on the hub and the rail. The UI
+  // input owner stops a modal's keys at the document and hands them here.
+  onKey(ev) { return !!(app && typeof app.handleKey === 'function' && app.handleKey(ev)); },
   onHide() { if (app && app.onHide) app.onHide(); },
   refresh(ctx, options) { if (app && app.refresh) app.refresh(ctx, options); },
   dispose() {

@@ -1729,6 +1729,9 @@ ${PA} .sx-tile__key {
   font-size:12px; font-weight:600; line-height:16px; color:${ICE};
 }
 ${PA} .sx-tile.is-active .sx-tile__key { color:#f3d178; border-color:${GOLD}; }
+/* In People the number keys answer the person in front of you (1-3), so the rail prints no door
+   keys there: a "1" on Jobs would promise a key that picks a reply instead. */
+${PA}[data-operation="bar"] .sx-dock .sx-tile__key { display:none !important; }
 ${PA} .sx-tile { display:inline-flex !important; align-items:center !important; }
 ${PA} .sx-dock__back {
   display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:0 12px 0 8px; box-sizing:border-box;
