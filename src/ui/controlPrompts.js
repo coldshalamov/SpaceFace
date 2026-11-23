@@ -204,12 +204,17 @@ export function controlPrompt(key, modality = 'kbm', state = null) {
  * The one verb chip (20_THE_FIRST_HOUR rule 2): "<live key> · VERB", e.g. `RMB · LATCH`. The key is the
  * player's current binding for the action (rebinds, gamepad glyph or touch included), never a
  * hardcoded name. Falls back to the bare verb when no key can be named.
+ * The chip sits on the body under the cursor, so with keyboard and mouse the hand that is on the
+ * target answers: a verb with a fixed mouse button names that button (the Line is always RMB,
+ * systems/input.js MOUSE_ACTION_LABELS), whatever key the keyboard copy is bound to (08 §4).
  */
+const AIM_MOUSE_BUTTON = Object.freeze({ tether: 'RMB' });
 export function verbChip(state, action, verb) {
   const device = getPromptDevice();
   let key = '';
   if (device === 'gamepad') key = gamepadGlyphForAction(action) || '';
   else if (device === 'touch') key = 'TAP';
-  else key = resolveActionLabel(state || _promptState || defaultPromptState(_kbmScheme), action, { arrows: 'word' }) || '';
+  else key = AIM_MOUSE_BUTTON[action]
+    || resolveActionLabel(state || _promptState || defaultPromptState(_kbmScheme), action, { arrows: 'word' }) || '';
   return key ? `${key} · ${verb}` : verb;
 }

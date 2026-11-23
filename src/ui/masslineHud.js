@@ -1769,7 +1769,9 @@ export const masslineHud = {
     setAttr(dom.previewMark, 'role', 'img');
     setAttr(dom.previewMark, 'aria-label', offscreen ? `${text}, offscreen` : text);
 
-    setStyle(dom.previewEl, 'display', paint && !placed.hidden ? 'block' : 'none');
+    // 08 §4: the words sit on the body under the cursor, never over empty space. A target past the
+    // screen edge keeps only its rim pin (the direction); its words return when it is in view.
+    setStyle(dom.previewEl, 'display', paint && !placed.hidden && !offscreen ? 'block' : 'none');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);

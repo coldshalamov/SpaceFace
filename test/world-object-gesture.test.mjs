@@ -747,7 +747,7 @@ test('a Swarm rock advertises its Line relation while the Mine Beam is unavailab
     tick();
     const tag = hudEl.children[0];
     const hint = tag.children.find((child) => child.className === 'sf-woi__hint');
-    assert.equal(hint.textContent, 'F · ANCHOR');
+    assert.equal(hint.textContent, 'RMB · ANCHOR');
     assert.equal(tag.dataset.beam, '0');
   });
 });

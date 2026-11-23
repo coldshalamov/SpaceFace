@@ -10,7 +10,8 @@ test('the throw action names its gesture, independent of the keyboard tether bin
   t.after(() => setPromptDevice('kbm'));
   const state = { settings: { controls: { bindings: { tether: ['KeyQ'] } } } };
   setPromptDevice('kbm');
-  assert.equal(verbChip(state, 'tether', 'LATCH'), 'Q · LATCH');
+  // 08 §4: the aim tag names the mouse button on the target (the Line is always RMB), not the keyboard copy.
+  assert.equal(verbChip(state, 'tether', 'LATCH'), 'RMB · LATCH');
   assert.equal(throwActionCue(state), 'RMB · THROW');
 
   setPromptDevice('touch');

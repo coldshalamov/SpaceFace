@@ -944,8 +944,9 @@ test('a Ready Detonator names the live key and stays on its body beside a separa
     const root = document.getElementById('sf-ml2');
     const mark = findByClass(root, 'ml2-preview-mark');
     const words = findByClass(root, 'ml2-preview');
-    assert.equal(words.textContent, 'F · Latch Detonator');
-    assert.equal(mark.attributes['aria-label'], 'F · Latch Detonator');
+    // 08 §4: with keyboard and mouse the aim tag names the hand on the target — the Line is RMB.
+    assert.equal(words.textContent, 'RMB · Latch Detonator');
+    assert.equal(mark.attributes['aria-label'], 'RMB · Latch Detonator');
     assert.equal(words.attributes['data-target-id'], '20');
     const onBody = mark.style.transform;
     assert.match(onBody, /310px,\s*280px/);
@@ -958,16 +959,17 @@ test('a Ready Detonator names the live key and stays on its body beside a separa
     assert.notEqual(words.style.transform, above, 'the words yield to the cached price label');
     assert.match(words.style.transform, /,\s*296px,/);
 
+    // A keyboard rebind of the Line does not move the mouse button the tag names.
     state.settings.controls.bindings.tether = ['KeyY'];
     hud.update(1 / 60, state);
-    assert.equal(words.textContent, 'Y · Latch Detonator');
+    assert.equal(words.textContent, 'RMB · Latch Detonator');
     dart.occupantGeneration++;
     hud.update(1 / 60, state);
     assert.doesNotMatch(words.textContent, /Detonator/);
 
     state.masslineAcquisition.selected = { targetId: crate.id, occupantGeneration: crate.occupantGeneration, status: 'ready' };
     hud.update(1 / 60, state);
-    assert.equal(words.textContent, 'Y · TUG');
+    assert.equal(words.textContent, 'RMB · TUG');
     assert.equal(words.attributes['data-target-id'], '21');
     state.masslineAcquisition.selected = { targetId: dart.id, occupantGeneration: dart.occupantGeneration,
       status: 'blocked', reason: 'blocked' };
