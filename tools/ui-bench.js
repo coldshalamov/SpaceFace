@@ -1588,7 +1588,11 @@ async function openOverlay(kind) {
     cargo.usedVolume = 6.4;
     bus.emit('ui:toggleCargo');
     releaseFlightPopup = () => { bus.emit('ui:closeCargo'); state.player.cargo = before; };
-    window.__BENCH_OVERLAY = document.querySelector('.sf-cargo-panel.open') ? 'cargo open' : 'cargo did not open';
+    // CARGO-BAG-UI: the cargo key opens the bag (hud.js createCargoBag) — the old full-screen
+    // manifest no longer opens from flight, so verify the surface a player actually gets.
+    const bag = document.querySelector('#hud .sf-bag.is-open');
+    window.__BENCH_OVERLAY = bag ? 'cargo bag open' : 'cargo bag did not open';
+    if (bag) window.__BENCH_OVERLAY_EL = bag;
     return;
   }
   if (kind === 'receipt') {
