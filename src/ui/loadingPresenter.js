@@ -91,11 +91,12 @@ export const LOADING_CONTROLS = Object.freeze([
   Object.freeze(['F / RMB', 'Line: latch, swing, throw', 'tether']),
   Object.freeze(['Shift', 'Boost', 'boost']),
 ]);
-/** Split a row's keys so a slash is a separator, never a chip: 'F / RMB' paints two keys with
- *  a plain '/' between them, matching Help's card. 'W A S D' still paints four chips. */
+/** Split a row's keys so a spaced slash is a separator, never a chip: 'F / RMB' paints two keys
+ *  with a plain '/' between them, matching Help's card. 'W A S D' still paints four chips, and a
+ *  key's own glyph pair from the live Fly row ('W/↑ A/← S/↓ D/→') stays one chip per direction. */
 export function loadingKeyCapTokens(keys) {
   const out = [];
-  const chunks = String(keys || '').split(/\s*\/\s*/);
+  const chunks = String(keys || '').split(/\s+\/\s+/);
   for (let i = 0; i < chunks.length; i++) {
     if (i) out.push({ kind: 'sep', text: '/' });
     for (const cap of chunks[i].trim().split(/\s+/).filter(Boolean)) {

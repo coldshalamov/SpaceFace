@@ -38,6 +38,10 @@ test('the controls card ships the taught set: the Line row carries its key besid
     { kind: 'kbd', text: 'RMB' },
   ], 'the slash is plain text between two chips, not a third key');
   assert.deepEqual(loadingKeyCapTokens('W A S D').map((t) => t.text), ['W', 'A', 'S', 'D']);
+  // The live Fly row joins each direction's two keys with an unspaced slash; each pair is one chip,
+  // never 'W / ↑ A / ← …' with the slashes pairing the wrong glyphs (demo batch review 2026-11-23).
+  assert.deepEqual(loadingKeyCapTokens('W/↑ A/← S/↓ D/→').map((t) => `${t.kind}:${t.text}`),
+    ['kbd:W/↑', 'kbd:A/←', 'kbd:S/↓', 'kbd:D/→']);
 });
 
 test('a Swarm launch names the room it is entering; a Gauntlet names itself', () => {
