@@ -212,6 +212,7 @@ async function dockOnE() {
   step('dock', !!me?.docked && screenUp, `docked ${!!me?.docked} · station screen ${screenUp ? `up after ${((Date.now() - dockedAt) / 1000).toFixed(1)} s` : 'never appeared'}`);
   await sleep(1500);
   await shot('station-hub');
+  facts.atDock = await readObjective();
   facts.hub = await page.evaluate(() => String(document.querySelector('#screens')?.innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2400)).catch(() => null);
 }
 
@@ -264,11 +265,27 @@ async function undock() {
   const left = await page.waitForFunction(() => window.SF?.state?.mode === 'flight' && !window.SF?.state?.ui?.docked,
     null, { timeout: 20000 }).then(() => true, () => false);
   step('undock', left, left ? 'back in flight' : 'never left');
-  await sleep(3000);
-  await shot('undocked');
-  await sleep(6000);
-  await shot('undocked-later');
+  // After leaving: what does the tracker ask for, and who owns the objective? Every 5 s for 30 s.
+  facts.afterUndock = [];
+  for (let i = 0; i < 7; i++) {
+    facts.afterUndock.push({ t: since(), ...(await readObjective()) });
+    if (i === 1) await shot('undocked');
+    if (i === 4) await shot('undocked-later');
+    if (i < 6) await sleep(5000);
+  }
 }
+
+const readObjective = () => page.evaluate(() => {
+  const st = window.SF?.state;
+  const wp = st?.nav?.waypoint || null;
+  const ob = st?.onboarding || {};
+  const tracker = document.querySelector('.sf-mission-tracker');
+  return { tracker: tracker ? tracker.innerText.replace(/\s+/g, ' ').trim().slice(0, 160) : null,
+    waypoint: wp ? { kind: wp.kind || null, markerId: wp.markerId || null, missionId: wp.missionId ?? null,
+      targetEntityId: wp.targetEntityId ?? null, onboarding: !!wp.onboarding, label: wp.label || null,
+      reason: wp.reason || null } : null,
+    rail: { active: !!ob.active, finished: !!ob.finished, beat: ob.currentBeat } };
+}).catch((e) => ({ error: String(e.message || e) }));
 
 async function main() {
   installSessionSignalGuard(process);
