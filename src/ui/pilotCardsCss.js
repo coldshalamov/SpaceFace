@@ -110,19 +110,28 @@ export const PILOT_CARDS_CSS = `
 html.sf-reduce-motion .pc__card, .sf-reduce-motion .pc__card { animation:none; }
 @media (prefers-reduced-motion: reduce) { .pc__card { animation:none; } }
 @media (max-width: 760px) {
-  /* A phone stacks the hand and scrolls the overlay: every card keeps its own height (flex-basis
-     0 in a column collapsed them onto each other and under the re-roll bar). */
-  .pc { justify-content:flex-start; overflow-y:auto; gap:16px; padding:20px 16px 24px; }
-  .pc__head, .pc__hand, .pc__bar, .pc__status { flex:0 0 auto; }
-  .pc__hand { flex-direction:column; align-items:stretch; gap:12px; max-width:420px; }
+  /* A phone stacks the hand in its own scroll well between the head and the bar: every card keeps
+     its own height (flex-basis 0 in a column collapsed them onto each other), and no card ever
+     sits under Re-roll and Later, whatever the phone's height. */
+  .pc { justify-content:flex-start; overflow:hidden; gap:12px; padding:16px 16px 0; }
+  .pc__head, .pc__bar, .pc__status { flex:0 0 auto; }
+  .pc__head { gap:4px; }
+  /* The well starts at the top: the desktop row centres the hand, and a centred column that
+     overflows clips card 1's head where no scroll can reach it. */
+  .pc__hand { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+    flex-direction:column; justify-content:flex-start; align-items:stretch; gap:12px; max-width:428px; overflow-anchor:none;
+    padding:6px 6px 12px; margin:-6px 0 0; box-sizing:border-box; scroll-padding:8px 0 12px; }
   .pc__card { flex:0 0 auto; max-width:none; min-height:0; row-gap:8px; padding:14px 16px 12px; }
   .pc__icon { width:44px; height:44px; }
   .pc__name { font-size:22px; }
   .pc__text { font-size:16px; }
-  /* Re-roll and Later stay on screen while the hand scrolls under them. */
-  .pc__bar { gap:12px 16px; position:sticky; bottom:-24px; z-index:1; margin-top:auto;
-    padding:16px 0 calc(16px + env(safe-area-inset-bottom, 0px));
-    background:linear-gradient(180deg, rgb(3 4 7 / 0), rgb(3 4 7 / .94) 28%); }
+  /* Re-roll and Later sit on a solid foot under the well: the purse is one quiet line above the
+     two keys, and a short shadow on the foot's top edge says the hand runs on below it. */
+  .pc__bar { position:relative; z-index:1; gap:8px 12px; width:calc(100% + 32px); max-width:none; margin:0 -16px;
+    padding:12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-sizing:border-box;
+    background:rgb(5 6 9); box-shadow:0 -1px 0 rgb(232 226 212 / .12), 0 -14px 18px rgb(3 4 7 / .78); }
+  .pc__purse { order:-1; flex:0 0 100%; text-align:center; font-size:13px; }
+  .pc__key2 { padding:0 12px; gap:8px; }
   .pc__status:empty { display:none; }
 }
 @media (forced-colors: active) {
