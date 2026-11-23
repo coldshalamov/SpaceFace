@@ -984,14 +984,16 @@ export const physics = {
       }
     }
     this._noteSg02Available();
+    const phPre = getSimStepProfiler();
+    const phPreOn = phPre.active;
+    let phPreT = phPreOn ? nowNs() : 0;
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
     this._syncSg02FrameOrigin(state);
     this._queueSectorFenceImpulses(dt, state);
     this._syncSg02DynamicAuthorityEntities(state);
+    if (phPreOn) { phPre.record('physics.sync', nowNs() - phPreT); phPreT = nowNs(); }
     this._reconcileCombatPhysicsBeforeStep();
-    const phPre = getSimStepProfiler();
-    const phPreOn = phPre.active;
-    let phPreT = phPreOn ? nowNs() : 0;
+    if (phPreOn) { phPre.record('physics.attachReconcile', nowNs() - phPreT); phPreT = nowNs(); }
     const owner=this._sg02, world=owner.world, epoch=this._sg02Token;
     const sdiag = owner.step(dt, state.tick, SG02_STEP_SUMMARY_OPTIONS);
     if (phPreOn) { phPre.record('physics.worldStep', nowNs() - phPreT); phPreT = nowNs(); }
@@ -1190,7 +1192,11 @@ export const physics = {
   _syncSg02DynamicAuthorityEntities(state) {
     reconcileMachineryBeforePhysics(state);
     reconcileLatchBeforePhysics(state);
+    const ph = getSimStepProfiler();
+    const phOn = ph.active;
+    const phT = phOn ? nowNs() : 0;
     const activity = ensureActivityClassified(state);
+    if (phOn) ph.record('physics.sync.classify', nowNs() - phT);
     if (activity && this._diag) {
       this._diag.activityS0 = activity.counts.s0;
       this._diag.activityS1 = activity.counts.s1;

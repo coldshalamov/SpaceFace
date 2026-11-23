@@ -1292,6 +1292,9 @@ export class Sg02DynamicBodyOwner {
     const staticChanged = this._staticLayerVersion !== version;
     const dynamicLive = this._liveDynamicEntityIds;
     dynamicLive.clear();
+    const sph = getSimStepProfiler();
+    const sphOn = sph.active;
+    let sphT = sphOn ? nowNs() : 0;
 
     let staticCount = 0;
     if (staticChanged) {
@@ -1321,6 +1324,7 @@ export class Sg02DynamicBodyOwner {
         }
       }
       this._staticLayerVersion = this._deferredStaticLayer ? null : version;
+      if (sphOn) { sph.record('sg02.syncStatic', nowNs() - sphT); sphT = nowNs(); }
     }
 
     let dynamicCount = 0;
@@ -1348,6 +1352,7 @@ export class Sg02DynamicBodyOwner {
         const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world){this._mintBudget=null;this._removeBudget=null;return false;}
       }
     }
+    if (sphOn) { sph.record('sg02.syncDynamic', nowNs() - sphT); sphT = nowNs(); }
     this._resumeSuspendedAttachments(dynamicLive, this._liveStaticEntityIds);
     // An entity that died or left the dynamic layer while waiting for its mint is no
     // longer a pending impulse target.
@@ -3249,6 +3254,7 @@ export class Sg02DynamicBodyOwner {
         this.quantum, entity.id, globalX, globalZ, entity.rot, vel.x, vel.z, entity.angVel, spec.revision,
       ),
     };
+    if (simCoreFlag('physicsBookkeeping')) declareSteppedRecordFields(record);
     // Old saves may carry a mirrored entity.playerContactGive episode record; nothing reads it —
     // contact velocity is the solver's answer now, so a rebuilt body simply keeps solving from
     // its live pose.
@@ -4703,6 +4709,25 @@ export class Sg02DynamicBodyOwner {
 
 async function loadRapierCompat() {
   return loadRapierCompatRuntime();
+}
+
+// Every field the fixed step writes onto a record, declared at mint in one fixed order with the
+// value an unwritten field reads as (undefined). Records used to gain these fields in whatever
+// order their first step reached them, so the dynamic set spread over seven hidden classes and
+// every `rec.x` in the step's passes was a megamorphic lookup. One order gives one shape.
+function declareSteppedRecordFields(record) {
+  record._forcesDirty = undefined;
+  record._hadCommand = undefined;
+  record._tumbling = undefined;
+  record._tumbleMaterial = undefined;
+  record._sleepAllowed = undefined;
+  record._skippedSleepKinematics = undefined;
+  record._impulseStampTick = undefined;
+  record._preStepAngvelX = undefined;
+  record._preStepAngvelY = undefined;
+  record._preStepAngvelZ = undefined;
+  record._playerYawCeilingApplied = undefined;
+  record.postStep = undefined;
 }
 
 function resetBodyForces(body) {
