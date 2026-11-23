@@ -10435,7 +10435,7 @@ _draw() {
         ? galaxyPresenceMarkerRows(n.presence)
         : [];
       for (const row of presenceRows) nodeLines.push(`◆ ${row.label}`);
-      if (stale) nodeLines.push('STALE');
+      if (stale) nodeLines.push('OLD CHART');
       if (nodeInField) {
         const cand = makeMapLabelCandidate(g, {
           id: `sector:${n.id}`,
