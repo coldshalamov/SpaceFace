@@ -360,7 +360,7 @@ export const ENTRIES_EGG_A = [
     channel: 'commsLog',
     payload: {
       from: 'Bay 7 screen',
-      text: 'The bay screen still carries the fourteen-year-old ticket, verbatim: BAY 7 ODOR CONSISTENT WITH TRANSIT. NO ACTION. TICKET Y3-C2. Someone has taped a work light onto the cradle marked R3-CARRIER and hung a paper sign: IF YOU ARE THE REPLACEMENT SCHEDULE, PENDING SINCE YEAR 3: YOU ARE LATE.',
+      text: 'The bay board still carries the fourteen-year-old ticket, verbatim: BAY 7 ODOR CONSISTENT WITH TRANSIT. NO ACTION. TICKET Y3-C2. Someone has taped a work light onto the cradle marked R3-CARRIER and hung a paper sign: IF YOU ARE THE REPLACEMENT SCHEDULE, PENDING SINCE YEAR 3: YOU ARE LATE.',
     },
     followup: 'SIGN_BAY row (types trade_hub) + flag bay7_grid_seen; the Ashfall Kurtz-ledger addendum is gated on both flags',
   },

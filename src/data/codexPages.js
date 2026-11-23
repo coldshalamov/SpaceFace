@@ -325,7 +325,7 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'and it answers once, in a maintenance clerk\'s voice — twenty-five is whoever is out there right now. '
     + 'Inside the apron approach the docking chatter stops being noise and becomes texture — overlapping approach calls, '
     + 'berth assignments, one voice always slightly behind the others. The apron has a choir and it is made of work. '
-    + 'The station wire also runs the bay 7 notice, and the regulars will tell you bay 7 has been empty for nine years, '
+    + 'The station channel also runs the bay 7 notice, and the regulars will tell you bay 7 has been empty for nine years, '
     + 'which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet. '
     + 'The pilgrim mooring keeps a guest book in handwriting; the most recent entry is always half-finished, '
     + 'because every pilgrim moors mid-thought, and the entry finishes itself when the hull actually leaves. '
