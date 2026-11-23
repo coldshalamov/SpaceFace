@@ -204,21 +204,29 @@ export function validateRunState(run) {
 
 // Per-tick read-path validation. The live-run gates (liveSwarmRun on projectile,
 // propulsion and attrition paths) paid the full schema + non-JSON walk every
-// query — dozens of times per tick over the same run object. A run only changes
-// under system ticks, so one validation per run object per tick is the
-// on-change check those readers were paying per read. The cache keys on object
-// identity, so a freshly committed run never sees a predecessor's verdict, and
-// writer-side calls (a candidate `next` before commit) keep validateRunState
-// unchanged. Callers without a finite tick fall through to the full check.
+// query — dozens of times per tick over the same run object. The schema/type
+// pass is cheap and runs on every call, so a write that corrupts the run inside
+// a tick is seen by the next reader; only the deep non-JSON walk is memoized
+// per (run object, tick). The cache keys on object identity, so a freshly
+// committed run never sees a predecessor's verdict, and writer-side calls (a
+// candidate `next` before commit) keep validateRunState unchanged. Callers
+// without a finite tick fall through to the full check.
 const RUN_STATE_TICK_CACHE = new WeakMap();
 export function validateRunStateForTick(run, tick) {
   if (!run || typeof run !== 'object' || !Number.isFinite(tick)) return validateRunState(run);
   const t = tick | 0;
+  const shallow = validateRunStateInner(run, { skipNonJson: true });
+  if (!shallow.ok) return shallow;
   const cached = RUN_STATE_TICK_CACHE.get(run);
-  if (cached && cached.tick === t) return cached.result;
-  const result = validateRunStateInner(run, { skipNonJson: true });
-  RUN_STATE_TICK_CACHE.set(run, { tick: t, result });
-  return result;
+  let deepIssues;
+  if (cached && cached.tick === t) {
+    deepIssues = cached.deepIssues;
+  } else {
+    deepIssues = [];
+    collectNonJsonIssues(run, deepIssues, [], []);
+    RUN_STATE_TICK_CACHE.set(run, { tick: t, deepIssues });
+  }
+  return deepIssues.length ? { ok: false, issues: deepIssues.slice() } : shallow;
 }
 
 function validateRunStateInner(run, opts = {}) {

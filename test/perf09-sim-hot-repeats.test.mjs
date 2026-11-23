@@ -337,25 +337,34 @@ test('frozen entities still resolve — the slot is best-effort', () => {
   assert.equal(m2 && m2.id, 'gate_jump_ring', 'frozen entity resolves fresh every call');
 });
 
-test('run-state readers validate once per (run, tick)', () => {
+test('run-state readers memoize the deep scan per (run, tick)', () => {
   const run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 7 });
   run.phase = 'active';
 
   const a = validateRunStateForTick(run, 10);
   const b = validateRunStateForTick(run, 10);
-  assert.equal(a, b, 'same tick returns the memoized verdict');
+  assert.deepEqual(b, a, 'an unchanged run reads the same verdict');
   assert.equal(a.ok, true);
 
-  // Mutate to an invalid shape mid-tick: the cached verdict stands (readers
-  // must not pay the walk again); the next tick re-validates and rejects.
+  // DEMO-TESTHEALTH-2: the memoized piece is the deep non-JSON walk, not the
+  // verdict. A write that corrupts the run inside a tick is refused at once —
+  // the schema pass runs on every read precisely so this cannot ride the memo.
   run.phase = 'bogus';
-  assert.equal(validateRunStateForTick(run, 10).ok, true, 'same-tick memo holds');
-  assert.equal(validateRunStateForTick(run, 11).ok, false, 'next tick revalidates the mutation');
+  assert.equal(validateRunStateForTick(run, 10).ok, false,
+    'a mid-tick schema write is refused on the same tick');
+  assert.equal(validateRunStateForTick(run, 11).ok, false, 'the next tick still rejects');
 
   // A non-finite tick means no cheap change signal — always the full check.
   assert.equal(validateRunStateForTick(run, undefined).ok, false);
   run.phase = 'active';
   assert.equal(validateRunStateForTick(run, undefined).ok, true);
+
+  // A mutation only the deep scan can see (a non-JSON value under an otherwise
+  // valid key) still rides that tick's memoized scan; the tick rolls and the
+  // deep walk rejects it. This is the saving PERF-09 kept.
+  run.telemetry.fn = () => 1;
+  assert.equal(validateRunStateForTick(run, 10).ok, true, 'deep-only changes ride the tick memo');
+  assert.equal(validateRunStateForTick(run, 12).ok, false, 'the next tick deep-walks and rejects');
 
   // A replacement run object must not inherit its predecessor's verdict.
   const fresh = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 8 });
@@ -372,11 +381,11 @@ test('liveSwarmRun uses the tick-aware validator', () => {
   assert.equal(liveSwarmRun(state), run, 'a live swarm run validates and reads through');
 
   run.phase = 'bogus';
-  assert.equal(liveSwarmRun(state), run,
-    'same-tick readers see the memoized verdict, not a second deep walk');
+  assert.equal(liveSwarmRun(state), null,
+    'a mid-tick corruption is refused at once — the memoized piece is the deep scan');
   state.tick = 21;
   assert.equal(liveSwarmRun(state), null,
-    'the next tick revalidates and the invalid run is refused');
+    'the next tick revalidates and the invalid run is still refused');
 
   // The uncached validator still guards writer-side paths.
   assert.equal(validateRunState(run).ok, false);
