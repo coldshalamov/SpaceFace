@@ -229,7 +229,7 @@ test('clearing a wave pays the authored XP purse for exactly that wave', () => {
   assert.equal(harness.state.run.score, WAVE_CLEAR_SCORE * 1 + WAVE_CLEAR_SCORE * 2);
 });
 
-test('a new Easy Swarm can afford the named wall gun after four clean rounds on earned Scrap', () => {
+test('a new Easy Swarm that only shoots can afford the named wall gun two chips into round 4 on earned Scrap', () => {
   const harness = boot(4242);
   const { state, bus } = harness;
   const setup = { ruleset: 'swarm', seed: 4242, swarmStake: 'exhibition', zeroScrapOpening: true };
@@ -260,25 +260,35 @@ test('a new Easy Swarm can afford the named wall gun after four clean rounds on 
     bus.emit('run:waveCleared', { ...clear, wave: wave + 1, runWave: wave + 1 });
     assert.equal(state.run.credits, cash, 'an unplanned next-round receipt cannot pay or consume its award');
   }
-  // DEMO-SWARM-BUDGET-1-R2 — the approved round budgets field ~20% fewer bodies, so the sweep
-  // earns less: three clean rounds bank 490 of the 500 Scrap the wall gun costs. The gun lands a
-  // round later — the fourth clean round's sweep and clear carry the wallet over the quote
+  // The approved round budgets field fewer bodies, so a pilot who only shoots banks 490 of the
+  // 500 Scrap after three clean rounds. A chip pays the moment it is scooped, so the gun is two
+  // scooped chips into round 4 (before the budgets it was the first second of round 4), and a
+  // single room kill in rounds 1-3 (2.5x a gun kill) carries it past the quote after round 3 —
+  // doc 17 §3's lesson that a pilot who only shoots stays poor. Easy pays 8 Scrap a gun kill
   // (approved round budgets in swarmCourseCast.js, director 2026-11-20).
   state.run.wave = 4;
   const plan4 = planWave({ ...setup, arenaId: ARENA, wave: 4 });
   bus.emit('run:wavePlanned', { wave: 4, plan: plan4 });
-  const count4 = plan4.swarm.killTarget;
-  for (let i = 0; i < count4; i++) killIt(harness, spawnCohortEnemy(harness, { wave: 4 }));
-  const clear4 = { wave: 4, runWave: 4, completionKind: 'cohort', requested: count4, admitted: count4, killed: count4, starved: false };
-  bus.emit('run:waveCleared', clear4);
-  assert.equal(state.run.credits, 768, 'Round 4 pays the sweep plus its completion reward — '
-    + 'the wall gun lands a round later under the approved round budgets '
-    + '(approved round budgets in swarmCourseCast.js, director 2026-11-20)');
-  const award4 = named(harness.emitted, 'run:awarded').at(-1).payload;
-  assert.deepEqual([award4.reason, award4.credits, award4.xp], ['wave_cleared', 150, plan4.rewards.xp]);
+  for (let i = 0; i < 2; i++) {
+    const mark = harness.emitted.length;
+    killIt(harness, spawnCohortEnemy(harness, { wave: 4 }));
+    const drop = harness.emitted.slice(mark).find((entry) => entry.event === 'loot:drop');
+    assert.ok(drop, 'a gun kill drops its Scrap chip where the body died');
+    const [item] = drop.payload.items;
+    const chip = {
+      id: state.nextEntityId++, alive: true, type: 'pickup', pos: { ...drop.payload.pos },
+      data: { kind: item.kind, wallet: item.wallet, credits: item.credits, entitlementId: item.entitlementId },
+    };
+    state.entities.set(chip.id, chip);
+    state.entityList.push(chip);
+    bus.emit('entity:spawned', { id: chip.id, type: 'pickup', entity: chip });
+    bus.emit('pickup:collected', { pickupId: chip.id, collectorId: state.playerId, kind: item.kind, amount: 1 });
+  }
+  assert.equal(state.run.credits, 506, 'two scooped round-4 chips carry the wallet over the wall-gun '
+    + 'quote mid-round (approved round budgets in swarmCourseCast.js, director 2026-11-20)');
   assert.ok(state.run.credits >= SWARM_FLOOR_WALL_GUN_PRICE);
   bus.emit('run:spendRequested', { credits: SWARM_FLOOR_WALL_GUN_PRICE, reason: 'swarm_floor_pad' });
-  assert.equal(state.run.credits, 268, 'the wallet can commit the full wall-gun quote');
+  assert.equal(state.run.credits, 6, 'the wallet can commit the full wall-gun quote');
   bus.emit('game:exitToMenu', { source: 'retry' });
   beginSurvival(harness, 'active', setup);
   assert.equal(state.run.credits, 0, 'a fresh attempt does not inherit earned Scrap');
