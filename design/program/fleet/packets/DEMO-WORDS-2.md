@@ -10,8 +10,8 @@ not edit". Some may already be fixed by the lanes since (check each with grep fi
 Rules (same as before): change only player-facing text (labels, titles, voice lines, aria labels a
 screen reader speaks), never ids/keys/event names/file names. Keep lengths close. Rewrite tests that
 pin the old wording ("plain words, design/overhaul/08_INTERFACE.md §5"). Special cases:
-- `src/ui/masslineHud.js` 'STALE' (two places): show nothing instead of a word (`textContent = ''`
-  and keep the degraded class/aria-label); a degraded throw solution simply paints no label.
+- `src/ui/masslineHud.js`, `src/ui/map/flightMinimap.js` and `src/ui/radar.js`: DO NOT EDIT (another
+  agent is removing the rope reticle and minimap circles there, including 'STALE'). Skip those rows.
 - `src/systems/survivalResults.js` and `src/combat/playerDefeat.js` 'unidentified weapon' /
   'Unknown weapon' fallbacks: fall back to the attacking hull's own display name if the code has it;
   otherwise 'the ship that hit you'. Never leave the killer unnamed.
