@@ -119,7 +119,11 @@ html.sf-reduce-motion .pc__card, .sf-reduce-motion .pc__card { animation:none; }
   .pc__icon { width:44px; height:44px; }
   .pc__name { font-size:22px; }
   .pc__text { font-size:16px; }
-  .pc__bar { gap:12px 16px; }
+  /* Re-roll and Later stay on screen while the hand scrolls under them. */
+  .pc__bar { gap:12px 16px; position:sticky; bottom:-24px; z-index:1; margin-top:auto;
+    padding:16px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(180deg, rgb(3 4 7 / 0), rgb(3 4 7 / .94) 28%); }
+  .pc__status:empty { display:none; }
 }
 @media (forced-colors: active) {
   .pc__card { border:1px solid CanvasText; background:Canvas; forced-color-adjust:none; color:CanvasText; box-shadow:none; }
