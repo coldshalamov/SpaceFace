@@ -130,7 +130,9 @@ test('wave 2 names the wave-5 champion once — label, target wave and authored 
     `${boss.label} waits at wave ${boss.wave}. ${boss.line}`,
   );
   assert.match(previews[0], /Iron Maw/, 'the authored name reaches the player');
-  assert.match(previews[0], /Cross its bow before the guns fire\./, 'the authored line rides along');
+  // Tests follow the Swarm words pass (110ec89fbd and its director fix-up): the champion's line is
+  // 'Cross its bow before it fires.' — the boss line no longer says 'the guns'.
+  assert.match(previews[0], /Cross its bow before it fires\./, 'the authored line rides along');
   const say = h.emitted.find((e) => e.event === 'voice:say' && /waits at wave/.test(e.payload.text));
   assert.equal(say.payload.channel, 'objective');
   assert.ok(Number.isFinite(say.payload.ttl) && say.payload.ttl > 0);
