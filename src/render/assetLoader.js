@@ -29,6 +29,7 @@ import {
   dropPackageDetachManifest,
 } from './packageCpuDetach.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 2,
@@ -514,6 +515,24 @@ function installWorkerFailureDrain(worker, MessageEventImpl) {
 
 /** Module-lifetime shared KTX2 owner used by every authored-asset runtime in this process. */
 const sharedKtx2LoaderOwner = createSharedKtx2LoaderOwner();
+
+/**
+ * Soft-failure acquire for the world-texture loaders (deep-sky plates, painted planets,
+ * rock families). They hold the reference for the session — the shared pool's transcode
+ * work replaces their per-boot image decode — and must never fail a load because the
+ * transcoder could not start; callers fall back to the plain TextureLoader path on null.
+ */
+export function acquireSharedKtx2Loader(renderer) {
+  // `worldKtx2` kill switch (?rfx=-worldKtx2 or __sfRfx.worldKtx2=false): callers receive
+  // null and take their ordinary raster path, the same shape as an absent .ktx2.
+  if (!frameCostFixOn('worldKtx2')) return Promise.resolve(null);
+  return sharedKtx2LoaderOwner.acquire(renderer).catch(() => null);
+}
+
+/** Pair for `acquireSharedKtx2Loader`; callers that hold the loader for object lifetime release on dispose. */
+export function releaseSharedKtx2Loader(loader) {
+  sharedKtx2LoaderOwner.release(loader);
+}
 
 const authoredAssetRuntimeRegistry = createAuthoredAssetRuntimeRegistry(createRuntime);
 const authoredAssetPerfCountersByRenderer = new WeakMap();

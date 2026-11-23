@@ -1386,7 +1386,7 @@ export class SpaceBackground {
     // planet texture LRU (render targets, disposed when evicted)
     this.planetCache = new Map();
     this.paintedPlanets = typeof document !== 'undefined' && typeof document.createElementNS === 'function'
-      ? new PaintedPlanets() : null;
+      ? new PaintedPlanets(null, { renderer: this.renderer }) : null;
     // Regional far-sky plates. This used to be one unconditional TextureLoader call for the Helios
     // plate, resident in every sector including the four that never sampled it, and uploaded to the
     // GPU by whichever frame first drew it. Both are now bounded: see src/render/deepSkyPlates.js.

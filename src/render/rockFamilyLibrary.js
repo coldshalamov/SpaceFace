@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { acquireSharedKtx2Loader } from './assetLoader.js';
 
 // Surface families for the asteroid types that used to be flat-tinted bare spheres: metallic,
 // crystalline and exotic rocks. Each family is a generated, seamless 512 px albedo (plus a normal map
@@ -41,7 +42,7 @@ function configure(texture, { color = false, role }) {
   texture.repeat.set(ROCK_FAMILY_REPEAT[0], ROCK_FAMILY_REPEAT[1]);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = true;
+  texture.generateMipmaps = !texture.isCompressedTexture && texture.mipmaps.length === 0;
   texture.anisotropy = 4;
   texture.userData = { ...(texture.userData || {}), spacefaceSurfaceRole: role };
   texture.needsUpdate = true;
@@ -58,11 +59,24 @@ export function preloadRockFamilyLibrary(renderer, options = {}) {
   const loadTexture = typeof options.loadTexture === 'function'
     ? options.loadTexture
     : (url) => new THREE.TextureLoader().loadAsync(url);
+  // Every family map ships a sibling `url.ktx2` (scripts/encode-world-ktx2.mjs). Transcoding on
+  // the shared pool replaces the main-thread image decode; a missing file or an unavailable
+  // transcoder falls straight back to the raster source.
+  const ktx2Ready = options.ktx2 === false
+    ? Promise.resolve(null)
+    : acquireSharedKtx2Loader(renderer);
+  const loadJobTexture = async (url) => {
+    const ktx2 = await ktx2Ready;
+    if (ktx2) {
+      try { return await ktx2.loadAsync(`${url}.ktx2`); } catch { /* raster fallback below */ }
+    }
+    return loadTexture(url);
+  };
   const jobs = [];
   for (const [family, files] of Object.entries(ROCK_FAMILY_ASSETS)) {
     for (const [slot, url] of Object.entries(files)) jobs.push({ family, slot, url });
   }
-  readyPromise = Promise.all(jobs.map((job) => loadTexture(job.url))).then((textures) => {
+  readyPromise = Promise.all(jobs.map((job) => loadJobTexture(job.url))).then((textures) => {
     const families = {};
     jobs.forEach((job, index) => {
       const texture = configure(textures[index], {

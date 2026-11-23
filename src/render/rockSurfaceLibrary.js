@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { acquireSharedKtx2Loader } from './assetLoader.js';
 
 export const ROCK_SURFACE_ASSETS = Object.freeze({
   baseColor: '/assets/ships/release/surfaces/common-rock/rock_basecolor.png',
@@ -49,10 +50,22 @@ export function preloadRockSurfaceLibrary(renderer, options = {}) {
   const loadTexture = typeof options.loadTexture === 'function'
     ? options.loadTexture
     : (url) => new THREE.TextureLoader().loadAsync(url);
+  // Sibling `.ktx2` transcodes (scripts/encode-world-ktx2.mjs) move decode onto the shared
+  // pool; a missing file or unavailable transcoder falls back to the raster source.
+  const ktx2Ready = options.ktx2 === false
+    ? Promise.resolve(null)
+    : acquireSharedKtx2Loader(renderer);
+  const loadSurface = async (url) => {
+    const ktx2 = await ktx2Ready;
+    if (ktx2) {
+      try { return await ktx2.loadAsync(`${url}.ktx2`); } catch { /* raster fallback below */ }
+    }
+    return loadTexture(url);
+  };
   readyPromise = Promise.all([
-    loadTexture(ROCK_SURFACE_ASSETS.baseColor),
-    loadTexture(ROCK_SURFACE_ASSETS.normal),
-    loadTexture(ROCK_SURFACE_ASSETS.orm),
+    loadSurface(ROCK_SURFACE_ASSETS.baseColor),
+    loadSurface(ROCK_SURFACE_ASSETS.normal),
+    loadSurface(ROCK_SURFACE_ASSETS.orm),
   ]).then(([baseColor, normal, orm]) => {
     configureSurfaceTexture(baseColor, { color: true, role: TEXTURE_ROLES.baseColor });
     configureSurfaceTexture(normal, { role: TEXTURE_ROLES.normal });
@@ -100,7 +113,7 @@ function configureSurfaceTexture(texture, { color = false, role = 'surface-data'
   texture.repeat.set(ROCK_SURFACE_TEXTURE_REPEAT, ROCK_SURFACE_TEXTURE_REPEAT);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = true;
+  texture.generateMipmaps = !texture.isCompressedTexture && texture.mipmaps.length === 0;
   texture.anisotropy = 8;
   texture.userData = {
     ...(texture.userData || {}),

@@ -34,7 +34,16 @@
 // selector searches, src/ui/hud.js + src/ui/worldObjectInteraction.js + src/ui/masslineHud.js),
 // shipTier (the ship detail-tier selector reads the hull's size instead of its cull envelope, and a
 // ship may be admitted on a cheaper body from a one-frame-old size sample, src/render/lod.js +
-// src/render/renderer.js + src/render/partsLibrary.js).
+// src/render/renderer.js + src/render/partsLibrary.js), motionPool (hull leaves under a rigid
+// authored MOTION_* group join the cross-ship instance pool: one instanced draw per leaf for every
+// ship of a hull instead of one draw per ship, src/render/partsLibrary.js
+// canPoolRenderPackageShipMesh), inFileTiers (in a Swarm run an ordinary hostile whose hull file carries
+// its own LOD1/LOD2 leaves changes tier by showing those leaves instead of loading and composing a
+// sibling body, src/render/partsLibrary.js + src/render/renderer.js), emptyBatches (a particle batch with nothing alive is not
+// submitted, src/render/vfx/quarksSystem.js), foundryCheapMat (demotes static Foundry deck/steel/prop Standard/Phong materials to Lambert on integrated GPUs, src/render/arenaSets/foundrySet.js),
+// worldKtx2 (world textures — deep-sky plates, painted planets, rock maps — load their
+// sibling .ktx2 through the shared transcoder instead of decoding the PNG/JPG source,
+// src/render/assetLoader.js acquireSharedKtx2Loader + the four world-texture loaders).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).
@@ -63,6 +72,12 @@ export function frameCostFixOn(name) {
   if (live && typeof live[name] === 'boolean') return live[name];
   const p = read();
   return p.all && !p.off.has(name);
+}
+
+/** A change still being measured: off unless a harness turns it on (globalThis.__sfRfx[name] = true). */
+export function frameCostFixPending(name) {
+  const live = globalThis.__sfRfx;
+  return !!(live && live[name] === true);
 }
 
 /** Tests only. */
