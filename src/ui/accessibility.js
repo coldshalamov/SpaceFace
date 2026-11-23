@@ -243,8 +243,10 @@ function normalizedMotionPreference(settings) {
   if (MOTION_PREFERENCES.includes(explicit)) return explicit;
   // Old profiles had only the effective boolean. Preserve an explicit reduced choice; otherwise
   // full effects. Following the operating system is an explicit pick (System), never the fallback:
-  // Windows "Animation effects: off" is a desktop tweak, and inheriting it silently stripped
-  // hit-stop, trauma, event lights and force-field motion from players who never asked.
+  // OWNER, 2026-09-20 — his Windows has "Animation effects" off (a desktop tweak), and inheriting it
+  // silently stripped hit-stop, trauma, event lights and force-field motion ("the vfx for the attacks
+  // is limp"). That ruling outranks a silent OS follow, so the default stays Full and System is an
+  // opt-in in Settings > Access.
   return pick(settings, 'video.motionReduce', false) ? 'reduce' : 'full';
 }
 
@@ -256,19 +258,14 @@ function systemMotionReduced() {
 }
 
 /**
- * First boot with the OS reduced-motion hint must ask Full or Reduce. Full without motionAsked is
- * the silent default, never a stored answer. An explicit Reduce or System is already a choice.
- * Pass `osReduced` from tests; omit it to read the live media query.
+ * Never (design/overhaul/08_INTERFACE.md §2, ledger A2): the first boot does not stop a player with a
+ * Full/Reduce question; the choice (Follow system / Reduced / Full) lives in Settings > Access. The
+ * shipped default stays Full even on a reduce-OS machine (owner, 2026-09-20: see
+ * normalizedMotionPreference). Kept as a function so every caller keeps its shape; the motionAsk
+ * screen stays registered for anything that pushes it.
  */
-export function shouldAskMotionPreference(settings, osReduced) {
-  const reduced = osReduced == null ? systemMotionReduced() : !!osReduced;
-  if (!reduced) return false;
-  const access = settings && settings.accessibility && typeof settings.accessibility === 'object'
-    ? settings.accessibility
-    : {};
-  if (access.motionAsked === true) return false;
-  const preference = normalizedMotionPreference(settings);
-  return preference !== 'reduce' && preference !== 'system';
+export function shouldAskMotionPreference(_settings, _osReduced) {
+  return false;
 }
 
 export function firstBootScreenId(settings, osReduced) {

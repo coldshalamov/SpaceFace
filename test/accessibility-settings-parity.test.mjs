@@ -39,9 +39,11 @@ applied = applyAccessibility(state.settings, root);
 assert.equal(applied.motionReduced, false, 'the OS hint must never strip combat feel from a player who did not ask');
 assert.equal(state.settings.video.motionReduce, false);
 assert.equal(root.classList.contains('sf-reduce-motion'), false);
-assert.equal(shouldAskMotionPreference(state.settings, true), true,
-  'first boot with the OS hint must ask before anyone plays');
-assert.equal(firstBootScreenId(state.settings, true), 'motionAsk');
+// 08_INTERFACE §2 (ledger A2): no first-boot motion question, not even with the OS hint on — the
+// title is the first screen; Follow system / Reduced / Full live in Settings > Access.
+assert.equal(shouldAskMotionPreference(state.settings, true), false,
+  'first boot never stops a player with a motion question');
+assert.equal(firstBootScreenId(state.settings, true), 'mainMenu');
 assert.equal(shouldAskMotionPreference(state.settings, false), false,
   'without the OS hint, Full is the answer and there is nothing to ask');
 assert.equal(firstBootScreenId(state.settings, false), 'mainMenu');

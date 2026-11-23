@@ -173,10 +173,7 @@ ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${
   ${ROW_BTN} { width:100% !important; min-height:44px !important; height:44px; }
   ${ROW_LI}.of-title-row-item > button.of-door { width:100% !important; height:44px !important; }
 }
-@media (prefers-reduced-motion: reduce) {
-  ${DOOR}, ${DOOR} > *, ${ROW_BTN} { transition:none !important; }
-  ${DOOR}:is(:hover, :focus) > .of-door__art { transform:none; }
-}
+/* reduced motion is the game's setting (html.sf-reduce-motion), never the OS query alone */
 html.sf-reduce-motion ${DOOR}, html.sf-reduce-motion ${DOOR} > *, html.sf-reduce-motion ${ROW_BTN} { transition:none !important; }
 html.sf-reduce-motion ${DOOR}:is(:hover, :focus) > .of-door__art { transform:none; }
 `;
