@@ -189,6 +189,9 @@ export const physics = {
     // with the tick it happened on). See _emitSg02ContactImpacts.
     this._sg02ImpactCarry = [];
     this._sg02ImpactCarryNext = [];
+    // Resting-contact coalescing (see SG02_RESTING_PAIR_TICKS): pair key -> tick of the pair's
+    // last reported receipt. Transient: a load or teardown clears it with the carry.
+    this._sg02PairLastEmit = new Map();
     this._sg02ImpactOptionsScratch = {
       backend: 'rapier-dynamic',
       tick: 0,
@@ -1034,12 +1037,25 @@ export const physics = {
     next.length = 0;
     let delivered = 0;
     let emitted = 0;
+    // A pile pressed onto furniture by a well reports the same pairs every step at almost no
+    // closing speed (round-6 Swarm fight: 80 % of receipts repeated the previous step's pair and
+    // 47 % closed under 1 WU/s), and every receipt runs every physics:impact listener. A fresh
+    // non-player receipt for a resting pair that already reported inside the consequence cooldown
+    // is folded away: collision consequences refuse the same pair inside that cooldown anyway, a
+    // real hit (closing fast) always goes, and the pair reports again once the window lapses, so
+    // crusher pressure keeps its cadence.
+    const coalesce = simCoreFlag('impactCoalesce');
+    let folded = 0;
     const playerId = state && state.playerId;
     for (let pass = 0; pass < 2; pass++) {
       const list = pass === 0 ? carried : fresh;
       for (let i = 0; i < list.length; i++) {
         const receipt = list[i];
         const touchesPlayer = playerId != null && (receipt.aId === playerId || receipt.bId === playerId);
+        if (pass === 1 && coalesce && !touchesPlayer && this._restingPairRepeat(receipt, state.tick)) {
+          folded++;
+          continue;
+        }
         if (!touchesPlayer && delivered >= cap && next.length < SG02_IMPACT_CARRY_MAX) {
           if (pass === 1) receipt.carriedFromTick = state.tick;
           next.push(receipt);
@@ -1059,8 +1075,26 @@ export const physics = {
       if (!(diag.impactReceiptsMaxPerTick >= fresh.length)) diag.impactReceiptsMaxPerTick = fresh.length;
       if (!(diag.impactCarryMax >= next.length)) diag.impactCarryMax = next.length;
       diag.impactCarriedTotal = (diag.impactCarriedTotal || 0) + next.length;
+      diag.impactFoldedTotal = (diag.impactFoldedTotal || 0) + folded;
     }
     return emitted;
+  },
+
+  // True when this fresh receipt repeats a resting pair that already reported within the window,
+  // so it is folded away. Otherwise the pair's report tick is stamped (the receipt goes now or
+  // waits in the carry) and false is returned.
+  _restingPairRepeat(receipt, tick) {
+    const last = this._sg02PairLastEmit;
+    const key = impactPairKeyFor(String(receipt.aId), String(receipt.bId));
+    const closing = receipt.preSolveClosingSpeed;
+    const prev = last.get(key);
+    if (prev !== undefined && Number.isFinite(closing) && closing < SG02_RESTING_CLOSING_WU_S
+      && tick - prev >= 0 && tick - prev < SG02_RESTING_PAIR_TICKS) return true;
+    last.set(key, tick);
+    if (last.size > 2048) {
+      for (const [k, t] of last) if (!(tick - t < SG02_RESTING_PAIR_TICKS)) last.delete(k);
+    }
+    return false;
   },
 
   _emitOneSg02Impact(state, receipt, carried) {
@@ -1105,6 +1139,7 @@ export const physics = {
     const state = this.state;
     // Receipts carried from before the load name bodies of the old world.
     this._sg02ImpactCarry.length = 0;
+    if (this._sg02PairLastEmit) this._sg02PairLastEmit.clear();
     if (!usesSg02DynamicAuthority(state)) {
       this._disableSg02DynamicAuthority();
     } else if (!this._nativeRestoreDeferred) {
@@ -1211,6 +1246,7 @@ export const physics = {
 
   _disableSg02DynamicAuthority() {
     if (this._sg02ImpactCarry) this._sg02ImpactCarry.length = 0;
+    if (this._sg02PairLastEmit) this._sg02PairLastEmit.clear();
     if (this._sg02 || this._sg02Init) this._sg02Token++;
     this._sg02DiagnosticsOwner = null;
     // A teardown (load boundary, backend change) ends the episode being timed; a fresh one starts.
@@ -2065,6 +2101,12 @@ function usesSg02DynamicAuthority(state) {
 // The carry itself is bounded: past it, receipts deliver inline rather than wait (never lost).
 export const SG02_IMPACT_FANOUT_CAP = 32;
 const SG02_IMPACT_CARRY_MAX = 512;
+// Resting-contact coalescing: a non-player pair closing slower than this (WU/s) that already
+// reported inside the window is folded away. The window is the consequence cooldown
+// (COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS in collisionConsequences.js), so every receipt that
+// system would admit still arrives.
+const SG02_RESTING_CLOSING_WU_S = 5;
+const SG02_RESTING_PAIR_TICKS = 12;
 
 // A carried receipt whose body id now names a different occupant is not this impact's body.
 function staleImpactGeneration(entity, generation) {

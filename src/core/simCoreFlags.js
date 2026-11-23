@@ -47,6 +47,12 @@ const DEFAULTS = Object.freeze({
    * a Swarm arena from 22 to 83 rocks by round 5.
    */
   fragmentBudget: true,
+  /**
+   * Resting contacts report once per consequence window (FREEZE lane, 2026-11-23): a non-player
+   * pair closing under 5 WU/s that already reported in the last 12 steps is folded away before
+   * the bus. DEFAULT ON. Off restores one receipt per pair per step.
+   */
+  impactCoalesce: true,
 });
 
 let overrides = null;
