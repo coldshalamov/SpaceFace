@@ -80,7 +80,7 @@ assert.match(checkSource, /newContext\s*\(/, 'baseline uses a fresh incognito br
 assert.match(checkSource, /deviceScaleFactor\s*:\s*1/, 'baseline fixes DPR at one');
 assert.match(checkSource, /width\s*:\s*1440/, 'baseline fixes the acceptance viewport width');
 assert.match(checkSource, /height\s*:\s*900/, 'baseline fixes the acceptance viewport height');
-assert.match(checkSource, /bringToFront\s*\(/, 'headed page is brought to the foreground');
+assert.doesNotMatch(checkSource, /bringToFront\s*\(/, 'baseline launches quietly — the headed page never steals focus (19dbdc018b)');
 assert.match(checkSource, /worktreeFingerprint/, 'capture is bound to a stable tracked, staged, intent-to-add, and ordinary untracked tree');
 assert.match(checkSource, /publishAcceptedArtifacts/, 'accepted artifacts are promoted only after the route passes');
 assert.match(checkSource, /publishFailureArtifacts/, 'failed runs retain a non-primary failure packet');
@@ -764,7 +764,7 @@ function createStationDomFixture({
       innerText: 'THEY KNEW THE MASS.',
     });
     stationCaption.parentNode = stationTape;
-    stationTapeTail = { nodeType: 3, nodeValue: ' · Station wire · Local Wire notice' };
+    stationTapeTail = { nodeType: 3, nodeValue: ' · Station bulletin · Local Wire notice' };
     if (siblingTextChanges !== null || siblingTextHidden) {
       siblingText = fakeElement({
         tag: 'div',

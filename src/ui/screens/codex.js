@@ -871,7 +871,7 @@ const WORLD_ROW_COPY_14 = Object.freeze({
     note: '[NO SENDER] — after quiet business, any sector.',
   }),
   bay: Object.freeze({
-    sub: 'Station wire', open: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS." The regulars will tell you bay 7 has '
+    sub: 'Station bulletin', open: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS." The regulars will tell you bay 7 has '
       + 'been empty for nine years — which is why the wire uses it.',
     sealed: 'Nothing in bay 7 has ever contradicted the wire. The regulars take that as proof.',
     note: 'station_helios, bay 7 — the weekly notice.',
