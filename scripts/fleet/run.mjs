@@ -12,7 +12,7 @@
 //   flash                      Antigravity (agy), gemini-3.8-flash-high
 //   codex                      Codex 0.163, gpt-6.1-sol high — the senior agent (reviews, architecture, 3D, images)
 //   hydrogen                   agy, gemini-4-hydrogen-xhigh — critic/investigator; reads frames (verify its claims)
-//   grok | dsx                 cursor-agent, grok-4.7-high | deepseek-v41-flash-1017-max — investigators (verify)
+//   grok | grok46 | dsx        cursor-agent, grok-4.7-high | cursor-grok-4.6-high | deepseek-v41-flash-1017-max
 //
 // Investigation packets (READ-ONLY, the usual use of hydrogen/grok/dsx): the packet says so; the worker
 // writes findings with file:line evidence to its RECEIPT.md and changes no tracked file.
@@ -44,7 +44,7 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|glm|neon1|neon2|flash|codex|hydrogen|grok|dsx> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|glm|neon1|neon2|flash|codex|hydrogen|grok|grok46|dsx> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
@@ -135,11 +135,12 @@ if (devin) {
   // Gemini 4 Hydrogen XHigh via agy (owner 2026-11-15: large separate budget). Reads images; good critic and investigator.
   cmd = AGY;
   cmdArgs = ['--print', prompt, '--model', 'gemini-4-hydrogen-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
-} else if (backend === 'grok' || backend === 'dsx') {
+} else if (backend === 'grok' || backend === 'grok46' || backend === 'dsx') {
   // cursor-agent (owner 2026-11-15: two large separate buckets). grok = Grok 4.7 High; dsx = DeepSeek V4.1 Flash Max.
   // Launched through cmd.exe with the prompt in an env var: a quoted prompt as an argv word gets split on Windows.
   cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
-  const model = backend === 'grok' ? 'grok-4.7-high' : 'deepseek-v41-flash-1017-max';
+  // grok46 = Grok 4.6 High (owner 2026-11-23: same bucket as 4.7; 4.7 is bigger, 4.6 may be more coherent).
+  const model = backend === 'grok' ? 'grok-4.7-high' : backend === 'grok46' ? 'cursor-grok-4.6-high' : 'deepseek-v41-flash-1017-max';
   cmdArgs = ['/d', '/s', '/c', `""${CURSOR}" -p --force --trust --output-format text --model ${model} --workspace "${REPO}" "%FLEET_PROMPT_LINE%""`];
   env.FLEET_PROMPT_LINE = prompt.replace(/\r?\n/g, ' ').replace(/"/g, "'");
 } else {
@@ -178,7 +179,7 @@ function launch(resume) {
   log.write(`
 [fleet] attempt ${attempt}${resume ? ' (resume)' : ''} at ${new Date().toISOString()}
 `);
-  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true, windowsVerbatimArguments: backend === 'grok' || backend === 'dsx' });
+  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true, windowsVerbatimArguments: backend === 'grok' || backend === 'grok46' || backend === 'dsx' });
   if (backend === 'codex') child.stdin.end(prompt); else child.stdin.end();
   const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
   child.stdout.on('data', onData);
