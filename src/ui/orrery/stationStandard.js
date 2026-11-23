@@ -13,6 +13,9 @@ const STYLE_ID = 'sf-station-standard';
 // Out-specifies `html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station` (4 classes).
 const P = 'html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station';
 const PA = 'html:root:root:root body #screens > .sx-berth.orr-station.orr-station';
+// The phone sheet (data-sf-mobile="1") styles the berth at three ids (mobileScreenLayouts.js); its
+// four-places and clean-exchange rules restate here at four so a phone gets the same station.
+const PM = 'html:root:root[data-sf-mobile="1"] body #screens#screens#screens#screens > .sx-berth.orr-station.orr-station';
 
 const BONE = '236 230 216';
 const AMBER = '242 185 80';
@@ -1870,6 +1873,56 @@ ${PA} :is(.sx-dossier .orr-route__caption, .sx-ct-tether__caption) > .orr-route_
 ${PA} :is(.sx-dossier .orr-route__caption, .sx-ct-tether__caption) > .orr-route__via {
   font-family:${UI} !important; font-stretch:100% !important; font-size:12px !important; font-weight:700 !important; letter-spacing:.08em !important;
 }
+
+/* ==== FOUR PLACES ON A PHONE (2026-11-23) =====================================================
+   A touch phone (data-sf-mobile="1") still drew the old dashboard inside every door: the bay screen
+   and station wire crawls, the vitals dials with Repair / Insure / Draw, the credit line and a second
+   credits figure, and a foot whose four places ran together ("JOBSMARKETSHIPYARDPEOPLE"). Inside a
+   door the phone now gets what the desktop gets: the slim door head, the door's body, and a foot
+   of four tabs over Back and Undock. */
+${PM}:not([data-operation="concourse"]):not([data-operation=""]) header.sxb-berth.sxb-berth {
+  display:flex !important; flex-wrap:wrap !important; grid-template-areas:none !important; grid-template-columns:none !important;
+  gap:8px !important; padding:0 !important; background:none !important; border:0 !important; box-shadow:none !important;
+}
+${PM}:not([data-operation="concourse"]):not([data-operation=""]) header.sxb-berth.sxb-berth > :is(.so-station-mark, .so-station-title, .so-command-trigger, .sxb-tape, .sxb-signs, .sxb-handoff, .sxb-berth__lamp) {
+  display:none !important;
+}
+${PM}:not([data-operation="concourse"]) .sxb-crown > :is(.sxb-purse, .sxb-vitals) { display:none !important; }
+${PM}:not([data-operation="concourse"]) .sxb-crown:not(:has(> .sxb-law-fine:not([hidden]))) { display:none !important; }
+${PM}:not([data-operation="concourse"]) header.sxb-berth > .sx-dh { flex:1 1 100% !important; width:100% !important; }
+${PM} .sxb-ops .sx-comms__toggle, ${PM} .sxb-ops .sxb-help, ${PM} .so-berth-status { display:none !important; }
+${PM} .sx-mkt.orr-market :is(.so-trade-breakdown, .sx-mkt-chart-key, .orr-mkt-subkey, .orr-mkt-spread, .sx-mkt-cone-read, [data-ad-board], .orr-mkt-demand-key, .orr-mkt-tape) { display:none !important; }
+${PM} .sxb-ops.sxb-ops .sxb-launch-seat > .sxb-launch {
+  justify-content:center !important; gap:12px !important;
+  border:1px solid ${GOLD} !important; border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .30) 0%, rgb(224 181 94 / .14) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(255 241 207 / .24), 0 4px 12px rgb(0 0 0 / .45) !important; color:#fff1cf !important;
+}
+${PM} .sxb-ops.sxb-ops .sxb-launch-seat > .sxb-launch .sxb-launch__copy { flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot {
+  display:grid !important; grid-template-columns:repeat(4, minmax(0, 1fr)) !important; grid-template-rows:auto auto !important;
+  grid-template-areas:none !important; align-items:stretch !important; gap:8px !important; flex-wrap:nowrap !important;
+  height:auto !important; min-height:0 !important; padding:8px 12px 12px !important;
+}
+${PM} .sxb-ops.sxb-ops.dp-frame__foot :is(.of-facility-rail, .sxb-ops__dock, .sx-dock, .sx-dock__group--nav) { display:contents !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li { grid-row:1 !important; display:flex !important; min-width:0 !important; margin:0 !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li > .sx-tile.sx-tile {
+  position:relative !important; width:100% !important; min-width:0 !important; min-height:48px !important; height:auto !important; margin:0 !important; padding:6px 4px !important;
+  display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:4px !important;
+  border:1px solid rgb(154 198 218 / .22) !important; border-radius:2px !important; background:rgb(10 20 30 / .72) !important;
+}
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li > .sx-tile.sx-tile.is-active { border-color:${GOLD} !important; background:rgb(224 181 94 / .14) !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .sx-tile__label {
+  display:flex !important; flex-direction:column !important; align-items:center !important; gap:4px !important;
+  font-family:${UI} !important; font-size:12px !important; font-weight:700 !important; letter-spacing:.04em !important; white-space:nowrap !important; text-transform:uppercase !important;
+}
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .dust-tab-glyph { display:block !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile :is(.sx-tile__key, .orr-stationrow__rule), ${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile__gloss { display:none !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .sx-tile__badge:not([hidden]) { position:absolute !important; top:4px !important; right:6px !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__back { grid-row:2 !important; grid-column:1 !important; justify-content:center !important; min-height:44px !important; margin:0 !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-row:2 !important; grid-column:2 / -1 !important; display:flex !important; margin:0 !important; width:auto !important; }
+${PM} .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat > .sxb-launch { width:100% !important; min-height:44px !important; }
+${PM}[data-operation="concourse"] .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-column:1 / -1 !important; }
 
 /* ==== A RECEIPT IS A TOAST (2026-11-23) ======================================================
    "Job taken", "Part fitted", "Hull repaired": the receipt used to take its own row at the head of

@@ -112,7 +112,10 @@ function ensureBarStyle() {
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const roleLabel = (c) => {
   const authored = typeof c.roleLabel === 'string' ? c.roleLabel.trim() : '';
-  return authored || String(c.role || 'contact').replace(/_/g, ' ');
+  // A role read as an id ("barkeep", "pilot") beside authored titles ("Cargo Registrar"): it now
+  // opens with a capital like every other line on the rail.
+  const raw = authored || String(c.role || 'contact').replace(/_/g, ' ');
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 };
 const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const rewardOf = (m) => Math.max(0, Math.round(Number(

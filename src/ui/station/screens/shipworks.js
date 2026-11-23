@@ -3835,7 +3835,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         // The row is narrow: "STARTER SCOUT · T0" wrapped to an orphaned "· T0" line — a line
         // opening on a middot. Every middot glues to the word BEFORE it, so a wrap can end a
         // line on the separator but never open one with it.
-        const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${def.tier != null ? def.tier : '?'}`;
+        // The role alone ("Starter scout"): the tier code ("\u00b7 T0") was a build number, not a word.
+        const subLabel = String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1');
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         const hullThumb = itemThumbHtml({ hullId: s.defId, kind: 'hull' }, { size: 'sm', showCrest: false, showPips: false, className: 'sx-sw-row__thumb' });
