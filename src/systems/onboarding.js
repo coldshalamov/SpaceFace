@@ -1650,52 +1650,11 @@ export const onboarding = {
     if (!payload || payload.scenario == null) {
       st.onboarding.pace = freshPaceState({ flownBefore });
       this._beginRescue();
-      // DEMO-ADV-2 (item 1): the first instruction is on the glass before the first simulated
-      // frame. missions installs and tracks the 47-A cold-start contract on this same event (it
-      // inits before onboarding), so for the ~1.2 s until the rail's first update tick the tracker
-      // and the minimap showed the contract objective before the rope lesson took the slot. The
-      // beat itself still starts on the ordinary tick; only the objective slot is seated here.
-      this._seatOpeningObjective();
     }
     else this._releasePreparedRescue();
     // No intro modal (spec2/03 B0: "no modal"). The B0 line fires on the first update tick after the
     // 4 s silence gate (no predecessor → fires immediately).
     this._refreshBeatPanel();
-  },
-
-  // Seat the opening's first instruction on the glass now, without advancing the rail: the beat
-  // line, its lesson body and its objective are the same ones the first update tick produces, so
-  // the tick's write is a no-op. Nothing here speaks, stamps progress or moves currentBeat — the
-  // rail owns all three.
-  //
-  // A scenario slice owns its own cast and its own nav (the 47-A sim, the labs): its authored beats
-  // are the instruction, so no seat. _begin reads the boot payload; the worker lane hands the
-  // contract through helpers instead and state.scenario only activates on its first authoring beat,
-  // so all three are read here.
-  _seatOpeningObjective() {
-    const st = this.state;
-    const ob = st && st.onboarding;
-    if (!ob || !ob.active || ob.finished || !st.nav || ob.currentBeat >= 0) return false;
-    if (!ob.rescue || !ob.rescue.active) return false;
-    if (this.helpers && this.helpers.scenarioContract) return false;
-    if (st.scenario && st.scenario.active) return false;
-    const beat = BEATS[0];
-    if (!beat) return false;
-    if (beat.key === 'tether') {
-      // Adopts the staged rescue tableau's loose rock as the lesson body — the first instruction's
-      // mark — and names the same verb line _enterBeat will name on the first tick.
-      if (!ob.beatAction) ob.beatAction = taughtVerbLine(st, beat.key, beat.line);
-      this._spawnDerelict();
-      const body = this._liveTrainingDerelict();
-      if (!body || !body.pos) return false;
-      st.nav.waypoint = buildOnboardingObjectiveWaypoint({ ...beat, line: ob.beatAction }, {
-        pos: body.pos,
-        label: body.data && body.data.rescueRole === 'rock' ? 'Loose rock' : 'Derelict',
-      });
-      return true;
-    }
-    this._setObjectiveWaypoint(true);
-    return true;
   },
 
   // Enter story-mode (the persistent objective tracker) without the tutorial. Used by save:loaded
@@ -2501,51 +2460,31 @@ export const onboarding = {
   // "[E] Fly to berth" lays a course to the station. Once the ship has docked there the course is
   // done; left standing it read as the pilot's own plan, so after the first undock the tracker kept
   // saying "Helios Station · 66 m" and the raid's instruction could not take the slot. During the
-  // opening rail, the arrived berth course is retired.
-  //
-  // DEMO-ADV-2 (item 3): only the course the berth key laid is retired. ui/input.js stamps the
-  // course it plots (berthAutopilot + the stable berth station id) and world carries the stamp onto
-  // state.nav.waypoint; the retire matches on that stamp alone. The old test — any course within
-  // station radius + 200 m — deleted a course the pilot had plotted to the same station, and it
-  // wrote nav.waypoint = null without publishing nav:waypoint, leaving the HUD, radar and chart
-  // drawing a marker the sim no longer held. The clear goes through missions' own write seam, the
-  // same one _clearCompletedTradeWaypoint uses.
+  // opening rail, an arrived course to the station just docked at is retired.
   _retireArrivedBerthCourse(payload) {
     const st = this.state;
     const ob = st && st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav) return;
     const wp = st.nav.waypoint;
-    if (!wp || wp.onboarding === true || wp.berthAutopilot !== true) return;
-    if (wp.kind !== 'local' && wp.kind !== 'nav') return;
+    if (!wp || wp.onboarding === true || (wp.kind !== 'local' && wp.kind !== 'nav')) return;
     const stationId = payload && payload.stationId;
     if (!stationId) return;
-    // The stamp names the berth the course was laid to; a course that was retargeted elsewhere is
-    // the pilot's course now, not the opening's run.
-    if (wp.berthStationId != null && wp.berthStationId !== stationId) return;
+    const isDocked = (e) => !!(e && e.type === 'station'
+      && ((e.data && e.data.stationId) === stationId || e.id === stationId));
     const target = wp.targetEntityId != null && st.entities && typeof st.entities.get === 'function'
       ? st.entities.get(wp.targetEntityId) : null;
     if (target) {
-      const targetStationId = (target.data && target.data.stationId) || target.id;
-      if (targetStationId !== stationId) return;
-    } else if (wp.berthStationId == null) {
-      return; // an unstamped station id and no bound body cannot prove this is the berth run
+      if (!isDocked(target)) return;
+    } else {
+      // The autopilot can drop its target bind on arrival; the course's fix is then matched to
+      // the station by position (anywhere on the station or its berth apron).
+      if (!wp.pos) return;
+      const station = (st.entityList || []).find(isDocked);
+      if (!station || !station.pos) return;
+      const reach = (Number(station.radius) || 100) + 200;
+      if (Math.hypot(wp.pos.x - station.pos.x, wp.pos.z - station.pos.z) > reach) return;
     }
-    this._clearNavWaypointThroughSeam();
-  },
-
-  // The one write path that clears the objective waypoint and publishes the same fact the HUD,
-  // radar and chart read. missions._setNavWaypoint is the canonical seam; when it is absent (a
-  // harness that never materialized missions) the waypoint is cleared and the event published
-  // here, never a silent state write.
-  _clearNavWaypointThroughSeam() {
-    const st = this.state;
-    const missions = this.registry && this.registry.get && this.registry.get('missions');
-    if (missions && typeof missions._setNavWaypoint === 'function') {
-      missions._setNavWaypoint(null);
-      return;
-    }
-    if (st && st.nav && st.nav.waypoint) st.nav.waypoint = null;
-    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('nav:waypoint', null);
+    st.nav.waypoint = null;
   },
 
   // Mark a beat DONE and, if it was the choice beat, finish the tutorial.

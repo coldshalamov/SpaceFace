@@ -2444,6 +2444,7 @@ export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransform
       core: runtime.getSystem('core'),
       postInputPartitions,
       getSystem: (name) => runtime.getSystem(name),
+      bus: host.bus,
     });
     // Wire-side input boundary: the worker captures the same fields the main
     // lane's inputCommandSnapshots ring captures when an observer requests them.
