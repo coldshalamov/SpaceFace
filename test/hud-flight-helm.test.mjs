@@ -2,8 +2,11 @@
 // and "[E] Fly to berth" names exactly the station E flies to (berthOffer.js is the one pick).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { berthAnchorFor, berthOfferStation, berthAutopilotStation, isDockableStation } from '../src/ui/berthOffer.js';
-import { resolveFlightSteerer, resolveBerthOffer } from '../src/ui/flightHelm.js';
+import { berthOfferStation, berthAutopilotStation, isDockableStation, nearestDockableStation } from '../src/ui/berthOffer.js';
+import { resolveFlightSteerer, resolveBerthOffer, createFlightHelm } from '../src/ui/flightHelm.js';
+import { berthAnchorFor } from '../src/data/collisionProxyManifests.js';
+import { formatDistance } from '../src/ui/units.js';
+import { installDom } from './helpers/mini-dom.mjs';
 
 function world({ stations = [], targetId = null, autopilot = null, berthRun = null, extra = {} } = {}) {
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, _flightFrame: extra.frame || null };
@@ -20,24 +23,45 @@ function world({ stations = [], targetId = null, autopilot = null, berthRun = nu
 }
 const station = (id, x, z, data = {}) => ({ id, type: 'station', alive: true, name: `Station ${id}`, pos: { x, z }, data });
 
-test('E flies to the tracked objective station first, never offers Customs Gates, else selected or nearest dockable', () => {
+test('E flies to the selected station first, else the tracked objective, else the nearest dockable one', () => {
   const near = station(10, 6600, 0);
   const far = station(11, 20000, 0, { name: 'Helios Station', stationId: 'station_helios' });
   const hostile = station(12, 100, 0, { hostile: true });
-  const customs = station(13, 50, 0, { stationId: 'station_customs', name: 'Customs Gate', services: ['toll', 'scan', 'refuel'] });
   assert.equal(isDockableStation(hostile), false, 'a hostile station is never offered');
-  assert.equal(isDockableStation(customs), false, 'a Customs Gate is never offered for E-to-dock');
-  assert.equal(berthOfferStation(world({ stations: [near, far, hostile, customs] })).station, near, '6.6 km is in reach and Customs Gate is skipped');
+  assert.equal(berthOfferStation(world({ stations: [near, far, hostile] })).station, near, '6.6 km is in reach');
   const picked = berthOfferStation(world({ stations: [near, far], targetId: 11 }));
   assert.equal(picked.station, far);
   assert.equal(picked.chosen, true);
   const trackedObjective = berthOfferStation(world({
-    stations: [near, far, customs],
-    targetId: 10,
-    extra: { state: { nav: { autopilot: null, waypoint: { pos: { x: 20000, z: 0 }, reason: 'Dock at Helios Station.' } } } },
+    stations: [near, far],
+    extra: { state: { nav: { autopilot: null, waypoint: { stationId: 'station_helios', pos: { x: 20000, z: 0 }, reason: 'Dock at Helios Station.' } } } },
   }));
-  assert.equal(trackedObjective.station, far, 'tracked objective station outranks a closer or targeted non-objective station');
+  assert.equal(trackedObjective.station, far, 'a tracked berth objective is chosen when the pilot has selected nothing');
   assert.equal(trackedObjective.chosen, true);
+  const pilotPickWins = berthOfferStation(world({
+    stations: [near, far],
+    targetId: 10,
+    extra: { state: { nav: { autopilot: null, waypoint: { stationId: 'station_helios', pos: { x: 20000, z: 0 } } } } },
+  }));
+  assert.equal(pilotPickWins.station, near, 'the pilot\'s own selection outranks a tracked objective, so E flies where they looked');
+});
+
+test('a mission that sends the pilot to Customs Gate still offers that berth', () => {
+  const hub = station(10, 900, 0, { name: 'Helios Station', stationId: 'station_helios' });
+  hub.homeSectorId = 'sector_helios_prime';
+  const customs = station(13, 50, 0, { stationId: 'station_customs', name: 'Customs Gate', services: ['toll', 'scan', 'refuel'] });
+  customs.homeSectorId = 'sector_helios_prime';
+  const state = world({
+    stations: [hub, customs],
+    extra: { state: {
+      world: { currentSectorId: 'sector_helios_prime' },
+      missions: { active: [{ id: 'inspection-1', status: 'active', destStationId: 'station_customs' }] },
+    } },
+  });
+  assert.equal(isDockableStation(customs), true, 'a Customs Gate is a dockable body with real doors');
+  const offer = berthOfferStation(state);
+  assert.equal(offer.station, customs, 'the tracked mission\'s own destination is the berth, not a different station');
+  assert.equal(offer.chosen, true);
 });
 
 test('a mission waypoint in another sector never offers a berth here', () => {
@@ -58,6 +82,23 @@ test('a mission waypoint in another sector never offers a berth here', () => {
   const offer = berthOfferStation(state);
   assert.equal(offer.station, helios, 'the local berth is offered, not the jump target');
   assert.equal(offer.chosen, false, 'the far station is no longer an objective pick here');
+});
+
+test('with no dockable station in this sector, E offers no berth rather than a jump target', () => {
+  // The chip must never promise a berth run the autopilot cannot make: a body another sector owns
+  // is a jump destination. Before this rule the nearest-station pick fell back to it anyway.
+  const tethys = station(11, 40000, 0, { stationId: 'station_tethys', name: 'Tethys Trade Hub' });
+  tethys.homeSectorId = 'sector_tethys_junction';
+  const state = world({
+    stations: [tethys],
+    extra: { state: {
+      world: { currentSectorId: 'sector_helios_prime' },
+      missions: { active: [{ id: 'job-1', status: 'active', destStationId: 'station_tethys' }] },
+    } },
+  });
+  assert.equal(nearestDockableStation(state), null);
+  assert.equal(berthOfferStation(state), null);
+  assert.equal(resolveBerthOffer(state), null);
 });
 
 test('the berth chip measures to the same berth anchor the objective does', () => {
@@ -82,11 +123,56 @@ test('the berth chip measures to the same berth anchor the objective does', () =
   assert.equal(berthAnchorFor(null, hull), null);
 });
 
-test('the nearest-station offer steps aside in a fight; a station the pilot picked stays offered', () => {  const st = station(10, 3000, 0);
+test('the [E] chip prints the distance to the berth anchor, not to the station centre', () => {
+  // The wiring, not just the helper: mount the real helm over a minimal document and read the
+  // distance it paints. The tracker and the chip must quote one distance to one berth.
+  const dom = installDom();
+  try {
+    const hub = station(10, 0, 0, { stationId: 'station_helios', dockRadius: 90, collisionProxy: 'station_ring_hub', corridorBearingDeg: 135 });
+    hub.radius = 90;
+    hub.rot = 0;
+    const state = world({ stations: [hub] });
+    const player = state.entities.get(state.playerId);
+    player.pos = { x: -456, z: 0 };
+    player.radius = 14;
+    const root = dom.document.createElement('div');
+    const helm = createFlightHelm(root, state, {
+      worldToScreen: () => ({ x: 640, y: 300, onScreen: true }),
+    });
+    helm.frame(1 / 60, 1280, 720);
+    const distEl = root.querySelector('.sf-helm-offer__dist');
+    assert.ok(distEl, 'the chip is on the glass');
+    const anchor = berthAnchorFor(hub, player);
+    const toAnchor = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
+    const toCentre = Math.hypot(hub.pos.x - player.pos.x, hub.pos.z - player.pos.z);
+    assert.notEqual(formatDistance(toAnchor), formatDistance(toCentre),
+      'the two readings differ, so this proves which one the chip paints');
+    assert.equal(distEl.textContent, formatDistance(toAnchor),
+      'the chip quotes the berth-berth distance the tracker quotes');
+    helm.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('the nearest-station offer steps aside in a fight; a station the pilot picked stays offered', () => {
+  const st = station(10, 3000, 0);
   assert.equal(resolveBerthOffer(world({ stations: [st] }), { fight: true }), null);
   assert.ok(resolveBerthOffer(world({ stations: [st] }), { fight: false }));
   assert.ok(resolveBerthOffer(world({ stations: [st], targetId: 10 }), { fight: true }));
   assert.equal(resolveBerthOffer(world({ stations: [st] }), { dockInRange: true }), null, 'in range the Dock prompt owns E');
+});
+
+test('an unrelated objective marker near a station does not make that berth "chosen" in a fight', () => {
+  // A "Mine the seam" marker can sit within a few hundred metres of a station without being a
+  // berth order. It must not defeat the rule that a fight does not suggest leaving.
+  const st = station(10, 3000, 0);
+  const state = world({
+    stations: [st],
+    extra: { state: { nav: { autopilot: null, waypoint: { pos: { x: 3000, z: 100 }, label: 'Mine the seam' } } } },
+  });
+  assert.equal(resolveBerthOffer(state, { fight: true }), null);
+  assert.ok(resolveBerthOffer(state, { fight: false }), 'out of a fight the nearest berth is still suggested');
 });
 
 test('the opening asks one thing at a time: no berth chip until the loose rock is latched and thrown', () => {

@@ -75,6 +75,23 @@ test('a dock-variant Skim leaves its wrecks clear of the station it resolved at'
     'no wreck lands on top of the berthed hull');
 });
 
+test('a docked station with no collision proxy still gets the casualty ring, not a consumed Skim', () => {
+  // The Skim is latched as resolved before the wrecks spawn. A station from an older save (or an
+  // encounter body) may carry no proxy manifest; reading `proxyOuterRadiusWu(null, …)` used to
+  // throw and leave the player with no wrecks, no comms and no receipt.
+  const { state } = dockedState();
+  const station = state.entities.get(4);
+  station.data = { stationId: 'station_helios' };
+  station.radius = 0;
+  const wrecks = skimWrecks(state);
+  assert.equal(wrecks.length, 3, 'all three casualties spawn without a proxy');
+  for (const wreck of wrecks) {
+    const toStation = Math.hypot(wreck.pos.x, wreck.pos.z);
+    assert.ok(toStation >= 140,
+      `${wreck.data.scanLabel} keeps the authored ring even when the hull has no proxy (${toStation.toFixed(0)} m)`);
+  }
+});
+
 test('the lane variant still opens its fan in front of a moving ship', () => {
   const { state, player } = dockedState();
   state.ui = { ...state.ui, docked: false, dockedStationId: null };

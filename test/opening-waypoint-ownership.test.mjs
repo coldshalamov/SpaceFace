@@ -26,7 +26,7 @@ import {
   recommendedActions,
   stagedOpeningOwnsCommand,
 } from '../src/ui/screens/missionLog.js';
-import { berthAnchorFor } from '../src/ui/berthOffer.js';
+import { berthAnchorFor } from '../src/data/collisionProxyManifests.js';
 import { commitCoursePayload, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
 import { takeMapOpenIntent } from '../src/ui/mapAuthority.js';
 import { flightV3 } from '../src/systems/flightV3.js';

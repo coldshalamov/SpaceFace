@@ -899,6 +899,18 @@ export function resolveDockAnchor(entity, manifest, ship) {
   };
 }
 
+/** The world point a berth distance is measured to: the deck berth a hull can physically take,
+ *  else the mooring standoff, else the station centre. One owner for the simulation's objective
+ *  distance ('Dock at Helios Station ↗ 456 m') and the flight helm's [E] chip: the two surfaces
+ *  cannot quote different distances to the same berth. Pure geometry. */
+export function berthAnchorFor(station, hull) {
+  if (!station || !station.pos) return null;
+  const manifest = resolveCollisionProxyManifest(station);
+  const anchor = (manifest && resolveDockAnchor(station, manifest, hull)) || null;
+  if (anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)) return { x: anchor.x, z: anchor.z };
+  return { x: station.pos.x, z: station.pos.z };
+}
+
 /**
  * Corridor/capture classification for a ship near a manifest station. Pure math; no state.
  * Returns { phase, distToBerth, speed, headingOk, inCorridor, inCapture }.

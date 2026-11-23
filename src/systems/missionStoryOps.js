@@ -2160,8 +2160,12 @@ export const missionStoryOps = {
     const dockStation = docked ? this._nearestStationTo(player.pos) : null;
     let dockClearR = 0;
     if (dockStation) {
+      // A body with no resolved proxy (a station from an older save, or an encounter body) must
+      // not throw here: the Skim is already latched as resolved before the spawn, so a throw would
+      // consume it with no wrecks and no receipt. Fall back to the authored radii.
+      const manifest = resolveCollisionProxyManifest(dockStation);
       const hullR = Math.max(
-        proxyOuterRadiusWu(resolveCollisionProxyManifest(dockStation), dockStation),
+        manifest ? proxyOuterRadiusWu(manifest, dockStation) : 0,
         Number(dockStation.data && dockStation.data.dockRadius) || 0,
         Number(dockStation.radius) || 0,
       );

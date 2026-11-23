@@ -48,7 +48,7 @@ import { SHIPS } from '../data/ships.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
-import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
+import { berthAnchorFor } from '../data/collisionProxyManifests.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { forEachDressingRow } from '../world/dressingTable.js';
 import { findSwarmArrival } from './swarmSafety.js';
@@ -5743,7 +5743,9 @@ export const onboarding = {
 
   _stationObjectiveTarget(station, label) {
     const hull = this.state.entities.get(this.state.playerId);
-    const anchor = resolveDockAnchor(station, resolveCollisionProxyManifest(station), hull);
+    // The same anchor the [E] chip measures to (one owner: data/collisionProxyManifests.js), so
+    // the tracker and the chip cannot quote two distances to one berth.
+    const anchor = berthAnchorFor(station, hull);
     return {
       pos: anchor || station.pos,
       label,
