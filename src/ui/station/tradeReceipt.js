@@ -28,7 +28,7 @@ function sealedResidueClause(outcome, name) {
   const held = residue ? residue.holdQty : 0;
   const yours = residue ? residue.holdSellableQty : 0;
   if (!(held > yours)) return '';
-  return ` · ${yours} of ${held} ${name} yours to sell`;
+  return ` · ${held - yours} ${name} held for a job`;
 }
 
 function titleCaseWords(v) {
@@ -135,7 +135,9 @@ export function tradeClearedReceipt(state, p = {}) {
 
 function formatTradeClearedReceipt(state, p, expectation) {
   const name = CMDTY_NAME.get(p.commodityId) || titleCaseWords(p.commodityId || 'cargo');
-  const verb = p.side === 'sell' ? 'SOLD' : 'BOUGHT';
+  const verb = p.side === 'sell' ? 'Sold' : 'Bought';
+  // "Sold 1 unit of Fuel Cells", never "1 units"
+  const amount = (q) => `${fmtCr(q)} ${Math.round(Number(q) || 0) === 1 ? 'unit' : 'units'} of`;
   const sign = p.side === 'sell' ? '+' : '−';
   const premium = p.side === 'sell' && p.shortagePremium === true
     ? ' · shortage premium included' : '';
@@ -167,7 +169,7 @@ function formatTradeClearedReceipt(state, p, expectation) {
       if (executedQty < requestedQty) {
         return {
           title: 'TRADE CLEARED',
-          line: `${verb} ${fmtCr(executedQty)} OF THE ${fmtCr(requestedQty)} CONFIRMED`,
+          line: `${verb} ${fmtCr(executedQty)} of the ${fmtCr(requestedQty)} you asked for`,
           detail: `${name} · ${sign}${fmtCr(settledTotal)} cr` + premium + residue
             + (rpcRecovery ? ' · recovered from the station result' : ''),
         };
@@ -175,14 +177,14 @@ function formatTradeClearedReceipt(state, p, expectation) {
       if (Math.abs(settledTotal - expectedTotal) > 1) {
         return {
           title: 'TRADE CLEARED',
-          line: `${verb} ${fmtCr(executedQty)} units ${name}`,
+          line: `${verb} ${amount(executedQty)} ${name}`,
           detail: `${sign}${fmtCr(settledTotal)} cr — the station result differs from the stated ${fmtCr(expectedTotal)} cr` + premium + residue,
         };
       }
       return {
         title: 'TRADE CLEARED',
-        line: `${verb} ${fmtCr(executedQty)} units ${name}`,
-        detail: `${sign}${fmtCr(settledTotal)} cr · settled as confirmed` + premium + residue,
+        line: `${verb} ${amount(executedQty)} ${name}`,
+        detail: `${sign}${fmtCr(settledTotal)} cr · as quoted` + premium + residue,
       };
     }
     // The projection must name the SAME settlement the event announced — a newer receipt for the
@@ -192,27 +194,27 @@ function formatTradeClearedReceipt(state, p, expectation) {
       if (outcome.partialFill) {
         return {
           title: 'TRADE CLEARED',
-          line: `${verb} ${fmtCr(outcome.executedQty)} OF THE ${fmtCr(outcome.requestedQty)} CONFIRMED`,
+          line: `${verb} ${fmtCr(outcome.executedQty)} of the ${fmtCr(outcome.requestedQty)} you asked for`,
           detail: `${name} · ${sign}${fmtCr(p.total)} cr` + premium + sealedResidueClause(outcome, name),
         };
       }
       if (outcome.totalAgrees === false) {
         return {
           title: 'TRADE CLEARED',
-          line: `${verb} ${fmtCr(outcome.executedQty)} units ${name}`,
+          line: `${verb} ${amount(outcome.executedQty)} ${name}`,
           detail: `${sign}${fmtCr(p.total)} cr — the ledger reads ${fmtCr(outcome.receipt.total)} cr, not the stated ${fmtCr(expectation.total)}` + premium + sealedResidueClause(outcome, name),
         };
       }
       return {
         title: 'TRADE CLEARED',
-        line: `${verb} ${fmtCr(outcome.executedQty)} units ${name}`,
-        detail: `${sign}${fmtCr(p.total)} cr · settled as confirmed` + premium + sealedResidueClause(outcome, name),
+        line: `${verb} ${amount(outcome.executedQty)} ${name}`,
+        detail: `${sign}${fmtCr(p.total)} cr · as quoted` + premium + sealedResidueClause(outcome, name),
       };
     }
   }
   return {
     title: 'TRADE CLEARED',
-    line: `${verb} ${fmtCr(p.qty)} units ${name}`,
+    line: `${verb} ${amount(p.qty)} ${name}`,
     detail: `${sign}${fmtCr(p.total)} cr` + premium,
   };
 }

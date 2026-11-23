@@ -143,6 +143,21 @@ function departureCargoChip(state) {
   const freeFrac = free / cap;
   const kind = free <= 0.1 ? 'bad' : (freeFrac < 0.18 ? 'warn' : 'ok');
   const sealed = sealedHoldLine(state);
+  // The hold is a slot bag (the head reads "Hold 3/12"): the check speaks slots too, not the
+  // volume behind them ("240.4 units free" beside a 12-slot hold read as a different ship).
+  const slotCount = Number(cargo.slotCount);
+  if (Number.isFinite(slotCount) && slotCount > 0) {
+    const usedSlots = Array.isArray(cargo.slots) ? cargo.slots.length : 0;
+    const freeSlots = Math.max(0, slotCount - usedSlots);
+    const slotKind = freeSlots <= 0 ? 'bad' : (freeSlots / slotCount < 0.18 ? 'warn' : 'ok');
+    return {
+      kind: slotKind,
+      label: 'Hold',
+      text: `${usedSlots} of ${slotCount} slots used` + (sealed ? ' · ' + sealed : ''),
+      targetTab: 'market',
+      actionLabel: slotKind === 'ok' ? 'Open Market to review cargo' : 'Open Market to sell cargo',
+    };
+  }
   return {
     kind,
     label: 'Hold',
@@ -160,7 +175,9 @@ export function sealedHoldLine(state) {
     if (!lot || lot.custody !== 'hold' || !(lot.qty > lot.sellableQty)) continue;
     const commodity = COMMODITY_BY_ID.get(lot.commodityId);
     const name = (commodity && commodity.name) || 'freight';
-    parts.push(`${lot.sellableQty} of ${lot.qty} ${name} yours to sell`);
+    // plain words: what is held for a job, not "0 of 8 Fuel Cells yours to sell"
+    const heldForJob = lot.qty - lot.sellableQty;
+    parts.push(`${heldForJob} ${name} held for a job`);
   }
   return parts.join('; ');
 }

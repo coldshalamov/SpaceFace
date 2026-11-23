@@ -338,9 +338,12 @@ export function trackedCargoGuidance(state, cmdtyId, commodityName) {
     (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
   ) || 1));
   const held = heldQty(state, cmdtyId);
+  // A station id is resolved to its name ("Tethys Trade Hub", never "station_tethys").
+  const sectorName = (id) => { const sec = id ? SECTORS.find((x) => x.id === id) : null; return sec && sec.name; };
   const destination = mission.destinationName || mission.destName
     || (mission.params && (mission.params.destinationName || mission.params.destName))
-    || mission.destStationId || mission.destSectorId || 'the marked destination';
+    || (mission.destStationId && STATION_NAME.get(mission.destStationId))
+    || sectorName(mission.destSectorId) || 'the marked destination';
   // A delivery contract that cannot fill its manifest settles the deliverable fraction —
   // say so, with the owner's own numbers (accepted quantity, recorded-terms payment).
   const isDelivery = mission.type === 'cargo_delivery';
@@ -2341,8 +2344,8 @@ export function createMarketScreen(ctx) {
       : !tradeBusy && quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
     const intelRows = selectedMarketIntel(state, r, quote);
     const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
-      rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
-      rowKV(mode === 'buy' ? 'Total cost' : 'Sale proceeds', quoteReady ? fmt(total) + ' cr' : 'Unavailable', mode === 'buy' ? 'loss' : 'gain') +
+      rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr' : '—') +
+      rowKV(mode === 'buy' ? 'Total cost' : 'Sale proceeds', quoteReady ? fmt(total) + ' cr' : '—', mode === 'buy' ? 'loss' : 'gain') +
       (quoteReady && quote.shortagePremium ? rowKV('Shortage premium', 'Included in sale price', 'gain') : '') +
       rowKV('You hold', fmt(held) + ' u') + rowKV('Credits', fmt(cr) + ' cr') +
       (quoteReady ? rowKV('Credits after', fmt(mode === 'buy' ? cr - total : cr + total) + ' cr') : '') +
@@ -2381,7 +2384,7 @@ export function createMarketScreen(ctx) {
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
       setQtyDial(tradeEl, qty, maxQty);
       const totalEl = tradeEl.querySelector('[data-trade-total]');
-      if (totalEl) setTradeTotal(totalEl, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
+      if (totalEl) setTradeTotal(totalEl, quoteReady ? fmt(total) + ' cr' : '—');
       tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Sale proceeds';
       const go = tradeEl.querySelector('[data-go]');
       go.disabled = !canAct;
@@ -2398,7 +2401,7 @@ export function createMarketScreen(ctx) {
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
-    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Sale proceeds', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
+    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Sale proceeds', totalText: quoteReady ? fmt(total) + ' cr' : '—', note, limit: maxQty }));
     dressConsole();
     // The commit is the tab's one Lamp Key; its word morphs between BUY and SELL.
     const goBtn = tradeEl.querySelector('[data-go]');
@@ -2418,7 +2421,7 @@ export function createMarketScreen(ctx) {
     }
     lastVerbMode = mode;
     const tradeTotal = tradeEl.querySelector('[data-trade-total]');
-    if (tradeTotal) setTradeTotal(tradeTotal, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
+    if (tradeTotal) setTradeTotal(tradeTotal, quoteReady ? fmt(total) + ' cr' : '—');
     syncHoldArc(state, def, r.id);
   }
 

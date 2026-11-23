@@ -77,8 +77,8 @@ test('seed 4242 the cleared receipt names sealed iron still aboard', () => {
   assert.equal(res.qty, 6);
   const payload = emitted.filter((row) => row.name === 'economy:tradeCompleted').pop().payload;
   const receipt = tradeClearedReceipt(sealed, payload);
-  assert.ok(receipt.detail.includes('0 of 4 Iron Ore yours to sell'), receipt.detail);
-  assert.ok(receipt.detail.includes('settled as confirmed'), receipt.detail);
+  assert.ok(receipt.detail.includes('4 Iron Ore held for a job'), receipt.detail);
+  assert.ok(receipt.detail.includes('as quoted'), receipt.detail);
 
   const open = makeState(6);
   const openEmitted = [];
@@ -87,5 +87,5 @@ test('seed 4242 the cleared receipt names sealed iron still aboard', () => {
   assert.equal(openSystem.execute('station_test', CMDTY, 'sell', 6).ok, true);
   const openPayload = openEmitted.filter((row) => row.name === 'economy:tradeCompleted').pop().payload;
   const openReceipt = tradeClearedReceipt(open, openPayload);
-  assert.equal(openReceipt.detail.includes('yours to sell'), false, openReceipt.detail);
+  assert.equal(openReceipt.detail.includes('held for a job'), false, openReceipt.detail);
 });
