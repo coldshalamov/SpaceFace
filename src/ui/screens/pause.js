@@ -29,6 +29,8 @@ import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion, titleLabOpen } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
+import { postTaskAtBackgroundPriorityBounded } from '../../core/backgroundPost.js';
+import { frameCostFixOn } from '../../render/frameCostSwitches.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
@@ -128,6 +130,36 @@ function getManager(ctx) {
   if (ui && ui.screenManager) return ui.screenManager;
   if (ui && ui.manager) return ui.manager;
   return null;
+}
+
+// The sheet is warmed at boot outside any run, but inside a Swarm run it is a different menu
+// (End run, no Save/Load/Quit), so the first Esc of every run used to rebuild it inside the key
+// press: a fresh DOM plus the dial reading its host size laid the whole page out on the spot
+// (66 ms in a round-6 fight, 89 ms with the focus). A round start re-seats the hidden sheet for
+// the run in a background task instead, while the page is already laid out and the sheet is
+// display:none, so the press only shows it. ?rfx=-pauseWarm restores the rebuild-on-press.
+let pauseRunWarmBus = null;
+let pauseRunWarmQueued = false;
+function schedulePauseRunReseat(ctx) {
+  if (pauseRunWarmQueued || !frameCostFixOn('pauseWarm')) return;
+  pauseRunWarmQueued = true;
+  postTaskAtBackgroundPriorityBounded(() => {
+    pauseRunWarmQueued = false;
+    const root = pauseRootEl;
+    if (!root || root.isConnected === false || !ctx || !ctx.state) return;
+    const mgr = getManager(ctx);
+    // Open (or covered by its own sub-screen): onShow owns any re-seat.
+    if (mgr && typeof mgr.top === 'function' && mgr.top() === 'pause') return;
+    if (mgr && typeof mgr.isOpen === 'function' && mgr.isOpen()) return;
+    if (pauseScreen._retireAtMount === pauseSurvivalRunActive(ctx.state)) return;
+    pauseScreen.mount(root, ctx);
+  }, 250);
+}
+function bindPauseRunWarm(ctx) {
+  const bus = ctx && ctx.bus;
+  if (!bus || typeof bus.on !== 'function' || pauseRunWarmBus === bus) return;
+  pauseRunWarmBus = bus;
+  bus.on('run:waveStarted', () => schedulePauseRunReseat(ctx));
 }
 
 function nav(ctx, method, arg) {
@@ -1123,6 +1155,7 @@ export const pauseScreen = {
     rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
     pauseRootEl = rootEl;
+    bindPauseRunWarm(ctx);
 
     const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
       titleText: coreText('paused'),
@@ -1446,7 +1479,9 @@ export const pauseScreen = {
     if (els) {
       if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });
       if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
-      if (els.bResume) try { els.bResume.focus(); } catch (e) {}
+      // preventScroll: the sheet is fixed full-screen, so scrolling Resume into view only cost a
+      // synchronous layout inside the key press.
+      if (els.bResume) try { els.bResume.focus({ preventScroll: true }); } catch (e) {}
     }
     // The world behind the pause is the live flight picture, not a mount of its own: the frame is
     // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
