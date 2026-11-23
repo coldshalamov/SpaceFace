@@ -284,6 +284,9 @@ async function installObservers() {
               text: p.text || p.line || p.message || p.title || p.reason || p.verbId || null,
               targetId: p.targetId ?? null,
               payloadId: p.payloadId ?? null,
+              open: p.open ?? null,
+              mode: p.mode ?? null,
+              reason: p.reason ?? null,
               id: p.id || null,
               wave: p.wave ?? null,
               level: p.level ?? null,
@@ -739,7 +742,10 @@ function pickLooseTarget(snap) {
     snap.loose?.nearestVisible, snap.loose?.nearest,
     snap.loose?.nearestVisibleThrowable, snap.loose?.nearestThrowable,
   ].filter(Boolean);
-  const inReach = candidates.filter((c) => c.screen && c.screen.onScreen && c.d >= 18 && c.d <= THROW_REACH);
+  // A rock without `throwable`/`isChunk` can ride the line but can never arm a throw (the
+  // game's own isThrowArmPayload gate): aiming at one is a wasted attempt.
+  const throwableOnly = candidates.filter((c) => c.throwable === true || c.type === 'payload');
+  const inReach = throwableOnly.filter((c) => c.screen && c.screen.onScreen && c.d >= 18 && c.d <= THROW_REACH);
   const score = (row) => (row.throwable === true ? 0 : 120)
     + (row.type === 'asteroid' ? 0 : 12)
     - Math.min(70, row.radius || 0) * 0.35
@@ -771,10 +777,30 @@ async function startThrow(snap, chosen = null) {
   // The game's own massline preview is the authority on what a press would grab under this
   // cursor. Use it when it names a reachable body; that is exactly the highlight a player sees.
   const acqId = pre.acquisition?.targetId;
-  row.acquisition = { targetId: acqId ?? null, reason: pre.acquisition?.reason ?? null };
+  const acqType = pre.acquisition?.targetType || null;
+  row.acquisition = { targetId: acqId ?? null, type: acqType, reason: pre.acquisition?.reason ?? null };
+  const swappable = !acqType || acqType === 'ship' || acqType === 'drone'
+    || acqType === 'asteroid' || acqType === 'wreck' || acqType === 'payload';
+  if (acqId != null && !swappable) {
+    row.phase = 'blocked';
+    step(`throw-${throwIndex}`, false, `the line would take a ${acqType || 'body'} — waiting for a clear rock`);
+    await releaseAll();
+    return { row, phase: 'done' };
+  }
   if (acqId != null) {
     let acqRow = findTargetRow(pre, acqId);
     if (!acqRow?.screen) acqRow = await projectEntity(acqId) || acqRow;
+    // The preview can also name a body that rides the line but can never be thrown (a rock
+    // without the throwable flag, a civilian hull). Pressing there latches a dead end.
+    if (acqRow || (acqType === 'asteroid' || acqType === 'wreck' || acqType === 'ship' || acqType === 'drone')) {
+      const armable = await entityArmable(acqId);
+      if (armable === false) {
+        row.phase = 'blocked';
+        step(`throw-${throwIndex}`, false, `the line would take ${acqType || 'a body'}#${acqId} — it rides but never throws`);
+        await releaseAll();
+        return { row, phase: 'done' };
+      }
+    }
     if (acqRow) {
       target = acqRow;
       row.target = `${target.type}#${target.id}`;
@@ -804,11 +830,26 @@ async function startThrow(snap, chosen = null) {
   row.clickPoint = { x: Math.round(aim.point.x), y: Math.round(aim.point.y) };
   row.clickElement = aim.hit;
   row.clickNudgePct = aim.moved;
+  if (!aim.hit?.canvas) {
+    // A press that lands on a HUD element is eaten before the canvas — and can even fire the
+    // control under it. A player would re-aim first; skip the attempt instead of clicking blind.
+    row.phase = 'blocked';
+    step(`throw-${throwIndex}`, false, `${row.target} sits under ${aim.hit?.tag || 'a HUD element'} — no canvas to press`);
+    await releaseAll();
+    return { row, phase: 'done' };
+  }
   if (aim.moved) {
     await aimAt(aim.point);
     await sleep(160);
     pre = await readScene();
     row.acquisition3 = { targetId: pre.acquisition?.targetId ?? null, reason: pre.acquisition?.reason ?? null };
+  }
+  const gate = await readScene();
+  if (gate.ui?.card || gate.ui?.draft) {
+    row.phase = 'interrupted';
+    step(`throw-${throwIndex}`, false, 'a level card or draft opened before the press');
+    await releaseAll();
+    return { row, phase: 'done' };
   }
   await rightButton(true);
   await sleep(90);
@@ -827,6 +868,11 @@ function findTargetRow(snap, id) {
   return rows.find((r) => r && r.id === id) || null;
 }
 
+const readTetherEvents = (since) => page.evaluate((from) => (window.__swarmMinute?.events || [])
+  .filter((e) => e.at >= from && /^(tether|massline):/.test(e.name))
+  .map((e) => ({ name: e.name, at: e.at, targetId: e.targetId ?? null, payloadId: e.payloadId ?? null,
+    open: e.open ?? null, mode: e.mode ?? null, reason: e.reason ?? null, text: e.text ?? null })), since).catch(() => []);
+
 const projectEntity = (id) => page.evaluate((entityId) => {
   const st = window.SF && window.SF.state;
   const e = st && st.entities && st.entities.get(entityId);
@@ -842,6 +888,22 @@ const projectEntity = (id) => page.evaluate((entityId) => {
     wx: e.pos.x, wz: e.pos.z, radius: Math.round(e.radius || 0),
     screen: { x: Math.round(s.x), y: Math.round(s.y), onScreen: true },
   };
+}, id).catch(() => null);
+
+// Mirror of the sim's isThrowArmPayload: what a press while latched can actually throw.
+// Ships/drones count only when they fight the player (the hostile-team check the game runs).
+const entityArmable = (id) => page.evaluate((entityId) => {
+  const st = window.SF?.state;
+  const e = st?.entities?.get(entityId);
+  if (!e) return null;
+  if (e.type === 'payload') return true;
+  if (e.type === 'ship' || e.type === 'drone') {
+    const me = st.entities.get(st.playerId);
+    if (e.team != null && me?.team != null) return e.team !== me.team;
+    return e.data?.hostile === true;
+  }
+  if (e.type === 'asteroid' || e.type === 'wreck') return e.data?.throwable === true || e.data?.isChunk === true;
+  return false;
 }, id).catch(() => null);
 
 const elementAt = (point) => page.evaluate(({ x, y }) => {
@@ -860,7 +922,7 @@ const elementAt = (point) => page.evaluate(({ x, y }) => {
 async function canvasAimPoint(point) {
   const first = await elementAt(point);
   if (first.canvas) return { point, hit: first, moved: 0 };
-  for (const t of [0.12, 0.25, 0.4]) {
+  for (const t of [0.12, 0.25, 0.4, 0.58, 0.75]) {
     const p = { x: point.x + (viewW / 2 - point.x) * t, y: point.y + (viewH / 2 - point.y) * t };
     const hit = await elementAt(p);
     if (hit.canvas) return { point: p, hit, moved: Math.round(t * 100) };
@@ -872,28 +934,92 @@ async function tickThrow(state, snap) {
   if (!state || state.phase === 'done' || state.phase === 'no-target') return state;
   const now = Date.now();
   const row = state.row;
-  if (state.phase === 'latch') {
-    const active = !!(snap.tether && snap.tether.active);
-    if (active) {
+  if (snap.ui?.card || snap.ui?.draft) {
+    await releaseAll();
+    row.phase = 'interrupted';
+    step(`throw-${throwIndex}`, false, 'a level card or draft opened during the throw');
+    return { ...state, phase: 'done' };
+  }
+  const helm = !(snap.scheme === 'pilot' || snap.scheme === 'classic');
+
+  // The worker lane's mirrored state can lag the real attachment; the replayed bus events are
+  // the truth the HUD uses, so latch/throw detection reads them first.
+  const events = await readTetherEvents((row.startedPageAt || 0) - 200);
+  if (events.length) row.events = events.slice(-10);
+  const latchEv = events.find((e) => e.name === 'tether:latched');
+  const payloadIds = new Set([row.latchedTargetId, row.targetId].filter((v) => v != null));
+  const thrown = row.latched && events.find((e) => e.name === 'massline:throw'
+    && (e.payloadId == null || payloadIds.has(e.payloadId)));
+
+  // A real throw is good news in any phase — including a cut that flung the payload before the
+  // tap landed. Claim it before anything else so a trailing event is never read as a break.
+  if (thrown && !row.released) {
+    row.released = true;
+    row.phase = 'released';
+    row.throwMode = thrown.mode || null;
+    facts.throws.released += 1;
+    const hostile = snap.hostiles?.nearestVisible;
+    beat(`throw-${throwIndex}-release`, `payload ${thrown.payloadId}${thrown.mode ? ` (${thrown.mode})` : ''}${hostile ? ` toward ${hostile.type}#${hostile.id} at ${hostile.d} m` : ''}`);
+    await shot(`throw-${throwIndex}-release`);
+    await sleep(520);
+    await shot(`throw-${throwIndex}-release-plus`);
+    row.releasePlusCaptured = true;
+    await releaseAll();
+    step(`throw-${throwIndex}`, true, `latched ${row.latched} · released ${row.released} · ${(row.events || []).map((e) => e.name).join(',') || 'no event'}`);
+    return { ...state, phase: 'done' };
+  }
+
+  if (row.latched && !row.released) {
+    // The throw's own cut reports tether:broken a tick before massline:throw, so a bare break is
+    // not a verdict yet — give the throw event a beat to trail in before calling the line lost.
+    const broke = events.find((e) => e.name === 'tether:broken'
+      && (e.targetId == null || payloadIds.has(e.targetId)));
+    if (broke) {
+      if (!state.brokeAt) { state.brokeAt = now; return state; }
+      if (now - state.brokeAt < 700) return state;
+      row.phase = 'broke';
+      row.brokeReason = broke.text || broke.reason || null;
+      await releaseAll();
+      const armNote = row.latchedBody && row.latchedBody.armable === false
+        ? ` — the line took a ${row.latchedBody.type} that cannot be thrown, so the press was a cut` : '';
+      step(`throw-${throwIndex}`, false, `the line broke (${broke.text || broke.reason || 'reason not reported'})${armNote}`);
+      return { ...state, phase: 'done' };
+    }
+  }
+
+  if (!row.latched) {
+    if (latchEv) {
       row.latched = true;
-      row.latchPageAt = await page.evaluate(() => performance.now()).catch(() => row.startedPageAt || 0);
+      row.latchedTargetId = latchEv.targetId;
+      row.latchPageAt = latchEv.at;
       facts.throws.latched += 1;
-      beat(`throw-${throwIndex}-latch`, `${row.target} at ${row.d} m`);
+      // What the line actually took, and whether it can arm a throw at all — the acquisition
+      // preview can shift under a moving cursor, so record the truth the sim attached.
+      row.latchedBody = await page.evaluate((id) => {
+        const e = window.SF?.state?.entities?.get(id);
+        if (!e) return null;
+        return { type: e.type, armable: e.type === 'payload'
+          || e.type === 'ship' || e.type === 'drone'
+          || ((e.type === 'asteroid' || e.type === 'wreck') && (e.data?.throwable === true || e.data?.isChunk === true)) };
+      }, latchEv.targetId).catch(() => null);
+      beat(`throw-${throwIndex}-latch`, `${row.target} at ${row.d} m${latchEv.targetId !== row.targetId ? ` (the line took ${latchEv.targetId}${row.latchedBody ? `, a ${row.latchedBody.type}` : ''})` : ''}`);
       await shot(`throw-${throwIndex}-latch`);
-      const helm = !(snap.scheme === 'pilot' || snap.scheme === 'classic');
       if (!helm) await keyDown('KeyW');
       else await keyUp('KeyW');
       await keyDown(rnd() < 0.5 ? 'KeyA' : 'KeyD');
+      // The throw in the shipped 'snap' assist is a TAP on the lit cue — the press edge is what
+      // throws, and a press with no window near still throws 'snap-manual'. Holding the button
+      // does nothing here, so swing first and tap when the window opens (or when it never does).
       state.phase = 'swing';
-      state.until = now + between(1000, 1600);
+      state.until = now + 3800;
       return state;
     }
+    if (state.phase !== 'latch') return state;
     if (now > state.until) {
       row.phase = 'no-latch';
       await releaseAll();
-      const denial = await page.evaluate((since) => (window.__swarmMinute?.events || [])
-        .filter((e) => e.at >= since && e.name === 'tether:latchDenied')
-        .map((e) => e.text).filter(Boolean).slice(-1)[0] || null, row.startedPageAt || 0).catch(() => null);
+      const denial = events.filter((e) => e.name === 'tether:latchDenied')
+        .map((e) => e.text || e.reason).filter(Boolean).slice(-1)[0] || null;
       step(`throw-${throwIndex}`, false, `latch did not take on ${row.target}${denial ? ` (${denial})` : ''}`);
       return { ...state, phase: 'done' };
     }
@@ -913,46 +1039,53 @@ async function tickThrow(state, snap) {
     }
     return state;
   }
+
   if (state.phase === 'swing') {
-    if (!snap.tether || !snap.tether.active) {
-      row.phase = 'broke';
-      await releaseAll();
-      step(`throw-${throwIndex}`, false, 'line broke during the swing');
-      return { ...state, phase: 'done' };
-    }
-    if (now > state.until) {
-      await releaseKeys();
-      // Second press while latched arms the throw; the release throws toward the cursor.
+    // The lit cue: releaseWindow fires on open AND close, so only an open:true edge counts.
+    const openEv = events.find((e) => e.name === 'massline:releaseWindow'
+      && e.open !== false && (e.payloadId == null || payloadIds.has(e.payloadId))
+      && e.at >= (row.latchPageAt || 0) - 60);
+    if (openEv) row.releaseWindowAt = openEv.at;
+    if (openEv || now > state.until) {
+      const hostile = snap.hostiles?.nearestVisible || snap.hostiles?.nearest;
+      if (hostile?.screen) await aimAt(clampPoint(hostile.screen));
+      // The tap must land in the throw grammar, not the latch grammar: the input layer reads
+      // the mirrored tether, which can trail the bus event by a frame or two.
+      if (!snap.tether?.active && !state.waitedMirror) { state.waitedMirror = true; await sleep(260); }
+      await sleep(90);
       await rightButton(true);
-      state.phase = 'arm';
-      state.until = now + 260;
+      await sleep(90);
+      await rightButton(false);
+      row.tapAt = rel();
+      state.phase = 'await-throw';
+      state.until = now + 1400;
     }
     return state;
   }
-  if (state.phase === 'arm') {
+  if (state.phase === 'await-throw') {
     if (now > state.until) {
-      const hostile = snap.hostiles?.nearestVisible;
-      if (hostile?.screen) await aimAt(hostile.screen);
-      await rightButton(false);
-      row.released = true;
-      row.phase = 'released';
-      facts.throws.released += 1;
-      beat(`throw-${throwIndex}-release`, hostile ? `toward ${hostile.type}#${hostile.id} at ${hostile.d} m` : 'toward the open room');
-      await shot(`throw-${throwIndex}-release`);
-      state.phase = 'after';
-      state.until = now + 500;
+      // The tap found no throw. Hold the button now: under the authored 'arm' assist the hold is
+      // what auto-throws on the next solution, and a press edge that arrived early still counts.
+      await rightButton(true);
+      state.phase = 'hold';
+      state.until = now + 4500;
+    }
+    return state;
+  }
+  if (state.phase === 'hold') {
+    if (now > state.until) {
+      row.phase = 'release-refused';
+      await releaseAll();
+      step(`throw-${throwIndex}`, false, `latched ${row.target} but no press threw it (${(row.events || []).map((e) => e.name).join(',') || 'no event'})`);
+      return { ...state, phase: 'done' };
     }
     return state;
   }
   if (state.phase === 'after') {
     if (now > state.until) {
       await releaseAll();
-      const events = await page.evaluate((since) => (window.__swarmMinute?.events || [])
-        .filter((e) => e.at >= since && /throw|releaseValidated|selfSling|releaseWindow/.test(e.name))
-        .map((e) => ({ name: e.name, text: e.text })), row.startedPageAt || 0).catch(() => []);
-      row.events = events;
       await shot(`throw-${throwIndex}-release-plus`);
-      step(`throw-${throwIndex}`, true, `latched ${row.latched} · released ${row.released} · ${events.map((e) => e.name).join(',') || 'no throw event'}`);
+      step(`throw-${throwIndex}`, row.released, `latched ${row.latched} · released ${row.released} · ${(row.events || []).map((e) => e.name).join(',') || 'no event'}`);
       return { ...state, phase: 'done' };
     }
     return state;
@@ -963,23 +1096,20 @@ async function tickThrow(state, snap) {
 // ---------- dying ----------
 async function deathInput(snap, elapsedMs, now) {
   if (!snap.player || !snap.player.alive) return;
-  const mode = Math.floor(elapsedMs / 10000) % 2; // alternate standing still and ramming
-  if (mode === 0) {
-    await releaseKeys();
-    return;
-  }
   const helm = !(snap.scheme === 'pilot' || snap.scheme === 'classic');
-  const target = snap.hostiles?.nearestVisible || snap.hostiles?.nearest || snap.loose?.nearestVisible || snap.loose?.nearest;
-  if (!target) { await releaseKeys(); return; }
+  const target = snap.hostiles?.nearest || snap.obstacle?.nearest || snap.loose?.nearest;
   if (helm) {
-    // Point the nose at it and go: a deliberate ram, no dodging.
-    if (target.screen && now % 400 < 140) await aimAt(clampPoint(target.screen));
+    // No dodging any more: point the nose at the nearest body and go. With nothing left to hit,
+    // run for the frame edge (the room's wall) and let the hull take it.
+    const point = target?.screen ? clampPoint(target.screen) : { x: viewW / 2, y: 40 };
+    if (now % 300 < 150) await aimAt(point);
     await keyUp('KeyA');
     await keyUp('KeyD');
     await keyUp('KeyS');
     await keyDown('KeyW');
     return;
   }
+  if (!target) { await releaseKeys(); return; }
   const err = angleError(snap.player, target);
   if (err != null && Math.abs(err) > 0.12) {
     if (err > 0) { await keyUp('KeyA'); await keyDown('KeyD'); }
@@ -989,7 +1119,7 @@ async function deathInput(snap, elapsedMs, now) {
     await keyUp('KeyD');
   }
   await keyDown('KeyW');
-  if (snap.hostiles?.nearestVisible?.screen && now % 400 < 120) await aimAt(snap.hostiles.nearestVisible.screen);
+  if (target.screen && now % 400 < 120) await aimAt(clampPoint(target.screen));
 }
 
 // ---------- run ----------
@@ -1157,9 +1287,9 @@ async function runProbe() {
   // About 60 s of world time, then allow the ship to die. If the round is about to clear, give it a
   // short extension so the first level-up card (the packet's beat) is seen rather than missed.
   const PLAY_TARGET_S = 60;
-  const PLAY_EXTEND_S = 82;
+  const PLAY_EXTEND_S = 105;
   const playStartSim = roundStartedAt;
-  nextThrowAtSim = playStartSim + 4;
+  nextThrowAtSim = playStartSim + 3;
   let throwState = null;
   let playEnded = null;
   sampleWallStart = Date.now();
@@ -1190,23 +1320,26 @@ async function runProbe() {
     const cardSeen = facts.cards.length > 0;
     if (simElapsed >= PLAY_TARGET_S) {
       const hostilesLeft = snap.hostiles?.count ?? 0;
-      const mayClearSoon = !cardSeen && hostilesLeft > 0 && hostilesLeft <= 4 && simElapsed < PLAY_EXTEND_S;
+      const mayClearSoon = !cardSeen && hostilesLeft > 0 && hostilesLeft <= 6 && simElapsed < PLAY_EXTEND_S;
       if (!mayClearSoon) { playEnded = 'time'; break; }
     }
     await maybeSample();
     // Throws are the point: keep a short queue of real attempts in the opening minute. When no
-    // loose body is on screen, spend a few seconds turning to the nearest one first.
-    if (facts.throws.attempted < 6 && Number.isFinite(simElapsed) && simElapsed >= (nextThrowAtSim - playStartSim)) {
+    // loose body is on screen, spend a few seconds turning to the nearest one first. Never open a
+    // new attempt while one is live — its releaseAll would fire the throw the old row is
+    // waiting on, and the old row would be left hanging.
+    const throwLive = throwState && throwState.phase !== 'done' && throwState.phase !== 'no-target';
+    if (!throwLive && facts.throws.attempted < 9 && Number.isFinite(simElapsed) && simElapsed >= (nextThrowAtSim - playStartSim)) {
       const target = pickLooseTarget(snap);
       if (target) {
         throwState = await startThrow(snap, target);
-        nextThrowAtSim = playStartSim + simElapsed + 8;
+        nextThrowAtSim = playStartSim + simElapsed + 6;
         continue;
       }
       seekLooseUntil = Date.now() + 6000;
       nextThrowAtSim = playStartSim + simElapsed + 2;
     }
-    if (throwState && throwState.phase !== 'done' && throwState.phase !== 'no-target') {
+    if (throwLive) {
       throwState = await tickThrow(throwState, snap);
       await sleep(80);
       continue;
@@ -1223,7 +1356,7 @@ async function runProbe() {
   let deathSeen = false;
   let deathAt = null;
   let runOverAt = null;
-  const deathDeadline = Date.now() + 150_000;
+  const deathDeadline = Date.now() + 90_000;
   while (Date.now() < deathDeadline) {
     snap = await pump();
     if (snap.ui?.card && Date.now() - lastCardHandledAt > 1200) { await takeCard('death-card'); continue; }
@@ -1298,9 +1431,15 @@ async function runProbe() {
   let againFirstHostile = null;
   let againRoundAt = null;
   let againDraftHandled = false;
-  const againDeadline = Date.now() + 180_000;
+  let againRepresses = 0;
+  let againLastRepressAt = 0;
+  let againEndedEarly = null;
+  const againWatchStart = Date.now();
+  const againDeadline = againWatchStart + 180_000;
+  let lastAgainSnap = null;
   while (Date.now() < againDeadline) {
     snap = await pump();
+    lastAgainSnap = snap;
     if (snap.ui?.card && Date.now() - lastCardHandledAt > 1200) { await takeCard('again-card'); continue; }
     if (snap.ui?.draft && !againDraftHandled && Date.now() - lastDraftHandledAt > 4000) {
       const outcome = await handleDraft('again-round1');
@@ -1316,6 +1455,7 @@ async function runProbe() {
       // The new run resets the sim clock; do not divide the new world by the old window.
       sampleWallStart = Date.now();
       sampleSimStart = snap.simTime;
+      lastDiag = null;
       lastSampleAt = Date.now();
       await shot('again-round-start');
     }
@@ -1327,12 +1467,44 @@ async function runProbe() {
       await shot('again-first-hostile');
       break;
     }
-    if (againRoundAt && (snap.ui?.runOver || snap.phase === 'ended')) break;
+    if (againRoundAt && (snap.ui?.runOver || snap.phase === 'ended')) {
+      againEndedEarly = 'the new run ended before a hostile was seen';
+      break;
+    }
+    if (!againRoundAt) {
+      // The Enter press may have been eaten (focus lost) or landed on a different door. A
+      // stranger who sees the plate still up presses Enter again; a stranger staring at the
+      // main menu knows the press went somewhere else. Both beat 180 s of blind waiting.
+      if (snap.ui?.runOver && againRepresses < 2 && Date.now() - againAt > 6000
+        && Date.now() - againLastRepressAt > 7000) {
+        againRepresses += 1;
+        await page.evaluate(() => {
+          const b = document.querySelector('.sf-runover [data-action="again"]');
+          if (b && typeof b.focus === 'function') b.focus({ preventScroll: true });
+        }).catch(() => {});
+        await sleep(200);
+        const stillAt = Date.now();
+        await page.keyboard.press('Enter');
+        againLastRepressAt = Date.now();
+        step('again-repress', true, `Run Over plate still up ${Math.round((stillAt - againAt) / 100) / 10} s after the first Enter — pressed Again again`);
+        continue;
+      }
+      const topName = snap.ui?.top ? String(snap.ui.top) : '';
+      if (topName && !snap.ui?.runOver && /menu|hangar|option|setting|pause/i.test(topName)) {
+        againEndedEarly = `the press opened ${topName} instead of Again`;
+        break;
+      }
+    }
     if (liveAgain) await driveFlight(snap);
     await maybeSample();
     await sleep(120);
   }
-  if (!againFirstHostile) step('again-first-hostile', false, 'no hostile appeared after Again within 180 s');
+  if (!againFirstHostile) {
+    const s = lastAgainSnap || {};
+    const watchedS = Math.round((Date.now() - againWatchStart) / 100) / 10;
+    step('again-first-hostile', false,
+      `watched ${watchedS.toFixed(1)} s of 180 s after Enter${againEndedEarly ? ` — ${againEndedEarly}` : ''} — last: phase ${s.phase} · mode ${s.mode} · top ${s.ui?.top || 'none'} · runOver ${!!s.ui?.runOver} · player ${s.player ? (s.player.alive ? 'alive' : 'dead') : 'none'} · hostiles ${s.hostiles?.count ?? '?'} (${s.hostiles?.visibleCount ?? 0} on screen)${againRoundAt ? '' : ' · live control never resumed'}`);
+  }
   if (facts.times.againPressToFirstHostileS == null) facts.times.againPressToFirstHostileS = null;
   await releaseAll();
   await sample10s().catch(() => {});
