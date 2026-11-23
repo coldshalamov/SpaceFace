@@ -467,14 +467,8 @@ test('threat-hue marker credit: crimson 0xff1a3a matches, a bright glow does not
   assert.equal(rimMatchesThreat(marked.rim), true);
 });
 
-test('threat marker colour is the swarm threat-ring material', () => {
-  const src = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
-  const at = src.indexOf("getMaterial('swarm:threat-rim'");
-  assert.ok(at >= 0, 'swarm:threat-ring material missing');
-  const m = src.slice(at, at + 500).match(/color:\s*(0x[0-9a-fA-F]+)/);
-  assert.ok(m, 'threat-ring material has no color literal');
-  assert.equal(Number(m[1]), THREAT_MARKER.rgb);
-});
+// The swarm threat-ring material this pinned is gone (owner 2026-11-23: no rings around ships);
+// rimMatchesThreat still classifies any crimson rim a frame shows.
 
 test('offscreen marker: edge chip matches the hostile side, and a center chip or an in-frame mark fails', () => {
   const frame = { frameWidth: 960, frameHeight: 540 };

@@ -1,38 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as THREE from 'three';
-import { syncSwarmThreatPlate } from '../src/render/visualFactory.js';
+import { readFileSync } from 'node:fs';
+import * as visualFactory from '../src/render/visualFactory.js';
 
-// design/overhaul/07 section 6: hulls read by silhouette and paint; a 2D plate only on the
-// player's current target and on bosses.
-function plateVisible(entity, targetId) {
-  const hull = new THREE.Group();
-  const camera = new THREE.PerspectiveCamera();
-  syncSwarmThreatPlate(hull, entity, camera, null, targetId);
-  const plate = hull.getObjectByName('sf-swarm-threat-plate');
-  return !!plate && plate.visible === true;
-}
+// Owner 2026-11-23: no rings around ships. Hostile hulls in Swarm wear no 2D threat plate at all
+// (the crimson rim, under-plate, heading wedge, in-hull glyph and nose lamp are gone): an ordinary
+// hostile reads by its silhouette and paint, a boss by its size and the boss bar, and the player's
+// current target by the HUD lock bracket and target card. Supersedes design/overhaul/07 section 6.
 
-test('an ordinary hostile wears no 2D plate', () => {
-  assert.equal(plateVisible({ id: 7, type: 'ship', team: 1, radius: 12 }, null), false);
-  assert.equal(plateVisible({ id: 7, type: 'ship', team: 1, radius: 12 }, 99), false);
+test('the visual factory no longer builds a Swarm threat plate', () => {
+  assert.equal(visualFactory.syncSwarmThreatPlate, undefined);
+  assert.equal(visualFactory.swarmThreatPlateWanted, undefined);
+  const src = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /sf-swarm-threat-(plate|under|line|chevron|glyph|lamp)\b/,
+    'no rim, wedge, glyph or lamp is built for a hostile hull');
 });
 
-test('the current target wears the plate, and only while targeted', () => {
-  assert.equal(plateVisible({ id: 7, type: 'ship', team: 1, radius: 12 }, 7), true);
-});
-
-test('a boss wears the plate untargeted', () => {
-  assert.equal(plateVisible({ id: 8, type: 'ship', team: 1, radius: 20, data: { isBoss: true } }, null), true);
-  assert.equal(plateVisible({ id: 9, type: 'ship', team: 1, radius: 20, flags: { boss: true } }, null), true);
-});
-
-test('a plate hides again when the hull loses target status', () => {
-  const hull = new THREE.Group(); const camera = new THREE.PerspectiveCamera();
-  const e = { id: 7, type: 'ship', team: 1, radius: 12 };
-  syncSwarmThreatPlate(hull, e, camera, null, 7);
-  const plate = hull.getObjectByName('sf-swarm-threat-plate');
-  assert.equal(plate.visible, true);
-  syncSwarmThreatPlate(hull, e, camera, null, null);
-  assert.equal(plate.visible, false);
+test('the renderer does not mark hostile hulls each frame', () => {
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /syncSwarmThreatPlate|threatCameraQuat/,
+    'no per-hull threat mark pass in the Swarm frame');
 });
