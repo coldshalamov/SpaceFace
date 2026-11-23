@@ -1721,7 +1721,8 @@ ${PA} button.sx-dh__vital:focus-visible { outline:2px solid #f2b950; outline-off
 /* -- the foot: Back, the four places, Undock ----------------------------------------------- */
 ${PA} .sxb-ops .sx-comms__toggle, ${PA} .sxb-ops .sxb-help, ${PA} .so-berth-status { display:none !important; }
 ${PA} .sx-dock { display:flex !important; align-items:center !important; gap:12px !important; }
-${PA} .sxb-ops .sx-tile::before { content:none !important; display:none !important; }
+/* The rail's old counter caps (::before, at 1360+ wide) would print a second key beside .sx-tile__key. */
+${PA} .sxb-ops.sxb-ops .sx-tile.sx-tile.sx-tile::before { content:none !important; display:none !important; }
 ${PA} .sx-tile__key {
   display:inline-grid; place-items:center; min-width:18px; height:18px; margin:0 8px 0 0; padding:0 4px; box-sizing:border-box;
   border:${KEYCAP_BORDER}; border-radius:2px; background:${KEYCAP_BG}; box-shadow:${KEYCAP_SHADOW};
@@ -1782,6 +1783,16 @@ ${PA}[data-operation="concourse"] .sxb-veil {
 ${PA}[data-operation="concourse"] .sxb-ops {
   background:none !important; border-color:transparent !important; box-shadow:none !important;
 }
+
+/* ==== THE JOB BOARD READS AS A LIST (2026-11-23) =============================================
+   A row was "PASSENGER TRANSPORT Transport a passenger to Customs Gate 1,963" run together on one
+   wrapped line. The kind of job now sits on its own quiet line above the job's own words, and
+   the pay stands at the right. */
+${PA} .sx-ct__rows .sx-ct-row .sx-ct-row__title > .sx-ct-row__type {
+  display:flex !important; width:max-content; margin:0 0 2px !important;
+  font-size:12px !important; letter-spacing:.08em !important; opacity:.7 !important;
+}
+${PA} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:normal !important; }
 `;
 
 export function injectStationStandard(doc = globalThis.document) {
