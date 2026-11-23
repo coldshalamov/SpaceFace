@@ -7050,8 +7050,10 @@ export function createHud(ctx, alerts) {
     // through the explicit invalidations (layout/settings/resize events), so re-placing on every
     // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
     // receipt-lane content is live.
-    const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
-      || (alertsEl && alertsEl.childElementCount > 0)
+    // Count cards, not children: the Stage keeps its flow column (and the watchlist and live
+    // region) mounted in both lanes, so a child count read an empty lane as busy forever.
+    const laneBusy = (toastsLaneEl && liveToastEls(toastsLaneEl).length > 0)
+      || (alertsEl && liveAlertEls(alertsEl).length > 0)
       || externalFlightCaptions.size > 0
       || (caption && !caption.hidden && caption.classList.contains('show'));
     receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;

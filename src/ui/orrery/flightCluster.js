@@ -180,7 +180,7 @@ const CSS = `
   .orr-cluster__legend svg { width:14px; }
   .orr-cluster__legend .orr-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
-.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
+.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-variant-numeric:tabular-nums; font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 /* S12 — the two-slot Swarm perk loadout, two lit chips riding the ring's open flank. A trigger
    pulse replays through the is-pulse class; reduced-motion CSS kills the keyframe, the chip stays. */
 .orr-cluster__perks { position:absolute; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
