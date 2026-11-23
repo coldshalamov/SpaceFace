@@ -7876,6 +7876,10 @@ _stepAnimation(now) {
     const level = String(snap.level || '').toLowerCase();
     const caption = level === 'hot' ? 'High encounter risk' : level === 'working' ? 'Rising encounter risk' : 'Quiet traffic';
     this._weatherEl.setAttribute('data-weather-level', level);
+    // Quiet is already said once, in the chart's head ("All quiet · no fighting or danger nearby");
+    // the gauge speaks only when the risk is rising, so a quiet chart has no orphan caption.
+    if (level === 'hot' || level === 'working') this._weatherEl.style.removeProperty('display');
+    else this._weatherEl.style.setProperty('display', 'none', 'important');
     this._weatherEl.innerHTML = `
       <div class="gm-weather-head">
         <span class="gm-weather-word">${caption}</span>
@@ -8278,7 +8282,7 @@ _stepAnimation(now) {
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s k-row__sub">${counted(alt.totalHops, 'hop', 'hops')} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
+        <span class="gm-rail-item-s k-row__sub">${counted(alt.totalHops, 'jump', 'jumps')} · ${Math.round(alt.totalFuel || 0)} fuel${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · ${worst >= 0.35 ? 'ambush likely' : worst >= 0.15 ? 'some ambush risk' : 'quiet lanes'}${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -10220,6 +10224,7 @@ _draw() {
           tradeMarginLabel = {
             text: `${commodityMapLabel(this._selectedCommodity)} +${galaxyTrade.arrow.margin.toLocaleString('en-US')} cr each`,
             x: (sx0 + ex) / 2 + uy * 22, y: (sy0 + ey) / 2 - ux * 22,
+            mx: (sx0 + ex) / 2, my: (sy0 + ey) / 2, nx: uy, ny: -ux,
           };
         }
       }
@@ -10476,6 +10481,10 @@ _draw() {
           g.strokeText(text, x, py);
           g.fillStyle = tint.key === 'fresh' ? CHART_INK.phos(1) : CHART_INK.bone(0.72);
           g.fillText(text, x, py);
+          // a fixed line under the token: the solver keeps sector names off it ("Helios Prime" over
+          // Tethys Junction's "Sells 44 cr")
+          const sw = g.measureText(text).width;
+          crestRects.push({ x: x - sw / 2 - 4, y: py - 9, width: sw + 8, height: 18 });
           g.restore();
         }
       }
@@ -10502,7 +10511,7 @@ _draw() {
         const jobs = galaxyJobs.get(n.id);
         const tracked = galaxyTrackedSector === n.id;
         if ((jobs && jobs.count > 0) || tracked) {
-          const text = jobs && jobs.count > 0 ? `${jobs.count} job${jobs.count === 1 ? '' : 's'} · ${jobs.best.toLocaleString('en-US')} cr` : 'Tracked job';
+          const text = jobs && jobs.count > 0 ? `${counted(jobs.count, 'job')} · ${jobs.best.toLocaleString('en-US')} cr` : 'Tracked job';
           g.save();
           g.font = chartFont(650, 12, { stretch: 'normal' });
           g.textAlign = 'center'; g.textBaseline = 'top';
@@ -10517,6 +10526,9 @@ _draw() {
           g.fillStyle = tracked ? '#ffd890' : CHART_INK.bone(0.9);
           g.fillText(text, x, by + 3);
           g.restore();
+          // The badge is a fixed plate: the label solver and the goal plate must stand clear of it
+          // ("GOAL · BEACON" printed over Ceres Belt's "2 jobs · 2,200 cr").
+          crestRects.push({ x: bx - 2, y: by - 2, width: tw + 16, height: 22 });
         }
       }
 
@@ -10586,7 +10598,9 @@ _draw() {
     const galaxyReserved = [];
     this._goalLabelPlacement = null;
     const goalRingR = tokenR + 7;
-    if (goalNode) {
+    const goalInThisSector = !!(goalNode && state.world && goalNode.id === state.world.currentSectorId);
+    if (goalInThisSector) this._goalLabelPlacement = false;
+    if (goalNode && !goalInThisSector) {
       const gx = sx(goalNode.x), gy = sy(goalNode.y);
       const goalText = `GOAL · ${String(goal.label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
       g.save();
@@ -10595,7 +10609,7 @@ _draw() {
       const goalTextWidth = g.measureText(goalText).width;
       setTracking(g, 0, 12);
       g.restore();
-      const goalLabelPos = goalLabelPlacement(goalTextWidth, gx, gy, w, h, routeScreenSegs, goalRingR + 8);
+      const goalLabelPos = goalLabelPlacement(goalTextWidth, gx, gy, w, h, routeScreenSegs, goalRingR + 8, 8, crestRects);
       galaxyReserved.push({
         x: goalLabelPos.rectX - 4,
         y: goalLabelPos.rectY - 3,
@@ -10627,12 +10641,13 @@ _draw() {
         const a = screenOf.get(leg.from);
         const b = screenOf.get(leg.to);
         if (!a || !b || !Number.isFinite(Number(leg.fuel))) return;
+        // plain words: "27 FUEL", not the "LEG 2 · 27F" shorthand
         const risk = Number(leg.interdict) > 0.25 ? '  ·  WATCHED' : '';
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `leg:${i}`,
           kind: 'zone',
-          text: `LEG ${i + 1} · ${Math.round(Number(leg.fuel))}F${risk}`,
-          lines: [`LEG ${i + 1} · ${Math.round(Number(leg.fuel))}F${risk}`],
+          text: `${Math.round(Number(leg.fuel))} FUEL${risk}`,
+          lines: [`${Math.round(Number(leg.fuel))} FUEL${risk}`],
           x: (a.x + b.x) / 2,
           y: (a.y + b.y) / 2,
           anchorRadius: 8,
@@ -10658,6 +10673,18 @@ _draw() {
       g.font = chartFont(700, 12, { stretch: 'normal' });
       g.textAlign = 'center'; g.textBaseline = 'middle';
       const tw = g.measureText(tradeMarginLabel.text).width;
+      // Off the arrow on whichever side leaves the fixed plates (jobs badges, prices) readable: it
+      // sat on Vesta Forge's "1 job" badge and cut it to "1 jo".
+      if (Number.isFinite(tradeMarginLabel.mx)) {
+        const hits = (px, py) => crestRects.some((b) => px - tw / 2 - 7 < b.x + b.width && px + tw / 2 + 7 > b.x
+          && py - 11 < b.y + b.height && py + 11 > b.y);
+        for (const k of [22, -22, 40, -40, 58, -58]) {
+          const px = tradeMarginLabel.mx + tradeMarginLabel.nx * k;
+          const py = tradeMarginLabel.my + tradeMarginLabel.ny * k;
+          if (!hits(px, py)) { tradeMarginLabel.x = px; tradeMarginLabel.y = py; break; }
+        }
+      }
+      galaxyReserved.push({ x: tradeMarginLabel.x - tw / 2 - 7, y: tradeMarginLabel.y - 11, width: tw + 14, height: 22 });
       g.fillStyle = 'rgba(6, 14, 10, 0.92)';
       g.fillRect(tradeMarginLabel.x - tw / 2 - 7, tradeMarginLabel.y - 11, tw + 14, 22);
       g.strokeStyle = 'rgba(127, 220, 138, 0.7)';
@@ -10691,7 +10718,7 @@ _draw() {
       let gx = sx(goalNode.x), gy = sy(goalNode.y);
       const routeHeadsHere = !this._line && this._layers.route && routeDest && routeDest === goal.sectorId;
       if (inGalaxyField(gx, gy)) {
-        drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement || null, goalRingR, routeHeadsHere ? 'hand' : 'bone');
+        drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement === false ? false : (this._goalLabelPlacement || null), goalRingR, routeHeadsHere ? 'hand' : 'bone');
       } else {
         // Off the clear field the goal stands as a tick on its border, pointing the way.
         const tick = edgeTickOnField(field, field.x + field.width / 2, field.y + field.height / 2, gx, gy,
@@ -13154,6 +13181,9 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity, labelPos = 
   g.moveTo(x, by - d); g.lineTo(x + d, by); g.lineTo(x, by + d); g.lineTo(x - d, by);
   g.closePath();
   g.fill();
+  // labelPos === false: the ring speaks alone (a goal inside the sector you are in, seen from the
+  // galaxy, is already named by YOU; its plate only covered the neighbours' job badges)
+  if (labelPos === false) { g.restore(); return; }
   g.font = chartFont(700, 13);
   setTracking(g, 0.06, 13);
   const width = g.measureText ? g.measureText(text).width : 0;
@@ -13246,9 +13276,10 @@ function segmentHitsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
  * Each candidate side is scored by how many drawn route segments cross its rect; out-of-viewport
  * sides are penalised harder. Ties keep the classic right-side placement (first entry).
  */
-function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, routeSegs, offset = 21, padding = 8) {
+function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, routeSegs, offset = 21, padding = 8, obstacles = null) {
   const textHeight = 12;
   const segs = Array.isArray(routeSegs) ? routeSegs : [];
+  const blocks = Array.isArray(obstacles) ? obstacles : [];
   let best = null;
   for (const side of GOAL_LABEL_SIDES) {
     const tx = x + side.dx * offset;
@@ -13259,6 +13290,10 @@ function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, rout
     let score = 0;
     for (const seg of segs) {
       if (segmentHitsRect(seg.x1, seg.y1, seg.x2, seg.y2, rectX, rectY, textWidth, textHeight)) score += 2;
+    }
+    // a fixed plate (a jobs badge) is text under text: worse than crossing a beam
+    for (const b of blocks) {
+      if (b && rectX < b.x + b.width && rectX + textWidth > b.x && rectY < b.y + b.height && rectY + textHeight > b.y) score += 6;
     }
     if (Number.isFinite(viewportWidth)
       && (rectX < padding || rectX + textWidth > viewportWidth - padding)) score += 5;

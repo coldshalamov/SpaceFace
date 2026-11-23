@@ -74,6 +74,9 @@ ${C} .gmh-item[aria-disabled="true"]:hover { color:rgb(${BONE} / .42); backgroun
 
 /* ===== the toolbar: one horizontal spine, four glyphs, a tooltip each ===== */
 ${C} .gmh-tools { position:absolute; left:calc(var(--gm-stage-x, var(--k-margin, 40px)) + 72px); bottom:calc(var(--gm-foot, 150px) + 16px); display:flex; flex-direction:row; align-items:center; gap:2px; padding:0 6px; pointer-events:auto; }
+/* wide: the strip starts right of the left rail, never over its map key (it printed "+ − ⛶ ▲"
+   across "Destination" and "Hostile ship" at 1280x720) */
+${C}[data-layout="wide"] .gmh-tools { left:calc(var(--gm-stage-x, var(--k-margin, 40px)) + 160px); }
 ${C} .gmh-tools::before { content:""; position:absolute; left:0; right:0; top:50%; height:6px; margin-top:-3px; z-index:0; pointer-events:none;
   background:linear-gradient(180deg, transparent 2px, rgb(${BONE} / .6) 2px 4px, transparent 4px), linear-gradient(180deg, rgb(${BONE} / .26) 0 6px); }
 ${C} .gmh-tool { position:relative; z-index:1; display:grid; place-items:center; width:44px; height:40px; color:rgb(${BONE} / .94); }
