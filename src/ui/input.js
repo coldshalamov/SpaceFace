@@ -1625,8 +1625,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         bus.emit('ui:confirm', {});
       }
       if (gp.actions.cancel && gp.actions.cancel.pressed) {
+        // Same refusal as keyboard Escape: a screen mid-gesture (a station door, a chart line)
+        // backs out of that first. Station B on a door returns to the hub; B on the hub undocks.
+        const lockedNow = !!(
+          (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked)
+        );
+        if (!lockedNow && def && typeof def.onEscape === 'function') {
+          try { if (def.onEscape(null, ctx) === true) return; }
+          catch (e) { dedupError('uiInput.screen-escape', '[uiInput] screen onEscape error:', e); }
+        }
         if (def && def.id === 'station') undock();
-        else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
+        else if (!lockedNow) screenManager.popScreen();
         bus.emit('ui:cancel', {});
         bus.emit('audio:cue', { id: 'ui_back' });
       }

@@ -90,9 +90,10 @@ test('the market screen prints one line tracing the last move to its cause (' + 
     const entry = state.economy.markets[sid][cid];
     const def = CMDTY_BY_ID.get(cid);
 
-    // No event: the formula regime is the honest mover.
+    // No news and no trader_market_sense perk: the exchange shows a cause only when there is
+    // one to name. lastMoveCause returns { text: '' } for that quiet listing.
     const regimeCause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
-    assert.ok(regimeCause.text.startsWith('Last move: '), 'always one line');
+    assert.equal(regimeCause.text, '', 'no news and no perk: the cause line stays empty');
     assert.equal(regimeCause.eventId, null);
 
     const ev = econ.injectEvent({ type: 'shortage', stationId: sid, commodityId: cid, duration: 900 });

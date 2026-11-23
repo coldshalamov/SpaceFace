@@ -1215,19 +1215,40 @@ async function finishShot(shot) {
   try {
     if (!document.getElementById('bench-broken')) {
       if (shot.tab) {
-        // A player's click moves focus to the tab it pressed; a synthetic .click() does not, so the
-        // shot kept the focus bracket on the Market tile while another tab was current.
-        const tabEl = document.querySelector(`#screens [data-nav="${shot.tab}"]`);
-        // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
-        // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
-        tabEl?.click();
-        if (tabEl) {
-          tabEl.setAttribute('data-sx-quiet-focus', '');
-          const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
-          tabEl.addEventListener('keydown', clear);
-          tabEl.addEventListener('blur', clear);
+        const tabId = String(shot.tab);
+        // Industry, Factions and Ledger left the rail: clicking `[data-nav=tab]` is a no-op.
+        // Move the way a player does — through the station app's own navigate.
+        const nav = currentScreen && typeof currentScreen.navigate === 'function'
+          ? currentScreen.navigate.bind(currentScreen)
+          : null;
+        if (!nav) {
+          showBroken(shot.screen || shot.id, `station tab "${tabId}" cannot be reached: the mounted screen has no navigate`);
+        } else {
+          nav(tabId);
+          const host = screensEl.querySelector('[data-operation]') || screensEl.querySelector('[data-view]');
+          const landedOp = host && (host.dataset.operation || '');
+          const landedView = host && (host.dataset.view || '');
+          const landed = !!(host && (
+            landedOp === tabId
+            || landedView === tabId
+            || (tabId === 'people' && landedOp === 'bar')
+            || (tabId === 'concourse' && (landedOp === 'concourse' || landedView === 'concourse'))
+          ));
+          if (!landed) {
+            showBroken(shot.screen || shot.id, `station tab "${tabId}" cannot be reached`);
+          } else {
+            const tabEl = document.querySelector(`#screens [data-nav="${tabId}"]`);
+            // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
+            // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
+            if (tabEl) {
+              tabEl.setAttribute('data-sx-quiet-focus', '');
+              const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
+              tabEl.addEventListener('keydown', clear);
+              tabEl.addEventListener('blur', clear);
+              tabEl.focus({ preventScroll: true });
+            }
+          }
         }
-        tabEl?.focus({ preventScroll: true });
       }
       if (shot.focus) {
         const want = String(shot.focus).toUpperCase();

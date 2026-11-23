@@ -501,7 +501,7 @@ function demandArcHtml(level, word) {
 }
 
 /** The hold after this trade as an arc: used over capacity, the fill to the contemplated level. */
-function holdArcHtml(used, cap) {
+function holdArcHtml(used, cap, unitWord = 'units') {
   if (!(cap > 0)) return '';
   const frac = Math.max(0, Math.min(1, used / cap));
   const cx = 52, cy = 56, r = 44;
@@ -509,6 +509,7 @@ function holdArcHtml(used, cap) {
   const end = -90 + 180 * frac;
   const fill = frac > 0.001 ? arcD(cx, cy, r, -90, end) : '';
   const [bx, by] = polar(cx, cy, r, end);
+  const unit = unitWord === 'slots' ? 'slots' : 'units';
   return `<svg viewBox="0 0 104 62" aria-hidden="true" focusable="false">`
     + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="5" stroke-linecap="round"/>`
     + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .6)" stroke-width="1.5"/>`
@@ -517,7 +518,7 @@ function holdArcHtml(used, cap) {
         + `<path d="${fill}" fill="none" stroke="rgb(248 244 234)" stroke-width="2.5" stroke-linecap="round"/>`
       : '')
     + `<circle cx="${r2(bx)}" cy="${r2(by)}" r="3" fill="rgb(248 244 234)"/>`
-    + `</svg><span class="orr-mkt-holdarc__t">Hold after<b>${fmt(used)} / ${fmt(cap)} units</b></span>`;
+    + `</svg><span class="orr-mkt-holdarc__t">Hold after<b>${fmt(used)} / ${fmt(cap)} ${unit}</b></span>`;
 }
 
 /**
@@ -2284,7 +2285,7 @@ export function createMarketScreen(ctx) {
       const amount = Math.max(0, qty);
       after = mode === 'buy' ? used + amount * vol : Math.max(0, used - amount * vol);
     }
-    const html = holdArcHtml(after, cap);
+    const html = holdArcHtml(after, cap, slotted ? 'slots' : 'units');
     if (box.innerHTML !== html) box.innerHTML = html;
   }
 
@@ -2436,16 +2437,6 @@ export function createMarketScreen(ctx) {
     const rows = trades.filter((t) => routeIsActionable(t)).slice(0, 3).map((t, index) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const card = formatRouteCard(t);
-      if (!routeIsActionable(t)) {
-        // A refused load explains itself; there is no run to review and no destination to plot.
-        return (
-          `<li class="k-row k-row--static sx-route-row">` +
-            `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))}</span>` +
-              `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
-            `<span class="k-row__num sx-route-row__s">${escapeHtml(card.profitText)}</span><span></span>` +
-          `</li>`
-        );
-      }
       let comparison = '';
       if (index === 0 && t.sourceQuoteExact !== true) {
         try {

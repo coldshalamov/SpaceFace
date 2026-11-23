@@ -23,6 +23,15 @@ test('short station dossier keeps its terms readable and its hold-to-accept reac
           owner.init({ state: BENCH.state, bus: BENCH.bus, helpers: {}, registry: BENCH.registry });
           window.__accepted = [];
           BENCH.bus.on('mission:accepted', event => window.__accepted.push(event));
+          // A safe job (no collateral) is one press and has no hold note. Drive the hold-to-accept
+          // check with an offer that carries a stake, the same rule the board uses in play.
+          const stationId = BENCH.state.ui.dockedStationId;
+          const board = BENCH.state.missions.boards[stationId];
+          for (const offer of board.slots) {
+            offer.collateral_cr = 500;
+            if (offer.economyTerms) offer.economyTerms.collateralCr = 500;
+          }
+          window.__benchRefresh?.();
         });
         const rows = page.locator('.sx-ct__board [data-mid]');
         const last = rows.last();
@@ -89,7 +98,11 @@ test('short station dossier keeps its terms readable and its hold-to-accept reac
         await page.mouse.down();
         await page.waitForTimeout(100);
         await page.mouse.up();
-        assert.equal(await page.evaluate(() => window.__accepted.length), 0, 'an early release does not accept');
+        assert.equal(
+          await page.evaluate(() => window.__accepted.length),
+          0,
+          'an early release does not accept: a job with collateral is held, not a one-press accept',
+        );
         await page.mouse.down();
         await page.waitForTimeout(1000); // the shipped control requires a sustained hold
         await page.mouse.up();

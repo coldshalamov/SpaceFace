@@ -111,6 +111,9 @@ export const UI_BENCH_SHOTS = Object.freeze([
 
   { id: 'station', screen: 'station', backdrop: 'shell' },
   { id: 'station-dock', screen: 'station', backdrop: 'shell' },
+  // The four-door concourse. `station` itself lands on Jobs (first-dock); this shot asks navigate
+  // for the hub so the bench can photograph the bay, not the board.
+  { id: 'station-hub', screen: 'station', tab: 'concourse', backdrop: 'shell' },
   { id: 'station-market', screen: 'station', tab: 'market', backdrop: 'shell' },
   { id: 'station-shipworks', screen: 'station', tab: 'shipworks', backdrop: 'shell' },
   { id: 'station-shipworks-impound', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'lot' },

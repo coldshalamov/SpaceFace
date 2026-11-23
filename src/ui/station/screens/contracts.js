@@ -700,14 +700,16 @@ export function createContractsScreen(ctx) {
   }
   // The window is fitted to the column it stands in: a render while the door was still settling
   // (head and foot not yet at their final size) cut the list a row early for the whole visit.
+  let hangFitObserver = null;
+  let hangFitFrame = 0;
   {
     const hangEl = el.querySelector('.sx-ct__hang');
     if (hangEl && typeof ResizeObserver === 'function' && typeof requestAnimationFrame === 'function') {
-      let fitFrame = 0;
-      new ResizeObserver(() => {
-        if (fitFrame) return;
-        fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitLadderWindow(); });
-      }).observe(hangEl);
+      hangFitObserver = new ResizeObserver(() => {
+        if (hangFitFrame) return;
+        hangFitFrame = requestAnimationFrame(() => { hangFitFrame = 0; fitLadderWindow(); });
+      });
+      hangFitObserver.observe(hangEl);
     }
   }
 
@@ -800,17 +802,21 @@ export function createContractsScreen(ctx) {
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
           : `${badgePrefix}${m.title || typeLabel(m.type, m)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+        // FEATURED (and the other one-word marks) ride the type line in the row's own small
+        // caps: "BOUNTY HUNT · FEATURED", not a heading above the list.
+        const typeChip = missionTypeChipHtml(m.type, { label: typeLabel(m.type, m) });
+        const typeMark = badge
+          ? `<span class="k-t-fine sx-ct-row__badge" aria-hidden="true"> · ${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>`
+          : '';
+        const typeLine = typeMark ? typeChip.replace(/<\/span>$/, `${typeMark}</span>`) : typeChip;
         return (
           `<li><button type="button" ${stationControlAttrs('mission-row')} class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
             `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
-            // The badge sits in the row's top pad zone, above the title — emitted as a row child,
-            // not inside the title: the title's overflow:hidden would clip it entirely.
-            (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
               // DUST P5: the type chip leads the title (glyph is decorative; the type word is
               // real content, so the spoken row names its verb before its prose).
-              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type, m) })}` +
+              `${typeLine}` +
               `${escapeHtml(m.title || typeLabel(m.type, m))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
@@ -1769,6 +1775,11 @@ export function createContractsScreen(ctx) {
       lifecycleTarget?.removeEventListener?.('blur', onWindowBlur, true);
       lifecycleTarget?.removeEventListener?.('pagehide', cancelInteraction, true);
       for (const stop of stopDecrypt.splice(0)) stop();
+      if (hangFitObserver) { hangFitObserver.disconnect(); hangFitObserver = null; }
+      if (hangFitFrame && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(hangFitFrame);
+        hangFitFrame = 0;
+      }
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
       cancelPendingCommit();
       endHold();

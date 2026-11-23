@@ -98,7 +98,7 @@ ${T} .sx-ct__rows .sx-ct-row:is(:hover, :focus-visible) .sx-ct-row__title { colo
 ${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { height:2px !important; background:rgb(248 244 234) !important; width:11px !important; left:2px !important; }
 ${T} .sx-ct__rows .sx-ct-row:focus-visible .sx-ct-row__title { color:rgb(255 255 255) !important; text-shadow:0 0 10px rgb(255 250 236 / .35); }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size:13.5px !important; font-weight:620; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
-${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { ${LABEL} display:block; margin-bottom:2px; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .8) !important; background:none !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { ${LABEL} display:inline; margin:0; padding:0; font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .48) !important; background:none !important; }
 /* the Hand's bloom: a soft disc of its own light behind the chevron (a clip-path clips a filter, so it is geometry) */
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; position:absolute !important; left:-6px !important;
   top:50% !important; width:28px !important; height:28px !important; margin-top:-14px !important; border-radius:50% !important; pointer-events:none;
@@ -780,13 +780,9 @@ ${T} .sx-ct__rows .sx-ct-row::before { top:17px !important; margin-top:0 !import
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { top:17px !important; margin-top:-7px !important; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { top:17px !important; margin-top:-14px !important; }
 ${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; }
-/* FEATURED: a word over the row under a rule of light; the price stays on the title's line */
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:26px !important; }
-${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { position:absolute !important; left:26px !important; right:0 !important; top:6px !important; margin:0 !important; padding-top:4px !important;
-  display:block !important; color:rgb(248 244 234) !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / .15)) 0 0 / 100% 1.5px no-repeat !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:34px !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::before { top:34px !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:34px !important; }
+/* FEATURED rides the type line in the row's own small caps, quieter than the type word */
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge { position:static !important; display:inline !important; left:auto !important; right:auto !important; top:auto !important;
+  margin:0 !important; padding:0 !important; color:rgb(${BONE} / .48) !important; background:none !important; border:0 !important; }
 /* the dispatch's alternative hangs off its own minor tick: the verb and its terms on one line */
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:9px !important;
   width:8px !important; height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; transform:none !important; }
@@ -824,9 +820,7 @@ ${T} .sx-dossier__terms > li.sx-term--none .sx-term__v { color:rgb(${BONE} / .48
 }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-ct__rows .sx-ct-row::before, ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before, ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { top:13px !important; }
-  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:22px !important; }
-  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::before, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:30px !important; }
-  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:4px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge { top:auto !important; }
   ${T} .sx-ct__hang > * + * { padding-top:8px !important; }
   ${T} .sx-ct__hang > .sx-ct__yours { padding-top:14px !important; }
   ${T} .sx-ct-row.sx-decision__opt .k-row__sub { display:block !important; }
@@ -959,12 +953,8 @@ ${T} .sx-ct__hang > * { background:linear-gradient(90deg, transparent 7px, rgb($
 ${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; background:rgb(${BONE} / .42) !important; }
 ${T} .sx-ct__hang > * + * { padding-top:22px !important; }
 ${T} .sx-ct__hang > .sx-ct__yours { padding-top:30px !important; }
-/* FEATURED: a major tick and a word beside it, at the standard pitch; no rule */
-${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { background:none !important; padding-top:0 !important; top:8px !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:24px !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { content:"" !important; display:block !important; position:absolute !important; left:2px !important; top:14px !important; width:11px !important; height:2px !important;
-  margin:0 !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:14px !important; margin:0 !important; width:11px !important; height:2px !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
+/* FEATURED: quieter small-caps on the type line, no extra tick or heading rule */
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge { background:none !important; padding:0 !important; top:auto !important; font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .48) !important; }
 /* DISPATCH is a verb on its own rung: a chevron word in the light, the terms after it */
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { color:rgb(248 244 234) !important; font-size: 12px !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name::before { content:"› "; color:rgb(${BONE} / .5); }
@@ -996,9 +986,7 @@ ${T} .sx-dossier > .orr-ct-route::before { content:""; position:absolute; inset:
   ${T} .sx-ct__active { flex:0 1 auto; min-height:0; overflow:hidden; }
   ${T} .sx-ct__hang > * + * { padding-top:10px !important; }
   ${T} .sx-ct__hang > .sx-ct__yours { padding-top:16px !important; }
-  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:20px !important; }
-  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:11px !important; }
-  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:5px !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge { top:auto !important; }
   /* the orrery has the room for its names at 720 */
   ${T} .sx-dossier > .orr-ct-route { height:clamp(280px, 42vh, 320px) !important; }
   ${T} .orr-ct-scales::after { top:52px; }
@@ -1198,10 +1186,6 @@ ${T} .sx-ct__rows .sx-ct-row:focus-visible::after { display:none !important; }
 ${T} .sx-ct__rows .sx-ct-row:focus-visible .sx-ct-row__title { color:rgb(255 255 255) !important; font-weight:700 !important; }
 /* the rail's ticks read at 1x: row ticks 8px at 55%, major ticks 16px at 60%, the rail at 30% */
 ${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; height:2px !important; background:rgb(${BONE} / .55) !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { width:16px !important; height:2px !important; background:rgb(248 244 234 / .6) !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:38px !important; }
-${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:12px !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:19px !important; }
 /* the slash sublabel retires; POSTED HERE says it */
 ${T} .sx-ct-dispatch__label { display:none !important; }
 /* one rail from RISK to READINESS, ticks on one pitch; sublines inline in ink-dim; one value column */
@@ -1858,13 +1842,10 @@ ${T} .sx-ct__yours::before { left:4px !important; width:6px !important;
 ${T} .sx-ct__yours::after { content:""; position:absolute; left:2px; top:50%; width:12px; height:1.5px; margin-top:-.75px; background:rgb(${BONE} / .7); pointer-events:none; }
 ${T} .sx-ct__jobs .sx-job { position:relative !important; }
 ${T} .sx-ct__jobs .sx-job::before { content:""; position:absolute; left:-40px; top:.75em; width:8px; height:2px; background:rgb(${BONE} / .6); pointer-events:none; }
-/* the featured row's tick sits on its title, not on its badge */
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:48px !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:48px !important; }
+/* FEATURED sits on the type line, so the row tick stays on the title like every other row */
 /* the board window's fade never cuts the spine: the window already ends on a whole row */
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:none !important; mask-image:none !important; }
-  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:52px !important; }
   /* a wider ladder measure and one-line YOURS rows so the tracked row lands above the tether */
   ${T} .k-panel.sx-ct { grid-template-columns:345px minmax(0, 1fr) !important; }
   ${T} .sx-ct__jobs .sx-job .k-row__name, ${T} .sx-ct__jobs .sx-job .k-row__sub { display:block; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:215px; }
@@ -2529,19 +2510,17 @@ ${T} .sx-ct .sx-ct__rows .sx-ct-row {
 }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-ct .sx-ct__rows .sx-ct-row { padding:5px 8px !important; }
-  ${T} .sx-ct .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:22px !important; }
 }
-${T} .sx-ct .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) {
-  padding-top:26px !important;
-}
-${T} .sx-ct .sx-ct__rows .sx-ct-row .sx-ct-row__badge {
-  left:10px !important;
-  right:10px !important;
-  top:5px !important;
-  padding:0 0 3px !important;
-  color:#9edce9 !important;
+${T} .sx-ct .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge {
+  position:static !important;
+  display:inline !important;
+  left:auto !important;
+  right:auto !important;
+  top:auto !important;
+  padding:0 !important;
+  color:rgb(${BONE} / .48) !important;
   background:none !important;
-  border-bottom:1px solid rgb(158 220 233 / .22) !important;
+  border:0 !important;
 }
 ${T} .sx-ct .sx-ct__rows .sx-ct-row::before,
 ${T} .sx-ct .sx-ct__rows .sx-ct-row::after,
@@ -2704,6 +2683,22 @@ ${T} .sx-ledger .st-ledger-board-head.fh-key {
 ${T} .sx-ledger .st-ledger-board-head.fh-key:is(:hover, :focus-visible) {
   border-color:#e6ca8f !important;
   color:#fff1cf !important;
+}
+
+/* FEATURED is a mark on the type line, not a list heading. Undo every earlier pass that
+   absolutely placed it in heading cyan and grew the row to make room for a caption. */
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge),
+${T} .sx-ct .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:9px !important; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge),
+  ${T} .sx-ct .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:5px !important; }
+}
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge,
+${T} .sx-ct .sx-ct__rows .sx-ct-row .sx-ct-row__type .sx-ct-row__badge {
+  position:static !important; display:inline !important; left:auto !important; right:auto !important; top:auto !important;
+  margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-bottom:0 !important;
+  color:rgb(${BONE} / .48) !important; font-size:12px !important; letter-spacing:.12em !important; text-transform:uppercase !important;
+  font-weight:650 !important;
 }
 `;
 
