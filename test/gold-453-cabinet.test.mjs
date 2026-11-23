@@ -227,6 +227,10 @@ test('Daily stays outside disclosures and the original control launches a paired
     screen.onShow(); assert.ok(doc.listenerCount()>=4,'cabinet lifecycle starts before the reduced-motion early return');
     const visibility = [], attract = screen._cabinetAttract, setVisible = attract.setVisible;
     attract.setVisible = value => { visibility.push(value); setVisible(value); };
+    // Rewritten to the new rule (design/overhaul/04_SWARM.md §7): the door opens on the Swarm
+    // front, whose art covers the preview; the cabinet and the Daily live behind More.
+    assert.equal(screen._doorView, 'play');
+    root.querySelector('.sf-play__more').click(); assert.equal(visibility.at(-1),true);
     root.querySelector('#sf-prep-tab-1').click(); assert.equal(visibility.at(-1),false);
     root.querySelector('#sf-prep-tab-0').click(); assert.equal(visibility.at(-1),true);
     findAll(root,n=>n.classList.contains('sf-crd-mode') && n.dataset.ruleset==='scored')[0].click();
@@ -368,6 +372,8 @@ test('the actual door respects reduced motion even when browser animation APIs a
       const ctx={state:createGameState(4242),bus:{emit(){},on(){},off(){},once(){}},registry:{get:()=>null}};
       try {
         screen.mount(root,ctx); clock.frame(); screen.onShow();
+        // The preview lives behind More since the Swarm front leads (04_SWARM.md §7).
+        screen._showMore();
         clock.advance(8000);
         assert.equal(screen._preparation.attractHost.hidden,false);
         assert.ok(doc.canvasCalls.length>0); assert.equal(clock.raf.size,0,'static demo schedules no animation');

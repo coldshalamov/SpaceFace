@@ -1117,7 +1117,9 @@ function restoreRetryOpeningEquipment(ctx, choice, fitted) {
   const weapon = WEAPONS.find(def => def.id === defId && def.slotType === 'weapon' && def.tier <= 1);
   if (!weapon || !defId.startsWith('wpn_')) return false;
   const draft = offerDraft({ seed: run.seed, wave: 0, hullId: ship.defId, fittings: ship.fittings,
-    ruleset: SWARM_RULESET, count: 100 });
+    // The whole eligible pool: a big hull has over 100 eligible cards, and a seeded cut of 100
+    // dropped the chosen free gun on some seeds, so the launch fell back into the armory.
+    ruleset: SWARM_RULESET, count: 1000 });
   if (!draft.offers.some(offer => offer.id === offerId && offer.defId === defId)) return false;
   if (sys(ctx, 'ships')?.fitModule?.({ slotIndex, defId }) !== true) return false;
   const instanceId = ship.fittedInstances?.[slotIndex]?.instanceId;

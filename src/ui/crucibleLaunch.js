@@ -10,7 +10,9 @@
 
 import { validateCombatLabSetup } from '../contracts/combatLabSetupSchema.js';
 import { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
-import { normalizeSwarmStake } from '../data/swarmStakes.js';
+import { normalizeSwarmStake, SWARM_DEFAULT_STAKE_ID } from '../data/swarmStakes.js';
+import { offerDraft } from '../data/survivalDraft.js';
+import { WEAPONS } from '../data/weapons.js';
 import { normalizeThreatIds } from '../data/swarmThreats.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { SHIPS } from '../data/ships.js';
@@ -24,6 +26,7 @@ import { BLOCK_RULESET } from '../systems/survivalRun.js';
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 import { clearQueuedChallenge } from '../systems/survivalMutators.js';
 import { swarmQuickStartExtras } from '../data/swarmQuickStart.js';
+import { swarmArcadeSeedFor } from '../data/swarmLadder.js';
 
 /**
  * The door's default room — where a run lands when nothing else was picked. Every Combat Lab
@@ -61,6 +64,7 @@ export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_c
 export function normalizeCrucibleRuleset(ruleset) {
   return CRUCIBLE_RULESETS.includes(ruleset) ? ruleset : CRUCIBLE_DEFAULT_RULESET;
 }
+const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
 export const CRUCIBLE_SEED_MIN = 1;
 export const CRUCIBLE_SEED_MAX = 0xffffffff;
 
@@ -380,6 +384,123 @@ export function practiceLaunchFor(line) {
   };
 }
 
+// The title's SWARM door may ask the Swarm screen to open on its one-button PLAY front. The front is
+// the screen's default view either way; the flag is one-shot so a caller can say so explicitly
+// (the bench's `swarm-play` shot does) without leaving state behind for the next mount.
+let swarmPlayEntry = false;
+export function requestSwarmPlayEntry() { swarmPlayEntry = true; }
+export function consumeSwarmPlayEntry() { const was = swarmPlayEntry; swarmPlayEntry = false; return was; }
+
+/**
+ * THE SWARM DOOR'S STARTING GUN (04_SWARM.md §5, §7). A Swarm run starts at zero Scrap with the
+ * chosen hull and one free compatible opening gun. These are the three every hull is offered, in
+ * the order the door shows them, each with the one line that says what it does to a ship.
+ */
+export const SWARM_OPENING_GUN_LINES = Object.freeze({
+  wpn_autocannon_s: 'Steady slugs. Good damage, a little kick.',
+  wpn_pulse_laser_s: 'Fast bolts. Most damage, almost no push.',
+  wpn_concussion_cannon_s: 'Barely scratches. Every hit throws the ship.',
+});
+const OPENING_GUN_ORDER = Object.keys(SWARM_OPENING_GUN_LINES);
+export const SWARM_DEFAULT_HULL_ID = 'ship_hornet';
+export const SWARM_DEFAULT_GUN_ID = 'wpn_autocannon_s';
+
+/**
+ * The free opening guns a hull can take: the same tier-one weapon cards the opening armory deals
+ * free, read off the whole eligible pool (not a seeded draw, so the list never changes with the
+ * seed). Each entry carries the offer id and slot the launch replays before round 1.
+ */
+export function swarmOpeningGuns(hullId) {
+  if (!SHIPS.some((ship) => ship && ship.id === hullId)) return [];
+  const draft = offerDraft({ seed: 1, wave: 0, hullId, fittings: [], ruleset: SWARM_RULESET, count: 1000 });
+  const guns = (draft && draft.offers ? draft.offers : []).filter((offer) => {
+    const def = WEAPON_BY_ID.get(offer.defId);
+    return def && def.slotType === 'weapon' && def.tier <= 1 && offer.defId.startsWith('wpn_')
+      && Number.isInteger(offer.slotIndex);
+  });
+  const rank = (defId) => { const i = OPENING_GUN_ORDER.indexOf(defId); return i < 0 ? OPENING_GUN_ORDER.length : i; };
+  const seen = new Set();
+  return guns
+    .filter((offer) => (seen.has(offer.defId) ? false : (seen.add(offer.defId), true)))
+    .sort((a, b) => rank(a.defId) - rank(b.defId) || a.defId.localeCompare(b.defId))
+    .map((offer) => ({
+      offerId: offer.id,
+      defId: offer.defId,
+      slotIndex: offer.slotIndex,
+      name: (WEAPON_BY_ID.get(offer.defId) || {}).name || offer.name || offer.defId,
+      line: SWARM_OPENING_GUN_LINES[offer.defId] || '',
+    }));
+}
+
+const DOOR_PICK_KEY = 'sf.swarm.doorPick.v1';
+/**
+ * The door's remembered picks — arena, hull and the starting gun per hull — persisted across
+ * sessions like the stake. Every read is guarded: an unknown arena, hull or gun falls back to the
+ * shipped default rather than launching something that does not exist.
+ */
+export function lastSwarmDoorPick() {
+  let raw = null;
+  try { raw = JSON.parse(globalThis.localStorage && globalThis.localStorage.getItem(DOOR_PICK_KEY) || 'null'); } catch { raw = null; }
+  const pick = raw && typeof raw === 'object' ? raw : {};
+  const arenaId = typeof pick.arenaId === 'string' && COMBAT_LAB_ARENAS.some((a) => a.id === pick.arenaId)
+    ? pick.arenaId : null;
+  const hull = typeof pick.hullId === 'string' ? SHIPS.find((ship) => ship && ship.id === pick.hullId) : null;
+  const hullId = hull && (!hull.swarmEarned || swarmCrossoverEarned(hull.swarmEarned)) ? hull.id : null;
+  const guns = pick.guns && typeof pick.guns === 'object' ? { ...pick.guns } : {};
+  return { arenaId, hullId, guns };
+}
+export function rememberSwarmDoorPick({ arenaId = null, hullId = null, gunDefId = null } = {}) {
+  try {
+    if (!globalThis.localStorage) return;
+    const prior = lastSwarmDoorPick();
+    const next = { arenaId: arenaId || prior.arenaId, hullId: hullId || prior.hullId, guns: prior.guns };
+    if (hullId && gunDefId) next.guns[hullId] = gunDefId;
+    globalThis.localStorage.setItem(DOOR_PICK_KEY, JSON.stringify(next));
+  } catch { /* optional */ }
+}
+/** The starting gun the door shows for a hull: the one last flown on it, else the default. */
+export function swarmDoorGunFor(hullId, pick = lastSwarmDoorPick()) {
+  const guns = swarmOpeningGuns(hullId);
+  const wanted = pick && pick.guns ? pick.guns[hullId] : null;
+  return guns.find((gun) => gun.defId === wanted) || guns.find((gun) => gun.defId === SWARM_DEFAULT_GUN_ID)
+    || guns[0] || null;
+}
+
+/**
+ * PLAY (04_SWARM.md §1, §7): the chosen hull, empty, on a fresh seed, starting at zero Scrap, with
+ * the chosen free gun fitted before round 1 — so the run goes straight from the load into round 1
+ * in flight. The gun rides as the opening-equipment replay the retry path already validates, so
+ * the run's economy is the zero-Scrap one (rounds pay Scrap; the floor sells the guns).
+ * Returns the setup for requestCrucibleRun, or null.
+ */
+export function swarmPlaySetup({
+  seed = null, arenaId = null, hullId = null, gunDefId = null, stake = null,
+} = {}) {
+  const pick = lastSwarmDoorPick();
+  const hull = hullId || pick.hullId || SWARM_DEFAULT_HULL_ID;
+  const arena = arenaId || pick.arenaId || CRUCIBLE_ARENA_ID;
+  // A ladder room plays its authored Course seed — the run that banks stars and opens rooms
+  // (swarmLadder.isSwarmLadderRun). A side room with no Course gets a fresh seed.
+  const seedFor = (room) => (Number.isInteger(seed) ? seed : (swarmArcadeSeedFor(room) ?? freshSeed()));
+  const build = (room) => crucibleHullSetupFor({
+    hullId: hull, seed: seedFor(room), arenaId: room, ruleset: SWARM_RULESET,
+    swarmStake: stake || lastSwarmStakeUsed() || SWARM_DEFAULT_STAKE_ID,
+  });
+  let setup = build(arena);
+  if ((!setup || !setup.ok) && arena !== CRUCIBLE_ARENA_ID) setup = build(CRUCIBLE_ARENA_ID);
+  if (!setup || !setup.ok || !setup.value) return null;
+  const guns = swarmOpeningGuns(hull);
+  const gun = guns.find((entry) => entry.defId === gunDefId) || swarmDoorGunFor(hull, pick);
+  return {
+    ...setup.value,
+    zeroScrapOpening: true,
+    retryOpeningEquipment: {
+      hullId: hull,
+      gun: gun ? { offerId: gun.offerId, defId: gun.defId, slotIndex: gun.slotIndex } : null,
+    },
+  };
+}
+
 const LAST_STAKE_KEY = 'sf.swarm.lastStake.v1';
 /** The stake the player last flew, persisted across sessions; null for a first-timer. */
 export function lastSwarmStakeUsed() {
@@ -437,14 +558,14 @@ export function clearCrucibleSetup() {
 }
 
 /**
- * ONE PRESS TO THE FIGHT (04_SWARM.md §2, director 2026-11-20). The title's Swarm door launches
- * round 1 straight away: the quick-start record (ricochet kit, Ricochet Foundry, no opening armory),
- * overlaid with what this player last chose — the stake they last flew and, within a session, the
- * room and kit of their last Swarm launch — on a fresh seed. The setup screen stays the optional
- * path behind the title's "Change run" key. Returns the validated setup, or null.
+ * ONE PRESS TO THE FIGHT (04_SWARM.md §2, §7). The title's Swarm door launches round 1 straight
+ * away with exactly what the Swarm screen's PLAY would launch: the remembered room, hull, starting
+ * gun and difficulty (within a session the room and hull of the last Swarm launch lead), zero
+ * Scrap, the gun fitted before the load ends. One launch shape for both doors — the title press
+ * and PLAY can never fly different runs. Returns the setup, or null.
  */
 export function swarmQuickStartSetup({
-  seed = freshSeed(),
+  seed = null,
   previous = lastCrucibleSetup(),
   previousRuleset = lastCrucibleRuleset(),
   stake = lastSwarmStakeUsed(),
@@ -453,19 +574,30 @@ export function swarmQuickStartSetup({
   if (!extras) return null;
   const fromSwarm = !!previous && previousRuleset === SWARM_RULESET
     && !previous.dailyDateKey && !previous.weeklyMutatorId && !previous.practice;
-  const priorKit = fromSwarm ? crucibleStarterIdForSetup(previous) : null;
-  // A bare-hull launch bought its kit in the opening armory the quick start skips; it falls back
-  // to the record's ready-fitted kit rather than flying an empty ship.
-  const starterId = priorKit && !priorKit.startsWith('hull:') ? priorKit : extras.starterId;
-  const arenaId = fromSwarm && typeof previous.arenaId === 'string' && previous.arenaId
-    ? previous.arenaId : extras.arenaId;
-  const build = (arena) => crucibleSetupFor({
-    starterId, seed, arenaId: arena, ruleset: SWARM_RULESET,
-    swarmStake: stake || extras.swarmStake, openArmoryBeforeRound1: false,
-  });
-  let setup = build(arenaId);
-  if ((!setup || !setup.ok) && arenaId !== extras.arenaId) setup = build(extras.arenaId);
-  return setup && setup.ok && setup.value ? setup.value : null;
+  const pick = lastSwarmDoorPick();
+  const arenaId = (fromSwarm && typeof previous.arenaId === 'string' && previous.arenaId)
+    || pick.arenaId || extras.arenaId;
+  const hullId = (fromSwarm && typeof previous.hullId === 'string' && previous.hullId) || pick.hullId || null;
+  return swarmPlaySetup({ seed, arenaId, hullId, stake: stake || extras.swarmStake });
+}
+
+/**
+ * AGAIN, from Run Over (04_SWARM.md §8): the same picks, back into round 1. A ladder run replays
+ * its Course (the seed that banks stars); a run on any other seed — a side room, a typed seed —
+ * gets a fresh layout, with `sameSeed` carrying the exact replay for the secondary key. Shared
+ * challenges (daily, weekly, ghost, practice) and checkpoint starts always replay as they began.
+ * Returns { setup, ruleset, sameSeed } or null before any launch.
+ */
+export function buildSwarmAgainRequest(result = null, setup = lastCrucibleSetup(), ruleset = lastCrucibleRuleset()) {
+  const retry = buildCrucibleRetryRequest(setup, ruleset, result);
+  if (!retry) return null;
+  const s = retry.setup;
+  const replay = { ...retry, sameSeed: null };
+  if (retry.ruleset !== SWARM_RULESET || s.dailyDateKey || s.weeklyMutatorId || s.ghostHash != null
+    || s.practice || (Number.isInteger(s.wave) && s.wave > 1)) return replay;
+  const ladderSeed = swarmArcadeSeedFor(s.arenaId);
+  if (ladderSeed != null && s.seed === ladderSeed) return replay;
+  return { setup: { ...s, seed: freshSeed() }, ruleset: retry.ruleset, sameSeed: retry };
 }
 
 /** The title's Swarm press: build the quick-start setup and send it down the ordinary New Game route. */

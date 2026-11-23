@@ -29,7 +29,15 @@ import {
   canChooseSwarmOpeningLesson,
   defaultSwarmStakeId,
   rememberSwarmStake,
+  consumeSwarmPlayEntry,
+  lastSwarmDoorPick,
+  rememberSwarmDoorPick,
+  swarmDoorGunFor,
+  swarmOpeningGuns,
+  swarmPlaySetup,
+  SWARM_DEFAULT_HULL_ID,
 } from '../crucibleLaunch.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import {
   SWARM_STAKES,
   normalizeSwarmStake,
@@ -69,7 +77,7 @@ import {
 } from '../../data/swarmPerks.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
-import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
+import { createCruciblePreparation, createSwarmPlayFront } from '../orrery/cruciblePreparation.js';
 import { reducedMotion as orreryMotionReduced } from '../orrery/motion.js';
 import { cabinetDailySnapshot, createCabinetAttract, createCabinetEntryBand, renderCabinetBoard } from '../swarmCabinet.js';
 import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
@@ -782,7 +790,7 @@ const CRUCIBLE_MODE_CARDS = Object.freeze([
     label: 'Swarm',
     verb: 'Launch Swarm',
     blurb: 'Build a ship and survive waves of enemies.',
-    sub: 'Survive each wave. Spend your rewards on equipment between rounds.',
+    sub: 'Thirty rounds. Kills pay Scrap for guns on the floor; every level up is a card.',
   },
   {
     ruleset: 'scored',
@@ -806,6 +814,18 @@ const GHOST_CARD = Object.freeze({
   blurbOn: 'Race the last recorded hull for this seed.',
   blurbOff: 'No ghost for this seed yet.',
 });
+
+/** What a run is, in the front's own words (04_SWARM.md §1-2). */
+export const SWARM_FRONT_PITCH = 'Thirty rounds, a boss every fifth. Kills pay Scrap for the guns on the floor, '
+  + 'and every level up is a card that changes how you fight.';
+
+/** The ship's weight in one line: what the Line does in a light hull and in a heavy one. */
+export function swarmHullLine(ship) {
+  const mass = ship && Number.isFinite(ship.mass) ? ship.mass : 0;
+  if (mass < 40) return 'Light and quick. On the Line, you swing around what you catch.';
+  if (mass < 120) return 'Middleweight. Swings light ships, tows heavy ones.';
+  return 'Heavy and slow. On the Line, you drag whatever you catch.';
+}
 
 function weeklyDoorCard() {
   const id = weeklyMutatorForNow();
@@ -2604,6 +2624,24 @@ export const crucibleScreen = {
     const resumeRec = (() => {
       try { return swarmResumeFor(loadCrucibleMeta()); } catch { return null; }
     })();
+    const launchResume = () => {
+      const setup = crucibleHullSetupFor({
+        hullId: resumeRec.ship.defId,
+        loadout: resumeRec.ship.loadout,
+        seed: resumeRec.seed,
+        arenaId: resumeRec.arenaId || CRUCIBLE_ARENA_ID,
+        ruleset: SWARM_RULESET,
+        startWave: resumeRec.wave,
+      });
+      if (!setup.ok || !setup.value) {
+        cue('deny');
+        ctx.bus.emit('toast', { text: 'The interrupted run cannot be rebuilt — start fresh.', kind: 'error', ttl: 5 });
+        return;
+      }
+      cue('confirm');
+      const payload = { ...setup.value, resume: resumeRec };
+      requestSharedCrucibleRun(ctx.bus, payload, SWARM_RULESET);
+    };
     if (resumeRec && ruleset === SWARM_RULESET) {
       const resumeWord = word(`Resume run — Round ${resumeRec.wave}`, 'k-word--emph k-word--primary');
       paintKey(resumeWord, 'legend');
@@ -2611,30 +2649,18 @@ export const crucibleScreen = {
         + ' — your seed, room, hull, kit and Scrap as the round began.';
       resumeWord.setAttribute('aria-label',
         `Resume run — round ${resumeRec.wave}. Restarts the interrupted Swarm run at the beginning of round ${resumeRec.wave}.`);
-      resumeWord.addEventListener('click', () => {
-        const setup = crucibleHullSetupFor({
-          hullId: resumeRec.ship.defId,
-          loadout: resumeRec.ship.loadout,
-          seed: resumeRec.seed,
-          arenaId: resumeRec.arenaId || CRUCIBLE_ARENA_ID,
-          ruleset: SWARM_RULESET,
-          startWave: resumeRec.wave,
-        });
-        if (!setup.ok || !setup.value) {
-          cue('deny');
-          ctx.bus.emit('toast', { text: 'The interrupted run cannot be rebuilt — start fresh.', kind: 'error', ttl: 5 });
-          return;
-        }
-        cue('confirm');
-        const payload = { ...setup.value, resume: resumeRec };
-        requestSharedCrucibleRun(ctx.bus, payload, SWARM_RULESET);
-      });
+      resumeWord.addEventListener('click', launchResume);
       addWord(footWords, resumeWord);
     }
     // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
     const back = word('Back', 'k-word--emph sf-back');
     back.setAttribute('aria-label', back.textContent);
-    back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
+    // Behind More, Back returns to the front; on the front it leaves the screen.
+    back.addEventListener('click', () => {
+      cue('close');
+      if (door._front && door._doorView === 'more') { door._showFront?.(); return; }
+      ctx.bus.emit('ui:popScreen', {});
+    });
     addWord(footWords, back);
     foot.appendChild(footWords);
     // r2: the door documents its input — one quiet line under the keys.
@@ -2643,15 +2669,127 @@ export const crucibleScreen = {
 
     syncMode();
     preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
-      onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
+      onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible && door._doorView !== 'play'),
       read: () => ({ starterId: currentStarterId(), hullFirst: hullFirstSwarm(), zeroScrapOpening: zeroScrapOpening(), arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
     this._preparation = preparation;
+
+    // THE FRONT (04_SWARM.md §7): the Foundry's key art, one PLAY, and three remembered picks —
+    // room, difficulty, ship (with its free starting gun). PLAY reaches round 1 in one press:
+    // zero Scrap, the gun fitted during the load, the room's Course seed. Everything else the
+    // door holds stays whole behind More.
+    consumeSwarmPlayEntry();
+    this._front = null;
+    this._doorView = 'more';
+    if (preparation) {
+      const doorPick = lastSwarmDoorPick();
+      const playArenaOpen = (id) => !!arenaDescriptions[id]
+        && !crucibleArenaLadderLocked(doorProfile && doorProfile.ladder, id);
+      const playArenas = () => COMBAT_LAB_ARENAS.filter((a) => playArenaOpen(a.id));
+      const playHulls = hullChoices.filter((choice) => choice.earned);
+      // No Swarm launch yet this session: the picks the player last flew lead.
+      if (!(previous && lastCrucibleRuleset() === SWARM_RULESET)) {
+        if (doorPick.arenaId && playArenaOpen(doorPick.arenaId)) arenaId = doorPick.arenaId;
+        if (doorPick.hullId && playHulls.some((c) => c.hullId === doorPick.hullId)) swarmShipId = `hull:${doorPick.hullId}`;
+      }
+      if (!playArenaOpen(arenaId)) arenaId = CRUCIBLE_ARENA_ID;
+      const playHullId = () => (String(swarmShipId).startsWith('hull:') ? String(swarmShipId).slice(5) : SWARM_DEFAULT_HULL_ID);
+      let playGun = swarmDoorGunFor(playHullId(), doorPick)?.defId || null;
+      let launching = false;
+      const playSwarm = () => {
+        if (launching) return;
+        const hullId = playHullId();
+        const setup = swarmPlaySetup({ arenaId, hullId, gunDefId: playGun, stake });
+        if (!setup) {
+          cue('deny');
+          ctx.bus.emit('toast', { text: 'That run could not be built. Pick another ship.', kind: 'error', ttl: 4 });
+          return;
+        }
+        launching = true;
+        cue('confirm');
+        rememberSwarmStake(stake);
+        rememberSwarmDoorPick({ arenaId: setup.arenaId, hullId, gunDefId: setup.retryOpeningEquipment?.gun?.defId || null });
+        clearQueuedChallenge();
+        if (!requestSharedCrucibleRun(ctx.bus, setup, SWARM_RULESET)) launching = false;
+      };
+      this._resetLaunching = () => { launching = false; };
+      const front = createSwarmPlayFront({
+        root: rootEl,
+        pitch: SWARM_FRONT_PITCH,
+        art: () => kitUrl((ARENA_TILE[arenaId] || MODE_TILE.swarm).replace(/\.png$/, '@2x.png')),
+        roomName: () => (arenaDescriptions[arenaId] || [])[0] || '',
+        picks: [
+          {
+            id: 'arena', label: 'Arena',
+            options: () => playArenas().map((a) => ({ value: a.id, name: arenaDescriptions[a.id][0], line: arenaDescriptions[a.id][1] })),
+            value: () => arenaId,
+            choose: (id) => { arenaId = id; cue('confirm'); syncArena(); },
+          },
+          {
+            id: 'difficulty', label: 'Difficulty',
+            options: () => SWARM_STAKES.map((s) => ({ value: s.id, name: s.label, line: s.blurb })),
+            value: () => stake,
+            choose: (id) => { stake = id; cue('confirm'); syncStake(); syncGhost(); },
+          },
+          {
+            id: 'ship', label: 'Ship',
+            options: () => playHulls.map((c) => {
+              const ship = SHIPS.find((s) => s.id === c.hullId);
+              return { value: c.hullId, name: c.name, line: swarmHullLine(ship), art: hullPosterUrl(c.hullId, 'top') };
+            }),
+            value: () => playHullId(),
+            choose: (id) => {
+              swarmShipId = `hull:${id}`;
+              playGun = swarmDoorGunFor(id)?.defId || null;
+              cue('confirm'); syncHull(); syncGhost();
+            },
+          },
+          {
+            id: 'gun', label: 'Starting gun', sub: true,
+            options: () => swarmOpeningGuns(playHullId()).map((g) => ({ value: g.defId, name: g.name, line: g.line })),
+            value: () => playGun,
+            choose: (id) => { playGun = id; cue('confirm'); },
+          },
+        ],
+        onPlay: playSwarm,
+        onMore: () => { cue('open'); door._showMore?.(); },
+        onBack: () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); },
+        resume: resumeRec ? {
+          label: `Resume round ${resumeRec.wave}`,
+          title: `Pick the interrupted run back up at the start of round ${resumeRec.wave}.`,
+          onClick: launchResume,
+        } : null,
+      });
+      if (front) {
+        this._front = front;
+        this._playSwarm = playSwarm;
+        const setView = (view) => {
+          door._doorView = view;
+          rootEl.dataset.doorView = view;
+          rootEl.setAttribute('aria-labelledby', view === 'play' ? 'sf-play-title' : 'sf-crucible-title');
+          this._cabinetAttract?.setVisible(view !== 'play' && !!preparation.previewVisible);
+        };
+        this._showFront = () => {
+          // The front always plays Swarm: coming back from More drops any other mode's pick.
+          setView('play');
+          front.update();
+          front.focus();
+        };
+        this._showMore = () => {
+          setView('more');
+          preparation.show(0);
+          preparation.focus();
+        };
+        setView('play');
+        syncArena(); syncHull(); syncStake();
+        front.update();
+      }
+    }
     // The door unit's composition sheet lands after the prep sheet so its fixes win the cascade
     // (crucible-doorLayouts.js documents what it carries).
     injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
     this._cabinetAttract = createCabinetAttract({ host: preparation?.attractHost,
       tape: SWARM_CABINET_ATTRACT_TAPE, reducedMotion: () => !canAnimate() || orreryMotionReduced() });
-    this._cabinetAttract.setVisible(!!preparation?.previewVisible);
+    this._cabinetAttract.setVisible(!!preparation?.previewVisible && door._doorView !== 'play');
     this._refreshDaily = () => { dailySnapshot = cabinetDailySnapshot(); syncMode(); preparation?.update(); };
     const cabinetDoc = rootEl.ownerDocument || document;
     this._dailyVisibility = () => { if (!cabinetDoc.hidden) this._refreshDaily?.(); };
@@ -2664,10 +2802,26 @@ export const crucibleScreen = {
     // ready to photograph when its words are built, it is ready when the arena behind them is lit.
     // Writing '1' here raced the stage and produced a capture of a door with nothing behind it.
 
-    if (preparation) preparation.focus();
+    if (this._front) this._front.focus();
+    else if (preparation) preparation.focus();
     else if (typeof enter.focus === 'function') {
       try { enter.focus(); } catch { /* focus is best-effort */ }
     }
+  },
+
+  /** Enter is PLAY anywhere on the front, unless a quiet key (More, Back) holds focus. */
+  onKey(ev) {
+    if (!this._front || this._doorView !== 'play' || ev.key !== 'Enter' || ev.repeat) return false;
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    if (this._front.ownsEnter(active)) return false;
+    this._playSwarm?.();
+    return true;
+  },
+
+  /** Behind More, Esc returns to the front; on the front it leaves as every screen does. */
+  onEscape() {
+    if (this._front && this._doorView === 'more') { cue('close'); this._showFront?.(); return true; }
+    return false;
   },
 
   onShow() {
@@ -2677,15 +2831,22 @@ export const crucibleScreen = {
     this._refreshCabinetBoard?.();
     this._cabinetDoc?.addEventListener?.('visibilitychange', this._dailyVisibility);
     this._cabinetAttract?.start();
+    this._resetLaunching?.();
+    if (this._front) this._showFront?.();
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
     try {
-      settle(r.title, { from: 'top', state: 'crucible:open' });
-      settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
-      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+      if (this._front && this._doorView === 'play') {
+        settle(this._front.el.querySelector('.sf-play__panel'), { from: 'left', state: 'crucible:open' });
+      } else {
+        settle(r.title, { from: 'top', state: 'crucible:open' });
+        settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
+        settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+      }
     } catch { /* motion is cosmetic */ }
-    if (this._preparation) this._preparation.focus();
+    if (this._front && this._doorView === 'play') this._front.focus();
+    else if (this._preparation) this._preparation.focus();
     else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
@@ -2708,6 +2869,9 @@ export const crucibleScreen = {
     this._refreshDaily = this._dailyVisibility = this._refreshCabinetBoard = null;
     this._preparation?.dispose();
     this._preparation = null;
+    this._front?.dispose();
+    this._front = null;
+    this._playSwarm = this._showFront = this._showMore = this._resetLaunching = null;
     for (const station of this._stations || []) station?.dispose?.();
     this._stations = [];
     this._regions = null;

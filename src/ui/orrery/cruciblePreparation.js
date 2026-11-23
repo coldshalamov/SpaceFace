@@ -253,7 +253,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
       purseN.textContent = state.ruleset === 'scored' ? '30' : state.ruleset === 'block' ? '10' : '5';
     }
     cadence.textContent = isSwarm
-      ? `${startsAtZero ? 'Starting Scrap' : 'Starting credits'}\nShop after each round · Boss every ${SWARM_BOSS_EVERY} rounds · Refit every ${SWARM_REFIT_EVERY} rounds`
+      ? `${startsAtZero ? 'Starting Scrap' : 'Starting credits'}\nGuns on the floor · Boss every ${SWARM_BOSS_EVERY} rounds · Refit every ${SWARM_REFIT_EVERY} rounds`
       : 'Your starter kit is ready before launch.';
     const buildKey = `${state.starterId}:${state.weeklyMutatorId || ''}:${state.ruleset}:${state.hullFirst}`;
     if (lastBuild !== buildKey) {
@@ -375,8 +375,194 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     }
   }
   show(0);
-  return { update, attractHost: arenaHero ? attractHost : null,
+  return { update, attractHost: arenaHero ? attractHost : null, show,
     get previewVisible() { return step === 0 && read().ruleset === 'swarm'; },
     focus() { tabs[step].focus({ preventScroll: true }); },
     dispose() { onPreviewVisibility(false); jig.dispose(); ring.dispose(); for (const ro of roPool) ro.disconnect(); } };
+}
+
+/**
+ * THE SWARM FRONT (04_SWARM.md §7): the screen a player meets. The Foundry's key art, one big PLAY,
+ * and three remembered picks — the room, the difficulty and the ship with its starting gun.
+ * Everything else the door can do (the other modes, the Daily, challenges, seeds, records) stays
+ * whole behind one More, which hands over to the full setup this module already composes.
+ *
+ * Each pick is a roving radio group: Left/Right (keyboard or pad) step it and wrap, the chevrons
+ * step it for a mouse or a thumb, and only the chosen option is drawn. Up/Down walk between the
+ * picks and PLAY. Enter is PLAY anywhere on the front (the screen's onKey owns it); Esc leaves.
+ * The screen owns every value and the launch: this module draws and reports.
+ */
+export function createSwarmPlayFront({
+  root, picks = [], pitch = '', onPlay = () => {}, onMore = () => {}, onBack = () => {},
+  resume = null, art = () => null, roomName = () => '',
+} = {}) {
+  const doc = root?.ownerDocument;
+  if (!doc?.createElementNS || !root.querySelector) return null;
+  const make = (tag, cls, text) => {
+    const n = doc.createElement(tag); if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    if (tag === 'button') n.type = 'button';
+    return n;
+  };
+  const chevron = (dir) => {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = doc.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
+    const path = doc.createElementNS(ns, 'path');
+    path.setAttribute('d', dir < 0 ? 'M10 3 5 8l5 5' : 'M6 3l5 5-5 5');
+    svg.appendChild(path);
+    return svg;
+  };
+  const front = make('section', 'sf-play');
+  front.setAttribute('aria-labelledby', 'sf-play-title');
+  const artBox = make('div', 'sf-play__art'); artBox.setAttribute('aria-hidden', 'true');
+  const layers = [make('img', 'sf-play__img'), make('img', 'sf-play__img')];
+  for (const img of layers) { img.alt = ''; img.decoding = 'async'; artBox.appendChild(img); }
+  const shade = make('div', 'sf-play__shade'); shade.setAttribute('aria-hidden', 'true');
+  const room = make('p', 'sf-play__room', ''); room.setAttribute('aria-hidden', 'true');
+  const panel = make('div', 'sf-play__panel');
+  const kicker = make('p', 'sf-play__kicker', 'Madame Kiln presents');
+  const title = make('h1', 'sf-play__title', 'Swarm'); title.id = 'sf-play-title';
+  const lede = make('p', 'sf-play__pitch', pitch);
+  const list = make('div', 'sf-play__picks');
+  panel.append(kicker, title, lede, list);
+
+  const rows = [];
+  for (const spec of picks) {
+    const group = make('div', `sf-play-pick${spec.sub ? ' sf-play-pick--sub' : ''}`);
+    group.setAttribute('role', 'radiogroup');
+    group.dataset.pick = spec.id;
+    const label = make('span', 'sf-play-pick__label', spec.label);
+    label.id = `sf-play-pick-${spec.id}`;
+    group.setAttribute('aria-labelledby', label.id);
+    const prev = make('button', 'sf-play-pick__step'); prev.tabIndex = -1; prev.appendChild(chevron(-1));
+    prev.setAttribute('aria-label', `Previous ${spec.label.toLowerCase()}`);
+    const next = make('button', 'sf-play-pick__step'); next.tabIndex = -1; next.appendChild(chevron(1));
+    next.setAttribute('aria-label', `Next ${spec.label.toLowerCase()}`);
+    const face = make('div', 'sf-play-pick__face');
+    const thumb = make('img', 'sf-play-pick__thumb'); thumb.alt = ''; thumb.decoding = 'async'; thumb.hidden = true;
+    const opts = make('div', 'sf-play-pick__opts');
+    face.append(thumb, opts);
+    const line = make('p', 'sf-play-pick__line', '');
+    group.append(label, prev, face, next, line);
+    list.appendChild(group);
+    const row = { spec, group, opts, line, thumb, prev, next, buttons: [] };
+    const step = (delta, focus) => {
+      const options = spec.options();
+      if (!options.length) return;
+      const here = Math.max(0, options.findIndex((o) => o.value === spec.value()));
+      const target = options[(here + delta + options.length) % options.length];
+      if (!target || target.value === spec.value()) return;
+      spec.choose(target.value);
+      paint();
+      if (focus) row.buttons.find((b) => b.dataset.value === String(target.value))?.focus({ preventScroll: true });
+    };
+    row.step = step;
+    prev.addEventListener('click', () => step(-1, false));
+    next.addEventListener('click', () => step(1, false));
+    group.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault(); event.stopPropagation();
+      step(event.key === 'ArrowRight' ? 1 : -1, true);
+    });
+    rows.push(row);
+  }
+
+  const go = make('button', 'sf-play__go');
+  go.append(make('span', 'sf-play__go-word', 'Play'), make('span', 'sf-play__key', 'Enter'));
+  go.setAttribute('aria-label', 'Play. Starts round 1.');
+  go.addEventListener('click', () => onPlay());
+  const alt = make('div', 'sf-play__alt');
+  const more = make('button', 'sf-play__quiet sf-play__more');
+  more.append(make('span', 'sf-play__quiet-word', 'More'), make('span', 'sf-play__quiet-sub', 'Gauntlet, Daily, seeds, records'));
+  more.setAttribute('aria-label', 'More: Gauntlet, Foundry Block, Daily, challenges, seeds and records');
+  more.addEventListener('click', () => onMore());
+  alt.appendChild(more);
+  if (resume) {
+    const back = make('button', 'sf-play__quiet sf-play__resume');
+    back.append(make('span', 'sf-play__quiet-word', resume.label));
+    if (resume.title) back.title = resume.title;
+    back.addEventListener('click', () => resume.onClick());
+    alt.appendChild(back);
+  }
+  const leave = make('button', 'sf-play__quiet sf-play__back');
+  leave.append(make('span', 'sf-play__quiet-word', 'Back'), make('span', 'sf-play__key sf-play__key--quiet', 'Esc'));
+  leave.addEventListener('click', () => onBack());
+  alt.appendChild(leave);
+  panel.append(go, alt);
+  front.append(artBox, shade, room, panel);
+  root.appendChild(front);
+
+  // Up/Down walk the front's stops: each pick's chosen option, PLAY, then the quiet keys.
+  const stops = () => [...rows.map((r) => r.buttons.find((b) => b.getAttribute('aria-checked') === 'true')), go,
+    ...alt.querySelectorAll('button')].filter(Boolean);
+  front.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    const list = stops();
+    const here = list.indexOf(doc.activeElement);
+    if (here < 0) return;
+    const target = list[Math.max(0, Math.min(list.length - 1, here + (event.key === 'ArrowDown' ? 1 : -1)))];
+    if (!target || target === doc.activeElement) return;
+    event.preventDefault(); event.stopPropagation();
+    target.focus({ preventScroll: true });
+  });
+
+  let front0 = 0; let shownArt = null;
+  function paintArt() {
+    const src = art();
+    if (!src || src === shownArt) return;
+    shownArt = src;
+    const nextImg = layers[1 - front0];
+    nextImg.src = src;
+    nextImg.classList.add('is-on');
+    layers[front0].classList.remove('is-on');
+    front0 = 1 - front0;
+  }
+  function paint() {
+    for (const row of rows) {
+      const options = row.spec.options();
+      const value = row.spec.value();
+      const known = new Map(row.buttons.map((b) => [b.dataset.value, b]));
+      const keep = [];
+      for (const option of options) {
+        let b = known.get(String(option.value));
+        if (!b) {
+          b = make('button', 'sf-play-pick__opt');
+          b.setAttribute('role', 'radio');
+          b.dataset.value = String(option.value);
+          // A press on the chosen face steps forward: the pad's A and a tap both cycle the pick.
+          b.addEventListener('click', () => row.step(1, true));
+        }
+        b.textContent = option.name;
+        const on = option.value === value;
+        b.setAttribute('aria-checked', String(on));
+        b.tabIndex = on ? 0 : -1;
+        b.hidden = !on;
+        if (option.line) b.setAttribute('aria-description', option.line); else b.removeAttribute('aria-description');
+        keep.push(b);
+      }
+      // Re-seating a focused option would drop focus; only rebuild when the set really changed.
+      const same = keep.length === row.opts.children.length && keep.every((b, i) => row.opts.children[i] === b);
+      if (!same) row.opts.replaceChildren(...keep);
+      row.buttons = keep;
+      const chosen = options.find((o) => o.value === value) || options[0] || null;
+      row.line.textContent = chosen?.line || '';
+      if (chosen?.art) { row.thumb.src = chosen.art; row.thumb.hidden = false; } else { row.thumb.hidden = true; row.thumb.removeAttribute('src'); }
+      const single = options.length < 2;
+      row.prev.hidden = single; row.next.hidden = single;
+      row.group.classList.toggle('is-single', single);
+    }
+    room.textContent = roomName();
+    paintArt();
+  }
+  paint();
+  return {
+    el: front,
+    play: go,
+    update: paint,
+    focus() { try { go.focus({ preventScroll: true }); } catch { /* best-effort */ } },
+    /** True when focus sits on a quiet key whose own Enter must win over PLAY. */
+    ownsEnter(active) { return !!active && alt.contains(active); },
+    dispose() { front.remove(); },
+  };
 }
