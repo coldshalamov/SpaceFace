@@ -144,6 +144,24 @@ test('latest-wins: destroy before a same-id re-spawn keeps the newest spawn rece
     'the batch carries the current occupant of the recycled id, not the dead first spawn');
 });
 
+test('a recycled id: the old occupant\'s late corpse does not drop the new occupant\'s spawn', () => {
+  const bus = createBus();
+  const batches = [];
+  bus.on(ENTITY_SPAWNED_BATCH_EVENT, (b) => batches.push(b.receipts.map((p) => p.tag)));
+  const oldBody = { id: 7 };
+  const newBody = { id: 7 };
+  bus.beginStep();
+  // Core removes the old body: its corpse is queued, its id goes back to the free list.
+  bus.queue('entity:destroyed', { id: 7, type: 'ship', entity: oldBody });
+  // A later spawn in the same step takes the freed id.
+  bus.emit(ENTITY_SPAWNED_EVENT, { id: 7, type: 'ship', entity: newBody, tag: 'new' });
+  // The sweep flushes the old corpse after the new spawn.
+  bus.flush();
+  bus.endStep();
+  assert.deepEqual(batches, [['new']],
+    'the new occupant stays in the batch, so its mesh and radar contact are built');
+});
+
 test('a spawn queued through bus.queue still batches at the flush (defensive contract)', () => {
   const bus = createBus();
   const order = [];

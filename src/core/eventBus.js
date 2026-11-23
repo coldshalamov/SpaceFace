@@ -453,7 +453,17 @@ export function createBus() {
 
   function noteWindowEntityDestroyed(payload) {
     const id = payload && payload.id;
-    if (id != null) spawnedReceiptsById.delete(id);
+    if (id == null) return;
+    // Ids recycle the moment a body is removed, and a queued corpse flushes at the end of
+    // the sweep, after a later spawn may already hold the same id. Only the corpse of the
+    // receipt's own occupant supersedes it; a receipt or corpse without an entity ref falls
+    // back to the id match.
+    const receipt = spawnedReceiptsById.get(id);
+    if (!receipt) return;
+    const occupant = receipt.entity;
+    const corpse = payload.entity;
+    if (occupant && corpse && occupant !== corpse) return;
+    spawnedReceiptsById.delete(id);
   }
 
   function flushSpawnedBatch() {
