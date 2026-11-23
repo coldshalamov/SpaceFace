@@ -66,9 +66,13 @@ test('every Adventure-only action resolves to nothing in a live Swarm run', () =
 test('the same Adventure-only actions still resolve normally in Adventure', () => {
   for (const action of ADVENTURE_ONLY) {
     assert.equal(swarmFlightActionAllowed(ADVENTURE, action), true, action);
-    // G18-02: the Adventure verbs carry no keyboard seat — they are wheel slices and
-    // rebindable rows, so an empty code list is correct here, not a broken binding.
-    assert.deepEqual(resolveActionCodes(ADVENTURE, action), [], `${action} ships on the wheel in adventure`);
+    // G18-02: most Adventure verbs carry no keyboard seat — they are wheel slices and
+    // rebindable rows — but two earned a real key back (R17: the scanner pulse on C, and the
+    // cloak on V, the fitted-cloak verb).
+    const CODES = { scanPulse: ['KeyC'], cloak: ['KeyV'] };
+    const codes = resolveActionCodes(ADVENTURE, action);
+    assert.deepEqual(codes, CODES[action] || [],
+      CODES[action] ? `${action} ships on its own key in adventure` : `${action} ships on the wheel in adventure`);
   }
   // Adventure uses the same Shift boost and F tether defaults.
   assert.deepEqual(resolveActionCodes(ADVENTURE, 'boost'), ['ShiftLeft', 'ShiftRight']);
