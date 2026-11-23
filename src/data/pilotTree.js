@@ -80,7 +80,7 @@ const GUNNER = branchNodes('gunner', [
 ]);
 
 const BRUISER = branchNodes('bruiser', [
-  [1, 'Heavy Slugs', 'Thump shots knock their target about a third further.'],
+  [1, 'Heavy Slugs', 'Heavy guns knock what they hit about a third further.'],
   [1, 'Stagger', 'A hard knock stops them firing for a second.'],
   [2, 'Billiards', 'Knock one flying: it kills the first enemy it meets, whatever its hull.'],
   [3, 'Pass It On', 'Your flying body knocks the next one flying too.'],
