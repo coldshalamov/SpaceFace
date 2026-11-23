@@ -888,7 +888,7 @@ export function createReelProgress(doc = globalThis.document) {
   n.className = 'orr-cr-progress__n';
   const l = doc.createElement('span');
   l.className = 'orr-cr-progress__l';
-  l.textContent = 'Of reel';
+  l.textContent = 'Seen';
   read.append(n, l);
   el.append(s, read);
   let shown = -1;

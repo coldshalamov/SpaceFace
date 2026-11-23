@@ -449,7 +449,7 @@ function buildMixer(doc) {
       outNum.className = '';
       outNum.textContent = 'Muted';
       outUnit.hidden = true;
-      outLab.textContent = 'All held';
+      outLab.textContent = 'Sound off';
       return;
     }
     outUnit.hidden = false;
@@ -457,7 +457,8 @@ function buildMixer(doc) {
     if (!counter) counter = createCounter(outNum, { format: (n) => String(Math.round(n)) });
     counter.set(pctNow);
     const ch = MIXER_CHANNELS.find((c0) => c0.key === focusKey);
-    outLab.textContent = `${ch ? ch.label : 'Master'} · out`;
+    // The figure is what reaches the speakers (the channel times Master), said in plain words.
+    outLab.textContent = `${ch ? ch.label : 'Master'} · as heard`;
   };
   let liveTimer = 0;
   return {

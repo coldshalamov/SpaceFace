@@ -321,7 +321,8 @@ export function fmtLastFlown(savedAt, now = Date.now()) {
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 30) return days + ' days ago';
-  return new Date(t).toLocaleDateString();
+  // The same date voice as the ledger's stamp ("Sep 22, 2026"), never a numeric 9/22/2026.
+  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /** "22 Sep 2026, 15:41": the ledger's stamp for when a save was filed. */
