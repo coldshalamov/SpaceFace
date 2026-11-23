@@ -90,6 +90,11 @@ ${NG} .orr-ng-caption > div.orr-ng-loadout > .fh-legend {
     grid-template-columns:13.2em 1.1em !important; font-size:12px !important; }
 }
 
+/* the hull's ratings are figures in a table: the body face with tabular numbers, not the code face
+   (the deckplate ship sheet paints them in --dp-face-num, which is the mono) */
+${NG} .sfs__num { font-family:var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif !important; font-weight:600 !important;
+  font-variant-numeric:tabular-nums lining-nums !important; }
+
 /* yard hull names ride above every model, so a hero's engine glow never cuts a rear name */
 ${NG} .orr-yard--models > .orr-turntable__row { z-index:auto !important; }
 ${NG} .orr-yard--models > .orr-turntable__row > li { z-index:120 !important; }
@@ -133,6 +138,22 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NG} .orr-ng-caption > .k-sentence { font-size:15.5px !important; line-height:1.5 !important; max-width:34em !important; }
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:13.5px !important; }
+}
+
+/* every desktop window up to 800 tall (1280×720, 1366×650): the form column held 490px of choices in a ~350px
+   window, so First flight and the seed sat under the scroll fade and a stranger never saw "Teach me". The
+   difficulty stations close to 28px rows (the scale re-measures and redraws its ruler) and the hairline gaps
+   close to one 4px beat; First flight now reads before the seed, so the choice that matters shows first. */
+@media (min-width:801px) and (max-height:800px) {
+  ${NGD} .sf-ng-body .orr-ng-gap { height:4px !important; }
+  ${NGD} .orr-stopscale--y > .orr-stopscale__row > li > .k-word { min-height:28px !important; height:28px !important;
+    padding-top:0 !important; padding-bottom:0 !important; align-items:center !important; }
+  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { margin-bottom:8px !important; }
+}
+/* ≤700 tall (1366×650): the frame's 68px margins top and bottom close to 40/32 and the rows to 12px, so the
+   column gains the ~70px First flight needs instead of leaving it under the fade */
+@media (min-width:1101px) and (max-height:700px) {
+  ${NGD} { padding-top:40px !important; padding-bottom:32px !important; row-gap:12px !important; }
 }
 
 /* 801–1100 wide desktop, ≤600 tall (960×540): the stage is ~490px wide, so the fittings' column ran under the

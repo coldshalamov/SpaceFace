@@ -541,7 +541,8 @@ export const newGameScreen = {
     });
     // The scale stands on end, so the stations take Up/Down along their own line — the roving's
     // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
-    // off the first station climbs back to the starter words, Down off the last falls to the seed.
+    // off the first station climbs back to the starter words, Down off the last falls to First
+    // flight (the seed is the column's last, advanced field).
     diffWords.addEventListener('keydown', (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
@@ -555,7 +556,8 @@ export const newGameScreen = {
         const target = liveWordIn(starterWords);
         if (target) target.focus();
       } else {
-        seed.focus();
+        const target = liveWordIn(firstFlightWords);
+        if (target) target.focus(); else seed.focus();
       }
     });
     // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
@@ -611,9 +613,9 @@ export const newGameScreen = {
     // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
     seed.addEventListener('input', () => { syncSeedHint(); this._emitEmbarkSpec(); });
     syncSeedHint();
-    body.appendChild(seedField.wrap);
-    body.appendChild(hairline());
 
+    // First flight sits above the seed: it is the choice a stranger needs on a short window, and
+    // the seed is an advanced field that can wait at the foot of the column.
     const firstFlightField = field('First flight');
     firstFlightField.label.id = 'sf-ng-first-flight-label';
     const firstFlightWords = words([
@@ -633,21 +635,29 @@ export const newGameScreen = {
     firstFlightField.wrap.appendChild(firstFlightDesc);
     body.appendChild(firstFlightField.wrap);
     body.appendChild(hairline());
+    body.appendChild(seedField.wrap);
+    body.appendChild(hairline());
     firstFlightWords.addEventListener('focusout', (e) => {
       if (e.relatedTarget && firstFlightWords.contains(e.relatedTarget)) return;
       for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
     });
+    // Up/Down walk the column as it reads: difficulty, First flight, then the seed.
     seed.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
       const target = liveWordIn(firstFlightWords);
       if (!target) return;
       e.preventDefault();
       target.focus();
     });
     firstFlightWords.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      e.preventDefault();
-      seed.focus();
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); seed.focus(); }
+      else if (e.key === 'ArrowUp') {
+        const target = liveWordIn(diffWords);
+        if (!target) return;
+        e.preventDefault();
+        target.focus();
+      }
     });
 
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
