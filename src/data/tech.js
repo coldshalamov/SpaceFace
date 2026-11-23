@@ -24,7 +24,8 @@ export const TECH_NODES = [
   {
     id: 'tech_kinetic_drivers', name: 'Kinetic Drivers', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 3667, rp: 6 },
-    unlocks: { modules: ['wpn_autocannon_m', 'wpn_railgun_m', 'wpn_concussion_cannon_m', 'wpn_concussion_cannon_s'] },
+    // Concussion Cannon S is a starter gun (credits only, R7); the node no longer claims to open it.
+    unlocks: { modules: ['wpn_autocannon_m', 'wpn_railgun_m', 'wpn_concussion_cannon_m'] },
   },
   {
     id: 'tech_guided_ordnance', name: 'Guided Ordnance', branch: 'combat', prereqs: ['tech_combat_basics'],
