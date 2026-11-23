@@ -69,6 +69,7 @@ import { armedOrdnanceCounts } from '../data/arsenalPresentation.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powerUsesReleasePreview, savedCodesForPower, setHeldPower,
 } from './powerVerbs.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
 
 // R17: S held above this forward speed (wu/s) is a brake; below it, S reverses.
 const S_BRAKE_MIN_FORWARD_SPEED = 25;
@@ -79,6 +80,14 @@ const HELM_SOFT_ANGLE = 0.55;
 
 const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
+
+// CONTROLLER-1 pad aim: the reticle rides stick deflection between these distances (wu), and
+// the soft assist eases the crosshair toward a hostile inside the cone — an aim aid, not a lock.
+const PAD_AIM_MIN_DIST = 110;
+const PAD_AIM_MAX_DIST = 380;
+const PAD_AIM_ASSIST_CONE = 0.16;      // rad (~9°) around the stick bearing that counts as "aimed at"
+const PAD_AIM_ASSIST_RANGE = 700;      // wu — nothing this far out is a near-miss worth easing
+const PAD_AIM_ASSIST_STRENGTH = 0.35;  // fraction of the gap the reticle is dragged toward the target
 
 
 // ---- Travel Burn latch (atlas D5 / W1-5) ------------------------------------------------------
@@ -1030,6 +1039,33 @@ function stickWorldDirection(host, state, player, axes) {
   out.x = Math.cos(yaw) * axes.y - Math.sin(yaw) * axes.x;
   out.z = Math.sin(yaw) * axes.y + Math.cos(yaw) * axes.x;
   return out;
+}
+
+// CONTROLLER-1: nearest hostile inside the pad aim cone around the stick's bearing — the
+// candidate the soft assist eases toward. Deliberately re-reads the same hostility contract
+// the HUD threat chevrons use (isHostileToPlayer) so a "legitimate target" is whatever the
+// game already calls red; it never invents a lock and never picks a friendly.
+function findPadAimAssistTarget(host, state, player, stickAngle) {
+  const ents = state && state.entities;
+  if (!ents || typeof ents.values !== 'function' || !player || !player.pos) return null;
+  const playerTeam = player.team;
+  let best = null;
+  let bestErr = PAD_AIM_ASSIST_CONE;
+  let bestDist = Infinity;
+  for (const e of ents.values()) {
+    if (!e || e.id === state.playerId || !e.pos) continue;
+    const dx = e.pos.x - player.pos.x;
+    const dz = e.pos.z - player.pos.z;
+    const range = Math.hypot(dx, dz);
+    if (range > PAD_AIM_ASSIST_RANGE) continue;
+    const err = Math.abs(wrapAngle(Math.atan2(dz, dx) - stickAngle));
+    if (err > bestErr && !(err === bestErr && range < bestDist)) continue;
+    if (!isHostileToPlayer(e, playerTeam, state)) continue;
+    bestErr = err;
+    bestDist = range;
+    best = e;
+  }
+  return best;
 }
 
 // --- normalized DOM-event reducers -------------------------------------------
@@ -2082,11 +2118,11 @@ export const input = {
     const p = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
-    // PQ-164.04: pad flight scheme is its own axis — 'drive' keeps the wheel map;
-    // 'twinstick' turns the left stick into a screen-frame drive vector while the right
-    // stick aims and steers the nose (the chase runs below once aimAngle exists).
+    // PQ-164.04 / CONTROLLER-1: pad flight scheme is its own axis — 'twinstick' is the
+    // shipping default (left stick drives in screen space, right stick aims and steers
+    // the nose); 'drive' keeps the legacy wheel map (left stick yaw + throttle).
     const padCfg = (state.settings && state.settings.controls && state.settings.controls.gamepad) || {};
-    const padScheme = padCfg.scheme === 'twinstick' ? 'twinstick' : 'drive';
+    const padScheme = padCfg.scheme === 'drive' ? 'drive' : 'twinstick';
     // FB-004: response shaping applies to derived intents only — gp.axes keep the raw deadzoned
     // truth. 'linear' with sensitivity 1 reproduces the shipped numbers exactly.
     const padCurve = normalizePadCurve(padCfg.curve);
@@ -2325,16 +2361,33 @@ export const input = {
       const world = stickWorldDirection(this, state, p, shapedAim);
       const worldX = world.x, worldZ = world.z;
       const angle = Math.atan2(worldZ, worldX);
-      const dist = 300;
+      // CONTROLLER-1: the reticle rides the stick, not a fixed peg — a half push drops the
+      // crosshair close for dockside work, a full throw reaches out for a firing lead.
+      const aimMag = Math.min(1, Math.hypot(ax, ay));
+      const dist = PAD_AIM_MIN_DIST + (PAD_AIM_MAX_DIST - PAD_AIM_MIN_DIST) * aimMag;
       inp.aimAngle = angle;
       aimWorld.x = p.pos.x + Math.cos(angle) * dist;
       aimWorld.z = p.pos.z + Math.sin(angle) * dist;
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
+      // CONTROLLER-1 soft aim assist: the stick is an intention, not a lock. When a hostile
+      // sits inside the assist cone near the stick's bearing, the reticle eases part-way
+      // toward it — never a snap — so near-misses track like a twin-stick shooter should.
+      if (aimIsPad && padScheme === 'twinstick' && padCfg.stickAimAssist !== false) {
+        const assistTarget = findPadAimAssistTarget(this, state, p, angle);
+        if (assistTarget) {
+          const blend = PAD_AIM_ASSIST_STRENGTH;
+          aimWorld.x += (assistTarget.pos.x - aimWorld.x) * blend;
+          aimWorld.z += (assistTarget.pos.z - aimWorld.z) * blend;
+          inp.aimAngle = Math.atan2(aimWorld.z - p.pos.z, aimWorld.x - p.pos.x);
+          inp.aimAssistTargetId = assistTarget.id;
+        } else if (inp.aimAssistTargetId != null) delete inp.aimAssistTargetId;
+      } else if (inp.aimAssistTargetId != null) delete inp.aimAssistTargetId;
       const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
       writeAutoTargetVector(inp, worldX, worldZ, controllerDrawToFly, ax, ay);
     } else {
       if (inp.aimFromStick) delete inp.aimFromStick;
+      if (inp.aimAssistTargetId != null) delete inp.aimAssistTargetId;
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       // FB-004: the raw _ndc stays the device truth; sensitivity and Y inversion apply to the
       // derived aim channel only (amplified or flipped NDC still raycasts — the aim just points

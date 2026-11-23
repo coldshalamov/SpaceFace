@@ -88,14 +88,16 @@ function defaultSettings() {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       masslineBindingProfile: 'space-v1', // new profiles: Space primary + persistent F alias
       flightMode: 'assisted',
-      // scheme: 'drive' keeps the wheel-like pad map (left stick = yaw + throttle);
-      // 'twinstick' makes the left stick a world-frame drive vector while the right stick
-      // aims and steers the nose (PQ-164.04). schemeSuggested: the one-shot pad-connect toast.
+      // CONTROLLER-1: 'twinstick' is the shipping pad scheme — left stick is a world-frame
+      // drive vector, right stick aims and steers the nose. 'drive' remains as the legacy
+      // wheel-like opt-out (left stick = yaw + throttle); old saves normalize to it and the
+      // one-shot pad-connect toast points those profiles at the default. schemeSuggested is
+      // that toast's latch.
       // FB-004: curve/feel tuning. 'linear' + deadzoneRight = deadzone + sensitivity 1 reproduces
       // the shipped numbers exactly; 'expo' softens the center without losing the edges, and the
       // right stick's deadzone is its own axis so aim jitter never tunes out fly precision.
       gamepad: {
-        enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false,
+        enabled: true, deadzone: 0.12, invertY: false, scheme: 'twinstick', schemeSuggested: false,
         curve: 'linear', deadzoneRight: 0.12, sensitivityAim: 1, sensitivityFly: 1,
         // FB-002/B117: which face-button vocabulary prompts print — 'xb' A/B/X/Y, 'ds'
         // DualShock shapes, 'fh' Field Hardware circled letters. Speech and prompt chips

@@ -222,23 +222,28 @@ test('Cargo-owned pad input stays out of flight through close until the held but
   hardware([6]);
   assert.equal(state.input.actions.massline.source, 'gamepad');
 
-  hardware([0, 1, 6], true);
+  // CONTROLLER-1 seats: A = Accept/Shove, B = Back/Bomb, RB = Boost, LT = the Line.
+  hardware([0, 1, 5, 6], true);
   assert.equal(state.input.boost, false);
   assert.equal(state.input.moveZ, 0);
   assert.equal(state.input.actions.massline.cut, false, 'taking the UI pad does not cut a short Line hold');
-  assert.notEqual(state.input.actions.toggleClearingCone, true);
-  hardware([0, 1, 6]);
-  assert.equal(state.input.boost, false, 'Cargo Accept cannot become a held Boost after close');
+  assert.notEqual(state.input.actions.shove?.pressed, true);
+  assert.notEqual(state.input.actions.bomb?.pressed, true);
+  hardware([0, 1, 5, 6]);
+  assert.equal(state.input.boost, false, 'Cargo-held RB cannot become a held Boost after close');
   assert.equal(state.input.moveZ, 0);
-  assert.notEqual(state.input.actions.toggleClearingCone, true, 'Cargo Back cannot become a fresh Rig press');
+  assert.equal(state.input.moveX, 0, 'the captured stick stays fenced too');
+  assert.notEqual(state.input.actions.shove?.pressed, true, 'Cargo Accept cannot become a fresh Shove after close');
+  assert.notEqual(state.input.actions.bomb?.pressed, true, 'Cargo Back cannot become a fresh Bomb press');
   hardware([]);
-  hardware([0, 1]);
-  assert.equal(state.input.boost, true);
-  assert.equal(state.input.actions.toggleClearingCone, true);
+  hardware([0, 1, 5]);
+  assert.equal(state.input.boost, true, 'a fresh RB press is Boost again');
+  assert.equal(state.input.actions.shove.pressed, true, 'a fresh A press reaches the Shove power');
+  assert.equal(state.input.actions.bomb.pressed, true, 'a fresh B press reaches the Bomb power');
 
   state.ui.cargoPanelOpen = true;
   host.ingestLaneDomEvent({ type: 'keydown', code: 'KeyW', pressed: true });
-  hardware([0, 1]);
+  hardware([0, 1, 5]);
   assert.equal(state.input.boost, false, 'same-realm Cargo ownership also fences the pad');
   assert.equal(state.input.moveZ, 1, 'keyboard steering remains live');
 });
@@ -554,9 +559,11 @@ test('PQ-003 modal reset blocks held-through input but accepts the first fresh p
   assert.equal(state.input.actions.massline.latch, false, 'a held-through press cannot leak out of the modal');
 });
 
-test('the rope stays on A while a dock prompt is up, because dock is a different button', () => {
+test('the rope stays on the pad Line button while a dock prompt is up, because dock is a different button', () => {
   const gp = {
-    axes: { leftX: -0.75, leftY: -0.8, rightX: 0, rightY: 0 },
+    // CONTROLLER-1 twin-stick: the left stick is a screen-space drive vector — pushing the
+    // world-forward direction feeds the reel channel, the strafe channel carries orbit intent.
+    axes: { leftX: 0.75, leftY: -0.8, rightX: 0, rightY: 0 },
     actions: {
       massline: { held: true, pressed: true, released: false, value: 1 },
       boost: { held: true }, fire: { held: false }, mine: { held: false },
@@ -574,8 +581,8 @@ test('the rope stays on A while a dock prompt is up, because dock is a different
 
   assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
   assert.equal(state.input.actions.massline.lineControl, true);
-  assert.ok(state.input.actions.massline.lineLength < -0.7, 'stick forward reels in');
-  assert.ok(state.input.actions.massline.orbitDirection < -0.7, 'stick left requests counterclockwise orbit');
+  assert.ok(state.input.actions.massline.lineLength < -0.7, 'stick toward the line reels in');
+  assert.ok(state.input.actions.massline.orbitDirection > 0.7, 'the strafe channel carries the orbit request');
   assert.equal(state.input.actions.massline.pump, true);
 
   const dockHost = makeInput(gp);
@@ -583,7 +590,7 @@ test('the rope stays on A while a dock prompt is up, because dock is a different
   dockState.ui.dockInRange = true;
   step(dockHost, dockState);
   assert.ok(dockState.input.actions.massline);
-  assert.equal(dockState.input.actions.massline.latch, true, 'A still latches while the dock prompt is up');
+  assert.equal(dockState.input.actions.massline.latch, true, 'the Line button still latches while the dock prompt is up');
 });
 
 test('active cold gamepad right-stick aim is explicit intent and neutral/modal input clears it', () => {

@@ -286,6 +286,7 @@ export const REBIND_LABELS = {
   countermeasure: 'Countermeasure',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
+  cargo: 'Cargo bag (open/close)',
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
@@ -297,7 +298,7 @@ export const GAMEPAD_REBINDABLE = [
   'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'bomb', 'cycleBomb', 'tabPrev', 'tabNext',
   'scanPulse', 'cruise', 'bulletTime', 'cloak', 'siteBeam', 'pin', 'pull',
-  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon',
+  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon', 'cargo',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -322,7 +323,7 @@ export const GAMEPAD_REBIND_LABELS = {
   tabNext: 'Station tab: next',
   bomb: 'Bomb: sticky charge, or the chosen drift bomb',
   cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
-  // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
+  // CONTROLLER-1 shift layer — hold LB and the face/view buttons take their second seat.
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   bulletTime: 'Bullet time (hold)',
@@ -1259,6 +1260,12 @@ export const settingsScreen = {
           this._set(ctx, 'accessibility', 'textScale', value, persist);
           applyTextScaleFromSettings(s);
         });
+      // CONTROLLER-1: the one-tap handheld switch — same textScale channel, pinned to 130%.
+      rowToggle('Large text', () => Number(ac.textScale) >= 1.2, (v) => {
+        this._set(ctx, 'accessibility', 'textScale', v ? 1.3 : 1);
+        applyTextScaleFromSettings(s);
+        this._render(ctx);
+      });
       // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
       // often wants MORE rumble, so this never follows the reduce-motion choice.
       rowSelect('Controller rumble', () => ac.haptics || 'full',
@@ -1339,11 +1346,18 @@ export const settingsScreen = {
     build.toggle('Gamepad enabled', () => !!gp().enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), enabled: v }));
     build.slider('Stick deadzone', () => gp().deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzone: v }, persist));
     build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
+    // CONTROLLER-1: flight assists own the scheme choice and the aim aid — everything here
+    // shapes what the sticks mean, not what the buttons do.
+    build.header('Flight assists');
     // PQ-164.04: the twin-stick scheme — left stick drives in screen space, right stick aims
     // and steers the nose. 'Drive' keeps the wheel map (left stick yaw + throttle).
     build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
       [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
       (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
+    // CONTROLLER-1: the soft pull toward a hostile inside the aim cone — a near-miss aid,
+    // never a lock. Twin-stick only.
+    build.toggle('Stick aim assist', () => gp().stickAimAssist !== false,
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), stickAimAssist: v }));
     // FB-004: response tuning. The right stick's deadzone is its own axis — aim jitter should
     // never force the fly hand wider. 'Expo' softens the stick's center while the edge still
     // reaches full deflection; the sensitivities scale derived intent, never the raw axes.
@@ -1378,15 +1392,15 @@ export const settingsScreen = {
       (v, persist) => this._set(ctx, 'controls', 'mouse', { ...mo(), sensitivity: v }, persist));
     build.toggle('Invert mouse Y (aim)', () => !!mo().invertY,
       (v) => this._set(ctx, 'controls', 'mouse', { ...mo(), invertY: v }));
-    // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
-    // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
-    // the live seat, including 'LB + D-Pad Up' style chords.
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, A/Cross Line, B dock when prompted, X/Square target, D-pad up auto-target, D-pad right bomb, D-pad left cycle bombs, View star map, Start → Pause → Mission Log. Hold LB or RB and tap a second button for scanner, fields, cloak and cruise.');
+    // Matches src/systems/gamepad.js GAMEPAD_DEFAULT_BINDINGS + UI route: Start/menu → pause
+    // only; Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
+    // LB is the shift bumper — every row below shows the live seat, 'LB + X' chords included.
+    build.note('Default layout: left stick drives, right stick aims, RT fire, LT the Line, RB boost, L3 brake, R3 cycle target. Powers under the thumb — A shove, Y pull, B bomb — with LB+X pin, LB+Y rig, LB+A countermeasure and LB+B scanner on the shift layer, and RB+Y the Gyre Snare. X docks when the prompt is up, D-pad left runs the mining beam, D-pad up toggles auto-target, hold D-pad down opens the wheel, View star map, Start → Pause → Mission Log.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
-    // (A/Cross accept+Massline, LB brake+tab, RB boost+tab); same-context doubles are denied.
+    // (A/Cross accept+Shove, B cancel+Bomb, LB tabPrev+chord modifier, RB boost+tabNext);
+    // same-context doubles are denied.
     build.header('Gamepad Buttons');
     const padMap = resolveGamepadBindings(s);
     GAMEPAD_REBINDABLE.forEach((action) => {

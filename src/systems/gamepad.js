@@ -19,30 +19,35 @@ import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 // dumb: it only translates the raw standard-gamepad layout into game actions. Flight behavior is
 // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
 //
-// Standard mapping (Xbox / PlayStation equivalent) — G18-02 "one set of keys":
-//   0  A / Cross      -> boost; UI accept on screens (disjoint contexts)
-//   1  B / Circle      -> cancel / back; RIG power in flight
+// Standard mapping (Xbox / PlayStation equivalent) — CONTROLLER-1 "everything on the pad":
+//   0  A / Cross      -> SHOVE power (the panic seat under the thumb); UI accept on screens
+//   1  B / Circle      -> BOMB power in flight; UI cancel / back on screens
 //   2  X / Square      -> dock / interact when the station prompt is up
-//   3  Y / Triangle    -> hold for the context wheel (aim with a stick, release to choose)
-//   4  LB / L1         -> PULL power; station tab previous
-//   5  RB / R1         -> SHOVE power; station tab next
-//   6  LT / L2         -> the Line — fire / hold / release (same role as RMB)
+//   3  Y / Triangle    -> PULL power
+//   4  LB / L1         -> the shift bumper: hold it and the face/view buttons do their
+//                        second job (LB+X PIN · LB+Y RIG · LB+A countermeasure ·
+//                        LB+B scanner pulse · LB+View chase/overhead); station tab previous
+//   5  RB / R1         -> boost (held); station tab next
+//   6  LT / L2         -> the Line — tap to latch/throw, hold to reel (same grammar as RMB)
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
-//  10  L3              -> unbound (free seat)
+//  10  L3              -> brake (full stop)
 //  11  R3              -> cycle target
 //  12  D-pad up        -> UI nav up; auto-target / draw-to-fly toggle in flight
-//  13  D-pad down      -> UI nav down; PIN power
-//  14  D-pad left      -> UI nav left; unbound in flight
-//  15  D-pad right     -> UI nav right; BOMB power
+//  13  D-pad down      -> UI nav down; hold for the context wheel in flight
+//  14  D-pad left      -> UI nav left; hold for the mining beam in flight
+//  15  D-pad right     -> UI nav right
 //  16  Home / Guide    -> codex / journal (see GAMEPAD_DEFAULT_BINDINGS)
 //
-// Everything that is not on the one-set-of-keys table lives on the context wheel — brake,
-// mine, reel, countermeasure, scan/site beams, deploys, bullet time, cloak, gyre, cruise,
-// travel burn, cargo dump, bomb-bay cycling — exactly like Q on the keyboard. Chord names
-// ('<modifier>+<button>') remain fully supported for player remaps: a chorded button's solo
-// verb is suppressed while the modifier holds it; the modifier's own verb keeps working.
+// The three powers a fight reaches for — Shove, Pull, Bomb — sit under the right thumb on
+// A, Y and B; Pin and Rig ride the hold-LB layer, so all five are one press away and never
+// a radial. The Gyre Snare keeps its shipped RB+Y lash — a hold-to-beam verb needs a real
+// button's two edges. Everything else (reel, site beam, deploys, bullet time, cloak,
+// cruise, travel burn, cargo dump, bomb-bay cycling) lives on the context wheel —
+// exactly like Q on the keyboard. Chord names ('<modifier>+<button>') remain fully
+// supported for player remaps: a chorded button's solo verb is suppressed while the
+// modifier holds it; the modifier's own verb keeps working.
 
 const STD = {
   accept: 0,
@@ -89,20 +94,22 @@ export function isGamepadButtonName(name) {
 // This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
 // settings.controls.gamepad.bindings — resolved per tick by resolveGamepadBindings().
 export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
-  // G18-02 "one set of keys" — the pad speaks the same layout as WASD + mouse:
-  //   left stick move · right stick aim · RT fire · LT the Line · A boost · bumpers+faces powers
-  //   X interact/dock · View map · hold Y the context wheel (everything off the table).
+  // CONTROLLER-1 — the pad a shipped game expects. Twin-stick is the default scheme
+  // (left stick drives in screen space, right stick aims the reticle and the nose).
+  // The fight powers sit under the right thumb; LB is the shift bumper — hold it and
+  // the face/view buttons take their second seat.
   fire: Object.freeze(['r2']),
-  massline: Object.freeze(['l2']),     // LT is the Line — hold/aim/release, same grammar as RMB
-  boost: Object.freeze(['accept']),    // A boosts in flight; on screens A still confirms
-  brake: Object.freeze([]),            // full stop is a wheel latch
-  // The five powers (owner 2026-10-22, powerVerbs.js) seat on the bumpers and face/d-pad side:
-  pull: Object.freeze(['l1']),         // LB pulls the well
-  shove: Object.freeze(['r1']),        // RB shoves — the repulsor plus ordnance detonation
-  pin: Object.freeze(['dDown']),       // plant the anchor seed
-  bomb: Object.freeze(['dRight']),
-  rig: Object.freeze(['cancel']),      // B rigs in flight; B stays cancel while a screen owns input
-  cycleTarget: Object.freeze(['r3']),
+  massline: Object.freeze(['l2']),     // LT is the Line — tap latch/throw, hold to reel
+  boost: Object.freeze(['r1']),        // RB boosts (held)
+  brake: Object.freeze(['l3']),        // click the drive stick for a full stop
+  // The five powers (owner 2026-10-22, powerVerbs.js): the fight three under the right
+  // thumb, the anchor and the plow one bumper-hold away — never a radial in a fight.
+  pull: Object.freeze(['alt']),        // Y pulls the well at the reticle
+  shove: Object.freeze(['accept']),    // A shoves — the repulsor plus ordnance detonation
+  pin: Object.freeze(['l1+action']),   // LB+X plants the anchor seed
+  bomb: Object.freeze(['cancel']),     // B throws/detonates; B stays cancel on a screen
+  rig: Object.freeze(['l1+alt']),      // LB+Y rigs the plow
+  cycleTarget: Object.freeze(['r3']),  // click the aim stick for the next target
   autoTarget: Object.freeze(['dUp']),
   map: Object.freeze(['view']),
   steeringView: Object.freeze(['l1+view']), // LB+View: chase / overhead without opening the map
@@ -112,16 +119,27 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   // Dock/interact is X — one airlock muscle-memory in both doors. B keeps its screen cancel.
   dock: Object.freeze(['action']),
   cancel: Object.freeze(['cancel']),
-  contextWheel: Object.freeze(['alt']), // hold Y: the overflow wheel — aim with a stick, release to choose
+  // Hold D-pad down and the overflow wheel opens; the right stick picks the slice and
+  // letting go chooses — the same grammar the keyboard's held Q uses.
+  contextWheel: Object.freeze(['dDown']),
   tabPrev: Object.freeze(['l1']),
   tabNext: Object.freeze(['r1']),
-  // Everything off the one-set table answers to the wheel instead of a dedicated seat; each of
+  // The LB shift layer's spare combat seats — verbs a fight still wants a press for.
+  countermeasure: Object.freeze(['l1+accept']), // LB+A pops the flare
+  scanPulse: Object.freeze(['l1+cancel']),      // LB+B pings the scanner
+  // The mining beam has a real key on the keyboard (G) — it gets a real held seat here too,
+  // not a wheel slice; hold D-pad left to run the beam.
+  mine: Object.freeze(['dLeft']),
+  // The cargo bag is the one free D-pad seat: tap right to open it, tap again
+  // (or B) to close — the keyboard's B row parity, rebindable like every verb.
+  cargo: Object.freeze(['dRight']),
+  // The Gyre Snare keeps its shipped seat: a hold-to-lash beam needs a button that can
+  // express both edges — RB+Y holds the beam open and letting Y go bowls the clump.
+  gyreSnare: Object.freeze(['r1+alt']),
+  // Everything off the table answers to the wheel instead of a dedicated seat; each of
   // these remains rebindable in Settings → Controls.
-  mine: Object.freeze([]),             // the beam is a wheel latch slice
-  countermeasure: Object.freeze([]),
   travelBurn: Object.freeze([]),
   cycleBomb: Object.freeze([]),        // the bay's cycle verb is a wheel tap (BOMB still throws)
-  scanPulse: Object.freeze([]),
   siteBeam: Object.freeze([]),
   bulletTime: Object.freeze([]),
   cloak: Object.freeze([]),
@@ -129,7 +147,6 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   deployBeacon: Object.freeze([]),
   deployShieldPylon: Object.freeze([]),
   jettisonLot: Object.freeze([]),
-  gyreSnare: Object.freeze([]),
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -309,6 +326,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   codex: 'flight',
   fire: 'flight',
   mine: 'flight',
+  cargo: 'flight',
   boost: 'flight',
   brake: 'flight',
   cycleTarget: 'flight',
@@ -339,9 +357,9 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   tabPrev: 'modal',
   tabNext: 'modal',
 });
-// G18-02: A is boost in flight and still UI accept on screens; the massline share survives for
-// old remaps that left the rope on A.
-const PAD_SHARE_PAIRS = new Set(['accept|boost', 'accept|massline']);
+// CONTROLLER-1: A is SHOVE in flight and still UI accept on screens — the same designed
+// arbitration boost and the rope once rode, kept for old remaps that left them on A.
+const PAD_SHARE_PAIRS = new Set(['accept|shove', 'accept|boost', 'accept|massline']);
 
 export function gamepadShareAllowed(a, b) {
   if (a === b) return true;
@@ -543,6 +561,32 @@ export function weaponImpactHaptic(payload, playerId) {
   const classified = classifyWeaponFamily(payload.weaponId);
   const family = classified && classified.family;
   const spec = family ? HAPTIC_WEAPON_FAMILY_PULSES[family] : null;
+  if (!spec) return null;
+  return { family, strong: spec.strong, weak: spec.weak, ms: spec.ms };
+}
+
+// CONTROLLER-1: the trigger pull itself is felt ONLY for heavy mounts — a railgun spike or
+// a missile leaving the rail reads through the hands like the shot's sound does. Rapid-fire
+// families (plasma, kinetic autocannon) are deliberately absent: at ~10 shots/s a per-shot
+// pulse is a continuous buzz, not feedback. The pulse is the lightest in the vocabulary and
+// always yields to a hit/kill pulse arriving the same tick.
+export const HAPTIC_FIRE_FAMILY_PULSES = Object.freeze({
+  missile:    { strong: 0.30, weak: 0.16, ms: 75 },
+  rail:       { strong: 0.26, weak: 0.14, ms: 60 },
+  concussion: { strong: 0.24, weak: 0.12, ms: 55 },
+});
+
+/**
+ * CONTROLLER-1 gate for one `combat:fire` record — the player's own trigger pull on a
+ * heavy mount. NPC fire, beams, deploys and unclassifiable mounts stay silent.
+ */
+export function weaponFireHaptic(payload, playerId) {
+  if (playerId == null || !payload) return null;
+  if (payload.ownerId !== playerId) return null;
+  if (typeof payload.weaponId !== 'string' || payload.weaponId.length === 0) return null;
+  const classified = classifyWeaponFamily(payload.weaponId);
+  const family = classified && classified.family;
+  const spec = family ? HAPTIC_FIRE_FAMILY_PULSES[family] : null;
   if (!spec) return null;
   return { family, strong: spec.strong, weak: spec.weak, ms: spec.ms };
 }
@@ -931,6 +975,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   // queues behind a busy gap for up to MOMENT_PENDING_MAX_TICKS. A live moment pulse owns
   // the channel for its whole tail — family candidates wait it out (and so usually drop).
   let pendingFamily = null;
+  let pendingFire = null;         // CONTROLLER-1 heavy-gun trigger pull — lowest priority
   let pendingMoment = null;
   let momentLiveTicks = 0;
   const momentRoots = new Map(); // rootId -> tick; dedupes one trick episode, capped 32
@@ -943,6 +988,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   let feltPulseLive = false;
   const clearPendingFeedback = () => {
     pendingFamily = null;
+    pendingFire = null;
     pendingMoment = null;
     momentLiveTicks = 0;
     momentRoots.clear();
@@ -1116,6 +1162,17 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const t = currentTick();
       if (pendingFamily && pendingFamily.queuedTick === t) return;
       pendingFamily = { ...spec, queuedTick: t };
+    }));
+    // CONTROLLER-1: the player's own heavy-gun trigger pull is a light pulse. Queued like
+    // the family candidate and admitted only when nothing heavier wants the slot — a hit
+    // felt always outranks the shot that made it.
+    unsubs.push(bus.on('combat:fire', (p) => {
+      if (!hapticsAcceptingFeedback()) return;
+      const spec = weaponFireHaptic(p, state && state.playerId);
+      if (!spec) return;
+      const t = currentTick();
+      if (pendingFire && pendingFire.queuedTick === t) return;
+      pendingFire = { ...spec, queuedTick: t };
     }));
     // The authoritative big-moment edge — bulletTime's detector already owns consequence,
     // visibility, cooldown and per-minute suppression; the pad consumes its verdict and
@@ -1298,15 +1355,15 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
         // Connecting is not a helm gesture and does not bump lastActiveTick. A deliberate
         // reacquire publishes only its new edge; buttons already held stay silent.
         if (connectionEvents && bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
-        // PQ-164.04: offer the twin-stick scheme once per profile on pad connect — a toast,
-        // never a silent default change; 'drive' stays the shipping pad feel until picked.
+        // CONTROLLER-1: twin-stick is the shipping scheme, so connect needs no upsell —
+        // only a legacy 'drive' profile gets the one-time pointer back to the default.
         const gpSettings = live && live.settings && live.settings.controls
           && live.settings.controls.gamepad;
-        if (connectionEvents && gpSettings && gpSettings.scheme !== 'twinstick' && gpSettings.schemeSuggested !== true) {
+        if (connectionEvents && gpSettings && gpSettings.scheme === 'drive' && gpSettings.schemeSuggested !== true) {
           gpSettings.schemeSuggested = true;
           if (bus && bus.emit) {
             bus.emit('toast', {
-              text: 'Controller connected — twin-stick flight (left stick drives, right stick aims) is available in Settings › Controls › Gamepad.',
+              text: 'Controller connected — twin-stick flight (left stick drives, right stick aims) is the default in Settings › Controls › Gamepad.',
               kind: 'info',
               ttl: 6,
             });
@@ -1572,6 +1629,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       if (level === 'off') {
         // Switching haptics off discards queued feedback; re-enabling replays nothing.
         pendingFamily = null;
+        pendingFire = null;
         pendingMoment = null;
         // An ADMITTED felt pulse is still this slice's feedback — leaving it
         // ticking through 'off' lets the moment resume the instant the level
@@ -1604,6 +1662,18 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
           } else {
             startPulse(pendingFamily, `weaponImpact:${pendingFamily.family}`);
             pendingFamily = null;
+          }
+        }
+        if (pendingFire) {
+          // The trigger pull only ever fills a quiet slot — a hit felt the same tick
+          // owns it, and one tick is the whole shelf life (never a stale shot).
+          const fireAge = hapticTick >= 0 && pendingFire.queuedTick >= 0
+            ? hapticTick - pendingFire.queuedTick : 0;
+          if (fireAge > 1 || pulseGapTicks > 0 || momentLiveTicks > 0) {
+            pendingFire = null;
+          } else {
+            startPulse(pendingFire, `weaponFire:${pendingFire.family}`);
+            pendingFire = null;
           }
         }
       }

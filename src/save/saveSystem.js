@@ -10494,9 +10494,9 @@ function sanitizeRestoredSettings(settings) {
   if (Object.prototype.hasOwnProperty.call(s.gameplay, 'runtimeProfile')) {
     delete s.gameplay.runtimeProfile;
   }
-  // One-time scheme migration: 'helm-assist' was the ambient default before the pilot scheme
-  // shipped, so old saves carry it as a non-choice. Flip those to 'pilot' once; the flag makes
-  // any explicit re-pick of helm-assist in Settings stick from then on.
+  // One-time scheme migration: pre-v2 saves carry the ambient default as a non-choice, so
+  // move them onto the current shipping default once. The flag makes any explicit re-pick
+  // of a scheme in Settings stick from then on.
   if (!s.gameplay.controlSchemeV2) {
     if (s.gameplay.controlScheme === 'helm-assist') s.gameplay.controlScheme = DEFAULT_CONTROL_SCHEME;
     s.gameplay.controlSchemeV2 = true;
@@ -10575,7 +10575,9 @@ function sanitizeRestoredSettings(settings) {
   if (typeof gp.enabled !== 'boolean') gp.enabled = true;
   if (typeof gp.deadzone !== 'number' || !(gp.deadzone >= 0 && gp.deadzone <= 1)) gp.deadzone = 0.12;
   if (typeof gp.invertY !== 'boolean') gp.invertY = false;
-  if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'drive';
+  // CONTROLLER-1: 'twinstick' is the shipping pad scheme; 'drive' survives only as an explicit
+  // stored choice — a missing or garbage value normalizes to the default.
+  if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'twinstick';
   if (typeof gp.schemeSuggested !== 'boolean') gp.schemeSuggested = false;
   // FB-004: pad response tuning. 'linear' is the shipped curve; deadzoneRight absent/invalid
   // inherits the shared deadzone at tick time rather than pinning a stale number here; the
