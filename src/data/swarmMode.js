@@ -883,7 +883,11 @@ export const SWARM_QUOTA_CAP = 48;
  * Quota 15 against a 10-hull pile clears in 23–35 s on the fast kits (.00 bench). Quota 24
  * put two of nine cells inside 45–90 s and left seven unfinished — a stall after ~22 kills,
  * or a death on the longer clock. Thinning the opening room starved unlucky seeds worse.
- * Hull values stay untouched. Later waves keep this margin and the 20+2w climb.
+ * Hull values stay untouched. Later waves keep this margin and the 20+2w climb on the
+ * ENDLESS LADDER. The course rounds 1-30 are exempt since DEMO-SWARM-BUDGET-1: they owe the
+ * director-approved round budgets in swarmCourseCast.js, which on some rounds sit inside this
+ * margin — round 2's 16 is one SWARM_CLEAR_KILLS below its concurrent+8 floor of 19. The
+ * ladder past round 30 keeps the law untouched.
  */
 export const SWARM_QUOTA_MARGIN = 8;
 
@@ -912,6 +916,9 @@ export function swarmCastQuota(wave, castRow) {
  * The ordinary course's base quota for a round: round 1's cast count where the row pins one
  * (it does — ten Wasps), else the director-approved round budget for rounds 2-30
  * (swarmCourseCast.js, 2026-11-20), else the endless ladder's `swarmQuota` past the course.
+ * Inputs below 1 (the pre-round stop at wave 0) normalize through `swarmWaveOf` onto the
+ * round-1 opening, the same wave normalization `swarmPlanBlock` applies — the pre-round reader
+ * and the plan block answer one number for the round the player is about to play.
  */
 export function swarmCourseQuota(wave) {
   const castQuota = swarmCastQuota(wave, swarmCastFor(wave));
@@ -1581,11 +1588,17 @@ export function swarmGateFor(wave, index) {
  * XP and credits for clearing a swarm wave. Scales with the quota so a longer wave pays more,
  * and stays close to the arc's purse so the draft re-roll price (6 + 3*wave) means the same thing
  * in both rulesets.
+ *
+ * DEMO-SWARM-BUDGET-1-R2 — the approved round budgets (swarmCourseCast.js) field fewer bodies,
+ * so the kill leg of the 04 §3 level curve comes up short (204 XP through round 10). The clear
+ * purse is the round-indexed knob, so it carries the round pacing the kills no longer do: at
+ * 64 + 14 a wave the pinned checkpoints hold again — level 6 by round 3, level 14 by round 10 —
+ * and the thirty-round total lands within a dozen XP of the pre-budget curve.
  */
 export function swarmRewards(wave) {
   const w = swarmWaveOf(wave);
   return {
-    xp: 40 + w * 14,
+    xp: 64 + w * 14,
     // Priced off the QUOTA, not the wave number, so one body is worth a whole, legible 2 credits
     // exactly as it is on the arc — the purse follows how much work the wave actually asks for.
     credits: swarmQuota(w) * 2 + (isSwarmBossWave(w) ? 40 : 0),
@@ -1723,9 +1736,10 @@ export function swarmPlanBlock(wave, bossOverride, castRow = undefined) {
     wave: w,
     // Finite pressure per round. Clearing the pack earns the shop; a timer cannot award it.
     // DEMO-SWARM-BUDGET-1 — a course round owes the approved budgets: round 1 its cast count,
-    // rounds 2-30 the table. Cast-off paths (Circuit, heavies_only) pass cast === null and keep
-    // the ladder, and past 30 the endless ladder is unchanged.
-    killTarget: swarmCastQuota(w, cast) || (cast ? swarmRoundBudget(w) : 0) || swarmQuota(w),
+    // rounds 2-30 the table. One reader owns that precedence (swarmCourseQuota), so the plan
+    // and every other consumer spell it once. Cast-off paths (Circuit, heavies_only) pass
+    // cast === null and keep the ladder, and past 30 the endless ladder is unchanged.
+    killTarget: (cast ? swarmCourseQuota(w) : 0) || swarmQuota(w),
     rewardReferenceKills: swarmQuota(w),
     durationTicks: SWARM_WAVE_DURATION_TICKS,
     concurrent: swarmConcurrent(w),

@@ -28,6 +28,7 @@ import {
   swarmActFor,
   swarmActIssues,
   swarmArenaPhase,
+  swarmCourseQuota,
   swarmOpeningCount,
 } from '../src/data/swarmMode.js';
 
@@ -51,8 +52,9 @@ test('the course cast owns waves 26-28 — the mooring_line act fields nowhere',
     assert.equal(plan.arenaPhase, swarmArenaPhase(wave), `wave ${wave} wears the dealt token`);
     // The wave's own contracts are untouched: finite cohort, authored quota, draft stop.
     assert.equal(plan.completionRules.kind, 'cohort');
-    assert.equal(plan.swarm.killTarget, 38,
-      'the course rounds owe the approved round budgets — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
+    assert.equal(plan.swarm.killTarget, swarmCourseQuota(wave),
+      `wave ${wave} owes its own approved budget (26 -> 38, 27 -> 39, 28 -> 40)`
+        + ' — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
     assert.equal(plan.swarm.concurrent, 30);
     assert.equal(plan.draftExpectation.kind, 'draft');
     assert.ok(swarmOpeningCount(plan.packages) <= SPAWN_BUDGET_DEFAULT_MAX,

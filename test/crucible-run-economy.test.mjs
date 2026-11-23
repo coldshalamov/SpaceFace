@@ -229,7 +229,7 @@ test('clearing a wave pays the authored XP purse for exactly that wave', () => {
   assert.equal(harness.state.run.score, WAVE_CLEAR_SCORE * 1 + WAVE_CLEAR_SCORE * 2);
 });
 
-test('a new Easy Swarm can afford the named wall gun after three clean rounds on earned Scrap', () => {
+test('a new Easy Swarm can afford the named wall gun after four clean rounds on earned Scrap', () => {
   const harness = boot(4242);
   const { state, bus } = harness;
   const setup = { ruleset: 'swarm', seed: 4242, swarmStake: 'exhibition', zeroScrapOpening: true };
@@ -260,9 +260,25 @@ test('a new Easy Swarm can afford the named wall gun after three clean rounds on
     bus.emit('run:waveCleared', { ...clear, wave: wave + 1, runWave: wave + 1 });
     assert.equal(state.run.credits, cash, 'an unplanned next-round receipt cannot pay or consume its award');
   }
+  // DEMO-SWARM-BUDGET-1-R2 — the approved round budgets field ~20% fewer bodies, so the sweep
+  // earns less: three clean rounds bank 490 of the 500 Scrap the wall gun costs. The gun lands a
+  // round later — the fourth clean round's sweep and clear carry the wallet over the quote
+  // (approved round budgets in swarmCourseCast.js, director 2026-11-20).
+  state.run.wave = 4;
+  const plan4 = planWave({ ...setup, arenaId: ARENA, wave: 4 });
+  bus.emit('run:wavePlanned', { wave: 4, plan: plan4 });
+  const count4 = plan4.swarm.killTarget;
+  for (let i = 0; i < count4; i++) killIt(harness, spawnCohortEnemy(harness, { wave: 4 }));
+  const clear4 = { wave: 4, runWave: 4, completionKind: 'cohort', requested: count4, admitted: count4, killed: count4, starved: false };
+  bus.emit('run:waveCleared', clear4);
+  assert.equal(state.run.credits, 768, 'Round 4 pays the sweep plus its completion reward — '
+    + 'the wall gun lands a round later under the approved round budgets '
+    + '(approved round budgets in swarmCourseCast.js, director 2026-11-20)');
+  const award4 = named(harness.emitted, 'run:awarded').at(-1).payload;
+  assert.deepEqual([award4.reason, award4.credits, award4.xp], ['wave_cleared', 150, plan4.rewards.xp]);
   assert.ok(state.run.credits >= SWARM_FLOOR_WALL_GUN_PRICE);
   bus.emit('run:spendRequested', { credits: SWARM_FLOOR_WALL_GUN_PRICE, reason: 'swarm_floor_pad' });
-  assert.equal(state.run.credits, 14, 'the wallet can commit the full wall-gun quote');
+  assert.equal(state.run.credits, 268, 'the wallet can commit the full wall-gun quote');
   bus.emit('game:exitToMenu', { source: 'retry' });
   beginSurvival(harness, 'active', setup);
   assert.equal(state.run.credits, 0, 'a fresh attempt does not inherit earned Scrap');

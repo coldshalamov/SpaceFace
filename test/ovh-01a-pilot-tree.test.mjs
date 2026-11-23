@@ -533,8 +533,9 @@ test('the swarm door never offers the work branches; Adventure offers all nine',
 // The XP curve against the LIVE payouts (OVH-01a #2). RUN_XP_SOURCES above is the design's
 // starting table, but the shipped Swarm award sites pay more: survivalRewards awards
 // killXpFor(victim.data.level), which is 3 XP on every Swarm body because swarmLevel() is 1 at
-// every wave, and swarmMode's swarmRewards pays 40 + 14 × wave for the clear. The curve must
-// hold 04_SWARM §3's checkpoints against THAT income, not the unwired table.
+// every wave, and swarmMode's swarmRewards pays 64 + 14 × wave for the clear (DEMO-SWARM-BUDGET-
+// 1-R2 lifted the purse so the approved round budgets' fewer bodies do not slow the pacing).
+// The curve must hold 04_SWARM §3's checkpoints against THAT income, not the unwired table.
 // ---------------------------------------------------------------------------
 
 const LIVE_ROUND_SECONDS = 40; // 04 §1: thirty rounds inside 20–25 min
@@ -593,9 +594,11 @@ test('XP curve holds the 04 §3 checkpoints against the LIVE award sites', (t) =
   const round1 = liveRoundIncome(1);
   assert.equal(round1.kills, 10, 'round 1 fields its cast of ten');
   assert.equal(round1.killXp, 30, 'ten bodies × 3 XP');
-  assert.equal(round1.clearXp, 54, 'swarmRewards(1) = 40 + 14');
+  assert.equal(round1.clearXp, 78, 'swarmRewards(1) = 64 + 14 — the clear purse carries the '
+    + 'approved budgets\' round pacing (approved round budgets in swarmCourseCast.js, director 2026-11-20)');
   assert.equal(liveRoundIncome(2).kills, swarmCourseQuota(2));
-  assert.equal(liveRoundIncome(10).clearXp, 40 + 14 * 10);
+  assert.equal(liveRoundIncome(10).clearXp, 64 + 14 * 10,
+    'the purse keeps its 14-per-wave climb — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
 
   const events = liveXpEvents(30);
   const atRoundEnd = (round) => liveXpAt(events, round * LIVE_ROUND_SECONDS);
@@ -617,10 +620,11 @@ test('XP curve holds the 04 §3 checkpoints against the LIVE award sites', (t) =
   assert.ok(Math.abs(levelAt(3) - 6) <= 1, `~6 by round 3 (got ${levelAt(3)})`);
   assert.equal(levelAt(3), 6, 'pinned: level 6 at the end of round 3');
   assert.ok(Math.abs(levelAt(10) - 14) <= 1, `~14 by round 10 (got ${levelAt(10)})`);
-  assert.equal(levelAt(10), 13, 'pinned: level 13 at the end of round 10 — the approved round '
-    + 'budgets slow the kill income (approved round budgets in swarmCourseCast.js, director 2026-11-20)');
-  assert.equal(atRoundEnd(10), 1848, 'pinned live income through round 10 — approved round budgets '
-    + 'in swarmCourseCast.js (director 2026-11-20)');
+  assert.equal(levelAt(10), 14, 'pinned: level 14 at the end of round 10 — the 04 §3 checkpoint '
+    + 'holds under the approved round budgets because the clear purse carries the round pacing '
+    + '(approved round budgets in swarmCourseCast.js, director 2026-11-20)');
+  assert.equal(atRoundEnd(10), 2088, 'pinned live income through round 10 — 226 budgeted bodies '
+    + '× 3 XP plus the lifted purses (approved round budgets in swarmCourseCast.js, director 2026-11-20)');
 
   // Sanity for the curve function itself under the retuned constants.
   assert.equal(runLevelForXp(runXpForLevel(9)), 9);
