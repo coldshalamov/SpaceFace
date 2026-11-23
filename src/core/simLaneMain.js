@@ -2724,17 +2724,34 @@ export function createSimLaneRuntime({
     const promptDevice = getPromptDevice();
     if (lastGamepadGeneration === lifecycleGeneration && lastGamepadPrompt === promptDevice
         && sameGamepadFrame(lastGamepadFrame, frame)) return;
+    // A sample whose buttons changed is a press: the worker builds the read-model detail for it at
+    // once (wholeSimBrowserWorker localCommandsNeedDetail), as it does for a key press.
+    const edge = gamepadButtonsChanged(lastGamepadGeneration === lifecycleGeneration ? lastGamepadFrame : null, frame);
     pushLaneCommand(envelopeRing, {
       kind: 'domEvent',
       d: {
         type: 'gamepadFrame',
         frame,
         promptDevice,
+        ...(edge ? { edge: true } : null),
       },
     });
     commands.push(...envelopeRing.drain());
     lastGamepadFrame = frame; lastGamepadPrompt = promptDevice;
     lastGamepadGeneration = lifecycleGeneration;
+  }
+
+  function gamepadButtonsChanged(a, b) {
+    if (!a || !b || a.pads.length !== b.pads.length) return true;
+    for (let i = 0; i < a.pads.length; i++) {
+      const left = a.pads[i], right = b.pads[i];
+      if (!left || !right) { if (left !== right) return true; continue; }
+      if (left.connected !== right.connected || left.buttons.length !== right.buttons.length) return true;
+      for (let j = 0; j < left.buttons.length; j++) {
+        if (left.buttons[j].pressed !== right.buttons[j].pressed) return true;
+      }
+    }
+    return false;
   }
 
   const PAD_COMPARE_DEADZONE = 0.12;

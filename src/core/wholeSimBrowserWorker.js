@@ -152,14 +152,23 @@ function localCommandEnvelopeStale(env) {
 // A fresh press or release (not an OS auto-repeat) still answers at once, so the HUD reacts to the
 // press itself on the next reply; held keys, mouse motion and the per-frame samples do not.
 const LOCAL_HAND_COMMAND_TYPES = new Set(['dom', 'input', 'camera', 'viewport', 'timeEffects', 'keepalive']);
-const LOCAL_EDGE_DOM_TYPES = new Set(['keydown', 'keyup', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click']);
+// Every device's presses count, not only keyboard and mouse: a touch throw, a context-wheel verb,
+// the drill screen's calls and ticks (its mirror contract is one tick stale), focus loss and a
+// cancelled gesture answer at once too. The pad and touch surfaces post one sample per changed
+// frame; the sender stamps `edge: true` on a sample whose buttons or touch verbs changed, so a
+// press answers at once while a held stick or finger stays on the 100 ms interval.
+const LOCAL_EDGE_DOM_TYPES = new Set(['keydown', 'keyup', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click',
+  'touchThrow', 'wheelVerb', 'drillCall', 'drillTick', 'blur', 'gestureCancel']);
+const LOCAL_SAMPLE_DOM_TYPES = new Set(['gamepadFrame', 'touchFrame']);
 function localCommandsNeedDetail(commands) {
   for (let i = 0; i < commands.length; i++) {
     const env = commands[i];
     if (!env || typeof env.t !== 'string' || !LOCAL_HAND_COMMAND_TYPES.has(env.t)) return true;
     if (env.t !== 'dom') continue;
     const d = env.p && env.p.d;
-    if (d && LOCAL_EDGE_DOM_TYPES.has(d.type) && d.repeat !== true) return true;
+    if (!d) continue;
+    if (LOCAL_EDGE_DOM_TYPES.has(d.type) && d.repeat !== true) return true;
+    if (LOCAL_SAMPLE_DOM_TYPES.has(d.type) && d.edge === true) return true;
   }
   return false;
 }

@@ -48,7 +48,7 @@ export function createLaneTouchSurface({ state, bus, helpers }) {
   window.addEventListener('resize', onResize);
 
   const stub = createStubInputHost(state);
-  let raf = 0, lastMs = 0, lastJson = '';
+  let raf = 0, lastMs = 0, lastJson = '', lastVerbs = '';
   let wasActive = false, destroyed = false;
 
   function serialize() {
@@ -93,7 +93,12 @@ export function createLaneTouchSurface({ state, bus, helpers }) {
           // nothing enabled yet — the single inert frame establishes the
           // descriptor sequence; no need to ship it again.
         } else {
-          laneDomEvent({ type: 'touchFrame', frame: ship });
+          // A frame whose touch verbs changed (or that cancels one) is a press: the worker
+          // answers it at once, while a held stick or finger rides the read-model interval.
+          const verbs = ship.actions ? Object.keys(ship.actions).join(',') : '';
+          const edge = verbs !== lastVerbs || (ship.cancelledRoles && ship.cancelledRoles.length > 0);
+          lastVerbs = verbs;
+          laneDomEvent(edge ? { type: 'touchFrame', frame: ship, edge: true } : { type: 'touchFrame', frame: ship });
         }
         wasActive = ship.active === true;
       }
