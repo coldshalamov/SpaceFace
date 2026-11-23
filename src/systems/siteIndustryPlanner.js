@@ -56,7 +56,7 @@ export const INDUSTRY_KITS = Object.freeze([
   { id: 'cryo_synthesizer', name: 'Cryo-cooled quantum synthesizer',
     machines: { sm_massline_core: 1, sm_extractor: 2, sm_gas_tap: 2,
       sm_refinery: 1, sm_cryo_condenser: 1, sm_deep_synthesizer: 1, sm_cargo_port: 1 },
-    note: 'Seat the Cryo Condenser adjacent to the Deep Synthesizer and refineries to expand thermal headroom while synthesizing high-margin polymers, microchips, and quantum cores.' },
+    note: 'Seat the Cryo Condenser adjacent to the Deep Synthesizer and refineries to expand thermal capacity while synthesizing high-margin polymers, microchips, and quantum cores.' },
   { id: 'harmonic_hub', name: 'Harmonic mass-driver hub',
     machines: { sm_massline_core: 1, sm_extractor: 2, sm_harmonic_resonator: 1,
       sm_seismic_brace: 1, sm_capacitor_bank: 1, sm_mass_driver: 1 },

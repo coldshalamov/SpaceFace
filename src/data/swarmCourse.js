@@ -68,7 +68,7 @@ export const SWARM_COURSE = Object.freeze([
   // shepherd_pulse's tell — "they fly as one. Break the one." — is the Choir's find-the-singer.
   courseRound(23, 'The Choir', 'Zealots in rings. Find the singer', 'shepherd_pulse'),
   courseRound(24, 'Everything Must Go', 'prices halved, enemies doubled, ninety seconds', 'everything_must_go'),
-  courseRound(25, 'The Anvil', 'Boss. Too heavy to move. So move everything else into it', null),
+  courseRound(25, 'The Anvil', 'Boss. It will not move. So move everything else into it.', null),
   courseRound(26, 'The Umbrella, Again', 'two Wardens covering each other', null),
   courseRound(27, 'Tailgate', 'a heavy rides the freight round and round. It can only be hit from the lane', null),
   courseRound(28, 'Black Friday', 'every drop type falls at once, and so does every enemy type', 'black_friday'),

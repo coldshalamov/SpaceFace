@@ -66,7 +66,7 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
   }),
   furnace_flare: event({
     id: 'furnace_flare', name: 'Furnace flare', kind: 'surge', factor: 2.2, windupS: 5, windowS: 10,
-    telegraph: 'FURNACE FLARE — the middle is about to get meaner',
+    telegraph: 'THE FURNACE ROARS — the middle is about to get meaner',
     wager: { score: 55, timeout: 'accept' },
     install: {
       fields: [{ kind: 'repulsor', bearing: 'center', radius: 430, strength: 150, falloff: 1.55 }],

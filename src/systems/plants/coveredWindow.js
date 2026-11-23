@@ -242,7 +242,7 @@ export function createCoveredWindow() {
           plantsPl289Plate: true,
           masslineTetherable: true,
           scanLabel: 'A plate over your window, set against the morning flare',
-          swarmFloorPad: { label: 'FLARE PLATE' },
+          swarmFloorPad: { label: 'GLASS PLATE' },
           lampsFlashing: false,     // silent presence: the note's exact shape
         },
       });

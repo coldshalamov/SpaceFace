@@ -61,7 +61,8 @@ const AUTHORED = [
   [22, 'Chain Gang', 'every enemy is tethered to another. Swing one, swing them all'],
   [23, 'The Choir', 'Zealots in rings. Find the singer'],
   [24, 'Everything Must Go', 'prices halved, enemies doubled, ninety seconds'],
-  [25, 'The Anvil', 'Boss. Too heavy to move. So move everything else into it'],
+  // Plain words, design/overhaul/08_INTERFACE.md §5: the rope never refuses — "too heavy" is banned.
+  [25, 'The Anvil', 'Boss. It will not move. So move everything else into it.'],
   [26, 'The Umbrella, Again', 'two Wardens covering each other'],
   [27, 'Tailgate', 'a heavy rides the freight round and round. It can only be hit from the lane'],
   [28, 'Black Friday', 'every drop type falls at once, and so does every enemy type'],
@@ -279,7 +280,9 @@ test('the Iron Maw keeps its hull name — the round name is not the ship', () =
   assert.ok(texts[0].startsWith('ROUND 5 — Iron Maw.'));
   assert.ok(texts[0].includes("Dreadnought 'Iron Maw'."),
     'the dreadnought still names itself on arrival');
-  assert.match(texts[0], /Cross its bow before the guns fire\./);
+  // The data's own committed wording is the truth: "Cross its bow before it fires."
+  // (a stale pin on "before the guns fire" went red when the data line was reworded).
+  assert.match(texts[0], /Cross its bow before it fires\./);
   assert.equal(texts[1], swarmCourseFor(5).twist);
   assert.ok(texts.includes('Throw just after the broadside.'));
   survivalAnnounce.destroy();
