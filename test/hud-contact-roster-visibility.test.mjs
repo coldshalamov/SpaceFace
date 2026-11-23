@@ -413,8 +413,9 @@ test('moving waypoint marker retains its projection record and exact edge presen
         edge: 'bottom',
         edgeClass: true,
         onScreenClass: false,
-        label: 'GOAL · TEST VECTOR · 1.0k u · ETA —',
-        aria: 'Current objective: TEST VECTOR, 1.0k u, ETA —',
+        // Tests follow df01ea648d: plain units — the goal line prints km, not the "k u" shorthand.
+        label: 'GOAL · TEST VECTOR · 1.0 km · ETA —',
+        aria: 'Current objective: TEST VECTOR, 1.0 km, ETA —',
       });
       if (expectedPresentation == null) expectedPresentation = presentation;
       else assert.deepEqual(presentation, expectedPresentation,
