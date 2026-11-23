@@ -244,6 +244,9 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
     swarmResume: extras.swarmResume && typeof extras.swarmResume === 'object'
       ? extras.swarmResume
       : undefined,
+    // The sim worker's boot rehearsal launches through this same seam; the marker travels to
+    // run:started so its fresh start never clears a real player's Swarm resume slot.
+    bootRehearsal: extras.bootRehearsal === true,
   });
 }
 
@@ -301,6 +304,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   delete launchSetup.zeroScrapOpening;
   delete launchSetup.retryOpeningEquipment;
   delete launchSetup.resume;
+  delete launchSetup.bootRehearsal;
   // The stake travels beside the setup like the ruleset — never inside the closed schema.
   const swarmStake = typeof setup.swarmStake === 'string' ? normalizeSwarmStake(setup.swarmStake) : null;
   // SWARM-06: same seam for the Threat wager and an explicit perk pick. The door's perks live
@@ -356,6 +360,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
     // SAVE-AND-SOAK-1 Part B: the door's Resume word sends the interrupted run's record —
     // it rides beside the setup like the stake and lands on run:beginRequested.
     swarmResume: setup.resume && typeof setup.resume === 'object' ? setup.resume : undefined,
+    bootRehearsal: setup.bootRehearsal === true,
   }));
   return true;
 }

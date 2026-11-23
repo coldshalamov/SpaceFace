@@ -171,6 +171,49 @@ test('a defeat retires the slot', () => {
   dropRig();
 });
 
+test('a fresh launch retires the old slot — quitting the new run revives nothing', () => {
+  const storage = memoryStorage();
+  useCrucibleMetaStorage(storage);
+  clearSwarmResume(storage);
+  // Run A's slot: the interrupted run a real Swarm door would offer Resume for.
+  assert.ok(writeSwarmResume({ wave: 5, seed: SEED, arenaId: ARENA, ruleset: 'swarm',
+    ship: { defId: 'ship_kestrel', loadout: [] }, run: { wave: 4 } }, storage));
+  assert.ok(swarmResumeFor(loadCrucibleMeta(storage)));
+
+  // The player launches fresh run B instead of pressing Resume, then quits mid-round-1.
+  const { state, bus } = makeRig();
+  bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED + 1, arenaId: ARENA });
+  assert.equal(swarmResumeFor(loadCrucibleMeta(storage)), null,
+    'the fresh start retires run A\'s slot up front');
+  bus.emit('game:exitToMenu', { source: 'exit_to_menu' });
+  assert.equal(state.run.phase, 'inactive');
+  assert.equal(swarmResumeFor(loadCrucibleMeta(storage)), null,
+    'no resume for A is offered afterward');
+  dropRig();
+
+  // A resume launch itself must never clear the slot it is replaying.
+  assert.ok(writeSwarmResume({ wave: 5, seed: SEED, arenaId: ARENA, ruleset: 'swarm',
+    ship: { defId: 'ship_kestrel', loadout: [] }, run: { wave: 4 } }, storage));
+  const resume = swarmResumeFor(loadCrucibleMeta(storage));
+  const rig = makeRig();
+  rig.bus.emit('run:beginRequested', {
+    kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA,
+    startWave: resume.wave, resume,
+  });
+  assert.ok(swarmResumeFor(loadCrucibleMeta(storage)), 'a resumed start keeps its own slot');
+  dropRig();
+
+  // The boot rehearsal flies the same fresh route — marked, it leaves a real slot alone.
+  const rig2 = makeRig();
+  rig2.bus.emit('run:beginRequested', {
+    kind: 'survival', ruleset: 'swarm', seed: 73311, arenaId: ARENA, startWave: 3,
+    bootRehearsal: true,
+  });
+  assert.ok(swarmResumeFor(loadCrucibleMeta(storage)),
+    'the boot rehearsal\'s throwaway start does not clear a real player\'s slot');
+  dropRig();
+});
+
 test('a non-swarm run writes no slot', () => {
   const storage = memoryStorage();
   useCrucibleMetaStorage(storage);

@@ -206,6 +206,9 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       }
       if (overrides.openingLesson === true) out.openingLesson = true;
       if (overrides.practice === true) out.practice = true;
+      // The boot rehearsal's marker — rides beside the setup like the stake and lands on
+      // run:beginRequested, where it must stop a fresh start from clearing a real resume slot.
+      if (overrides.bootRehearsal === true) out.bootRehearsal = true;
       if (typeof overrides.dailyDateKey === 'string') out.dailyDateKey = overrides.dailyDateKey;
       if (typeof overrides.weeklyMutatorId === 'string') out.weeklyMutatorId = overrides.weeklyMutatorId;
       if (Number.isInteger(overrides.ghostHash)) out.ghostHash = overrides.ghostHash;
@@ -1423,6 +1426,7 @@ export function applySandboxSetup(ctx, config) {
           resume: launchRuleset === SWARM_RULESET && cfg.swarmResume && typeof cfg.swarmResume === 'object'
             ? cfg.swarmResume
             : undefined,
+          bootRehearsal: cfg.bootRehearsal === true ? true : undefined,
         });
         // The purse is the difficulty you bought at the door: it lands in the run wallet
         // through the wallet's own award seam, BEFORE the opening armory can spend it — and only

@@ -347,6 +347,16 @@ export const survivalRun = {
 
   _onStarted(payload) {
     this._resetMachine();
+    const run0 = liveSurvivalRun(this.state);
+    // A fresh Swarm launch (PLAY, a checkpoint start — anything that did not press Resume)
+    // retires the previous run's slot up front: quitting the new run in round 1 must not
+    // resurrect "Resume round N" for a run the player already replaced. The boot rehearsal
+    // flies this same route; its marker keeps the throwaway fight off a real player's slot.
+    if (run0 && isSwarmRuleset(run0.ruleset)
+      && !(payload && payload.swarmResumed === true)
+      && !(payload && payload.bootRehearsal === true)) {
+      try { clearSwarmResume(); } catch { /* best-effort — a store failure must not stall a start */ }
+    }
     const queued = takeQueuedChallenge();
     // SWARM-08 B5 — the Circuit entry gate reads this: a queued trial/daily challenge owns the
     // run's contract and may not also steer it through the Circuit.

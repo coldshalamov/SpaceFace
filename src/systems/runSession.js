@@ -331,6 +331,10 @@ export const runSession = {
       seed: next.seed,
       phase: next.phase,
       openingLesson: request && request.openingLesson === true,
+      // A fresh Swarm launch retires the old resume slot (survivalRun owns the clear) — the
+      // boot rehearsal's marker keeps its throwaway start from clearing a real player's.
+      swarmResumed: resume != null,
+      bootRehearsal: request && request.bootRehearsal === true,
     });
     // The war chest pays the run wallet only. A stake or anything else that already funded
     // this run keeps the purse; adventure credits are never touched.

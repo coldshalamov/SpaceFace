@@ -35,6 +35,9 @@ function swarmOptions() {
   let opts = null;
   bus.on('game:new', (payload) => { opts = structuredClone(payload); });
   const setup = crucibleSetupFor({ starterId: 'ricochet_runner', arenaId: 'helios_core', ruleset: SWARM_RULESET, seed: 73311, startWave: 3 });
+  // The rehearsal flies the ordinary launch route, so its fresh start must be marked: a real
+  // player's Swarm Launch clears the stale resume slot, but this throwaway fight must not.
+  if (setup && setup.value && typeof setup.value === 'object') setup.value.bootRehearsal = true;
   if (!setup || !setup.ok || !requestCrucibleRun(bus, setup, SWARM_RULESET)) return null;
   return opts;
 }
