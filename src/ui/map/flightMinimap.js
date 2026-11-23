@@ -18,12 +18,13 @@ import {
 } from './tacticalMapGrammar.js';
 
 const TAU = Math.PI * 2;
+// Contacts closer than this on the scope (px) merge into one glyph with a count.
+const CLUSTER_CELL_PX = 14;
 // Sensor ping: a thin ring leaves the ship every PING_PERIOD_MS, crosses the scope in the first
 // PING_TRAVEL_FRAC of the period, then rests. Contacts brighten as it passes and settle back.
 export const PING_PERIOD_MS = 3800;
 const PING_TRAVEL_FRAC = 0.62;
 const PING_DECAY_MS = 760;
-const ARRIVAL_PING_S = 0.65;
 const HIT_FLASH_MS = 560;
 const MAX_ROCK_MARKS = 64;
 const ROOM_FIELD_REFRESH_MS = 1500;
@@ -371,7 +372,7 @@ function drawObjectiveRimNotch(ctx, rimPoint, color = COLOR_COURSE) {
   ctx.restore();
 }
 
-function drawOnChartObjective(ctx, x, y, pulse = 0) {
+function drawOnChartObjective(ctx, x, y) {
   ctx.save();
   ctx.translate(x, y);
   ctx.strokeStyle = COLOR_COURSE;
@@ -389,13 +390,7 @@ function drawOnChartObjective(ctx, x, y, pulse = 0) {
   ctx.moveTo(0, -3.8); ctx.lineTo(3.8, 0); ctx.lineTo(0, 3.8); ctx.lineTo(-3.8, 0);
   ctx.closePath();
   ctx.fill();
-  if (pulse > 0) {
-    ctx.globalAlpha = 0.18 + pulse * 0.22;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, 11 + pulse * 3, 0, TAU);
-    ctx.stroke();
-  }
+  // The corner brackets and the diamond are the whole mark: no pulsing ring round it.
   ctx.restore();
 }
 
@@ -571,7 +566,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   let pickedCourses = [];
   const footprints = new WeakMap();
   const occupiedRects = [];
-  const seenContacts = new Map();
   const hitFlashes = [];
   const hoverTargets = [];
   const drawHalo = createHaloCache(doc, dpr);
@@ -965,6 +959,8 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   const rockFields = createRockFieldPainter(doc);
   const liveRockScratch = [];
   const hostileOrderScratch = [];
+  const hostileCellScratch = new Map();
+  const neutralCellScratch = new Map();
   const labelObstacles = [];
   const roomRockRefs = [];
   const jobMemo = new WeakMap();
@@ -1163,7 +1159,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   }
 
   function resetSector() {
-    seenContacts.clear();
     hitFlashes.length = 0;
     staticKey = '';
     roomBaseKey = '';
@@ -1210,7 +1205,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
   }) {
     const t0 = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
     const cut = chamferSize(width);
-    const nowS = nowMs * 0.001;
     ensurePatterns(ctx);
 
     // Docking approach zoom only in calm Adventure flight when approaching a targeted dock
@@ -1475,35 +1469,23 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       return Math.exp(-(sincePass * PING_PERIOD_MS) / PING_DECAY_MS);
     };
 
-    const noteArrival = (id, x, y, color) => {
-      if (id == null || reducedMotion) return;
-      let rec = seenContacts.get(id);
-      if (!rec) {
-        rec = { firstSeenS: nowS, lastSeenS: nowS };
-        seenContacts.set(id, rec);
-      } else {
-        rec.lastSeenS = nowS;
-      }
-      const age = nowS - rec.firstSeenS;
-      if (age >= 0 && age < ARRIVAL_PING_S) {
-        const t = age / ARRIVAL_PING_S;
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.globalAlpha = (1 - t) * 0.68;
-        ctx.lineWidth = 1.25;
-        ctx.beginPath();
-        ctx.arc(x, y, 5 + t * 12, 0, TAU);
-        ctx.stroke();
-        ctx.restore();
-      }
+    // Contacts that overlap on the scope merge into one glyph with a count beside it, so a busy
+    // harbour reads as a few marks instead of confetti. No glyph wears a ring: the selected one
+    // reads by its bright edge and soft glow alone.
+    const drawClusterCount = (x, y, count, color) => {
+      if (!(count > 1)) return;
+      const text = count > 99 ? '99+' : String(count);
+      ctx.save();
+      ctx.font = canvasFont(700, 11, 'data');
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 2.6;
+      ctx.strokeStyle = 'rgba(4, 11, 18, 0.92)';
+      ctx.strokeText(text, x + 7, y - 6);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x + 7, y - 6);
+      ctx.restore();
     };
-
-    // Prune vanished contacts occasionally
-    if (drawCalls % 20 === 0 && seenContacts.size > 0) {
-      for (const [id, rec] of seenContacts) {
-        if (nowS - rec.lastSeenS > 3) seenContacts.delete(id);
-      }
-    }
 
     hoverTargets.length = 0;
     const registerHoverable = (entity, role, x, y, color, distWorld) => {
@@ -1577,9 +1559,14 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       if (pickedCourses.length >= 4) break;
     }
 
-    // 8. Neutral, Friendly, Loot, Wreck contacts (shapes + velocity tails + sweep refresh)
+    // 8. Neutral, Friendly, Loot, Wreck contacts (shapes + velocity tails + sweep refresh).
+    // Only what matters at this zoom: salvage and wrecks show inside the near part of the scope
+    // (the selected one always shows); traffic shows everywhere. Marks that land within one cell
+    // of each other merge into the first one drawn, which carries the count.
     let firstWreck = null;
-    const neutralCells = new Set();
+    const neutralCells = neutralCellScratch;
+    neutralCells.clear();
+    const nearLootPx = scopeR * 0.55;
     for (let i = 0; i < neutral.length; i += 1) {
       const mark = neutral[i];
       const entity = mark && mark.entity;
@@ -1587,11 +1574,13 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       const at = project(entity.pos.x, entity.pos.z);
       if (!pointInsideChamfer(at.x, at.y, width, height, 10, cut)) continue;
       const selected = entity.id === targetId || mark.selected;
-      const cell = `${Math.floor(at.x / 11)}:${Math.floor(at.y / 11)}`;
-      if (!selected && neutralCells.has(cell)) continue;
-      neutralCells.add(cell);
-
       const role = classifyContactRole(entity);
+      if (!selected && (role === 'loot' || role === 'wreck')
+        && Math.hypot(at.x - cx, at.y - cy) > nearLootPx) continue;
+      const cell = `${Math.floor(at.x / CLUSTER_CELL_PX)}:${Math.floor(at.y / CLUSTER_CELL_PX)}`;
+      const held = neutralCells.get(cell);
+      if (held && !selected) { held.count += 1; continue; }
+
       const stance = role === 'loot' ? 'loot'
         : role === 'wreck' ? 'wreck'
           : (stanceOf ? stanceOf(entity) : 'neutral');
@@ -1613,7 +1602,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       }
 
       if (selected) drawHalo(ctx, at.x, at.y, 12, hexToRgb(color), 0.28);
-      noteArrival(entity.id, at.x, at.y, color);
 
       const worldHeading = Number.isFinite(entity.rot)
         ? entity.rot
@@ -1623,22 +1611,16 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         alpha,
         selected,
       });
-      if (selected) {
-        ctx.save();
-        ctx.strokeStyle = COLOR_ICE;
-        ctx.lineWidth = 1.25;
-        ctx.beginPath();
-        ctx.arc(at.x, at.y, 9.5, 0, TAU);
-        ctx.stroke();
-        ctx.restore();
-      }
+      if (!held) neutralCells.set(cell, { x: at.x, y: at.y, color, count: 1 });
       registerHoverable(entity, role, at.x, at.y, color, Math.sqrt(mark.distanceSq || 0));
     }
+    for (const c of neutralCells.values()) drawClusterCount(c.x, c.y, c.count, c.color);
 
     // 9. Hostiles (12-role silhouettes + velocity tails + sweep phosphor + off-edge rim pins)
     const visibleHostiles = [];
     const rimHostileCandidates = [];
-    const hostileCells = new Set();
+    const hostileCells = hostileCellScratch;
+    hostileCells.clear();
     // Selected first, then by job cost, so when two marks share a cell the one that matters (the
     // sniper, the carrier) is the one drawn, never hidden behind fodder.
     const orderedHostiles = hostileOrderScratch;
@@ -1670,9 +1652,13 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         rimHostileCandidates.push({ entity, at, distW, selected });
         continue;
       }
-      const cell = `${Math.floor(at.x / 9)}:${Math.floor(at.y / 9)}`;
-      if (!selected && !isBoss && (hostileCells.size >= 32 || hostileCells.has(cell))) continue;
-      hostileCells.add(cell);
+      const cell = `${Math.floor(at.x / CLUSTER_CELL_PX)}:${Math.floor(at.y / CLUSTER_CELL_PX)}`;
+      const held = hostileCells.get(cell);
+      if (!selected && !isBoss && (held || hostileCells.size >= 32)) {
+        if (held) held.count += 1;
+        visibleHostiles.push({ x: at.x - cx, y: at.y - cy });
+        continue;
+      }
 
       const color = (jobColors && CONTACT_JOB_PALETTE[role]) || (colorOf ? colorOf(entity) : TACTICAL_MAP_PALETTE.hostile);
       const fresh = sweepFreshness(at.x, at.y);
@@ -1689,7 +1675,6 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       }
 
       if (selected || isBoss) drawHalo(ctx, at.x, at.y, isBoss ? 16 : 13, hexToRgb(color), isBoss ? 0.34 : 0.30);
-      noteArrival(entity.id, at.x, at.y, color);
 
       const worldHeading = Number.isFinite(entity.rot)
         ? entity.rot
@@ -1700,16 +1685,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         selected,
         boss: isBoss,
       });
-
-      if (selected) {
-        ctx.save();
-        ctx.strokeStyle = '#f2f7f9';
-        ctx.lineWidth = 1.25;
-        ctx.beginPath();
-        ctx.arc(at.x, at.y, isBoss ? 12.5 : 9.5, 0, TAU);
-        ctx.stroke();
-        ctx.restore();
-      }
+      if (!held) hostileCells.set(cell, { x: at.x, y: at.y, color, count: 1 });
       visibleHostiles.push({ x: at.x - cx, y: at.y - cy });
       registerHoverable(entity, role, at.x, at.y, color, distW);
     }
@@ -1827,9 +1803,8 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
         drawObjectiveRimNotch(ctx, rimPt, COLOR_COURSE);
         objectiveAnchor = rimPt;
       } else {
-        const pulse = reducedMotion ? 0 : 0.5 + 0.5 * Math.sin(nowMs * 0.0042);
         drawHalo(ctx, projT.x, projT.y, 15, hexToRgb(COLOR_COURSE), 0.28);
-        drawOnChartObjective(ctx, projT.x, projT.y, pulse);
+        drawOnChartObjective(ctx, projT.x, projT.y);
         // Subtle bearing notch on the rim pointing to the on-chart objective too
         if (distPx > 18) {
           ctx.save();

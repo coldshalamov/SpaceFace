@@ -1066,17 +1066,6 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
     g.stroke();
     g.restore();
   }
-
-  if (named) {
-    g.save();
-    g.strokeStyle = colour;
-    g.globalAlpha = 0.58;
-    g.lineWidth = 1;
-    g.beginPath();
-    g.arc(x, y, 6.3, 0, Math.PI * 2);
-    g.stroke();
-    g.restore();
-  }
 }
 
 function poiProgressRatio(readout) {
@@ -1128,6 +1117,8 @@ function drawHostileEdgeMarker(g, x, y, angle, selected = false) {
   g.restore();
 }
 
+// The selected contact reads by its bright glyph edge and this dashed bearing line from the ship;
+// no ring is drawn round any glyph.
 function drawTargetRing(g, x, y, center) {
   g.save();
   g.strokeStyle = 'rgba(244,240,230,0.52)';
@@ -1136,12 +1127,6 @@ function drawTargetRing(g, x, y, center) {
   g.beginPath();
   g.moveTo(center, center);
   g.lineTo(x, y);
-  g.stroke();
-  g.setLineDash([]);
-  g.strokeStyle = TACTICAL_MAP_PALETTE.ink;
-  g.lineWidth = 1.4;
-  g.beginPath();
-  g.arc(x, y, 7.2, 0, Math.PI * 2);
   g.stroke();
   g.restore();
 }
@@ -2821,16 +2806,6 @@ export function createRadar(ctx) {
         // Unmapped class keeps the semantic hostile chevron.
         drawHostileGlyph(g, mark.x, mark.y, entityHeading(mark.entity), hostileOpts);
       }
-      if (selected) {
-        drawContactThreatPulse(
-          g,
-          mark.x,
-          mark.y,
-          selected,
-          now,
-          reducedMotion,
-        );
-      }
       if (selected) drawTargetRing(g, mark.x, mark.y, center);
     }
 
@@ -3072,14 +3047,3 @@ export function createRadar(ctx) {
   return { el: wrap, draw, invalidate, destroy, setOrreryFrame };
 }
 
-function drawContactThreatPulse(g, x, y, selected, now, reducedMotion) {
-  const phase = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.0045);
-  g.save();
-  g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
-  g.globalAlpha = selected ? 0.6 : 0.16 + 0.18 * phase;
-  g.lineWidth = selected ? 1.5 : 1;
-  g.beginPath();
-  g.arc(x, y, selected ? 9.5 : 8 + phase * 2, 0, Math.PI * 2);
-  g.stroke();
-  g.restore();
-}
