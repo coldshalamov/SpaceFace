@@ -1637,34 +1637,66 @@
       <div id="alerts"></div>
     </div>
     <div id="sf-stage-prompt" class="sf-stage-slot" data-stage-slot="prompt"></div>
-    <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
+    <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true" data-boot-visual-state="poster">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
-      <!-- The intro visualizer outranks every other boot asset: preload=auto makes its
-           bytes the first download of the page (parse time, before any script). It is
-           skippable on any key from its first frame and never gates the game graph —
-           bootEntry starts the module eval while the movie proves itself. Native media
-           is the artwork; never put the live JS remix canvas over this loading surface. -->
+      <!-- The intro visualizer outranks every other boot asset — including boot speed itself
+           (owner, 2026-11-21: a slightly slower load is the right price for a movie that never
+           hitches). The element never streams: it waits on the parse-time in-memory mint and
+           plays from RAM, so the boot graph can never starve the decoder. The poster plus its
+           compositor drift carry the short mint wait; the wire is only the mint-failure
+           fallback. Skippable on any key from its first frame and never gates the game graph. -->
       <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
-             preload="auto" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
+             preload="none" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
         <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />
       </video>
-      <!-- Parse-time movie kick: the boot controller lands seconds later (module graph fetch +
-           eval); start the muted clip the moment its element exists so the intro's first visible
-           seconds are the movie, not a paused poster frame. The controller ADOPTS the
-           already-playing element (same clip: no reload, no restart). Reduced-motion/flash
-           users keep the authored poster — variant choice and pausing are the controller's
-           call, never a flash risk. -->
+      <!-- Parse-time movie mint: the boot controller lands tens of seconds later (module graph
+           fetch + eval), and a wire-bound movie starves behind the no-cache module
+           revalidation sweep — the standing frame a player calls a frozen loading screen. The
+           movie therefore plays ONLY from memory: this fetch is the page's first download, the
+           element waits on it (poster + drift cover the wait), and the controller ADOPTS the
+           minted promise and element (same clip: no reload, no restart, no second download).
+           Owner direction, 2026-11-21: a slightly slower load is the right price for a movie
+           that never hitches. Reduced-motion/flash users keep the authored poster — variant
+           choice and pausing are the controller's call, never a flash risk. -->
       <script>
         (function () {
           try {
             var video = document.getElementById('boot-intro-video');
-            if (!video || video.paused === false) return;
             var root = document.documentElement;
-            if (root.classList.contains('sf-reduce-motion')
+            var reduced = root.classList.contains('sf-reduce-motion')
               || root.classList.contains('sf-reduce-flash')
-              || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-            var kick = video.play();
-            if (kick && kick.catch) kick.catch(function () { /* the boot controller retries */ });
+              || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            if (!video || reduced) return;
+            var source = video.querySelector('source');
+            var href = source && source.getAttribute('src');
+            if (!href || !window.fetch) return;
+            window.__SF_BOOT_MOVIE_MINT__ = window.fetch(href, { priority: 'high' })
+              .then(function (response) {
+                return response && response.ok !== false ? response.blob() : null;
+              })
+              .catch(function () { return null; })
+              .then(function (blob) {
+                if (!video) return blob;
+                // Once a boot media controller exists it owns sourcing; a late landing only
+                // feeds its mint (its stalled rescue and paused swap do the rest).
+                if (window.__SF_BOOT_MOVIE_CTL_ACTIVE__) return blob;
+                if (blob && window.URL) {
+                  try {
+                    window.__SF_BOOT_MOVIE_MINT_URL__ = window.URL.createObjectURL(blob);
+                    video.src = window.__SF_BOOT_MOVIE_MINT_URL__;
+                    var minted = video.play();
+                    if (minted && minted.catch) minted.catch(function () { /* controller retries */ });
+                  } catch (error) { /* decoration never blocks boot */ }
+                  return blob;
+                }
+                // No mint on this host (fetch failed or unsupported): the wire is the
+                // fallback, exactly the pre-mint behavior.
+                try {
+                  var kick = video.play();
+                  if (kick && kick.catch) kick.catch(function () { /* controller retries */ });
+                } catch (error) { /* decoration never blocks boot */ }
+                return blob;
+              });
           } catch (error) { /* decoration never blocks boot */ }
         })();
       </script>

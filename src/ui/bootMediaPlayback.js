@@ -19,11 +19,18 @@ export const BOOT_MEDIA = Object.freeze({
  * The fallback ORIGINAL movie keeps its own authored pace. */
 export const BOOT_PLAYBACK_RATE = 1.15;
 
+/** How long a wire stall may last before an unproven movie is moved onto a resident
+ * mint: brief hiccups ride out, a standing frame does not stand a full second. */
+const STALL_RESCUE_GRACE_MS = 700;
+
 export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 2500, holdMs = 9000,
   motionReduced = () => false, flashReduced = () => false, hidden = () => false,
   onState = () => {}, onFallback = () => {}, sources = BOOT_MEDIA,
   startOffset = null } = {}) {
   if (!video?.addEventListener || typeof video.play !== 'function') return null;
+  // From here on this controller owns the element's sourcing; the entry markup's parse-time
+  // mint checks this flag so a late landing feeds the mint instead of re-sourcing under us.
+  host.__SF_BOOT_MOVIE_CTL_ACTIVE__ = true;
   let wanted = false, disposed = false, failed = false, pending = false;
   let epoch = 0, frameHandle = null, deadline = null, resolveReady;
   let readySettled = false, status = 'idle', selected = '', quiet = null;
@@ -58,38 +65,72 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     if (frameHandle !== null) video.cancelVideoFrameCallback?.(frameHandle);
     frameHandle = null;
   };
+  let rescueGrace = null;
+  const cancelRescueGrace = () => {
+    if (rescueGrace !== null) host.clearTimeout(rescueGrace);
+    rescueGrace = null;
+  };
   const pause = () => {
-    epoch++; pending = false; cancelProof(); lastFrame = null; proofFrames = 0;
+    epoch++; pending = false; cancelProof(); cancelRescueGrace();
+    lastFrame = null; proofFrames = 0;
     try { video.pause(); } catch {}
   };
   // ---------------------------------------------------------------------------
   // In-memory transport: a loading movie must never wait on the wire. Each clip
   // is fetched once into a blob mint and replayed from memory, so heavy asset
   // streaming during a load (authored-visuals, gpu-resources) can never starve
-  // the decoder into `waiting`. Until the mint lands the plain URL plays exactly
-  // as before; the swap only ever happens while the element is paused.
+  // the decoder into `waiting`. The ordinary clip's mint usually already exists:
+  // the entry markup starts fetching it at parse time — tens of seconds before
+  // this module evaluates — and plays it from memory from its first frame (the
+  // wire is only the mint-failure fallback; owner, 2026-11-21: a slightly slower
+  // load is the right price for a movie that never hitches). That promise is
+  // adopted here rather than downloading the same bytes a second time.
   const blobCache = new Map();
   function prefetch(source) {
     if (!source || blobCache.has(source)) return;
     const entry = { url: null, failed: false };
     blobCache.set(source, entry);
-    if (typeof host.fetch !== 'function' || typeof host.URL?.createObjectURL !== 'function') {
+    if (typeof host.URL?.createObjectURL !== 'function') {
+      entry.failed = true; return;
+    }
+    const settle = (blob) => {
+      if (disposed || !blob || !blob.size) { entry.failed = true; return; }
+      // The entry markup may have already minted the ordinary clip onto an object URL
+      // before this controller existed; own that URL instead of minting a second one.
+      entry.url = (source === sources.normal && host.__SF_BOOT_MOVIE_MINT_URL__)
+        || host.URL.createObjectURL(blob);
+      // A mint landing on a wire-bound, unproven movie takes the transport over
+      // at once instead of waiting out the wire — see rescueStalledTransport.
+      rescueStalledTransport();
+    };
+    // Parse-time handoff: the entry markup's fetch of the ordinary clip, started
+    // before the module graph began downloading. Adopt it instead of re-fetching.
+    const preflight = source === sources.normal ? host.__SF_BOOT_MOVIE_MINT__ : null;
+    if (preflight && typeof preflight.then === 'function') {
+      Promise.resolve(preflight).then(settle, () => settle(null));
+      return;
+    }
+    if (typeof host.fetch !== 'function') {
       entry.failed = true; return;
     }
     try {
       Promise.resolve(host.fetch(source, { priority: 'high' })).then(response => {
         if (!response || response.ok === false) throw new Error('http');
         return response.blob();
-      }).then(blob => {
-        if (disposed || !blob || !blob.size) { entry.failed = true; return; }
-        entry.url = host.URL.createObjectURL(blob);
-      }).catch(() => { entry.failed = true; });
+      }).then(settle, () => settle(null));
     } catch (_) { entry.failed = true; }
   }
   function resolvedUrl(source) {
     if (!source) return '';
     const cached = blobCache.get(source);
     if (cached?.url) return cached.url;
+    // The entry markup's mint may have landed (and stashed its URL) before this
+    // controller evaluated; adopting it synchronously avoids re-sourcing the
+    // element onto the wire for the one tick the adopted promise needs to settle.
+    if (source === sources.normal && host.__SF_BOOT_MOVIE_MINT_URL__) {
+      if (cached) cached.url = host.__SF_BOOT_MOVIE_MINT_URL__;
+      return host.__SF_BOOT_MOVIE_MINT_URL__;
+    }
     prefetch(source);
     return source;
   }
@@ -106,6 +147,20 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
    *  ordinary resumeTime path so the swap is not a seek the player can see. */
   function upgradeTransport() {
     if (!selected || failed || !video.paused) return false;
+    const minted = blobCache.get(selected)?.url;
+    if (!minted || minted === assignedUrl) return false;
+    selectSource(selected, { fresh: true });
+    return true;
+  }
+  /** A wire-bound movie that has not proven playback (never presented two frames,
+   *  or stalled back to zero proof) moves onto a resident mint at once, keeping
+   *  the parked position: the standing frame is the wire's last delivered one,
+   *  and memory resumes from exactly that frame. A proven, playing movie keeps
+   *  its wire stream — brief hiccups ride out and its swap stays in the free
+   *  paused window. Returns true when the transport was taken over. */
+  function rescueStalledTransport() {
+    if (disposed || failed || !wanted || !selected) return false;
+    if (proofFrames >= 2) return false;
     const minted = blobCache.get(selected)?.url;
     if (!minted || minted === assignedUrl) return false;
     selectSource(selected, { fresh: true });
@@ -174,11 +229,16 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     const url = resolvedUrl(source);
     const previous = Number(video.currentTime) || 0;
     // The entry markup already streams the normal clip (preload=auto, fetchpriority=high) and
-    // the parse-time kick may already be presenting it. Re-selecting the SAME movie must not
-    // reload or pause it: a restart re-buffered a clip that was already playing and cost the
-    // intro its first visible seconds. `fresh` opts out — the paused transport
-    // upgrade re-sources the same movie on purpose.
-    const adoptStream = !fresh && ownsElement(source) && !video.error;
+    // the parse-time kick — or its own mint handoff — may already be presenting it. Re-selecting
+    // the SAME movie must not reload or pause it: a restart re-buffered a clip that was already
+    // playing and cost the intro its first visible seconds. An element already playing the
+    // RESOLVED url (the markup's minted copy) is that same movie, and a RESIDENT MINT outranks
+    // adopting the wire stream — the parse-time fetch usually has the whole clip in memory by
+    // now, and one brief reload buys a movie that can never again starve on the boot-contended
+    // wire. `fresh` opts out entirely — the paused transport upgrade re-sources on purpose.
+    const current = String(video.currentSrc || video.src || '');
+    const adoptStream = !fresh && !video.error
+      && (current === url || (!blobCache.get(source)?.url && ownsElement(source)));
     if (!adoptStream) pause();
     selected = source;
     resumeTime = adoptStream ? 0 : previous;
@@ -237,7 +297,7 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     pendingStartOffset = false;
     resumeTime = 0;
   });
-  listen('playing', () => { if (canRun() && !failed) armProof(); });
+  listen('playing', () => { cancelRescueGrace(); if (canRun() && !failed) armProof(); });
   // On older hosts, advancing media time + decoded data is the fallback proof.
   listen('timeupdate', () => {
     if (typeof video.requestVideoFrameCallback !== 'function') acceptFrame(Number(video.currentTime));
@@ -245,6 +305,13 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
   listen('waiting', () => {
     if (!canRun() || failed) return;
     proofFrames = 0; lastFrame = null; notify('buffering'); armProof();
+    // A stall that outlives the grace period moves an unproven movie onto a
+    // resident mint; a brief hiccup must not pay a reload for nothing.
+    cancelRescueGrace();
+    rescueGrace = host.setTimeout(() => {
+      rescueGrace = null;
+      if (!disposed) rescueStalledTransport();
+    }, STALL_RESCUE_GRACE_MS);
   });
   listen('error', () => fail('media-error'));
   video.poster = sources.poster;
@@ -298,6 +365,7 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
       wanted = false; pause(); disposed = true;
       if (deadline !== null) host.clearTimeout(deadline);
       deadline = null;
+      cancelRescueGrace();
       for (const entry of blobCache.values()) {
         if (entry.url) { try { host.URL?.revokeObjectURL?.(entry.url); } catch {} }
       }
