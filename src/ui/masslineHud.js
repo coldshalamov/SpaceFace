@@ -770,21 +770,14 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 svg.ml2-ink[data-grade="good"] .ml2-ink-flown { stroke:rgba(232,226,212,0.34); }
 #sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-ahead { stroke:rgba(255,208,138,0.9); stroke-dasharray:2 6; }
 #sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-flown { stroke:rgba(255,208,138,0.4); }
-#sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
-#sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
-  border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
-  transition:border-color 80ms linear, box-shadow 80ms linear; }
-#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:4px; }
-#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:ml2pulse 0.5s ease-in-out infinite; }
-/* INF-016: a degraded intercept reads as shape, not colour — dashed outline, never hot. */
-#sf-ml2 .ml2-throw.ml2-degraded .ml2-diamond { border-style:dashed; box-shadow:none; }
-#sf-ml2 .ml2-self.ml2-degraded { opacity:0.45; }
-@keyframes ml2pulse { 0%,100% { transform:rotate(45deg) scale(1); } 50% { transform:rotate(45deg) scale(1.3); } }
-#sf-ml2 .ml2-self { width:0; height:0; margin:-7px 0 0 -7px;
-  border-left:7px solid transparent; border-right:7px solid transparent;
-  border-bottom:12px solid var(--ml2-c,var(--dp-lamp, #f2b950)); opacity:0.7; filter:drop-shadow(0 0 6px var(--ml2-c,var(--dp-lamp, #f2b950))); }
-#sf-ml2 .ml2-self .ml2-mark-label { top:17px; }
-#sf-ml2 .ml2-self.ml2-hot { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:5px; opacity:1; }
+/* The throw and self-sling aims are words only ('RMB · THROW'): no ring, diamond or tick sits on
+   the target. The release ghost path draws where the throw will fly; the tag's colour names the
+   timing. A degraded solution paints nothing at all. */
+#sf-ml2 .ml2-throw, #sf-ml2 .ml2-self { width:0; height:0; }
+#sf-ml2 .ml2-self { opacity:0.8; }
+#sf-ml2 .ml2-self.ml2-hot { opacity:1; }
+/* The open window reads without colour too: the tag itself gains a second frame. */
+#sf-ml2 .ml2-throw.ml2-hot .ml2-mark-label, #sf-ml2 .ml2-self.ml2-hot .ml2-mark-label { outline:1px solid currentColor; outline-offset:2px; }
 /* PB-MASS-A SF-023: the cutter-commit mark sits ON the player's rope at the bite point. A bare
    hot X with no enclosing shape — an X inside a diamond already means "denied", so the bite mark
    must not wear that silhouette. */
@@ -836,12 +829,9 @@ export const MASSLINE_HUD_CSS = `
 }
 #sf-ml2.ml2-reduced-motion .ml2-mark,
 #sf-ml2.ml2-reduced-motion .ml2-preview-mark { transition:none; }
-#sf-ml2.ml2-reduced-motion .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
 #sf-ml2.ml2-reduced-motion .ml2-preview { animation:none; opacity:1; }
-#sf-ml2.ml2-reduced-flash .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
 @media (prefers-reduced-motion: reduce) {
   #sf-ml2 .ml2-mark, #sf-ml2 .ml2-preview-mark { transition:none; }
-  #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
   #sf-ml2 .ml2-preview { animation:none; opacity:1; }
 }
 @media (forced-colors: active) {
@@ -852,8 +842,6 @@ export const MASSLINE_HUD_CSS = `
   #sf-ml2 .ml2-preview-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
   #sf-ml2 .ml2-preview-mark i { border-color:CanvasText; box-shadow:none; }
   #sf-ml2 .ml2-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
-  #sf-ml2 .ml2-throw .ml2-diamond { border-color:CanvasText; box-shadow:none; outline-color:CanvasText; }
-  #sf-ml2 .ml2-self { border-bottom-color:CanvasText; outline-color:CanvasText; }
   #sf-ml2 .ml2-mark-label { color:CanvasText; background:Canvas; border-color:CanvasText; text-shadow:none; }
 }
 `;
@@ -2195,18 +2183,17 @@ export const masslineHud = {
       onSolution: solution.onSolution,
       targetKind: mark.targetKind,
     });
-    if (!cue.visible) {
+    // A degraded solution (the target turned out of it) promises nothing, so it paints nothing:
+    // no tag, no path. The aim comes back the moment the solution does.
+    if (!cue.visible || solution.degraded === true) {
       setStyle(dom.throwEl, 'display', 'none');
       if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
       return;
     }
     setStyle(dom.throwEl, 'display', 'block');
     setStyle(dom.throwEl, 'transform', `translate3d(${cue.x}px, ${cue.y}px, 0)`);
-    // INF-016: degraded confidence is its own mark — dashed, never hot, labelled STALE.
-    const degradedThrow = solution.degraded === true;
-    const hot = !!solution.onSolution && !degradedThrow;
+    const hot = !!solution.onSolution;
     setClass(dom.throwEl, 'ml2-hot', hot);
-    setClass(dom.throwEl, 'ml2-degraded', degradedThrow);
     setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
@@ -2221,7 +2208,7 @@ export const masslineHud = {
     // SF-027: the pilot's own route is the one victim class the protected-body spots cannot
     // carry; it joins the SAME single advisory and the nearer of the two wins — still one
     // named victim, still no veto.
-    if (!degradedThrow) {
+    {
       const payloadPoint = throwPayloadPoint(throwState, state);
       let collateral = resolveThrowCollateral(solution,
         payloadPoint, throwPayloadRadius(throwState, state),
@@ -2243,11 +2230,6 @@ export const masslineHud = {
         setAttr(dom.throwEl, 'aria-label',
           `${cue.ariaLabel}, possible collateral risk near ${collateral.label.toLowerCase()}`);
       }
-    }
-    if (degradedThrow) {
-      if (dom.throwLabel && dom.throwLabel.textContent !== 'STALE') dom.throwLabel.textContent = 'STALE';
-      setAttr(dom.throwEl, 'aria-label', 'Massline throw intercept degraded, target turning');
-      setAttr(dom.throwEl, 'data-window-state', 'degraded');
     }
   },
 
@@ -2321,13 +2303,11 @@ export const masslineHud = {
       onSolution: self.onSolution,
       targetKind: self.targetKind,
     });
-    if (!cue.visible) { hideSelf(); return; }
+    // The self-sling degrades exactly like the throw: a degraded solution paints nothing.
+    if (!cue.visible || self.degraded === true) { hideSelf(); return; }
     setStyle(dom.selfEl, 'display', 'block');
     setStyle(dom.selfEl, 'transform', `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`);
-    // INF-016: the self-sling cue degrades exactly like the throw diamond.
-    const degradedSelf = self.degraded === true;
-    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution && !degradedSelf);
-    setClass(dom.selfEl, 'ml2-degraded', degradedSelf);
+    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution);
     setClass(dom.selfEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.selfEl, '--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
     applyCueState(dom.selfEl, dom.selfLabel, cue);
@@ -2335,13 +2315,7 @@ export const masslineHud = {
     // mirrored fields, from the player's own position rather than the tethered anchor's.
     const selfFrom = state.entities && state.entities.get
       ? state.entities.get(state.playerId) : null;
-    this._updateThrowGhost(dom, self, selfFrom && selfFrom.pos, w2s,
-      !!self.onSolution && !degradedSelf);
-    if (degradedSelf) {
-      if (dom.selfLabel && dom.selfLabel.textContent !== 'STALE') dom.selfLabel.textContent = 'STALE';
-      setAttr(dom.selfEl, 'aria-label', 'Massline self-sling intercept degraded, target turning');
-      setAttr(dom.selfEl, 'data-window-state', 'degraded');
-    }
+    this._updateThrowGhost(dom, self, selfFrom && selfFrom.pos, w2s, !!self.onSolution);
   },
 
   // PB-MASS-A live-line marks. SF-023: the threat mark rides the rope at the bite point a
@@ -2694,9 +2668,6 @@ export const masslineHud = {
     const throwEl = document.createElement('div');
     throwEl.className = 'ml2-mark ml2-throw';
     throwEl.style.display = 'none';
-    const diamond = document.createElement('div');
-    diamond.className = 'ml2-diamond';
-    throwEl.appendChild(diamond);
     const throwLabel = document.createElement('span');
     throwLabel.className = 'ml2-mark-label';
     throwEl.appendChild(throwLabel);

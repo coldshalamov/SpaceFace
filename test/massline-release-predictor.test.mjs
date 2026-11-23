@@ -287,11 +287,12 @@ test('R3B HUD anchors fixed release targets at their captured world point', () =
   assert.ok(Math.abs(entityPoint.z - (movingTarget.pos.z + movingTarget.vel.z * (1 / 120))) < 1e-9);
 });
 
-test('PQ-006 HUD declares static reduced-flash and forced-color release states', () => {
-  assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-reduced-flash/);
+test('PQ-006 HUD declares forced-color release states and a non-colour open window', () => {
+  // Owner 2026-11-23: the throw aim is the 'RMB · THROW' words only — no pulsing diamond is left
+  // for reduced-flash to calm. The open window still reads without colour: the tag gains a frame.
   assert.match(masslineHudModule.MASSLINE_HUD_CSS, /forced-colors:\s*active[\s\S]*ml2-mark/);
-  assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-hot[\s\S]*outline/,
-    'the open window keeps a shape boundary when pulse/color are unavailable');
+  assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-hot \.ml2-mark-label[^}]*outline/,
+    'the open window keeps a shape boundary on the tag when colour is unavailable');
 });
 
 test('PQ-006 new games declare Snap as the release-assist profile default', () => {

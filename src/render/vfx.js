@@ -441,7 +441,6 @@ import {
   shouldEmitEngineWash,
 } from './engineWash.js';
 import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
-import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
   MOMENTUM_SINK_VFX_COLORS,
   MOMENTUM_SINK_VFX_HZ,
@@ -2604,7 +2603,6 @@ export const vfx = {
     this._initFreightLane();
     this._initStormZones();
     this._initApexFlare();
-    this._initSelectionSigil();
     this._initSeamMarkers();
     this._initBroodPresentation();
     this._initCombatBeams();
@@ -7631,48 +7629,14 @@ export const vfx = {
     return !!(tether && tether.active && preview && preview.viable);
   },
 
-  // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
-  // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
-  // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
-  // The ORRERY selection sigil: one world-space ground-plane instrument on the locked/engaged
-  // target, drawn after the field force surfaces (renderOrder 18 > 16) with depth testing ON.
-  // Force surfaces never write depth, so the sigil reads through a Well; hulls and rock do,
-  // so real occluders still win. The subject rule lives in targetContour.js; only the art is here.
-  // It also advances the instrument's own clock from `dt`, so this is called every frame it lives.
   _selectionSigil: null,
-  _initSelectionSigil() {
-    if (!this._scene || this._selectionSigil) return;
-    this._selectionSigil = new SelectionSigil(this._scene);
-  },
-  _resetSelectionSigil() {
-    // Teardown is not a release: dispose outright so no half-folded instrument is left behind.
-    if (this._selectionSigil) this._selectionSigil.dispose();
-    this._selectionSigil = null;
-  },
   _resetBroodPresentation() {
     if (this._broodPresentation) this._broodPresentation.dispose();
     this._broodPresentation = null;
   },
-  _updateSelectionSigil(dt) {
-    const sigil = this._selectionSigil;
-    if (!sigil) return false;
-    const state = this.state;
-    const settings = (state && state.settings) || null;
-    if (!state || state.mode !== 'flight') {
-      sigil.clear(dt, settings);
-      return false;
-    }
-    const resolved = resolveSelectionSigil(state);
-    if (!resolved) {
-      sigil.clear(dt, settings);
-      return false;
-    }
-    // Active swarm fights never reach this: resolveSelectionSigil withholds them.
-    // Other survival runs pull the same figures onto the hull.
-    if (state.run && state.run.kind === 'survival') resolved.tight = true;
-    const local = this._toLocalXZ(resolved.x, resolved.z, this._spawnLocalXZ);
-    return sigil.setSubject(resolved, local.x, local.z, dt, settings);
-  },
+  // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
+  // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
+  // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
   _masslineReleaseArc: null,
   _initMasslineReleaseArc() {
     if (!this._scene) return;
@@ -11604,8 +11568,10 @@ export const vfx = {
     this._updateTumbleBodyLanguageVfx(dt);
     this._updateEnvironmentMaterialVfx(dt);
     this._updateStatusAttachedVfx(dt);
-    // INF-045: the lock contour tracks the target every frame it exists.
-    sub.selectionSigil = this._updateSelectionSigil(dt) ? 1 : 0;
+    // The world selection sigil (the cyan astrolabe ring, ticks and hexagon round the selected
+    // body) is not drawn: owner, 2026-11-23, no rings round things. The target card and the DOM
+    // lock bracket say what is selected; the Line's aim tag and release path say where a throw goes.
+    sub.selectionSigil = 0;
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -16806,15 +16772,6 @@ export function createVfxPrecompileSalvo() {
       * PLAYER_PLASMA_STREAM_RECIPE.volume.tailFlare,
   });
   stagingVolume.group.userData.precompileStaging = true;
-
-  // The selection sigil is a bespoke ShaderMaterial nothing else can pin: a specimen here warms
-  // its exact program key so the first target select does not link inside the presented frame.
-  // The live instance starts visible=false and is skipped by the residency-leaf census, so this
-  // specimen is the only staged draw the program ever gets.
-  const sigilSpecimen = new SelectionSigil();
-  sigilSpecimen.mesh.visible = true;
-  sigilSpecimen.mesh.name = 'SF_Precompile_SelectionSigil';
-  group.add(sigilSpecimen.mesh);
 
   // Emergent combat structures (energy arcs, pressure rings, deposits, splinters) live in a
   // lazily-created pool — the first real event used to link 4 bespoke programs plus the
