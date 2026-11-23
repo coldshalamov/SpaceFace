@@ -60,7 +60,8 @@ function boot({ seed = SEED, hullId = 'ship_hornet' } = {}) {
   return { state, bus, emitted, ctx, registry };
 }
 
-function enterSwarmDraft(harness, wave = 5) {
+// Tests follow d4db73990f: one menu per run, the Bench every tenth round (04_SWARM.md §2).
+function enterSwarmDraft(harness, wave = 10) {
   harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA });
   let from = 'loadout';
   for (const next of ['arena_intro', 'wave_intro', 'active', 'cleanup']) {
@@ -96,7 +97,7 @@ test('pool authored deals only written cards; the plain draw is unchanged', () =
 
 test('a swarm armory deals three authored cards on top of the shelf', () => {
   const harness = boot();
-  enterSwarmDraft(harness, 5);
+  enterSwarmDraft(harness, 10);
   const offers = survivalDraft.currentOffers();
   const dealt = offers.filter((offer) => offer.dealt === true);
   assert.equal(dealt.length, 3, 'exactly the dealt three carry the mark');
@@ -109,7 +110,7 @@ test('a swarm armory deals three authored cards on top of the shelf', () => {
 
 test('a re-roll deals new cards and leaves the shelf standing', () => {
   const harness = boot();
-  enterSwarmDraft(harness, 5);
+  enterSwarmDraft(harness, 10);
   fundRun(harness, 100);
   // The armory's reroll rides the Hangar bench (or the Gambler perk), never the plain wallet —
   // stock it with free draws the way a bought Rerolls rank does.
