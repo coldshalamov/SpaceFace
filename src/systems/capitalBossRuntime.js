@@ -204,8 +204,10 @@ function withSwarmBossRites(system) {
         const boss = state.entities && typeof state.entities.get === 'function'
           ? state.entities.get(record.bossId) : null;
         record.swarmAmmoChunks = spawnSwarmBossChunks(context, record, boss);
-        // The run's first fallen champion is the milestone: the results plate turns the
-        // stamp into the IRON MAW DOWN variant, and Keep going hands the run back.
+        // The run's first fallen champion is stamped on the run's record. It no longer stops the
+        // run with a plate: a boss round flows straight on through the level-up breath (the Bench
+        // is the only menu in a run, design/overhaul/04_SWARM.md section 2); BOSS DOWN is the
+        // in-flight beat (swarmJuice).
         const run = state.run;
         const telemetry = run && (run.telemetry || (run.telemetry = {}));
         if (run && run.kind === 'survival' && run.ruleset === 'swarm' && telemetry.firstBossDown == null) {
@@ -217,7 +219,6 @@ function withSwarmBossRites(system) {
             wave: run.wave,
             pending: true,
           };
-          ctx.bus.emit('ui:pushScreen', { id: 'crucibleResults', source: 'swarm:bossMilestone' });
         }
       }
     });

@@ -3260,20 +3260,6 @@ function resultVersion(owner) {
   return resultSignature(result);
 }
 
-/**
- * S14 — the run's first fallen champion leaves a pending stamp on run telemetry; the results
- * plate reads it as a live-run victory beat. Only a pending stamp qualifies — a settled
- * result at run end must never be shadowed by a milestone the fight already played.
- */
-function swarmFirstBossMilestone(state) {
-  const run = state && state.run;
-  // The pilot can die before presentation handles the boss kill from that same combat batch.
-  if (!run || run.ruleset !== SWARM_RULESET || run.phase === 'ended' || run.phase === 'victory') return null;
-  const stamp = run.telemetry && run.telemetry.firstBossDown;
-  if (!stamp || stamp.pending !== true) return null;
-  return stamp;
-}
-
 function isRunBuildPick(pick) {
   return pick?.startingEquipment !== true && Boolean(pick?.verb || pick?.defId);
 }
@@ -4058,24 +4044,17 @@ export const crucibleResultsScreen = {
     this._resultSig = resultVersion(owner);
     rootEl.dataset.stamp = resultStamp(result);
 
-    // S14 — the first fallen champion is a victory beat, not a defeat: IRON MAW DOWN plays
-    // the Run Over plate's own geometry with the score's authored lesson, and three ways
-    // back out. The run underneath is still live — Keep going hands it back.
-    const milestone = swarmFirstBossMilestone(ctx && ctx.state);
-    if (milestone) {
-      this._mountBossMilestone(rootEl, ctx, milestone);
-      return;
-    }
-
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
 
     // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
     // idempotent and gets exactly this tape. A seal failure must never take down the plate.
     try { if (result?.stopReason !== 'player_retired') takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
 
-    // RUN OVER (04_SWARM.md §8): a Swarm death reads in six lines, then Again under Enter.
-    if (isSwarmRunOver(result)) {
-      this._mountRunOver(rootEl, ctx, result);
+    // RUN OVER (04_SWARM.md §8): a Swarm death reads in six lines, then Again under Enter. An
+    // ended run, a cash-out at the Bench and the round-30 win read on the same plate.
+    const plateKind = swarmPlateKind(result);
+    if (plateKind) {
+      this._mountRunOver(rootEl, ctx, result, plateKind);
       return;
     }
 
@@ -4372,19 +4351,25 @@ export const crucibleResultsScreen = {
    * your best moment, round/kills/chain/time big, your build in one line — then Again under
    * Enter, the exact seed as a second key when Again deals a fresh layout, Hangar, Menu. The
    * death dial stands at the right as the still of the blow. The full ledger stays on the record.
+   *
+   * `kind` (swarmPlateKind): 'defeat' is the death above. 'retired' (End run from pause) and
+   * 'extracted' (cashed out at the Bench) drop the Killed-by row and keep the same ways out.
+   * 'win' (round 30) drops it too and offers exactly Keep going (Enter) and Take the win.
    */
-  _mountRunOver(rootEl, ctx, result) {
+  _mountRunOver(rootEl, ctx, result, kind = 'defeat') {
     rootEl.classList.add('sf-runover');
+    rootEl.dataset.plate = kind;
     const doc = rootEl.ownerDocument || document;
     const plate = el('section', 'sf-runover__plate');
-    const title = el('h1', 'sf-runover__title', 'Run over');
+    const title = el('h1', 'sf-runover__title', RUN_OVER_TITLES[kind] || RUN_OVER_TITLES.defeat);
     title.id = 'sf-crucible-results-title';
     const kiln = el('p', 'sf-runover__kiln');
-    kiln.appendChild(el('span', 'sf-runover__quote', `“${kilnRunOverLine(result)}”`));
+    kiln.appendChild(el('span', 'sf-runover__quote', `“${kilnPlateLine(result, kind)}”`));
     kiln.appendChild(el('span', 'sf-runover__by', 'Madame Kiln'));
     plate.appendChild(title);
     plate.appendChild(kiln);
     if (result.recordRules?.mode === 'practice') plate.appendChild(el('p', 'sf-runover__note', 'Practice run. No ranked score or rewards.'));
+    else if (kind === 'retired') plate.appendChild(el('p', 'sf-runover__note', 'Ended early, so this run is unranked.'));
 
     const rows = el('div', 'sf-runover__rows');
     const row = (label, main, detail = '') => {
@@ -4397,8 +4382,10 @@ export const crucibleResultsScreen = {
       rows.appendChild(r);
       return r;
     };
-    const killer = runOverKiller(result);
-    row('Killed by', killer.name, killer.detail);
+    if (kind === 'defeat') {
+      const killer = runOverKiller(result);
+      row('Killed by', killer.name, killer.detail);
+    }
     row('Best moment', runOverBestMoment(result));
     plate.appendChild(rows);
 
@@ -4435,6 +4422,50 @@ export const crucibleResultsScreen = {
     plate.appendChild(buildRow);
     const take = runOverTakeLine(result);
     if (take) plate.appendChild(el('p', 'sf-runover__take', take));
+
+    // C01-03 — the round-30 win: exactly two ways off the plate. Keep going (Enter) hands the
+    // still-banked run back to the deep course; Take the win leaves through the hangar exit.
+    if (kind === 'win') {
+      const foot = el('div', 'sf-runover__foot');
+      const keep = el('button', 'sf-runover__again');
+      keep.type = 'button';
+      keep.dataset.action = 'keep-going';
+      keep.appendChild(el('span', 'sf-runover__again-word', 'Keep going'));
+      keep.appendChild(el('span', 'sf-runover__key', 'Enter'));
+      keep.setAttribute('aria-label', 'Keep going: round 31 and on, the win already counted');
+      keep.addEventListener('click', () => {
+        cue('confirm');
+        // Pop the plate first so whatever the resume lands on is never covered.
+        ctx.bus.emit('ui:popScreen', {});
+        ctx.bus.emit('run:swarmDeepRequested', {});
+      });
+      foot.appendChild(keep);
+      const takeWin = el('button', 'sf-runover__quiet sf-runover__take-win', 'Take the win');
+      takeWin.type = 'button';
+      takeWin.dataset.action = 'take-win';
+      takeWin.addEventListener('click', () => {
+        cue('close');
+        try { clearKillcamTape(); } catch { /* the replay is optional */ }
+        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+      });
+      foot.appendChild(takeWin);
+      plate.appendChild(foot);
+      rootEl.appendChild(plate);
+      this._runOverKey = (event) => {
+        if (event.key !== 'Enter' || event.repeat) return;
+        const target = event.target;
+        if (target && target !== keep && String(target.tagName).toUpperCase() === 'BUTTON') return;
+        event.preventDefault(); event.stopPropagation();
+        keep.click();
+      };
+      if (typeof rootEl.addEventListener === 'function') rootEl.addEventListener('keydown', this._runOverKey);
+      this._dial = null;
+      injectRunOverLayouts(doc);
+      this._regions = { title, story: plate, ledger: plate, foot, again: keep };
+      rootEl.dataset.kReady = '1';
+      try { keep.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+      return;
+    }
 
     // The ways out. Again is the one primary: Enter presses it from anywhere on the plate.
     const foot = el('div', 'sf-runover__foot');
@@ -4523,86 +4554,6 @@ export const crucibleResultsScreen = {
     this._regions = { title, story: plate, ledger: plate, foot, again };
     rootEl.dataset.kReady = '1';
     try { again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
-  },
-
-  // S14 — the victory variant of this plate: the champion's name in the title, its authored
-  // lesson in the band, the same three ways out. Keep going is the focused word because the
-  // run underneath is still live; Again and Main menu share the ordinary record's wiring.
-  _mountBossMilestone(rootEl, ctx, milestone) {
-    const bossName = String(milestone.name || 'BOSS').toUpperCase();
-    rootEl.dataset.outcome = 'milestone';
-
-    const head = el('header', 'k-head');
-    const h = el('h1', 'sf-crd-title', `${bossName} DOWN`);
-    h.id = 'sf-crucible-results-title';
-    head.appendChild(h);
-    rootEl.appendChild(head);
-    rootEl.appendChild(el('p', 'k-stamp sf-crd-stamp', 'CRUCIBLE / FIRST CHAMPION DOWN'));
-
-    const story = el('section', 'k-band k-band--story');
-    story.appendChild(el('p', 'k-sentence', milestone.line || `${bossName} is salvage.`));
-    if (milestone.lesson) story.appendChild(el('p', 'k-sentence k-t-fine', milestone.lesson));
-    rootEl.appendChild(story);
-
-    const foot = el('footer', 'k-foot sf-crd-foot');
-    const footWords = el('ul', 'k-words k-words--row');
-    footWords.setAttribute('aria-label', 'After the run');
-    const addWord = (button) => {
-      const li = el('li');
-      li.appendChild(button);
-      footWords.appendChild(li);
-      return button;
-    };
-
-    const keepGoing = addWord(word('Keep going', 'k-word--emph k-word--primary'));
-    keepGoing.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
-
-    const again = addWord(word('Run it again — same seed', 'k-word--emph'));
-    again.addEventListener('click', () => {
-      try { clearKillcamTape(); } catch { /* the replay is optional */ }
-      const retry = buildCrucibleRetryRequest();
-      if (!retry) {
-        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
-        return;
-      }
-      const setup = retry.setup;
-      if (setup.dailyDateKey || setup.weeklyMutatorId) {
-        queueSurvivalChallenge({
-          seed: setup.seed,
-          ruleset: retry.ruleset,
-          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
-          dailyDateKey: setup.dailyDateKey,
-          weeklyMutatorId: setup.weeklyMutatorId,
-          ghostHash: setup.ghostHash,
-        });
-      } else if (setup.ghostHash != null) {
-        queueGhostPlayback(setup.ghostHash);
-      }
-      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
-    });
-
-    const hangar = addWord(word('Back to the hangar', 'k-word--emph'));
-    hangar.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
-
-    const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
-    menu.addEventListener('click', () => {
-      ctx.bus.emit('game:over:dismissed', {});
-      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
-      ctx.bus.emit('ui:closeAll', {});
-      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
-    });
-
-    foot.appendChild(footWords);
-    rootEl.appendChild(foot);
-
-    // Mounting the plate IS the acknowledgement — clear the pending stamp so the run's real
-    // end renders the ordinary record instead of a milestone already played.
-    ctx.bus.emit('swarm:bossMilestoneAck', { wave: milestone.wave });
-    this._regions = { title: h, story, ledger: story, foot, again: keepGoing };
-    rootEl.dataset.kReady = '1';
-    if (typeof keepGoing.focus === 'function') {
-      try { keepGoing.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
-    }
   },
 
   onShow() {
@@ -4817,10 +4768,41 @@ export function resultCelebration(result) {
  * read every line. Nothing here may print "?", "unknown", a faction or a ledger word.
  * --------------------------------------------------------------------------------------------- */
 
-/** A Swarm death that gets the six-line plate (a retire, a win or a boss beat keep their own). */
+/** A Swarm death that gets the six-line plate with its Killed-by row. */
 export function isSwarmRunOver(result) {
   return !!result && result.ruleset === SWARM_RULESET && result.outcome === 'defeat'
     && result.stopReason !== 'player_retired';
+}
+
+/**
+ * Which six-line plate a Swarm result reads on: 'defeat' (a death), 'retired' (End run from
+ * pause), 'extracted' (cashed out at the Bench) or 'win' (round 30 cleared). Null keeps the full
+ * flight record: a Circuit clear, a failed room build, any Gauntlet run.
+ */
+export function swarmPlateKind(result) {
+  if (!result || result.ruleset !== SWARM_RULESET) return null;
+  if (result.stopReason === 'player_retired') return 'retired';
+  if (isSwarmRunOver(result)) return 'defeat';
+  if (result.outcome === 'extracted' && !result.circuit) return 'extracted';
+  if (resultWinOffers(result)) return 'win';
+  return null;
+}
+
+/** The plate's one title word per ending (the stylesheet sets the case). */
+export const RUN_OVER_TITLES = Object.freeze({
+  defeat: 'Run over', retired: 'Run ended', extracted: 'Cashed out', win: 'The Pit is yours',
+});
+
+/** Kiln's line for any six-line plate: the death's own line, or one for the other endings. */
+export function kilnPlateLine(result, kind = 'defeat') {
+  const round = runOverRound(result);
+  if (kind === 'win') {
+    return (Number(result && result.bestChain) || 0) >= 25
+      ? 'Thirty rounds, and you made it dance.' : 'Thirty rounds. I need a bigger room.';
+  }
+  if (kind === 'retired') return round <= 1 ? 'Leaving already? The doors stay open.' : `Round ${round}, then you walked. Noted.`;
+  if (kind === 'extracted') return 'You took the money. Sensible. Boring.';
+  return kilnRunOverLine(result);
 }
 
 function runOverRound(result) {

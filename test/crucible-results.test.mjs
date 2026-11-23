@@ -1294,27 +1294,31 @@ test('the share band is one aligned row per item: caption, single-line field, sa
   }
 });
 
-test('a round-30 swarm win offers exactly Take the win and Keep going', () => {
-  const { lines, stamp, buttons, emitted } = mountResults({
+test('a round-30 swarm win reads the Run Over plate and offers exactly Keep going and Take the win', () => {
+  // Superseded by design/overhaul/04_SWARM.md section 8: the win reads on the six-line plate
+  // (Kiln's line, best moment, the figures big, the build) instead of the full ledger.
+  const { lines, buttons, emitted } = mountResults({
     outcome: 'victory', ruleset: 'swarm', seed: 4242, wave: 30, deepestWave: 30,
-    wavesCleared: 30, kills: 412, score: 9100, credits: 540, xp: 2400, level: 12,
+    wavesCleared: 30, kills: 412, score: 9100, credits: 540, xp: 2400, level: 12, bestChain: 31,
     picks: [{ verb: 'Volume', defId: 'wpn_autocannon_m', wave: 10 }],
     headline: 'The Pit is yours. Thirty rounds, every champion down.',
     defeat: null, damageTrail: [],
   });
   const text = lines.join('\n');
-  assert.equal(stamp, 'CRUCIBLE / ARENA CLEARED');
-  assert.equal(lines[0], 'THE PIT IS YOURS');
-  const verbs = buttons.map((b) => b.textContent).filter((t) => !t.startsWith('Copy '));
-  assert.deepEqual(verbs, ['Take the win', 'Keep going'],
+  assert.equal(lines[0], 'The Pit is yours');
+  assert.match(text, /Thirty rounds, and you made it dance\./, 'Kiln speaks once');
+  assert.ok(text.includes('412'), 'the kills read big');
+  assert.ok(!text.includes('Killed by'), 'a win names no killer');
+  assert.ok(!/Deepest round|Run purse|Build code/.test(text), 'no ledger rows on the win plate');
+  const verbs = buttons.map((b) => b.dataset.action).filter(Boolean);
+  assert.deepEqual(verbs, ['keep-going', 'take-win'],
     'the win plate offers exactly the two authored choices');
-  assert.ok(text.includes('Deepest round'), 'the ledger names the run’s deepest round');
 
   // Keep going asks the run owner to resume the course; the plate only pops itself first.
-  const keep = buttons.find((b) => b.textContent === 'Keep going');
+  const keep = buttons.find((b) => b.dataset.action === 'keep-going');
   keep.listeners.click[0]();
   assert.deepEqual(emitted.map((e) => e.event), ['ui:popScreen', 'run:swarmDeepRequested']);
-  const take = buttons.find((b) => b.textContent === 'Take the win');
+  const take = buttons.find((b) => b.dataset.action === 'take-win');
   take.listeners.click[0]();
   assert.equal(emitted.at(-1).event, 'ui:replaceScreen', 'Take the win rides the ordinary exit');
 });

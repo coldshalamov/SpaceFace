@@ -107,11 +107,12 @@ test('S14 — a fallen champion pays its mass forward: throwable chunks spawn on
       assert.equal(e.flags.persistent, true, 'outlives the round');
       assert.ok(Number.isFinite(e.pos.x) && Number.isFinite(e.pos.z));
     }
-    // The run's first boss stamps the milestone and pushes the victory plate.
+    // The run's first boss stamps the record, and the run flows on: no plate stops it
+    // (superseded by design/overhaul/04_SWARM.md section 2 — the Bench is the only menu in a run).
     const stamp = h.state.run.telemetry.firstBossDown;
     assert.ok(stamp && stamp.pending === true && stamp.name === 'IRON MAW', `stamp ${stamp && stamp.name}`);
-    assert.deepEqual(h.emitted.filter((e) => e.id === 'ui:pushScreen').map((e) => e.p.id),
-      ['crucibleResults']);
+    assert.deepEqual(h.emitted.filter((e) => e.id === 'ui:pushScreen').map((e) => e.p.id), [],
+      'a fallen champion pushes no screen mid-run');
     h.sim.bus.emit('swarm:bossMilestoneAck', { wave: SWARM_BOSS_FIRST });
     assert.equal(stamp.pending, false, 'ack consumes the pending stamp');
     // Killing the same record's boss again mints no second field.
@@ -122,29 +123,19 @@ test('S14 — a fallen champion pays its mass forward: throwable chunks spawn on
   } finally { h.dispose(); }
 });
 
-test('S14 — the first champion down plays the victory variant of Run Over, focused on Keep going', () => {
-  const { root, emitted, buttons } = mountScreen(crucibleResultsScreen, { ctx: {
+test('the first champion down no longer has a plate: a pending stamp never shadows the record', () => {
+  // Superseded by design/overhaul/04_SWARM.md section 2: rounds 5, 15 and 25 flow straight on
+  // through the level-up breath; BOSS DOWN is the in-flight beat, and the Bench is the only menu.
+  const { root, emitted } = mountScreen(crucibleResultsScreen, { ctx: {
     state: { run: { kind: 'survival', ruleset: 'swarm', telemetry: { firstBossDown:
       { name: 'IRON MAW', line: 'IRON MAW: Drive gone. Guns gone. Still moving.',
         lesson: 'Mass beats plate. Spend what the arena gives you.', wave: 5, pending: true } } },
       ui: {}, entities: new Map(), simTime: 12 } } });
   const text = textLines(root).join(' | ');
-  assert.ok(text.includes('IRON MAW DOWN'), 'the champion names the plate');
-  assert.ok(text.includes('Mass beats plate'), 'the authored lesson moved to the plate');
-  const keep = buttons.find((b) => (b.textContent || '').includes('Keep going'));
-  assert.ok(keep && keep.className.includes('k-word--primary'), 'Keep going is the focused word');
-  for (const w of ['Run it again', 'Back to the hangar', 'Main menu']) {
-    assert.ok(text.includes(w), `${w} offered`);
-  }
-  assert.equal(emitted.filter((e) => e.event === 'swarm:bossMilestoneAck').length, 1,
-    'mounting the plate acknowledges the milestone once');
-  // A settled stamp renders the ordinary record instead.
-  const settled = mountScreen(crucibleResultsScreen, { ctx: {
-    state: { run: { kind: 'survival', ruleset: 'swarm', telemetry: { firstBossDown:
-      { name: 'IRON MAW', line: '', lesson: '', wave: 5, pending: false } } },
-      ui: {}, entities: new Map(), simTime: 12 } } });
-  assert.ok(!textLines(settled.root).join(' ').includes('FIRST CHAMPION DOWN'),
-    'a consumed stamp never shadows the run end');
+  assert.ok(!text.includes('IRON MAW DOWN'), 'no champion plate');
+  assert.ok(!/CRUCIBLE|FIRST CHAMPION/.test(text), 'no internal stamp words');
+  assert.equal(emitted.filter((e) => e.event === 'swarm:bossMilestoneAck').length, 0,
+    'nothing acknowledges a plate that no longer exists');
 });
 
 test('a fatal hit overtakes a queued first-champion celebration and offers real Retry and Back', () => {
@@ -162,7 +153,8 @@ test('a fatal hit overtakes a queued first-champion celebration and offers real 
     const setup = crucibleHullSetupFor({ hullId: 'ship_hornet', seed, arenaId: 'helios_core' });
     assert.equal(requestCrucibleRun(h.sim.bus, setup.value, 'swarm'), true);
     h.sim.bus.emit('entity:killed', { id: h.boss.id, killerId: h.state.playerId });
-    assert.ok(h.emitted.some(e => e.id === 'ui:pushScreen' && e.p.id === 'crucibleResults'));
+    assert.ok(!h.emitted.some(e => e.id === 'ui:pushScreen' && e.p.id === 'crucibleResults'),
+      'the boss kill itself opens no plate (04_SWARM.md section 2)');
     h.sim.bus.emit('player:death', { context: 'arena_slam', physicalLabel: 'arena impact' });
     assert.equal(h.state.run.phase, 'ended');
     assert.equal(h.state.run.telemetry.firstBossDown.pending, true, 'the first screen has not mounted to ack');
