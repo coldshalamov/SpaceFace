@@ -644,11 +644,12 @@ export const survivalHud = {
           : null;
         const player = st.entities && st.entities.get && st.entities.get(st.playerId);
         const glyph = circuitMarkGlyph(player, mark);
-        const word = zoned ? objectiveWord(objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
+        // Swarm counts rounds everywhere a player reads (the door, the Bench, Run Over).
+        const word = zoned ? objectiveWord(objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT ROUND');
         this._setText(dom.threatWord, glyph ? `${word} ${glyph}` : word);
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next round in ${clock}`);
         this._setAttr(dom.threat, 'aria-valuemin', '0');
         this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
         this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
@@ -1263,9 +1264,9 @@ export const survivalHud = {
 
     // Quiet single-line muted footer for secondary totals (score, kills, credits, level).
     const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
-    const scoreWord = make('span', 'sf-crun__word sf-crun__footword', figures);
+    const scoreWord = make('span', 'sf-crun__word sf-crun__footword sf-crun__scorepair', figures);
     scoreWord.textContent = 'SCORE';
-    const score = make('span', 'sf-crun__fig sf-crun__footfig', figures);
+    const score = make('span', 'sf-crun__fig sf-crun__footfig sf-crun__scorepair', figures);
     const killWord = make('span', 'sf-crun__word sf-crun__footword', figures);
     killWord.textContent = 'KILLS';
     const killFig = make('span', 'sf-crun__fig sf-crun__footfig', figures);
@@ -1430,6 +1431,9 @@ export const survivalHud = {
   @media (max-width: 900px) {
     .sf-crun { min-width:0; }
     .sf-crun__hero-num, .sf-crun__chainfig { font-size:22px; }
+    /* A narrow card keeps kills, Scrap and the level on one line by dropping the score total
+       (Run Over shows it), instead of clipping Scrap and the level. */
+    .sf-crun__scorepair { display:none; }
   }
 `;
     document.head.appendChild(style);
