@@ -86,6 +86,7 @@ export function measureControlReachability(doc, surface) {
   const view = doc.defaultView, findings = [];
   const viewport = `${view.innerWidth}×${view.innerHeight}`;
   const modal = activeModal(doc, view);
+  const covering = coveringPresentation(doc);
   const controls = (PRIMARY_CONTROLS[surface] || []).flatMap(([selector, name]) =>
     [...doc.querySelectorAll(selector)].map(el => ({ el, name })));
   // A modal owns pointer input while it is open. Check its own actions, but do not report the
@@ -97,6 +98,10 @@ export function measureControlReachability(doc, surface) {
     }
   }
   for (const { el, name } of controls) {
+      // Continue's load veil and photo/replay/clips hide the menu on purpose. Remaining keys behind
+      // those presentations are not a walk defect (the product is covering them).
+      if (covering === 'continue-veil' && name === 'Title menu') continue;
+      if (covering === 'photo' && name === 'Pause menu') continue;
       // The top modal is the active interaction surface. Underlying controls are deferred until it
       // closes; their hit points cannot establish a product defect while the modal owns input.
       if (modal && !modal.contains?.(el)) continue;
@@ -155,6 +160,27 @@ export function measureControlReachability(doc, surface) {
       }
   }
   return findings;
+}
+
+function coveringPresentation(doc) {
+  const fade = queryFirst(doc, '.sf-continue-fade.open');
+  // The veil is the intended loading cover. Its CSS starts at opacity 0 and eases to 1 in one
+  // second, so the walk's visibility helper would otherwise miss it and flag every title key.
+  if (fade) return 'continue-veil';
+  if (doc.body?.classList?.contains('k-photo')) return 'photo';
+  return null;
+}
+
+function queryFirst(doc, selector) {
+  try {
+    const one = doc.querySelector?.(selector);
+    if (one) return one;
+  } catch { /* selector support */ }
+  try {
+    return [...(doc.querySelectorAll?.(selector) || [])][0] || null;
+  } catch {
+    return null;
+  }
 }
 
 function activeModal(doc, view) {
