@@ -108,7 +108,7 @@
       "id": "made_contact",
       "apiName": "SF_MADE_CONTACT",
       "name": "Made Contact",
-      "description": "Latch the Massline onto another body.",
+      "description": "Latch the Line onto another body.",
       "hidden": false,
       "category": "massline",
       "rule": {
@@ -128,7 +128,7 @@
       "id": "light_ships_are_ammunition",
       "apiName": "SF_LIGHT_SHIPS_ARE_AMMUNITION",
       "name": "Light Ships Are Ammunition",
-      "description": "Throw a body with the Massline.",
+      "description": "Throw a body with the Line.",
       "hidden": false,
       "category": "massline",
       "rule": {
@@ -187,8 +187,8 @@
       "order": 10,
       "id": "into_the_crucible",
       "apiName": "SF_INTO_THE_CRUCIBLE",
-      "name": "Into the Crucible",
-      "description": "Finish a Crucible run, however it ends.",
+      "name": "Into the Swarm",
+      "description": "Finish a Swarm run, however it ends.",
       "hidden": false,
       "category": "crucible",
       "rule": {
@@ -208,7 +208,7 @@
       "id": "tenth_wave",
       "apiName": "SF_TENTH_WAVE",
       "name": "Tenth Wave",
-      "description": "Reach wave 10 in the Crucible.",
+      "description": "Reach wave 10 in the Swarm.",
       "hidden": false,
       "category": "crucible",
       "rule": {
@@ -228,7 +228,7 @@
       "id": "better_than_last_time",
       "apiName": "SF_BETTER_THAN_LAST_TIME",
       "name": "Better Than Last Time",
-      "description": "Beat your own best score in a Crucible challenge.",
+      "description": "Beat your own best score in a Swarm challenge.",
       "hidden": false,
       "category": "crucible",
       "rule": {
@@ -248,7 +248,7 @@
       "id": "same_seed_same_day",
       "apiName": "SF_SAME_SEED_SAME_DAY",
       "name": "Same Seed, Same Day",
-      "description": "Finish a Crucible daily run.",
+      "description": "Finish a Swarm daily run.",
       "hidden": false,
       "category": "crucible",
       "rule": {
@@ -268,7 +268,7 @@
       "id": "walked_out",
       "apiName": "SF_WALKED_OUT",
       "name": "Walked Out",
-      "description": "Extract from a Crucible swarm at the refit bench instead of dying in it.",
+      "description": "Extract from a Swarm run at the refit bench instead of dying in it.",
       "hidden": false,
       "category": "crucible",
       "rule": {
@@ -428,7 +428,7 @@
       "id": "salvage_crew",
       "apiName": "SF_SALVAGE_CREW",
       "name": "Salvage Crew",
-      "description": "Throw fifty bodies with the Massline.",
+      "description": "Throw fifty bodies with the Line.",
       "hidden": false,
       "category": "massline",
       "rule": {
