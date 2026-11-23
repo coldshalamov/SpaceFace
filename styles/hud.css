@@ -322,3 +322,29 @@ html.sf-reduce-flash .sf-gloc-vignette {
   background-image: none;
   padding: 4px 2px;
 }
+
+/* ── One voice per moment (design/overhaul/08 §4; hudAttention.resolveVoiceSeat). The HUD's slow
+   pass names the surfaces that must step aside on <body data-sf-voice-yields>; each yields here
+   with a short fade, keeps its place, and returns when the seated voice clears. Matching by
+   selector means a card arriving between passes never flashes over the seated voice. ── */
+body[data-sf-voice-yields~="tell"] .sf-tells,
+body[data-sf-voice-yields~="danger"] #alerts .sf-alert--danger,
+body[data-sf-voice-yields~="floor"] #alerts .sf-alert--floor:not(.sf-alert--danger),
+body[data-sf-voice-yields~="floor"] #alerts .sf-stage__item,
+body[data-sf-voice-yields~="pill"] #alerts .sf-alert:not(.sf-alert--floor):not(.sf-alert--dock):not(.sf-alert--danger),
+body[data-sf-voice-yields~="dock"] #alerts .sf-alert--dock,
+body[data-sf-voice-yields~="dock"] .sf-visor-dock-guide,
+body[data-sf-voice-yields~="deck"] #sf-prompt-deck,
+body[data-sf-voice-yields~="speaker"] #sf-stage-speaker,
+body[data-sf-voice-yields~="feed"] #toasts .sf-toast {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 140ms ease-out, visibility 0s linear 140ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-sf-voice-yields] :is(.sf-tells, #alerts .sf-alert, #alerts .sf-stage__item,
+    .sf-visor-dock-guide, #sf-prompt-deck, #sf-stage-speaker, #toasts .sf-toast) { transition: none !important; }
+}
+html.sf-reduce-motion body[data-sf-voice-yields] :is(.sf-tells, #alerts .sf-alert, #alerts .sf-stage__item,
+  .sf-visor-dock-guide, #sf-prompt-deck, #sf-stage-speaker, #toasts .sf-toast) { transition: none !important; }

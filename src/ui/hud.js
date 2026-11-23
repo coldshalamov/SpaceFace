@@ -135,8 +135,10 @@ import {
   openingInstructionSolo,
   placeHudString,
   receiptLaneRect,
+  resolveVoiceSeat,
   shipGlyphBox,
 } from './hudAttention.js';
+import { getStage } from './stage.js';
 import { counted, pluralWord } from './numberFormat.js';
 
 
@@ -1139,7 +1141,10 @@ export function contactOverflowSummary(contacts, visibleCount) {
  * Wave G7 — automatic reveals wait for a lock. An explicit pin can open a populated
  * list before the pilot has selected a contact.
  */
-export function contactRosterVisible({ locked = false, pinned = false, eligibleContactCount = 0 } = {}) {
+export function contactRosterVisible({ locked = false, pinned = false, eligibleContactCount = 0, fight = false } = {}) {
+  // 08 §4: scanner lists are off during a fight (the target card and the radar carry it); a
+  // deliberate pin still holds. In calm flight a lock mounts the list (G7).
+  if (fight === true) return pinned === true && eligibleContactCount > 0;
   return locked === true || (pinned === true && eligibleContactCount > 0);
 }
 
@@ -6342,7 +6347,8 @@ export function createHud(ctx, alerts) {
     _knownContactIds = curIds;
 
     const pinned = state.settings?.ui?.overviewOpen === true;
-    const visible = contactRosterVisible({ locked, pinned, eligibleContactCount: contacts.length });
+    const fight = root.getAttribute('data-hud-attention') === 'fight';
+    const visible = contactRosterVisible({ locked, pinned, eligibleContactCount: contacts.length, fight });
     if (!mountContactRoster(rightDock, elOverview, radar.el, visible)) return;
     // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
     // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
@@ -6993,6 +6999,64 @@ export function createHud(ctx, alerts) {
     }
     updateAdventureDecisionLine();
     refreshLeftContextClasses();
+    seatFlightVoice();
+  }
+
+  // One voice per moment (hudAttention.resolveVoiceSeat): read which surfaces are speaking from
+  // live class collections (no selector scans, no layout reads), seat the highest, and publish
+  // the losers on <body> so styles/hud.css steps them aside. A card that arrives between passes
+  // is matched by the same selector at once, so it never flashes over the seated voice.
+  const voicePresent = { tell: false, danger: false, deck: false, speaker: false, floor: false, feed: false, dock: false, pill: false };
+  let voiceAlertCards = null;
+  let voiceStageCards = null;
+  let voiceToastCards = null;
+  let lastVoiceYields = '';
+  function seatFlightVoice() {
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
+    if (alertsEl && !voiceAlertCards) {
+      voiceAlertCards = alertsEl.getElementsByClassName('sf-alert');
+      voiceStageCards = alertsEl.getElementsByClassName('sf-stage__item');
+    }
+    if (toastsLaneEl && !voiceToastCards) voiceToastCards = toastsLaneEl.getElementsByClassName('sf-toast');
+    for (const k in voicePresent) voicePresent[k] = false;
+    for (const slot of tellSlots) {
+      if (slot.age < Infinity && slot.el.classList.contains('is-on')) { voicePresent.tell = true; break; }
+    }
+    if (voiceAlertCards) {
+      for (let i = 0; i < voiceAlertCards.length; i++) {
+        const el = voiceAlertCards[i];
+        if (el.hidden || el.style.visibility === 'hidden') continue;
+        const cl = el.classList;
+        if (cl.contains('sf-alert--dock')) voicePresent.dock = true;
+        else if (cl.contains('sf-alert--danger')) voicePresent.danger = true;
+        else if (cl.contains('sf-alert--floor')) voicePresent.floor = true;
+        else voicePresent.pill = true;
+      }
+      for (let i = 0; i < voiceStageCards.length; i++) {
+        if (!voiceStageCards[i].hidden) { voicePresent.floor = true; break; }
+      }
+    }
+    if (voiceToastCards) {
+      for (let i = 0; i < voiceToastCards.length; i++) {
+        if (!voiceToastCards[i].classList.contains('sf-toast--out')) { voicePresent.feed = true; break; }
+      }
+    }
+    const body = document.body;
+    voicePresent.deck = !!body?.classList.contains('sf-flight-decision-open');
+    const stage = getStage();
+    voicePresent.speaker = !!(stage && stage.visible('speaker').length);
+    const dialogOpen = !!((stage && stage.visible('dialog').length) || body?.classList.contains('ui-modal-open'));
+    const { yields } = resolveVoiceSeat(voicePresent, { dialogOpen });
+    let list = '';
+    for (const name of yields) list = list ? `${list} ${name}` : name;
+    if (list !== lastVoiceYields) {
+      lastVoiceYields = list;
+      if (body) {
+        if (list) body.setAttribute('data-sf-voice-yields', list);
+        else body.removeAttribute('data-sf-voice-yields');
+      }
+    }
   }
 
   function frame(dt, deferReceiptPlacement = false) {

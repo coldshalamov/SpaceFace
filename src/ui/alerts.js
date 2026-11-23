@@ -674,10 +674,12 @@ export function createAlerts(ctx) {
     const text = playerSubsystemNotice('enabled', p.subsystemId);
     if (text) announce({ key: 'subsystem-' + p.subsystemId, sev: 'info', text, ttl: 2.5 });
   });
+  // An ordinary hit is not a sentence (08 §1: the world shows it first): the hit arc on the rim
+  // points at the shooter, the shield shell flashes and the bars drop. Only the shield breaking —
+  // a change of state the pilot must act on — takes the danger floor.
   bus.on('combat:damage', (p) => {
     if (!p || !p.isPlayer) return;
     if (p.brokeShield) announce({ key: 'shield-down', sev: 'danger', text: 'SHIELDS DOWN', ttl: 3 });
-    else announce({ key: 'incoming', sev: 'danger', text: 'TAKING FIRE', ttl: 1.5 });
   }, { presentation: true });
   // Missile lock is a condition-bound STATUS light (raised on lock, cleared on unlock) — it must
   // stay visible while the lock holds, so it stays a pill, not a one-shot voice. The emitter

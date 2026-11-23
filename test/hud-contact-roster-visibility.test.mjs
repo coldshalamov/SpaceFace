@@ -26,6 +26,11 @@ test('the contacts list waits for a lock or an explicit populated pin', () => {
     'a deliberate pin opens a populated list without a lock');
   assert.equal(hud.contactRosterVisible({ pinned: true }), false, 'an empty pin does not mount a plate');
   assert.equal(hud.contactRosterVisible({ locked: true }), true, 'a lock mounts the list');
+  // 08 §4: scanner lists are off during a fight; only the player's own pin holds one up.
+  assert.equal(hud.contactRosterVisible({ locked: true, fight: true, eligibleContactCount: 3 }), false,
+    'in a fight a lock no longer mounts the list (the target card and radar carry it)');
+  assert.equal(hud.contactRosterVisible({ pinned: true, fight: true, eligibleContactCount: 3 }), true,
+    'a deliberate pin still holds the list in a fight');
 
   const parent = { children: [], insertBefore(node, before) {
     const at = this.children.indexOf(before);

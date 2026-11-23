@@ -100,6 +100,46 @@ export function resolveHudAttention(state, { lastPlayerHullHitAt = -Infinity, we
   if (openingWindowActive(state)) return 'teach';
   return 'calm';
 }
+// ── One voice per moment (design/overhaul/08 §1.2, §4) ───────────────────────────────────────
+// The objective line says what is next and the aim tag says the verb; besides those, ONE thing
+// speaks. Every surface that can speak on the flight glass is ranked here, once, and the HUD's
+// slow pass seats the highest one present: the rest step aside (they keep their place and
+// come back when the seat frees). Ranks, highest first:
+//   deck    a decision card waiting on the player's choice (rare in a fight; it owns the moment)
+//   tell    an enemy is about to do something and the tag says the answer ("FLYBY Break the beam")
+//   danger  a danger line with no world equivalent on screen (MISSILE LOCK, SHIELDS DOWN)
+//   speaker a named voice's card (Kessler's line)
+//   floor   the banner's ordinary line (a story, tutorial or objective nudge)
+//   feed    the receipt cards
+// The dock prompt is the station's verb tag ("E Dock") and a standing status pill (a hazard zone,
+// a gate in range) is a lamp, so neither is one of the voices: they stay up beside the speaker, a
+// banner line or a receipt, and step aside only for a tell, a danger line or a decision. Sound
+// captions are an accessibility channel and never step aside. Under an open centre dialog the
+// world tells step aside too (the dialog owns the screen).
+export const VOICE_SEAT_ORDER = Object.freeze(['deck', 'tell', 'danger', 'speaker', 'floor', 'feed']);
+const VOICE_SEAT_STANDING = Object.freeze(['dock', 'pill']);
+const VOICE_SEAT_STANDING_YIELDS = new Set(['deck', 'tell', 'danger']);
+
+/**
+ * Seat one voice. `present` maps each VOICE_SEAT_ORDER name (and the standing `dock` / `pill`) to
+ * whether that surface is up right now. Returns `{ seat, yields }`: the name holding the seat (or
+ * null) and the set of present surface names that must step aside this moment.
+ */
+export function resolveVoiceSeat(present = {}, { dialogOpen = false } = {}) {
+  const yields = new Set();
+  let seat = null;
+  for (const name of VOICE_SEAT_ORDER) {
+    if (!present[name]) continue;
+    if (name === 'tell' && dialogOpen) { yields.add(name); continue; }
+    if (seat === null) seat = name;
+    else yields.add(name);
+  }
+  if (seat !== null && VOICE_SEAT_STANDING_YIELDS.has(seat)) {
+    for (const name of VOICE_SEAT_STANDING) if (present[name]) yields.add(name);
+  }
+  return { seat, yields };
+}
+
 export const VITAL_NUMERIC_LOW = 0.5;
 export const SHIP_GLYPH_BOX = Object.freeze({ width: 62, height: 74 });
 

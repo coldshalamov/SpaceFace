@@ -480,9 +480,11 @@ check('each semantic combat/status event maps to one announce key (no parallel p
   assert.match(alertsSrc,
     /brokeShield\) announce\(\{ key: 'shield-down'/,
     'shield-break → single SHIELDS DOWN announce');
-  assert.match(alertsSrc,
+  // 08 §1 (the world shows it first): an ordinary hit is the rim's hit arc and the bars, never a
+  // TAKING FIRE line on the danger floor.
+  assert.doesNotMatch(alertsSrc,
     /announce\(\{ key: 'incoming'/,
-    'incoming damage → single TAKING FIRE announce');
+    'an ordinary hit must not speak: the hit arc and the bars say it');
   assert.match(alertsSrc,
     /cargo:full'[\s\S]*announce\(\{ key: 'cargo-full'/,
     'cargo full → single announce');

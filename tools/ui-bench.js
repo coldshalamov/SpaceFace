@@ -1466,6 +1466,10 @@ async function openOverlay(kind) {
     if (!state.ui) state.ui = {};
     // Kessler's line lands at ~6:30, after the opening's one-instruction window has closed.
     state.simTime = 400;
+    // ...and ten seconds after the fight frame's FLYBY tell has burned out (a live tell outranks
+    // a speaker card on the one-voice seat, so a still holding both would photograph the tell).
+    state.tick = (Number.isInteger(state.tick) ? state.tick : 0) + 601;
+    bus.emit('voice:clear', { id: 'alert:shield-down' });
     if (state.onboarding) state.onboarding = { ...state.onboarding, active: false, finished: true };
     createComms(ctx);
     bus.emit('comms:popup', { sender: 'KESSLER', category: 'story', ttl: 8,
@@ -2268,10 +2272,11 @@ async function mountFlightHud(opts = {}) {
       attackerId: 13, fromPos: { x: 240, z: -120 },
     });
   }
-  // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
-  // voice (kind 'danger', priority 110). Omit in calm/teach/idle bench modes so calm flight is genuinely calm.
+  // Mirror alerts.js' real announce path for a shield break: SHIELDS DOWN surfaces as a DANGER
+  // voice (kind 'danger', priority 110). An ordinary hit says nothing (the rim's hit arc does).
+  // Omit in calm/teach/idle bench modes so calm flight is genuinely calm.
   if (!calmBenchMode) {
-    bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
+    bus.emit('voice:surface', { id: 'alert:shield-down', channel: 'alert', priority: 110, kind: 'danger', text: 'SHIELDS DOWN', ttl: 30 });
   }
   // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
   // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
