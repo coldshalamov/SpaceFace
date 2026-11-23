@@ -10,9 +10,10 @@ const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
 const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
 const NOOP = { show() {}, hide() {}, reviewOpeningArmory: () => Promise.resolve(false), destroy() {} };
-// Row 473 — the loading shell names where the player is going. Boot stages are not a destination;
-// they are the command deck coming up.
-const BOOT_DESTINATION = 'Command deck';
+// Row 473 — the loading shell names where the player is going. Boot stages are not a destination:
+// the cold boot is headed for the title, which the wordmark already names, so it prints nothing
+// ("Command deck" sat jammed under the wordmark on the desktop build and meant nothing to a stranger).
+const BOOT_DESTINATION = '';
 // A sector we cannot name still gets friendly words rather than a raw id.
 const UNKNOWN_DESTINATION = 'Uncharted destination';
 // The ordinary Adventure route before its sector is named: the route is known, the place is not yet.

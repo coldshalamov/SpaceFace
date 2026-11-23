@@ -57,6 +57,14 @@ ${LIST} > li.of-title-door.is-swarm { order:0; }
 ${LIST} > li.of-title-door.is-adventure { order:1; }
 ${ROW_LI} { order:2; flex:0 0 auto !important; }
 
+/* ── THE PICTURE ───────────────────────────────────────────────────────────────────────────── */
+/* The authored "Field at dusk" still is the title's picture, with its idle drift (kit.css k-plate-drift).
+   Looked at on the desktop build's own GPU (2026-11-23), the live title-field scene drew an unlit hull
+   over a dark, flat-faceted rock — far below the still it was built from — so on the title the still
+   no longer steps aside when the stage reports live. The stage keeps running underneath (it warms the
+   starter hull and the renderer for the launch); only what the player sees changes. */
+${T}[data-k-stage] .k-world--plate { opacity:1 !important; }
+
 /* ── THE DOORS ─────────────────────────────────────────────────────────────────────────────── */
 ${DOOR} {
   position:relative !important; isolation:isolate; overflow:hidden !important; container-type:inline-size;

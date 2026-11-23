@@ -162,42 +162,58 @@ test('stage spec: still by default, live scene only once armed', () => {
   mainMenuScreen._attractLive = false;
 });
 
-test('idle gate arms the live title only after the idle window', () => {
+// A player's title keeps the lit "Field at dusk" hero: on the real boot (2026-11-23) the recorded
+// replay framed a few far-off hulls in an empty black field, one behind the Adventure door, six
+// seconds after the title arrived. The idle window arms only the still's drift; the replay is a lab
+// picture behind the title's dev switch (?titleLab=1).
+function runIdleGate({ search = '' } = {}) {
   const rafQueue = [];
-  const oldRaf = globalThis.requestAnimationFrame;
-  const oldCancel = globalThis.cancelAnimationFrame;
-  const oldWindow = globalThis.window;
-  const oldDocument = globalThis.document;
+  const old = { raf: globalThis.requestAnimationFrame, cancel: globalThis.cancelAnimationFrame,
+    window: globalThis.window, document: globalThis.document, location: globalThis.location };
   globalThis.requestAnimationFrame = (cb) => { rafQueue.push(cb); return rafQueue.length; };
   globalThis.cancelAnimationFrame = () => {};
   globalThis.window = { addEventListener() {}, removeEventListener() {} };
   globalThis.document = { addEventListener() {}, removeEventListener() {} };
+  Object.defineProperty(globalThis, 'location', { value: { search }, configurable: true, writable: true });
   try {
     const { ctx, calls } = fakeCtx();
     const rootEl = { dataset: {} };
     mainMenuScreen._attractLive = false;
     mainMenuScreen._startIdleAttract({ ctx, state: ctx.state, rootEl });
-    const pump = (ms) => {
-      const cbs = rafQueue.splice(0);
-      for (const cb of cbs) cb(ms);
-    };
+    const pump = (ms) => { for (const cb of rafQueue.splice(0)) cb(ms); };
     pump(0);
     pump(5900);
-    assert.equal(rootEl.dataset.attract, undefined, 'attract armed before the idle window');
-    assert.equal(mainMenuScreen._attractLive, false);
+    const before = { attract: rootEl.dataset.attract, live: mainMenuScreen._attractLive };
     pump(6100);
-    assert.equal(rootEl.dataset.attract, '1', 'attract did not arm after the idle window');
-    assert.equal(mainMenuScreen._attractLive, true, 'stage spec never swapped to the live scene');
-    assert.ok(calls.syncVisibility > 0, 'arming never re-resolved the stage request');
+    const after = { attract: rootEl.dataset.attract, live: mainMenuScreen._attractLive, syncs: calls.syncVisibility };
     mainMenuScreen._stopIdleAttract();
-    assert.equal(mainMenuScreen._attractLive, false);
-    assert.equal(rootEl.dataset.attract, undefined);
+    const stopped = { attract: rootEl.dataset.attract, live: mainMenuScreen._attractLive };
+    return { before, after, stopped };
   } finally {
-    globalThis.requestAnimationFrame = oldRaf;
-    globalThis.cancelAnimationFrame = oldCancel;
-    globalThis.window = oldWindow;
-    globalThis.document = oldDocument;
+    globalThis.requestAnimationFrame = old.raf;
+    globalThis.cancelAnimationFrame = old.cancel;
+    globalThis.window = old.window;
+    globalThis.document = old.document;
+    Object.defineProperty(globalThis, 'location', { value: old.location, configurable: true, writable: true });
   }
+}
+
+test('idle gate on a player title arms only the drift; the hero shot stays', () => {
+  const { before, after, stopped } = runIdleGate();
+  assert.equal(before.attract, undefined, 'drift armed before the idle window');
+  assert.equal(after.attract, '1', 'drift did not arm after the idle window');
+  assert.equal(after.live, false, 'a player title must keep the hero shot, not swap to the replay');
+  assert.equal(stopped.attract, undefined);
+  assert.equal(stopped.live, false);
+});
+
+test('with the lab switch the idle gate arms the live replay after the idle window', () => {
+  const { before, after, stopped } = runIdleGate({ search: '?titleLab=1' });
+  assert.equal(before.live, false);
+  assert.equal(after.attract, '1');
+  assert.equal(after.live, true, 'stage spec never swapped to the live scene');
+  assert.ok(after.syncs > 0, 'arming never re-resolved the stage request');
+  assert.equal(stopped.live, false);
 });
 
 test('reduced motion never arms the live title', () => {

@@ -105,7 +105,9 @@ const SCENES = Object.freeze({
         { color: 0xffb877, intensity: 34, at: [33, 2, -24], distance: 90 },
       ],
     },
-    camera: { at: [-20, 10, 76], target: [6, 2.5, -8], fov: 30 },
+    // shiftX: the hull stood at frame centre, half behind the title's Adventure door (seen on the
+    // real boot, 2026-11-23); the lens shift seats it in the free right half, clear of the doors.
+    camera: { at: [-20, 10, 76], target: [6, 2.5, -8], fov: 30, shiftX: 0.2 },
     drift: { yaw: 0.044, pitch: 0.012, period: 46 },
     // Seated, not hovering: the hull's centre sits a shade BELOW the rock cap so the gear and the
     // keel meet the stone and the key light lays a real contact shadow across it.
@@ -1428,6 +1430,27 @@ function applyCamera(built, time) {
   _stageOffset.y += lift;
   camera.position.copy(_stageTarget).add(_stageOffset);
   camera.lookAt(_stageTarget);
+  applyLensShift(camera, spec);
+}
+
+/**
+ * A scene may ask for a lens shift (`camera.shiftX`, a fraction of the frame's width, + = subject to
+ * the right): the picture slides sideways without the perspective changing, as a shift lens does.
+ * The title uses it so its hull stands clear of the two doors on a landscape window; a portrait
+ * window (the doors stack over the art) keeps the centred frame. Scenes without it stay at zero.
+ */
+function applyLensShift(camera, spec) {
+  const shift = Number(spec && spec.camera && spec.camera.shiftX) || 0;
+  let offset = 0;
+  if (shift && camera.aspect >= 1.2) {
+    // filmOffset moves the frustum by offset/filmWidth of the near plane; one frame width there is
+    // aspect * 2 * tan(fov / 2) near units, so this offset slides the subject by `shift` frames.
+    offset = -shift * camera.getFilmWidth() * camera.aspect * 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+  }
+  if (Math.abs((camera.filmOffset || 0) - offset) > 1e-6) {
+    camera.filmOffset = offset;
+    camera.updateProjectionMatrix();
+  }
 }
 
 function drawStage(built, renderer, state, dt = 0, target = null) {

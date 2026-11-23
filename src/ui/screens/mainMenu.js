@@ -1119,13 +1119,19 @@ export const mainMenuScreen = {
     );
     let idleStartedAtMs = null;
     let drifting = false;
+    // The recorded replay is a lab picture for now (dev switch only, ?titleLab=1): looked at on the
+    // real boot (2026-11-23) it framed a few far-off hulls in an empty black field, one of them behind
+    // the Adventure door, and it replaced the lit "Field at dusk" hero six seconds after the title
+    // arrived — the frame a stranger walking up to an idle demo machine would see. A player's title
+    // keeps the hero shot and its idle drift.
+    const replayAllowed = titleLabOpen();
     const setDrift = (on) => {
       drifting = on;
       if (on) {
         rootEl.dataset.attract = '1';
         // The flag alone changes nothing — the manager owns stageRequest and only
         // re-resolves stage specs on a stack sync, so arming needs the explicit nudge.
-        if (this._attractLive !== true) {
+        if (replayAllowed && this._attractLive !== true) {
           this._attractLive = true;
           const mgr = getManager(ctx);
           if (mgr && typeof mgr.syncVisibility === 'function') {
