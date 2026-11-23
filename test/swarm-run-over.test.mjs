@@ -69,3 +69,22 @@ test('figures and build read as a player says them', () => {
     'Orbital Saw · Wasp — Guns 5 · Line 5');
   assert.equal(runOverBuildLine(null, 'Hornet'), 'Hornet — no cards taken');
 });
+
+test('an ended run, a cash-out and the round-30 win read on the same plate, with their own titles and Kiln lines', async () => {
+  const { swarmPlateKind, kilnPlateLine, RUN_OVER_TITLES } = await import('../src/ui/screens/crucible.js');
+  assert.equal(swarmPlateKind(DEATH), 'defeat');
+  assert.equal(swarmPlateKind({ ...DEATH, outcome: 'aborted', stopReason: 'player_retired' }), 'retired');
+  assert.equal(swarmPlateKind({ ...DEATH, outcome: 'extracted', defeat: null }), 'extracted');
+  assert.equal(swarmPlateKind({ ...DEATH, outcome: 'victory', wave: 30, deepestWave: 30, defeat: null }), 'win');
+  assert.equal(swarmPlateKind({ ...DEATH, ruleset: 'scored' }), null, 'a Gauntlet run keeps its own record');
+  assert.equal(swarmPlateKind({ ...DEATH, outcome: 'aborted', stopReason: 'wave_plan_failed' }), null,
+    'a failed room build keeps the loud record');
+  for (const kind of ['defeat', 'retired', 'extracted', 'win']) {
+    assert.ok(RUN_OVER_TITLES[kind], kind);
+    for (const shape of [{ wave: 1, kills: 0 }, { wave: 7, kills: 40, bestChain: 30 }, { wave: 30, kills: 400 }]) {
+      const line = kilnPlateLine({ ...DEATH, ...shape }, kind);
+      assert.ok(line.split(/\s+/).length <= 8, `${kind}: ${line}`);
+      assert.doesNotMatch(line, /Crucible|unknown|\?$/i);
+    }
+  }
+});

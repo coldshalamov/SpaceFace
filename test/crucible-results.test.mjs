@@ -1322,3 +1322,20 @@ test('a round-30 swarm win reads the Run Over plate and offers exactly Keep goin
   take.listeners.click[0]();
   assert.equal(emitted.at(-1).event, 'ui:replaceScreen', 'Take the win rides the ordinary exit');
 });
+
+test('End run from pause reads on the Run Over plate: Run ended, no killer, Again under Enter', () => {
+  const { lines, buttons } = mountResults({
+    outcome: 'aborted', stopReason: 'player_retired', ruleset: 'swarm', seed: 4242, wave: 4, deepestWave: 4,
+    kills: 22, bestChain: 9, durationS: 180, defeat: null, damageTrail: [],
+    bankLine: 'Retired run — unranked. Unbanked salvage does not carry back to the hangar.',
+  });
+  const text = lines.join('\n');
+  assert.equal(lines[0], 'Run ended');
+  assert.match(text, /Round 4, then you walked\. Noted\./);
+  assert.match(text, /Ended early, so this run is unranked\./);
+  assert.ok(!text.includes('Killed by'), 'an ended run names no killer');
+  assert.ok(!/salvage|hangar\.|Run ledger|Build code/.test(text), 'no ledger or salvage words');
+  const actions = buttons.map((b) => b.dataset.action).filter(Boolean);
+  assert.equal(actions[0], 'again', 'Again leads');
+  assert.ok(actions.includes('hangar') && actions.includes('menu'), actions.join(','));
+});
