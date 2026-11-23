@@ -320,7 +320,6 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'station:marketTradeReceiptRecovered',
   'station:navigate',
   'swarm:announce',
-  'swarm:bossMilestoneAck',
   'swarm:bossMove',
   'swarm:scoreboardToggle',
   'ui:bulkHaulTag',
@@ -364,4 +363,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=203 dynamic=42 legacy=23 excluded=6 total=239 knownUnforwarded=92
+// provenance: census=203 dynamic=42 legacy=23 excluded=6 total=239 knownUnforwarded=91

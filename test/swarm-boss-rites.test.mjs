@@ -110,11 +110,10 @@ test('S14 — a fallen champion pays its mass forward: throwable chunks spawn on
     // The run's first boss stamps the record, and the run flows on: no plate stops it
     // (superseded by design/overhaul/04_SWARM.md section 2 — the Bench is the only menu in a run).
     const stamp = h.state.run.telemetry.firstBossDown;
-    assert.ok(stamp && stamp.pending === true && stamp.name === 'IRON MAW', `stamp ${stamp && stamp.name}`);
+    assert.ok(stamp && stamp.name === 'IRON MAW' && stamp.wave === SWARM_BOSS_FIRST,
+      `stamp ${stamp && stamp.name}`);
     assert.deepEqual(h.emitted.filter((e) => e.id === 'ui:pushScreen').map((e) => e.p.id), [],
       'a fallen champion pushes no screen mid-run');
-    h.sim.bus.emit('swarm:bossMilestoneAck', { wave: SWARM_BOSS_FIRST });
-    assert.equal(stamp.pending, false, 'ack consumes the pending stamp');
     // Killing the same record's boss again mints no second field.
     const chunkCount = () => [...h.state.entities.values()].filter((e) => e.data && e.data.swarmBossChunk).length;
     const before = chunkCount();
@@ -157,7 +156,7 @@ test('a fatal hit overtakes a queued first-champion celebration and offers real 
       'the boss kill itself opens no plate (04_SWARM.md section 2)');
     h.sim.bus.emit('player:death', { context: 'arena_slam', physicalLabel: 'arena impact' });
     assert.equal(h.state.run.phase, 'ended');
-    assert.equal(h.state.run.telemetry.firstBossDown.pending, true, 'the first screen has not mounted to ack');
+    assert.equal(h.state.run.telemetry.firstBossDown.name, 'IRON MAW', 'the first boss down is stamped on the record');
     assert.equal(results.lastResult().stopReason, 'player_death');
 
     const { root, emitted, buttons } = mountScreen(Object.create(crucibleResultsScreen), {
