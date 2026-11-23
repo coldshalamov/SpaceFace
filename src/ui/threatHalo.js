@@ -693,8 +693,13 @@ export function createThreatHalo(root, busOrOpts) {
   // its arrow and drops its words. Along-edge spans: a top/bottom tag is a line of text wide.
   const tagEdge = new Array(HOSTILE_LIMIT);
   const tagAlong = new Float64Array(HOSTILE_LIMIT);
+  // A pack arriving from one side is one tag that counts it ('Wasp ×3  340 m', the lead arrow's
+  // distance) instead of three stacked lines of text down the screen edge; the arrows stay.
+  const tagSlot = new Array(HOSTILE_LIMIT);
+  const tagKindWord = new Array(HOSTILE_LIMIT);
+  const tagCount = new Int32Array(HOSTILE_LIMIT);
   const TAG_CLEAR_ALONG_H = 104;
-  const TAG_CLEAR_ALONG_V = 30;
+  const TAG_CLEAR_ALONG_V = 64;
   function applyEdgeTag(slot, i, labelled) {
     const tag = slot._sfTag;
     if (!tag) return labelled;
@@ -707,7 +712,16 @@ export function createThreatHalo(root, busOrOpts) {
     if (show) {
       const clear = edge === EDGE_TOP || edge === EDGE_BOTTOM ? TAG_CLEAR_ALONG_H : TAG_CLEAR_ALONG_V;
       for (let k = 0; k < labelled; k++) {
-        if (tagEdge[k] === edge && Math.abs(tagAlong[k] - along) < clear) { show = false; break; }
+        if (tagEdge[k] === edge && Math.abs(tagAlong[k] - along) < clear) {
+          show = false;
+          const word = haloKindWord(e, hostileRole[i]);
+          if (tagSlot[k] && tagKindWord[k] === word) {
+            tagCount[k] += 1;
+            const text = `${word} ×${tagCount[k]}`;
+            if (tagSlot[k]._sfTagKindText !== text) { tagSlot[k]._sfTagKindText = text; tagSlot[k]._sfTagKind.textContent = text; }
+          }
+          break;
+        }
       }
     }
     const kind = show ? haloKindWord(e, hostileRole[i]) : '';
@@ -715,7 +729,8 @@ export function createThreatHalo(root, busOrOpts) {
     // The tag never lands on the HUD: try the screen side of the arrow, then beside it along the
     // edge; a tag that fits nowhere drops its words (the arrow stays). Width is estimated from the
     // text so seating costs no layout read.
-    const side = show ? edgeTagSide(edge, placement.x, placement.y, kind.length + dist.length + 1) : '';
+    // Three spare characters: a pack's count (' ×3') is written onto this tag after it is seated.
+    const side = show ? edgeTagSide(edge, placement.x, placement.y, kind.length + dist.length + 4) : '';
     show = show && side !== '';
     setDisplay(tag, show, 'inline-flex');
     if (!show) return labelled;
@@ -724,6 +739,9 @@ export function createThreatHalo(root, busOrOpts) {
     if (slot._sfTagDistText !== dist) { slot._sfTagDistText = dist; slot._sfTagDist.textContent = dist; }
     tagEdge[labelled] = edge;
     tagAlong[labelled] = along;
+    tagSlot[labelled] = slot;
+    tagKindWord[labelled] = kind;
+    tagCount[labelled] = 1;
     return labelled + 1;
   }
   const TAG_ARROW_HALF_PX = 13;
@@ -737,6 +755,10 @@ export function createThreatHalo(root, busOrOpts) {
     if (edge === EDGE_TOP || edge === EDGE_BOTTOM) {
       const y = edge === EDGE_TOP ? cy + TAG_ARROW_HALF_PX + 2 : cy - TAG_ARROW_HALF_PX - 2 - h;
       if (fits(cx - w / 2, y)) return 'in';
+      // Inward but hung off one side: clears a HUD corner the centred tag would sit on, and never
+      // lands on the pack's other arrows along the edge the way a beside tag does.
+      if (fits(cx - TAG_ARROW_HALF_PX, y)) return 'in-after';
+      if (fits(cx + TAG_ARROW_HALF_PX - w, y)) return 'in-before';
       if (fits(cx + TAG_ARROW_HALF_PX + 4, beside)) return 'after';
       if (fits(cx - TAG_ARROW_HALF_PX - 4 - w, beside)) return 'before';
       return '';

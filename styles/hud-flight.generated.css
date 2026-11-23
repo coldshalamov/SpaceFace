@@ -699,6 +699,12 @@
   /* A top/bottom arrow whose inward tag would land on the HUD carries it beside itself instead. */
   .sf-threat-halo__slot--arc[data-tag-side="after"] .sf-threat-halo__tag { left:calc(100% + 4px); right:auto; top:50%; bottom:auto; transform:translateY(-50%); }
   .sf-threat-halo__slot--arc[data-tag-side="before"] .sf-threat-halo__tag { right:calc(100% + 4px); left:auto; top:50%; bottom:auto; transform:translateY(-50%); }
+  /* Still inward of the edge, but hung off one side of the arrow so a pack's other arrows along
+     the edge keep clear of the words, and the HUD corner it would centre over stays clear. */
+  .sf-threat-halo__slot--arc[data-edge="top"][data-tag-side="in-after"] .sf-threat-halo__tag { left:0; right:auto; top:calc(100% + 2px); bottom:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="top"][data-tag-side="in-before"] .sf-threat-halo__tag { right:0; left:auto; top:calc(100% + 2px); bottom:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="bottom"][data-tag-side="in-after"] .sf-threat-halo__tag { left:0; right:auto; bottom:calc(100% + 2px); top:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="bottom"][data-tag-side="in-before"] .sf-threat-halo__tag { right:0; left:auto; bottom:calc(100% + 2px); top:auto; transform:none; }
   .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__attacker-chev { --sf-threat-angle:90deg; }
   .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__attacker-chev { --sf-threat-angle:180deg; }
   .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__attacker-chev { --sf-threat-angle:-90deg; }
@@ -3318,6 +3324,12 @@
     #sf-floorpads .sf-fp--ambient,
     #sf-contact-hail
   ) { display:none !important; }
+  /* The tracker line's key as a key cap ('Latch the loose rock [F]'), in the same face and
+     weight as the power bar's key caps rather than the kit's etched one. */
+  #hud .sf-mt-compact-action .sf-mt-key { margin-left:8px; height:18px; min-width:18px; padding:0 5px;
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-variation-settings:normal;
+    font-weight:700; font-size:11px; letter-spacing:.02em; vertical-align:2px; color:var(--dp-ink, #e8e2d4); }
+  #hud .sf-mt-compact-action .sf-mt-key[hidden] { display:none; }
   /* The cap is for the cards, not the lane: #alerts is itself a child of the Stage banner
      (stage.js), and capping it pinned a 460 px lane to the left edge, over the objective card. */
   @media (min-width:1100px) {

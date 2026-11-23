@@ -1407,6 +1407,8 @@ function threatArcPath(a, r = 48, s = 0.28) {
   const y1 = (r * Math.sin(a + s)).toFixed(1);
   return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
 }
+// A tracker line that ends in its key in brackets: words (trailing full stop dropped) + the key.
+const TRACKER_KEY_SUFFIX = /^(.*?)[.\s]*\(([^()]{1,16})\)\s*$/;
 // M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
 const DOCTRINE_TELL_BY_KIND = Object.freeze({
   engine_flare: 'FLYBY',
@@ -2492,6 +2494,13 @@ export function createHud(ctx, alerts) {
   const mtCompact = document.createElement('div');
   mtCompact.className = 'sf-mt-compact';
   const mtAction = document.createElement('div'); mtAction.className = 'sf-mt-compact-action';
+  // The opening's taught-verb line names its key in brackets ('Latch the loose rock. (F)'); the
+  // line prints the words and the key as a key cap, the way every other prompt shows a key.
+  const mtActionText = document.createElement('span');
+  const mtActionKey = document.createElement('kbd');
+  mtActionKey.className = 'dp-kbd sf-mt-key';
+  mtActionKey.hidden = true;
+  mtAction.append(mtActionText, mtActionKey);
   const mtReadings = document.createElement('div'); mtReadings.className = 'sf-mt-compact-readings';
   mtCompact.append(mtAction, mtReadings);
   const mtDetailsButton = document.createElement('button');
@@ -7038,7 +7047,11 @@ export function createHud(ctx, alerts) {
         setText(mtDeliveryPlace, destination);
         setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
       }
-      setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
+      const actionLine = objective === dest.line ? dest.compactAction || action : action;
+      const keyed = TRACKER_KEY_SUFFIX.exec(actionLine);
+      setText(mtActionText, keyed ? keyed[1] : actionLine);
+      setText(mtActionKey, keyed ? keyed[2] : '');
+      setHidden(mtActionKey, !keyed);
       setText(mtReadings, readings.join('\n'));
       setText(mtDetailsText, [actFull, objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
       setDisplay(missionTracker, true);
