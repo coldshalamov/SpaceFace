@@ -356,9 +356,10 @@ test('Copy result: the summary of a finished seed-4242 swarm run is one stable l
   const code = runCodeFor4242();
   assert.match(code, /^SFC1-/);
   const line = runShareSummary(RESULT_4242, { code });
+  // Plain words, design/overhaul/08_INTERFACE.md §5: the share line names the mode Swarm.
   assert.equal(
     line,
-    `SpaceFace Crucible - Helios Core - Round 14, chain x41, score 1.2M - seed 4242 - build: Ram, Reel - code ${code}`,
+    `SpaceFace Swarm - Helios Core - Round 14, chain x41, score 1.2M - seed 4242 - build: Ram, Reel - code ${code}`,
   );
   assert.ok(!/[\r\n]/.test(line), 'one line: it never wraps');
   assert.ok(!line.includes('helios_core'), 'an arena id never reaches a pasted line');
@@ -376,10 +377,10 @@ test('Copy result: partial results degrade to fewer words, never to nonsense', (
     { ruleset: 'scored', seed: 77, arenaId: 'helios_core', wave: 5, bestChain: 9, score: 12_345 },
     { code },
   );
-  assert.equal(gauntlet, `SpaceFace Crucible - Helios Core - Wave 5, score 12.3K - seed 77 - code ${code}`);
+  assert.equal(gauntlet, `SpaceFace Swarm - Helios Core - Wave 5, score 12.3K - seed 77 - code ${code}`);
   // An unknown arena is left out rather than named "This run" or by its id.
   const unknown = runShareSummary({ ruleset: 'swarm', seed: 9, arenaId: 'not_a_real_arena', wave: 3 }, { code: null });
-  assert.equal(unknown, 'SpaceFace Crucible - Round 3 - seed 9');
+  assert.equal(unknown, 'SpaceFace Swarm - Round 3 - seed 9');
   // The big numbers read as words.
   const big = (score) => runShareSummary({ ruleset: 'swarm', wave: 2, score }, {});
   assert.match(big(999), /score 999$/);

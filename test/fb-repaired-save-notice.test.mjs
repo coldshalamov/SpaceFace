@@ -36,7 +36,8 @@ test('FB-110 recovery names the reason and the generation', () => {
   assert.match(kept.text, /Previous generation kept \(3 days older\)/);
   const imported = profileImportedLine({ slot: '3', achievements: 4, crucibleMeta: true });
   assert.equal(imported.focus, '3');
-  assert.match(imported.text, /Imported 4 medals and crucible records into Slot 3/);
+  // Plain words, design/overhaul/08_INTERFACE.md §5: the mode is Swarm, never its old name.
+  assert.match(imported.text, /Imported 4 medals and swarm records into Slot 3/);
 });
 
 test('FB-110 import destination is the slot the player picked', () => {
@@ -51,7 +52,7 @@ test('FB-110 import destination is the slot the player picked', () => {
   assert.equal(importResultLine(false, 'Slot 2', ''), 'Import failed');
   assert.equal(importResultLine(true, 'Slot 2', ''), 'Imported into Slot 2.');
   assert.equal(
-    importResultLine(true, 'Slot 2', 'Imported 4 medals and crucible records into Slot 2.'),
-    'Imported 4 medals and crucible records into Slot 2.',
+    importResultLine(true, 'Slot 2', 'Imported 4 medals and swarm records into Slot 2.'),
+    'Imported 4 medals and swarm records into Slot 2.',
   );
 });

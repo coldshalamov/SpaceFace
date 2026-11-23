@@ -94,7 +94,7 @@ export function doorRunShareCode({
   if (!setup.ok || !setup.value) {
     const reason = setup && Array.isArray(setup.issues) && setup.issues[0]
       ? setup.issues[0].message
-      : 'Crucible setup invalid';
+      : 'Swarm setup invalid';
     return { ok: false, error: reason };
   }
   const code = zeroScrapOpening ? encodeRunShareCode({
@@ -314,7 +314,7 @@ export function runShareSummary(result, { code = null } = {}) {
   const reached = res ? Math.max(Number(res.deepestWave) || 0, Number(res.wave) || 0) : 0;
   if (!res || reached < 1) return runCode;
   const swarm = res.ruleset === 'swarm';
-  const parts = ['SpaceFace Crucible'];
+  const parts = ['SpaceFace Swarm'];
   const arena = arenaWordFor(res.arenaId);
   if (arena) parts.push(arena);
   const score = Math.max(0, Math.floor(Number(res.score) || 0));

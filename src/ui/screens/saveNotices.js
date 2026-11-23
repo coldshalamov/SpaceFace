@@ -80,7 +80,7 @@ export function profileImportedLine(payload) {
   const slot = payload && payload.slot != null ? String(payload.slot) : '';
   const bits = [];
   if (payload && payload.achievements) bits.push(payload.achievements + ' medals');
-  if (payload && payload.crucibleMeta) bits.push('crucible records');
+  if (payload && payload.crucibleMeta) bits.push('swarm records');
   const what = bits.length ? bits.join(' and ') : 'profile records';
   return {
     slot,
