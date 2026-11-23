@@ -29,6 +29,18 @@ export function openingHoldsBerthOffer(state) {
   return !!(ob.rescue && ob.rescue.current === 'swing');
 }
 
+// DEMO-ADV-2 (opening speaks with one voice): the swing lesson is the opening's throw — the authored
+// rock is on the line and the one instruction on the glass names the throw. While that scripted beat
+// is current the screen keeps that single voice: the throw's own payoff receipts (a pilot level, a
+// deed) wait for it to land, and the swing-threat read — which cannot tell the lesson's rock from a
+// hostile on the line — stays silent. Pure read; the beat is written by systems/onboarding.js.
+export function openingThrowLessonCurrent(state) {
+  const ob = state && state.onboarding;
+  if (!ob || ob.active !== true || ob.finished === true) return false;
+  const rescue = ob.rescue;
+  return !!(rescue && rescue.current === 'swing');
+}
+
 // OPENING-1b: until the raid is done no NPC tractor may take a body the pilot is latched to, nor work
 // within reach of the pilot's line (a passing hauler must not steal the first rock or the swing).
 export const OPENING_NPC_TOW_KEEPOUT_WU = 420;
