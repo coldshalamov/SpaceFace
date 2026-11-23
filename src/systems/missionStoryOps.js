@@ -2069,23 +2069,24 @@ export const missionStoryOps = {
     const story = this.state.story;
     story.flags = story.flags || {};
     story.flags.contract_47a_skimmed = true;
-    const salvageWreckCount = this._spawnContract47aSkimWrecks(m);
-    // The kill feed, exactly as authored. The escorts die; the unknown hull departs with
-    // the alloy. The strain gauge reads 12.4 t — the Line reads true, so the player now
-    // knows the mass the manifest will lie about.
+    const salvageWreckCount = this._spawnContract47aSkimWrecks(m, where);
+    // The Skim happens in front of the pilot: on the lane the escorts blow up ahead of the ship
+    // and leave their wrecks there (see _spawnContract47aSkimWrecks). The words only name what
+    // was just seen, in plain speech — the strain gauge reads 12.4 t, so the Line reads true and
+    // the player now knows the mass the manifest will lie about.
     this.bus.emit('comms:popup', {
       id: 'b0_skim_killfeed', sender: 'LANE TRAFFIC', category: 'story', ttl: 10, persist: true,
-      text: 'ESCORT-02 ELIMINATED. ESCORT-01 ELIMINATED. CARGO DRONE 03 LOST. UNKNOWN VESSEL DEPARTED.',
+      text: where === 'lane' ? 'Escorts down ahead. Something took the sample.' : 'The escorts are gone. So is the sample.',
     });
     this.bus.emit('comms:popup', {
       id: 'b0_skim_strain', sender: 'LINE STRAIN', category: 'story', ttl: 9, persist: true,
-      text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
+      text: 'A black line took 12.4 t. Tow empty.',
     });
     const salvageCue = salvageWreckCount > 0
-      ? ` Optional salvage: ${counted(salvageWreckCount, 'wreck', 'wrecks')}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
+      ? ` ${counted(salvageWreckCount, 'wreck', 'wrecks')} ${where === 'lane' ? 'ahead' : 'nearby'} to salvage, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
       : '';
     this.bus.emit('toast', {
-      text: `Unknown Black Line ship took 12.4 t. Escorts and drone lost.${salvageCue}`,
+      text: `A ship on a black line took the 47-A sample.${salvageCue}`,
       kind: 'warn', ttl: 7,
     });
     this.bus.emit('story:skimResolved', {
@@ -2100,7 +2101,7 @@ export const missionStoryOps = {
    *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
   /** Returns the count of unique, live, map-and-list-backed one-alloy wrecks. A failed
    *  prop spawn is isolated so it cannot strand the already-latched story receipt. */
-  _spawnContract47aSkimWrecks(m) {
+  _spawnContract47aSkimWrecks(m, where = 'lane') {
     const state = this.state;
     const entities = state && state.entities;
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function'
@@ -2109,11 +2110,19 @@ export const missionStoryOps = {
     if (!player || !player.pos) return 0;
     const seed = (state.meta && state.meta.seed) >>> 0;
     const sectorId = state.world && state.world.currentSectorId || null;
+    // In front of the pilot, not around them: the fan opens along the ship's travel (its nose when
+    // it is still), where the camera leads a moving ship, so the blasts and their wrecks are seen. It used
+    // to be a ring 140-210 m out at seeded bearings, so the Skim usually landed behind the camera
+    // and read as a line of all-caps text.
+    const vx = Number(player.vel && player.vel.x) || 0;
+    const vz = Number(player.vel && player.vel.z) || 0;
+    const heading = Math.hypot(vx, vz) > 5 ? Math.atan2(vz, vx) : (Number.isFinite(player.rot) ? player.rot : 0);
     const rows = [
-      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140 },
-      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 175 },
-      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 210 },
+      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140, spread: -0.35 },
+      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 160, spread: 0.3 },
+      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 180, spread: 0 },
     ];
+    const blast = where === 'lane' && this.bus && typeof this.bus.emit === 'function';
     const hasLiveWreck = (row) => {
       const label = `${row.name} — WRECK`;
       for (const entity of entities.values()) {
@@ -2129,12 +2138,15 @@ export const missionStoryOps = {
     rows.forEach((row, idx) => {
       // An uncertain prior spawn must not mint another copy of the same one-alloy wreck.
       if (hasLiveWreck(row)) return;
-      const angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
-      const dist = row.r + (hash32(seed, 4751, idx) % 30);
+      const angle = heading + row.spread + (((hash32(seed, 4747, idx) % 21) - 10) / 100);
+      const dist = row.r + (hash32(seed, 4751, idx) % 20);
+      const at = { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist };
+      // The kill itself, where the wreck will lie (a presentation receipt: no damage, no owner).
+      if (blast) this.bus.emit('environment:detonated', { pos: { x: at.x, z: at.z }, radius: 22, source: 'campaign47aSkim' });
       try {
         this.helpers.spawnEntity({
           type: 'wreck',
-          pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
+          pos: at,
           vel: { x: 0, z: 0 },
           radius: 9, mass: 40000, hull: 1, hullMax: 1,
           homeSectorId: sectorId,

@@ -5416,7 +5416,10 @@ export const missions = {
         }
         : {}),
     }));
-    const rpSuffix = researchPoints > 0 ? ` +${researchPoints} RP` : '';
+    // Research points are retired as a player currency (ruling R1: equipment is bought, found or
+    // made; the Pilot Tree is the skill ladder), so a job's receipt names only what the pilot can
+    // spend. The settlement record above still carries the figure for the save and the ledger.
+    const rpSuffix = '';
     const standingSuffix = this._completionStandingSuffix(standingApplied);
     // 47-A: the PAYMENT WITHHELD beat above is true of the contract; the credits that land are
     // the balance posting. Say both so the toast never reads as the withheld pay arriving.
