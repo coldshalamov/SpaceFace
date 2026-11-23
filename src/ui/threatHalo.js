@@ -15,7 +15,7 @@ import {
 } from '../data/palettes.js';
 import { pluralWord } from './numberFormat.js';
 import { formatDistance } from './units.js';
-import { ENEMY_TYPES } from '../data/enemies.js';
+import { ENEMY_TYPES, enemyKindWord } from '../data/enemies.js';
 
 
 export {
@@ -120,17 +120,19 @@ const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitT
   : 45;
 
 // 08 §4 — an off-screen marker is an edge arrow with the kind and the distance: "Wasp · 420 m".
-// The kind is the plain first word of the enemy's own name (never a faction id), else its role
-// word; the distance steps in 10 m (0.1 km past a kilometre) so a closing hull rewrites the tag a
-// few times a second, not every frame.
-const HALO_ENEMY_NAME = new Map(ENEMY_TYPES.map((row) => [row.id, row.name]));
+// The kind is the enemy's authored short word (enemies.enemyKindWord), else the last word of a
+// role, never the article "The". The distance steps in 10 m (0.1 km past a kilometre) so a
+// closing hull rewrites the tag a few times a second, not every frame.
+const HALO_ENEMY_KIND = new Map(ENEMY_TYPES.map((row) => [row.id, enemyKindWord(row)]));
 export function haloKindWord(entity, role = '') {
   const data = (entity && entity.data) || {};
-  const enemyName = HALO_ENEMY_NAME.get(data.enemyTypeId) || HALO_ENEMY_NAME.get(data.lootTableId);
-  if (enemyName) return String(enemyName).split(/\s+/)[0];
+  const kind = HALO_ENEMY_KIND.get(data.enemyTypeId) || HALO_ENEMY_KIND.get(data.lootTableId);
+  if (kind) return kind;
   const raw = String(role || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
-  if (!raw || raw === 'unknown') return 'Hostile';
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
+  const words = raw.split(/\s+/).filter((word) => word && !/^(?:the|a|an|unknown)$/.test(word));
+  const last = words.length ? words[words.length - 1] : '';
+  if (!last) return 'Hostile';
+  return last.charAt(0).toUpperCase() + last.slice(1);
 }
 export function haloDistanceText(distance) {
   const d = Number(distance);

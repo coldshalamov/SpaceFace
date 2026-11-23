@@ -190,7 +190,8 @@ ${S} #hud > .sf-leftcontext:has(.sf-mt--delivery) { width:min(306px, 32vw); max-
   :root:not([data-sf-mobile-flight="1"]) ${S} .sf-mission-tracker :is(.sf-mt-obj,.sf-mt-time) { display:none !important; }
   :root:not([data-sf-mobile-flight="1"]) ${S} .sf-mission-tracker:not(.sf-mt--delivery) .sf-mt-compact { display:block; }
   :root:not([data-sf-mobile-flight="1"]) ${S} .sf-mt-compact-readings {
-    color:#bfdae2; font:400 14px/1.4 var(--visor-font); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;
+    color:#bfdae2; font:400 14px/1.4 var(--visor-font); white-space:normal; overflow:hidden;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
   }
   :root:not([data-sf-mobile-flight="1"]) ${S} .sf-mission-tracker:not(.sf-mt--caption-only):is(:not(.sf-mt--delivery),.sf-mt--has-caption) .sf-mt-details-button {
     display:grid; place-items:center; position:absolute; top:10px; right:9px; width:25px; height:25px;

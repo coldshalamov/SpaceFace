@@ -1,7 +1,7 @@
 import { frameCostFixOn } from '../../render/frameCostSwitches.js';
 import { resolveCollisionProxyManifest, proxyWorldPrimitives, resolveDockAnchor } from '../../data/collisionProxyManifests.js';
 import { canvasFont } from '../canvasFonts.js';
-import { ENEMY_TYPES } from '../../data/enemies.js';
+import { ENEMY_TYPES, enemyKindWord } from '../../data/enemies.js';
 import { drawTradeHubPlan, tradeHubPlan } from './harborPlan.js';
 import { createRockFieldPainter, isRockRecord } from './rockFieldRegion.js';
 import {
@@ -578,9 +578,10 @@ function drawFrameBezel(ctx, width, height, cut) {
  * The name a contact label shows: its own name when that fits whole, otherwise its plain role word
  * ("Freighter", "Sniper", "Station"). Never clipped, never "…".
  */
-// A Swarm or pirate enemy is called by its own kind everywhere it is named ('Wasp'), the word the
-// off-screen edge arrow prints (threatHalo.haloKindWord), so one enemy never wears two names.
-const ENEMY_KIND_WORD = new Map(ENEMY_TYPES.map((row) => [row.id, String(row.name || '').split(/\s+/)[0]]));
+// A Swarm or pirate enemy is called by its own kind everywhere it is named ('Tendril', 'Kraken'),
+// the same word the off-screen edge arrow prints (threatHalo.haloKindWord), so one enemy never
+// wears two names. A full callsign stays only when its first word already is that kind.
+const ENEMY_KIND_WORD = new Map(ENEMY_TYPES.map((row) => [row.id, enemyKindWord(row)]));
 export function contactDisplayName(entity, role, { isSwarm = false } = {}) {
   const data = entity && entity.data;
   const kind = data && (ENEMY_KIND_WORD.get(data.enemyTypeId) || ENEMY_KIND_WORD.get(data.lootTableId));
@@ -588,6 +589,10 @@ export function contactDisplayName(entity, role, { isSwarm = false } = {}) {
   const raw = (data && (data.name || data.callsign || data.enemyName || data.label)) || entity?.name || '';
   const cleaned = String(raw).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/[…]+/g, '').replace(/\s+/g, ' ').trim();
   if (isSwarm && (role === 'civilian' || /^traffic$/i.test(cleaned))) return '';
+  if (kind) {
+    const first = cleaned.split(/\s+/)[0] || '';
+    if (!cleaned || cleaned.length > CONTACT_NAME_MAX || first !== kind) return kind;
+  }
   if (!cleaned) return word;
   return cleaned.length <= CONTACT_NAME_MAX ? cleaned : word;
 }

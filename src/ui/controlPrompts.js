@@ -209,12 +209,15 @@ export function controlPrompt(key, modality = 'kbm', state = null) {
  * systems/input.js MOUSE_ACTION_LABELS), whatever key the keyboard copy is bound to (08 §4).
  */
 const AIM_MOUSE_BUTTON = Object.freeze({ tether: 'RMB' });
-export function verbChip(state, action, verb) {
+/** The key half of verbChip, so a tracker cap and the aim chip name the same control. */
+export function verbChipKey(state, action) {
   const device = getPromptDevice();
-  let key = '';
-  if (device === 'gamepad') key = gamepadGlyphForAction(action) || '';
-  else if (device === 'touch') key = 'TAP';
-  else key = AIM_MOUSE_BUTTON[action]
+  if (device === 'gamepad') return gamepadGlyphForAction(action) || '';
+  if (device === 'touch') return 'TAP';
+  return AIM_MOUSE_BUTTON[action]
     || resolveActionLabel(state || _promptState || defaultPromptState(_kbmScheme), action, { arrows: 'word' }) || '';
+}
+export function verbChip(state, action, verb) {
+  const key = verbChipKey(state, action);
   return key ? `${key} · ${verb}` : verb;
 }
