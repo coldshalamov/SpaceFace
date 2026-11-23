@@ -8,7 +8,9 @@ import { maxAffordableQuantity } from '../src/ui/station/screens/market.js';
 import { marketTradeHtml, marketRowHtml } from '../src/ui/views/marketPresentation.js';
 import { stationFrameHtml, marketFrameHtml } from '../src/ui/views/stationFrames.js';
 
-const cost = q => ({ ok: true, total: q * 30 + q * q });
+// Tests follow 15da68c1fe: a quote must echo the quantity it prices (`fullQuantityQuote` rejects
+// a book that answers for a different lot), so this stub stamps its own qty like the real owner.
+const cost = q => ({ ok: true, qty: q, total: q * 30 + q * q });
 test('ordinary settings allow station motion', () => assert.equal(stationMotionAllowed({}), true));
 test('OS reduce-motion veto wins over normal game settings', () => assert.equal(stationMotionAllowed({}, true), false));
 test('game motion reduction veto', () => assert.equal(stationMotionAllowed({settings:{video:{motionReduce:true}}}), false));
@@ -29,7 +31,8 @@ test('unavailable / nonfinite quotes cannot be afforded', () => {
 });
 test('Max search is logarithmic for large capacity', () => {
   let calls=0;
-  const result=maxAffordableQuantity({limit:1000000,credits:500001,quote:q=>{calls++;return {ok:true,total:q};}});
+  // Tests follow 15da68c1fe: the quote must echo the lot it prices, as the real owner does.
+  const result=maxAffordableQuantity({limit:1000000,credits:500001,quote:q=>{calls++;return {ok:true,qty:q,total:q};}});
   assert.equal(result,500001);assert.ok(calls<=21, String(calls));
 });
 test('20 unique authored icon symbols have stable view boxes', () => {
@@ -63,5 +66,12 @@ test('station and market frame expose stable command / analysis / execution hook
 });
 test('station controller loads the new stylesheet on the default docking path', async () => {
   const src=await readFile(new URL('../src/ui/station/stationApp.js',import.meta.url),'utf8');
-  assert.match(src,/styles\/station-orbital\.css/);assert.match(src,/createStationCommands/);assert.match(src,/createStationEffects/);
+  // Tests follow a596aa9d24 (ledger D15): the station sheet set lives in ./stationStyles.js so game
+  // boot can load it without the station app's graph; stationApp re-exports and calls it. The old
+  // createStationCommands module was retired — nothing constructs a command dock in the four-door
+  // station any more (f791a472da).
+  assert.match(src,/createStationEffects/);
+  const stylesSrc=await readFile(new URL('../src/ui/station/stationStyles.js',import.meta.url),'utf8');
+  assert.match(stylesSrc,/\/styles\/station-orbital\.css/,'the sheet set still names the orbital sheet');
+  assert.match(src,/ensureStylesheet/,'the app loads that set on the docking path');
 });
