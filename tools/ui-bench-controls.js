@@ -163,9 +163,10 @@ export function measureControlReachability(doc, surface) {
 }
 
 function coveringPresentation(doc) {
-  const fade = queryFirst(doc, '.sf-continue-fade.open');
-  // The veil is the intended loading cover. Its CSS starts at opacity 0 and eases to 1 in one
-  // second, so the walk's visibility helper would otherwise miss it and flag every title key.
+  // Continue's veil stays in the tree for the fade-out even after `.open` is removed (a bounced
+  // bench load lifts immediately). Hit-testing still lands on the node, so the class token is
+  // enough — requiring `.open` re-flags every title key during that second.
+  const fade = queryFirst(doc, '.sf-continue-fade');
   if (fade) return 'continue-veil';
   if (doc.body?.classList?.contains('k-photo')) return 'photo';
   return null;

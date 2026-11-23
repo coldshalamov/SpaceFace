@@ -219,19 +219,19 @@ test('an action the product removed on purpose (hidden row) is not a fault, but 
   assert.match(measureControlReachability(css.doc, 'mainMenu')[0], /Title menu New Game.*style prevents reachability/);
 });
 
-test('title keys behind Continue\'s load veil are deferred even while the veil is still fading in', () => {
+test('title keys behind Continue\'s load veil are deferred even after a bounced load lifts .open', () => {
   const { doc, add } = fixture();
   add('.orr-title [data-action], .orr-title--phone [data-action]', 'Swarm — start round 1');
   const fade = doc.createElement('div');
-  fade.className = 'sf-continue-fade open';
+  fade.className = 'sf-continue-fade';
   fade.style.opacity = '0';
   fade.getBoundingClientRect = () => ({ left: 0, top: 0, right: 700, bottom: 460, width: 700, height: 460 });
   const originalQuery = doc.querySelectorAll;
-  doc.querySelector = selector => selector === '.sf-continue-fade.open' ? fade : null;
-  doc.querySelectorAll = selector => selector === '.sf-continue-fade.open' ? [fade] : originalQuery(selector);
+  doc.querySelector = selector => selector === '.sf-continue-fade' ? fade : null;
+  doc.querySelectorAll = selector => selector === '.sf-continue-fade' ? [fade] : originalQuery(selector);
   doc.elementFromPoint = () => fade;
   assert.deepEqual(measureControlReachability(doc, 'mainMenu'), [],
-    'Continue covers the title on purpose; remaining keys are not a walk defect during the fade');
+    'Continue covers the title on purpose; remaining keys are not a walk defect while the veil node remains');
 });
 
 test('pause keys under photo/replay/clips are deferred while body.k-photo owns the picture', () => {
