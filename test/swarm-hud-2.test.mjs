@@ -184,6 +184,12 @@ test('Item 2: top-centre Round Plate, between-round countdown, Boss Machine-Plat
     assert.equal(d.roundKicker.textContent, 'NEXT ROUND');
     assert.equal(d.roundName.textContent, 'Long Shots');
     assert.equal(d.roundNum.textContent, '0:03');
+    // With the wave's plan known, the countdown is the plan's own cleanup (Swarm: 45 ticks), so it
+    // never promises three seconds the run will not wait (demo batch review 2026-11-23).
+    bus.emit('run:wavePlanned', { wave: 6, plan: { completionRules: { cleanupTicks: 45 } } });
+    state.simTime += 0.001;
+    survivalHud.update(DT, state);
+    assert.equal(d.roundNum.textContent, '0:01');
 
     // Boss round: Boss Machine-Plate takes the Round Plate's seat with heavy segmented scaleX bar
     state.run.phase = 'active';

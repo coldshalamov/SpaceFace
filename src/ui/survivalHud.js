@@ -1147,7 +1147,12 @@ export const survivalHud = {
         v.roundMode = 'between';
         v.roundKicker = 'NEXT ROUND';
         v.roundName = formatSwarmRoundName(run, fallbackArena, upcomingWave);
-        const totalS = run.phase === 'cleanup' ? SURVIVAL_CLEANUP_TICKS / 60
+        // Cleanup lasts as long as this wave's own plan says (a Swarm round's is 45 ticks, not the
+        // generic 180), so the countdown reaches zero when the next screen actually opens.
+        const planCleanupTicks = planForWave && planForWave.completionRules
+          && Number.isInteger(planForWave.completionRules.cleanupTicks)
+          ? Math.max(0, planForWave.completionRules.cleanupTicks) : SURVIVAL_CLEANUP_TICKS;
+        const totalS = run.phase === 'cleanup' ? planCleanupTicks / 60
           : run.phase === 'wave_intro' ? SURVIVAL_WAVE_INTRO_TICKS / 60
           : run.phase === 'arena_intro' ? SURVIVAL_ARENA_INTRO_TICKS / 60
           : 0;
