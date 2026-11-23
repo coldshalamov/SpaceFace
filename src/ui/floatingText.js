@@ -13,7 +13,8 @@ import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 import { floatLedger, floatPriority, seatOutOfRects } from './floatingTextRules.js';
-import { createAvoidRects, createSelectorRects } from './hudAvoidRects.js';
+import { createAvoidRects, createSelectorRects, afterLayout } from './hudAvoidRects.js';
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 import { loadingShellVisible } from '../localization/idleWarmPolicy.js';
 import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { swarmTapModById } from '../data/swarmMods.js';
@@ -178,6 +179,9 @@ export const FLOOR_PAD_UNDER_FIRE_WINDOW_S = 2.5;
 export const FLOOR_PAD_UNDER_FIRE_HOSTILE_WU = 210;
 
 /** True when the player recently took damage or has a live hostile close enough to fight. */
+// A size asked of the post-layout slot that has not come back this long later is read directly.
+const FT_SIZE_PATIENCE_MS = 250;
+
 export function isPlayerUnderFire(state, now = 0, lastPlayerDamageAt = -Infinity) {
   if (Number.isFinite(now) && Number.isFinite(lastPlayerDamageAt)
     && now >= lastPlayerDamageAt && (now - lastPlayerDamageAt) <= FLOOR_PAD_UNDER_FIRE_WINDOW_S) {
@@ -632,10 +636,10 @@ export function createFloatingText(ctx) {
     if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
     activeCount++;
     n.alive = true; n.age = 0; n.life = opts.life || 0.95;
-    n.entry = entry; n.w = 0; n.h = 0;
+    n.entry = entry; n.w = 0; n.h = 0; n.sizeAskedAt = -Infinity;
     if (entry) {
       entry.node = n;
-      entry.refresh = (t) => { n.label.textContent = t; n.age = 0; n.w = 0; n.h = 0; };
+      entry.refresh = (t) => { n.label.textContent = t; n.age = 0; n.w = 0; n.h = 0; n.sizeAskedAt = -Infinity; };
       entry.evict = () => { entry.node = null; n.entry = null; retire(n); };
     }
     n.targetId = targetId != null ? targetId : null;
@@ -891,7 +895,31 @@ export function createFloatingText(ctx) {
       const sc = n.worldReceipt || reduced ? 1 : popScale(n.age);
       // G16-04: a word never sits in the Swarm centre column or over a HUD corner panel — slide it to
       // the nearest clear seat, or dim it to 35% when there is none.
-      if (!n.w && n.el.style.display !== 'none') { n.w = n.el.offsetWidth || 0; n.h = n.el.offsetHeight || 0; }
+      // A new word's size is read in the post-layout slot (hudAvoidRects afterLayout), where the
+      // browser has already laid the page out: reading it here, after this frame's HUD writes,
+      // laid the whole page out on the spot (up to 43 ms a word in a round-6 Swarm fight). The word
+      // stays invisible until sized - one frame - so it never shows unseated over the centre
+      // column. ?rfx=-ftMeasure restores the in-frame read.
+      let sizing = false;
+      if (!n.w && n.el.style.display !== 'none') {
+        const nowMs = typeof performance !== 'undefined' ? performance.now() : 0;
+        if (frameCostFixOn('ftMeasure') && typeof document !== 'undefined'
+          && !(nowMs - n.sizeAskedAt > FT_SIZE_PATIENCE_MS && n.sizeAskedAt > -Infinity)) {
+          sizing = true;
+          if (n.sizeAskedAt === -Infinity) {
+            const el = n.el;
+            const node = n;
+            const asked = afterLayout(document, () => {
+              if (!node.alive || node.el !== el || node.w) return;
+              node.w = el.offsetWidth || 0; node.h = el.offsetHeight || 0;
+              // An empty word measures 0: stop asking and let it show unseated, as before.
+              if (!node.w) node.sizeAskedAt = -1e9;
+            });
+            if (asked) n.sizeAskedAt = nowMs;
+            else { sizing = false; n.w = n.el.offsetWidth || 0; n.h = n.el.offsetHeight || 0; }
+          }
+        } else if (n.sizeAskedAt !== -1e9) { n.w = n.el.offsetWidth || 0; n.h = n.el.offsetHeight || 0; }
+      }
       const side = n.worldReceipt && s.x + n.w + 28 > vw ? -1 : 1;
       const across = n.worldReceipt ? side * (n.w / 2 + 22) : drift;
       let px = s.x + across, py = s.y + rise, seatFade = 1;
@@ -944,6 +972,7 @@ export function createFloatingText(ctx) {
         const over = Math.max(overX, overY);
         nextOpacity = String(over >= 1 ? 0 : (1 - t * t) * (1 - over) * seatFade);
       }
+      if (sizing) nextOpacity = '0';
       if (n._sfOpacity !== nextOpacity) {
         n._sfOpacity = nextOpacity;
         n.el.style.opacity = nextOpacity;
