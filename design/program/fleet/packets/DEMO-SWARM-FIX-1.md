@@ -7,7 +7,7 @@ An independent reviewer checked the Swarm lane's commits (d07c9b4b8d, 6052f7d3ec
 evidence and a fix. Verify each against the code, then fix it. Run focused tests; commit each fix by
 exact path with a plain-English message saying what the player now gets.
 
-1. **Rounds are flooded (most important).** `src/data/swarmCourseCast.js` header holds the
+1. **[MOVED to DEMO-SWARM-BUDGET-1 on GLM — skip this item.]** **Rounds are flooded.** `src/data/swarmCourseCast.js` header holds the
    director-APPROVED round budget table (2026-11-20): bodies `10 16 20 24 18 26 28 30 32 22 30 …`
    with the rule "no round adds more than +6 over the round before". Live today
    (`swarmRoundPreview(helios_core)` killTarget rounds 1-11): `10 19 22 28 23 40 42 42 42 26 42`.
