@@ -1789,7 +1789,8 @@ export function createMarketScreen(ctx) {
     }
     // Unknown stock prints no column of dashes: when no visible row carries a stock figure or
     // held cargo, the STOCK column yields.
-    const stockKnown = visible.some((r) => Number.isFinite(r.entry && r.entry.stock) || heldQty(state, r.id) > 0);
+    // A stock of 0 is a dash too, so a column of zeros yields like a column of unknowns.
+    const stockKnown = visible.some((r) => Number(r.entry && r.entry.stock) > 0 || heldQty(state, r.id) > 0);
     if (listEl && listEl.classList && typeof listEl.classList.toggle === 'function') {
       listEl.classList.toggle('is-stockless', !stockKnown);
     }
@@ -2427,7 +2428,9 @@ export function createMarketScreen(ctx) {
   function renderRoutes(state) {
     let trades = [];
     try { trades = quotedRoutes(state, stationId(state)) || []; } catch (_) { trades = []; }
-    const rows = trades.slice(0, 3).map((t, index) => {
+    // Only runs a pilot can make: a refused load ("That trade is not available at this berth")
+    // is not a run worth listing.
+    const rows = trades.filter((t) => routeIsActionable(t)).slice(0, 3).map((t, index) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const card = formatRouteCard(t);
       if (!routeIsActionable(t)) {
@@ -2457,10 +2460,20 @@ export function createMarketScreen(ctx) {
         `</li>`
       );
     }).join('');
-    routesEl.innerHTML =
-      `<p class="k-caps sx-mkt__routes-head">Estimated routes from here</p>` +
-      (rows ? `<ul class="k-rows" style="--k-row-cols: minmax(0,1fr) auto auto">${rows}</ul><p class="k-sentence sx-muted">Margin excludes flight costs and destination price impact. Arrival prices may change. Set course does not buy cargo.</p>`
-        : `<p class="k-sentence sx-muted">No affordable positive-margin load is known. Check hold space, local stock and credits, or refresh destination prices.</p>`);
+    // A clean exchange (08_INTERFACE §7): the best runs from here are one short list under a plain
+    // title, with no analyst prose; with no run worth taking the box is not shown at all.
+    routesEl.innerHTML = rows
+      ? `<ul class="k-rows" style="--k-row-cols: minmax(0,1fr) auto auto">${rows}</ul>`
+      : '';
+    const disclosure = routesEl.closest('.so-route-disclosure');
+    if (disclosure) {
+      disclosure.hidden = !rows;
+      // Open on arrival: the runs are the detail's one useful reading after the price, and a
+      // closed box left the panel an empty plate. The player's own toggle is kept after that.
+      if (rows && !disclosure.dataset.sfSeen) { disclosure.dataset.sfSeen = '1'; disclosure.open = true; }
+      const summary = disclosure.querySelector(':scope > summary');
+      if (summary && summary.textContent !== 'Best runs from here') summary.textContent = 'Best runs from here';
+    }
     dressRoutes();
   }
 

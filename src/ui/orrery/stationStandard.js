@@ -863,7 +863,7 @@ ${P} .sx-mkt :is(.sx-qty__b, .sx-qty__max) { display:inline-flex !important; ali
   min-height:36px !important; height:36px !important; padding:0 11px !important;
   border:${KEYCAP_BORDER} !important; border-radius:2px !important; background:${KEYCAP_BG} !important;
   box-shadow:${KEYCAP_SHADOW} !important; clip-path:none !important;
-  font-family:${UI} !important; font-size:12px !important; font-weight:700 !important; letter-spacing:.05em !important; text-transform:uppercase !important;
+  font-family:${UI} !important; font-size:13px !important; font-weight:600 !important; letter-spacing:.02em !important; text-transform:none !important;
   color:rgb(${BONE} / .95) !important; cursor:pointer; width:auto !important; }
 ${P} .sx-mkt :is(.sx-qty__b, .sx-qty__max):is(:hover, :focus-visible) {
   border-color:${GOLD} !important; background:linear-gradient(180deg, rgb(38 56 72 / .96), rgb(20 34 46 / .98)) !important; color:#fff1cf !important; outline:none !important; }
@@ -876,8 +876,8 @@ ${P} .sx-mkt .sx-trade__go.orr-lampkey {
   border:1px solid ${GOLD} !important; border-radius:2px !important;
   background:linear-gradient(180deg, rgb(224 181 94 / .34) 0%, rgb(224 181 94 / .16) 100%) !important;
   box-shadow:inset 0 1px 0 rgb(255 241 207 / .28), 0 4px 12px rgb(0 0 0 / .48) !important;
-  font-family:${UI} !important; font-size:13px !important; font-weight:700 !important; letter-spacing:.08em !important;
-  text-transform:uppercase !important; color:#fff1cf !important; text-shadow:none !important; cursor:pointer; }
+  font-family:${UI} !important; font-size:15px !important; font-weight:700 !important; letter-spacing:.02em !important;
+  text-transform:none !important; color:#fff1cf !important; text-shadow:none !important; cursor:pointer; }
 ${P} .sx-mkt .sx-trade__go.orr-lampkey::before,
 ${P} .sx-mkt .sx-trade__go.orr-lampkey::after {
   content:none !important; display:none !important; }
@@ -994,32 +994,32 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
     gap:0 6px !important; margin:0 !important; }
 }
 
-/* At phone widths, use two readable lines per commodity: full name first, then buy / sell / stock. */
+/* At phone widths the list has the screen's width (it stands over the trade, see CLEAN EXCHANGE),
+   so each commodity is one line: name, buy, sell. Stock and held yield (held shows in the bag). */
 @media (max-width:480px) and (min-height:601px) {
   ${P} .sx-mkt .sx-mkt-table, ${P} .sx-mkt .sx-mkt-table > :is(thead, tbody) {
     display:block !important; width:100% !important; table-layout:auto !important; }
   ${P} .sx-mkt .sx-mkt-table tr { display:grid !important; width:100% !important;
-    grid-template-columns:minmax(62px, 1fr) 44px 49px !important; column-gap:0 !important; row-gap:1px !important;
-    align-items:baseline !important; padding:0 !important; }
+    grid-template-columns:minmax(0, 1fr) 52px 52px !important; column-gap:8px !important; row-gap:0 !important;
+    align-items:center !important; padding:0 !important; }
   ${P} .sx-mkt .sx-mkt-table :is(th, td) { display:block !important; width:auto !important; min-width:0 !important;
     height:auto !important; block-size:auto !important; box-sizing:border-box !important; padding:0 2px !important; }
-  ${P} .sx-mkt .sx-mkt-table thead th:first-child { display:none !important; }
-  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(2) { grid-column:1 !important; text-align:left !important; }
-  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2 !important; text-align:right !important; }
-  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3 !important; text-align:right !important; }
-  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(5) { display:none !important; }
-  ${P} .sx-mkt .sx-mkt-table thead th { font-size:12px !important; line-height:14px !important; letter-spacing:0 !important;
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(1) { grid-column:1 !important; text-align:left !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(2) { grid-column:2 !important; text-align:right !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(3) { grid-column:3 !important; text-align:right !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(n+4) { display:none !important; }
+  ${P} .sx-mkt .sx-mkt-table thead th { font-size:12px !important; line-height:14px !important; letter-spacing:.04em !important;
     white-space:nowrap !important; }
-  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { grid-column:1 / -1 !important;
-    padding-left:4px !important; padding-right:4px !important; font-size:13px !important; line-height:15px !important;
-    white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
-  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row { row-gap:1px !important; padding:0 !important; align-content:center !important; }
-  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td { line-height:15px !important; white-space:nowrap !important; }
-  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td:is(.sx-mkt-row__price, .sx-mkt-row__sell, .sx-mkt-row__stock) {
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { grid-column:1 !important;
+    padding-left:4px !important; padding-right:0 !important; font-size:14px !important; line-height:18px !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row { padding:6px 0 !important; align-content:center !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td { line-height:18px !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td:is(.sx-mkt-row__price, .sx-mkt-row__sell) {
     overflow:visible !important; text-overflow:clip !important; font-variant-numeric:tabular-nums !important; }
   ${P} .sx-mkt .sx-mkt-table .sx-mkt-row__tr { margin-left:2px !important; }
-  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td.sx-mkt-row__name { white-space:normal !important; overflow:visible !important;
-    text-overflow:clip !important; }
+  /* the thumbnail squeezed to a sliver at this width read as a stray bracket: the name stands alone */
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row :is(.sx-mkt-row__commodity, .sx-mkt-row__thumb) { display:none !important; }
 }
 
 /* Market in the short desktop berth (901–1100 x 461–640): after the rules above so it wins at equal weight. */
@@ -1747,6 +1747,35 @@ ${PA} .sx-dock__back-key {
   ${PA} :is(.sx-dock__back, .sx-tile, button.sx-dh__vital) { transition:none !important; }
   ${PA} .sx-dock__back:active, ${PA} .sx-tile:active { transform:none !important; }
 }
+/* Phone foot: the four places are one row of tabs (glyph over word, a thumb's width each) and Back
+   and Undock share the row under them. It was Back beside a four-high stack of places, a caption
+   and Undock: 233px of a 844px screen, which left the market two rows. Key caps hide (no keys). */
+@media (max-width:600px) {
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot {
+    display:grid !important; grid-template-columns:repeat(4, minmax(0, 1fr)) !important; grid-template-rows:auto auto !important;
+    grid-template-areas:none !important; align-items:stretch !important; gap:8px !important;
+    height:auto !important; min-height:0 !important; padding:8px 12px 12px !important;
+  }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot :is(.of-facility-rail, .sxb-ops__dock, .sx-dock, .sx-dock__group--nav) {
+    display:contents !important;
+  }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li { grid-row:1 !important; display:flex !important; min-width:0 !important; margin:0 !important; }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__group--nav > li > .sx-tile.sx-tile {
+    width:100% !important; min-width:0 !important; min-height:48px !important; height:auto !important; margin:0 !important; padding:6px 4px !important;
+    display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:4px !important;
+  }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .sx-tile__label {
+    display:flex !important; flex-direction:column !important; align-items:center !important; gap:4px !important;
+    font-size:12px !important; letter-spacing:.04em !important; white-space:nowrap !important;
+  }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .sx-tile__key,
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile__gloss { display:none !important; }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile .sx-tile__badge { position:absolute !important; top:4px !important; right:6px !important; }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-tile { position:relative !important; }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sx-dock__back { grid-row:2 !important; grid-column:1 !important; justify-content:center !important; min-height:44px !important; margin:0 !important; }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat { grid-row:2 !important; grid-column:2 / -1 !important; display:flex !important; margin:0 !important; width:auto !important; }
+  ${PA} .sxb-ops.sxb-ops.dp-frame__foot .sxb-launch-seat > .sxb-launch { width:100% !important; min-height:44px !important; }
+}
 @media (max-width:600px) {
   ${PA} .sx-dh { padding:10px 14px; }
   ${PA} .sx-dh__door { font-size:22px; }
@@ -1768,6 +1797,28 @@ ${PA} .sx-mkt.orr-market .sx-mkt__quote > p.k-empty { display:none !important; }
 ${PA} .sx-mkt.orr-market .so-route-disclosure:has(> .sx-mkt__pulse) { display:none !important; }
 ${PA} .sx-mkt.orr-market .sx-mkt-cause { font-family:${UI} !important; font-size:13px !important; color:rgb(${BONE} / .78) !important; }
 ${PA} .sx-mkt.orr-market .sx-mkt-row__stock { white-space:nowrap !important; }
+/* Phone (<=600 wide): one column. The list takes the screen's height with each good on one line
+   (name, buy, sell), and the chosen good's price and the trade sit side by side under it. Two
+   squeezed columns (204px list, 150px console) wrapped every row onto two lines. */
+@media (max-width:600px) {
+  ${PA} .k-panel.sx-mkt.orr-market {
+    grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 1fr) auto !important; row-gap:8px !important;
+  }
+  ${PA} .k-panel.sx-mkt.orr-market > .sx-mkt__list { grid-row:1 !important; grid-column:1 !important; min-height:0 !important; width:auto !important; }
+  ${PA} .k-panel.sx-mkt.orr-market > .sx-mkt__stage {
+    grid-row:2 !important; grid-column:1 !important; width:auto !important; min-height:0 !important; height:auto !important;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; grid-template-rows:auto !important; align-items:start !important;
+    column-gap:12px !important; overflow:visible !important;
+  }
+  ${PA} .k-panel.sx-mkt.orr-market > .sx-mkt__stage > .sx-mkt__analysis { grid-column:1 !important; grid-row:1 !important; min-width:0 !important; }
+  ${PA} .k-panel.sx-mkt.orr-market > .sx-mkt__stage > .sx-mkt__console { grid-column:2 !important; grid-row:1 !important; min-width:0 !important; }
+  ${PA} .k-panel.sx-mkt.orr-market > .sx-mkt__stage > .sx-mkt__decision { grid-column:1 / -1 !important; }
+  ${PA} .sx-mkt.orr-market .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; width:auto !important; }
+  /* the list's MORE pill hung over the trade's first line; the list's own fade says there is more */
+  ${PA} .sx-mkt.orr-market .sx-mkt__list .orr-extent--foot { display:none !important; }
+}
+/* No column of zeros: when no row has stock to show, STOCK yields (its cells would all read a dash). */
+${P} .sx-mkt.orr-market .sx-mkt__list.is-stockless .sx-mkt-table :is(th, td):nth-child(4) { display:none !important; }
 /* 601-719 tall desktops (1366x650) set the quantity beside the total, and the stepper's width
    pushed TOTAL COST off the right of the glass. The slim door head leaves the height, so the
    console stacks as it does at 720+: quantity, total, Buy / Sell. */
