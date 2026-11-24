@@ -427,7 +427,7 @@ export async function importValidatedSave(sys, text, slot) {
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
   const raw = meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
-  return playerFacingObjectiveSummary(raw);
+  return playerFacingObjectiveSummary(raw, meta.sampleRecovered === true);
 }
 
 // An empty slot says "empty" once: one heading plus one sentence. The berth

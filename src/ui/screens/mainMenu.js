@@ -319,7 +319,7 @@ function saveSummaryText(slot, meta) {
 function objectiveSummaryText(meta) {
   if (!meta) return '';
   const raw = meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
-  return playerFacingObjectiveSummary(raw);
+  return playerFacingObjectiveSummary(raw, meta.sampleRecovered === true);
 }
 
 let refs = null;
