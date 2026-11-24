@@ -21,7 +21,8 @@ const MERGE_ANGLE_RAD = 0.52;
 const LAYER_CUES = Object.freeze({
   shield: Object.freeze({ glyph: 'S', tone: 'shield', ttl: 0.75 }),
   armor: Object.freeze({ glyph: 'A', tone: 'warning', ttl: 0.90 }),
-  hull: Object.freeze({ glyph: 'H', tone: 'danger', ttl: 1.10 }),
+  // DEMO-SWARM-UX-2: the lone red 'H' had no legend. The word is the legend.
+  hull: Object.freeze({ glyph: 'Hull', tone: 'danger', ttl: 1.10 }),
 });
 
 // INF-049 — close-shave tick. Not damage: a neutral dash on the side the round crossed,

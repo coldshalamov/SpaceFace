@@ -3219,6 +3219,9 @@ export const audio = {
     // held and played once the throw lands (see _holdForOpeningThrow) — the picture and the sound
     // still arrive, but not over the sentence that asked for them.
     bus.on('achievement:unlocked', (p) => {
+      // A lifetime deed unlocked during a Swarm round is recorded but not spoken over the fight
+      // (DEMO-SWARM-UX-2: 'Six Figures' at Scrap 0 on the first frame).
+      if (p && p.announce === false) return;
       const play = () => {
         this._duckMusic();
         this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });

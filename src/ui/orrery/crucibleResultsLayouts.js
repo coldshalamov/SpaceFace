@@ -493,6 +493,29 @@ ${RO} .sf-runover__quiet:hover { border-color:rgb(232 226 212 / .4); background:
 ${RO} .sf-runover__quiet:focus-visible { outline:2px solid var(--dp-lamp, #f2b950); outline-offset:2px; }
 ${RO} .sf-runover__quiet:active { transform:translateY(1px); }
 ${RO} .sf-runover__quiet[hidden] { display:none !important; }
+/* DEMO-SWARM-UX-2: Share opens the run code / ghost register in place of the short rows, so the
+   ordinary Run Over plate never carries internal codes and the panel still fits the frame. */
+${RO} .sf-runover__share { margin-top:20px; padding:12px 16px; box-sizing:border-box; max-height:46vh; overflow:auto;
+  background:rgb(9 10 12 / .72); border-top:1px solid rgb(242 185 80 / .34); }
+${RO} .sf-runover__share[hidden] { display:none !important; }
+${RO} .sf-runover__plate.is-sharing :is(.sf-runover__rows, .sf-runover__figures, .sf-runover__row--build, .sf-runover__take) {
+  display:none !important; }
+${RO} .sf-runover__share .sf-crres__band-title { margin:0 0 8px; font:600 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:0; text-transform:none; color:var(--dp-ink-dim, #b4b5ba); }
+${RO} .sf-runover__share .sf-crres__share-row { display:grid; grid-template-columns:86px minmax(0, 1fr) auto; align-items:center;
+  column-gap:10px; margin:0 0 6px; }
+${RO} .sf-runover__share .sf-crres__share-cap { font:600 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:0; color:rgb(255 255 255 / .66); white-space:nowrap; }
+${RO} .sf-runover__share .sf-crres__share-code { width:100%; min-width:0; height:24px; box-sizing:border-box; padding:0 8px;
+  border:1px solid rgb(255 255 255 / .30); border-radius:8px; background:rgb(17 17 18 / .86); color:var(--dp-ink, #fff);
+  font:500 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif); }
+${RO} .sf-runover__share .sf-crres__share-link { white-space:nowrap; font:600 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:0; color:#ffd98c; border-bottom:1px solid rgb(255 217 140 / .4); text-decoration:none; cursor:pointer; }
+${RO} .sf-runover__share .sf-crres__share-note { margin:0 0 8px; font:400 12px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color:var(--dp-ink-dim, #b4b5ba); }
+${RO} .sf-runover__share .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:4px 10px; margin:4px 0 0; }
+${RO} .sf-runover__share .sf-crres__share-status { margin:2px 0 0; font:400 12px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color:rgb(255 255 255 / .66); }
 ${RO} > .sf-runover__dial .orr-deathdial__groups { display:none; }
 ${RO} .sf-runover__legend { margin:4px 0 0; text-align:center; font:600 12px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif);
   letter-spacing:.06em; color:var(--dp-ink-mute, #b0aea6); }

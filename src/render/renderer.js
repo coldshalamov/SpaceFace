@@ -395,7 +395,6 @@ import {
   createAutoPresentationGovernor,
   shouldSuggestIntegratedPreset,
   applyAutoQualityPreset,
-  INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
   adaptiveFrameBudgetMs,
   adaptiveFloorForCombinedScale,
@@ -648,6 +647,7 @@ import {
 } from './residencyManager.js';
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenStartupPictureRetired, startupPictureRetired } from '../core/bootShellPacing.js';
+import { beginBootWork } from '../core/bootWork.js';
 import {
   assertPackageGeometryRefillReady,
   assertPackageTextureRefillReady,
@@ -11960,32 +11960,21 @@ export const render = {
 
     // Demo/owner policy (2026-11-07): an integrated GPU on the Auto policy starts on the High
     // performance preset. The owner explicitly chose a stable picture over a spiky 60 on this
-    // hardware; the toast names the change and Settings → Video is one press away. A Manual
-    // preset or any explicit video key is never overridden.
+    // hardware. A Manual preset or any explicit video key is never overridden.
+    //
+    // DEMO-SWARM-UX-2: this used to announce itself with a toast 1.6 s later — which landed on
+    // the first fight beat when the arena rebuilt the renderer. Settings → Video now carries the
+    // fact (a standing note), so the fight is never interrupted by a system-settings message.
     const integratedVideo = state.settings && state.settings.video;
     if (gpu && gpu.tier === 'integrated' && qualityModeForVideo(integratedVideo) === 'auto'
         && !this._integratedAutoApplied) {
       this._integratedAutoApplied = true;
       applyAutoQualityPreset(state.settings, 'low');
       try { bus.emit('settings:changed', { section: 'video', key: null }); } catch (_) { /* live apply is best-effort */ }
-      scheduleTimeout(() => {
-        try {
-          bus.emit('toast', {
-            text: 'Integrated graphics: High performance preset applied. Settings → Video to change.',
-            kind: 'info',
-            ttl: 10,
-          });
-        } catch (_) { /* toast is best-effort */ }
-      }, 1600);
     } else if (shouldSuggestIntegratedPreset(gpu, state.settings && state.settings.video) && !this._integratedPresetSuggested) {
-      // The preset is never auto-applied when the player has made a Manual choice; this remains
-      // the suggestion path for an integrated GPU that is already on a Manual picture.
+      // The preset is never auto-applied when the player has made a Manual choice; the suggestion
+      // is a Settings → Video note for the same reason the applied preset is.
       this._integratedPresetSuggested = true;
-      scheduleTimeout(() => {
-        try {
-          bus.emit('toast', { ...INTEGRATED_PRESET_SUGGESTION });
-        } catch (_) { /* toast is best-effort */ }
-      }, 1600);
     }
 
     // ?perf — auto-enable the on-screen FPS/GPU/scale overlay for quick self-diagnosis.
@@ -15242,6 +15231,9 @@ export const render = {
         const started = prepareNow();
         const cap = Math.min(deadlineMs, remainingMs());
         const queued = this._meshBuildQueue.length - this._meshBuildQueueHead;
+        // Counted for the loading shell's detail line: a multi-second drain reads as real
+        // "n of m" progress instead of a parked stage (DEMO-LOAD-1). Presentation-only.
+        const meshWork = beginBootWork(renderer, 'meshes', Math.max(0, queued));
         let passes = 0;
         let built = 0;
         let buildMs = 0;
@@ -15297,6 +15289,7 @@ export const render = {
             if (drainRow < 0) drainFallbackAlive = false;
             else built += Number(drainRow) || 0;
           }
+          meshWork.update(built);
           buildMs += prepareNow() - buildStarted;
           passes += 1;
           await buildYield(this._meshBuildQueueHead === headBefore);

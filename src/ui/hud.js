@@ -1730,7 +1730,7 @@ export function resolveDoctrineTellPlacement(
     y = Math.max(halfH + TELL_LAYOUT_GAP,
       Math.min(h - halfH - TELL_LAYOUT_GAP, py - 38 - stackOffset));
   } else {
-    const edgePad = edgeAnchor ? 16 : TELL_LAYOUT_GAP;
+    const edgePad = edgeAnchor ? 24 : TELL_LAYOUT_GAP;
     const extentX = Math.max(1, centerX - halfW - edgePad);
     const extentY = Math.max(1, centerY - halfH - edgePad);
     const tx = Math.abs(dx) > 0.001 ? extentX / Math.abs(dx) : Infinity;
@@ -3917,7 +3917,7 @@ export function createHud(ctx, alerts) {
       if (!ent || ent.alive === false || !ent.pos) { retireTell(slot); continue; }
       if (lead) {
         if (slot !== lead.slot) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
-        const label = lead.count > 1 ? `${slot.tellId} ×${lead.count}` : slot.tellId;
+        const label = lead.count > 1 ? `${slot.tellId} · ${lead.count}` : slot.tellId;
         setText(slot.kindEl, label);
         setText(slot.hintEl, DOCTRINE_TELL_HINT[slot.tellId] || '');
       }
@@ -3940,12 +3940,16 @@ export function createHud(ctx, alerts) {
         for (let i = 0; i < reserved.length; i++) tellPhoneBlockers.push(reserved[i]);
         for (let i = 0; i < avoid.length; i++) tellPhoneBlockers.push(avoid[i]);
         const blockers = tellPhoneBlockers;
-        const place = (dims) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, dims);
-        let seat = seatPhoneTell(place, blockers, slot.geometry);
+        const countPad = lead && lead.slot === slot && lead.count > 1 ? 28 : 0;
+        const dims = countPad
+          ? { width: slot.geometry.width + countPad, height: slot.geometry.height }
+          : slot.geometry;
+        const place = (d) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, d);
+        let seat = seatPhoneTell(place, blockers, dims);
         if (!seat && floorLabels?.length) {
           // Preserve the danger cue if a narrow deck has no belt of space clear of the prices.
           blockers.splice(floorLabelStart, floorLabels.length);
-          seat = seatPhoneTell(place, blockers, slot.geometry);
+          seat = seatPhoneTell(place, blockers, dims);
         }
         placement = seat && seat.placement;
         setClass(slot.el, 'is-compact', !!(seat && seat.compact));
@@ -3954,6 +3958,12 @@ export function createHud(ctx, alerts) {
           w, h, proj, 0, reserved, null, slot.geometry,
           { edgeAnchor: true, origin: playerOrigin },
         );
+        // The pack count ('FLYBY · 3') is written after the chip was measured; keep the wider
+        // word inside the frame instead of clipping at the left edge.
+        if (placement && lead && lead.slot === slot && lead.count > 1) {
+          const half = (placement.width + 28) / 2;
+          placement.x = Math.max(half + 24, Math.min(w - half - 24, placement.x));
+        }
       }
       if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
       reserved.push(tellBlockerAt(reserved.length,

@@ -313,6 +313,11 @@ export const HUD_CSS = `
   .sf-toast--discovery { border-left-color:var(--dp-phos, #dfeeff); }
   .sf-toast--discovery .sf-toast__icon { color:var(--dp-phos, #dfeeff); }
   .sf-toast--credits .sf-toast__icon, .sf-toast--rep .sf-toast__icon { color:var(--hud-cyan); }
+  /* DEMO-SWARM-UX-2: a drop's quip is colour, not a status. It rides the receipt lane as a
+     quiet italic line with no tick, so it can never read as an actionable confirmation. */
+  .sf-toast--quip { color:var(--dp-ink-dim, #b7b4a6); }
+  .sf-toast--quip .sf-toast__icon { display:none; }
+  .sf-toast--quip .sf-toast__text { font-style:italic; }
   /* GF-10: count badge for grouped identical toasts ("Platinum x1 ×5"). Sits after the text,
      monospace + accent-colored so it reads as a multiplier, not part of the message. */
   .sf-toast__count { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); margin-left:6px;

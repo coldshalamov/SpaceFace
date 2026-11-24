@@ -154,6 +154,43 @@ export function createToasts(ctx) {
     lastAnnounced = msg;
   }
 
+  // Receipt cards are pooled like floatingText/swarmJuiceHud nodes: the card, icon, text and
+  // decay hairline are created once and recycled by class/content swap instead of five DOM ops
+  // per receipt. The free list is bounded by the lane cap plus the exit-beat margin; overflow
+  // is dropped for GC as before. Interactive listeners bind once per node and read the live
+  // record through _sfRec.
+  const toastNodeFree = [];
+  const TOAST_NODE_POOL_MAX = MAX + 4;
+  function acquireToastNode() {
+    const node = toastNodeFree.pop();
+    if (node) return node;
+    const el = document.createElement('div');
+    const icon = document.createElement('span');
+    icon.className = 'sf-toast__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const body = document.createElement('span');
+    body.className = 'sf-toast__text';
+    // The decay hairline: the receipt's remaining life as light. CSS animates it from --sf-toast-ttl
+    // (compositor-only scaleX; the tick never touches it again). The text carries the meaning, so the
+    // bar hides under reduced motion rather than freezing mid-life.
+    const decay = document.createElement('span');
+    decay.className = 'sf-toast__decay';
+    decay.setAttribute('aria-hidden', 'true');
+    el.append(icon, body, decay);
+    el.addEventListener('click', () => { if (el._sfRec) dismiss(el._sfRec); });
+    el.addEventListener('keydown', (ev) => {
+      if ((ev.key === 'Enter' || ev.key === ' ') && el._sfRec) { ev.preventDefault(); dismiss(el._sfRec); }
+    });
+    return { el, icon, body, decay, badge: null, actionEl: null };
+  }
+  function releaseToastNode(node) {
+    if (!node) return;
+    node.el._sfRec = null;
+    node.el.className = 'sf-toast';
+    node.el.style.opacity = '';
+    if (toastNodeFree.length < TOAST_NODE_POOL_MAX) toastNodeFree.push(node);
+  }
+
   function isRestorableTarget(el) {
     if (!el || el === document.body || el === document.documentElement) return false;
     if (!el.isConnected || typeof el.focus !== 'function') return false;
@@ -293,7 +330,7 @@ export function createToasts(ctx) {
 
   // Returns true when the receipt was drawn (or folded into a live card) and false when it was
   // refused, so a once-only notice sent through the presenter can tell it was never seen.
-  function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null } = {}) {
+  function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null, quip = false } = {}) {
     if (!root || !text) return false;
     // Phone Swarm: the stunt-name receipt ("Tidy.") is a second card in the lane; the centre-lane
     // callout already speaks the moment, and the phone HUD budget has no room for both.
@@ -319,7 +356,7 @@ export function createToasts(ctx) {
     // must not displace a useful receipt. Errors and repeats still go straight to the live card.
     if (isSwarmGlass(ctx.state) && kind !== 'error' && live.length > 0
       && !live.some((r) => r.text === text && r.kind === kind)) {
-      swarmWait.push({ text, kind, ttl, channel, action, charonApproach });
+      swarmWait.push({ text, kind, ttl, channel, action, charonApproach, quip });
       while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
       return true;
     }
@@ -342,7 +379,7 @@ export function createToasts(ctx) {
         if (r.el.style && typeof r.el.style.setProperty === 'function') {
           r.el.style.setProperty('--sf-toast-ttl', `${(r.ttl / 1000).toFixed(2)}s`);
         }
-        const decay = r.el.querySelector ? r.el.querySelector(':scope > .sf-toast__decay') : null;
+        const decay = r._node ? r._node.decay : null;
         if (decay && decay.style) {
           if (typeof decay.getAnimations === 'function') {
             // WAAPI restart — no forced reflow: cancel yanks the run, play re-arms it from full
@@ -360,8 +397,9 @@ export function createToasts(ctx) {
         r.el.style.opacity = '';
         r._sfOpacity = null;
         r.el.classList.remove('sf-toast--jsfade');
+        const hadBadge = !!r.badge;
         if (!r.badge) {
-          const badge = document.createElement('span');
+          const badge = r._node.badge || (r._node.badge = document.createElement('span'));
           badge.className = 'sf-toast__count';
           r.el.appendChild(badge);
           r.badge = badge;
@@ -371,7 +409,7 @@ export function createToasts(ctx) {
         announceStatus(text, r.count);
         recentShown.set(text, now);
         recomputeNextWake();
-        invalidateReceiptGeometry();
+        if (!hadBadge || r.count === 10 || r.count === 100) invalidateReceiptGeometry();
         return true;
       }
     }
@@ -384,29 +422,24 @@ export function createToasts(ctx) {
       }
     }
     recentShown.set(text, now);
-    const el = document.createElement('div');
-    el.className = `sf-toast sf-toast--${kind}`;
-    const icon = document.createElement('span');
-    icon.className = 'sf-toast__icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.innerHTML = glyphSvg(KIND_ICON[kind] || 'info', 12);
-    const body = document.createElement('span');
-    body.className = 'sf-toast__text';
-    body.textContent = text;
-    // The decay hairline: the receipt's remaining life as light. CSS animates it from --sf-toast-ttl
-    // (compositor-only scaleX; the tick never touches it again). The text carries the meaning, so the
-    // bar hides under reduced motion rather than freezing mid-life.
-    const decay = document.createElement('span');
-    decay.className = 'sf-toast__decay';
-    decay.setAttribute('aria-hidden', 'true');
-    el.append(icon, body, decay);
-    // An offer receipt's one button (toastAction.js); the card is then a plain group, not a dismiss control.
-    const act = normalizeToastAction(action);
-    if (act) el.appendChild(createToastActionButton(act, () => { dismiss(rec); runToastAction(act); }));
-    // Guarded like lampKey: headless Mini-DOM harnesses stub style as a plain object.
+    const node = acquireToastNode();
+    const el = node.el;
+    el.className = `sf-toast sf-toast--${quip ? 'quip' : kind}`;
+    // A recycled card starts clear of every inline property the tick/dismiss paths own:
+    // the jsfade opacity ramp and the previous receipt's TTL variable.
     if (el.style && typeof el.style.setProperty === 'function') {
+      el.style.opacity = '';
       el.style.setProperty('--sf-toast-ttl', `${(normalizeTtlMs(ttl) / 1000).toFixed(2)}s`);
     }
+    node.icon.innerHTML = glyphSvg(KIND_ICON[kind] || 'info', 12);
+    node.body.textContent = text;
+    // A grouped card's count badge stays cached on the pooled node, mounted only while >1.
+    if (node.badge && node.badge.parentNode === el) el.removeChild(node.badge);
+    // An offer receipt's one button (toastAction.js) is content-owned, so it is rebuilt per fill;
+    // the card is then a plain group, not a dismiss control.
+    if (node.actionEl && node.actionEl.parentNode === el) el.removeChild(node.actionEl);
+    node.actionEl = null;
+    const act = normalizeToastAction(action);
     // Click-to-dismiss is advertised by the cursor:pointer styling; expose the same affordance to
     // keyboard users (Enter/Space) and to AT as a dismissible control.
     // Do NOT put aria-live on the card — announcement is via #toast-live (status once).
@@ -414,19 +447,23 @@ export function createToasts(ctx) {
     if (act) {
       el.setAttribute('role', 'group');
       el.setAttribute('aria-label', text);
+      // A recycled plain card carried tabindex=0; the action button is this card's only stop.
+      // (Optional-call: Mini-DOM harnesses may not implement removeAttribute.)
+      if (typeof el.removeAttribute === 'function') el.removeAttribute('tabindex');
     } else {
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
       el.setAttribute('aria-label', text + ' (dismiss)');
     }
-    el.addEventListener('click', () => dismiss(rec));
-    el.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
-    });
     // The card enters through the Stage feed door: bare — its own .sf-toast chrome is the frame —
     // with its kind as the severity so a hot receipt can take a seat from a cold one. A queued
     // card's element stays unmounted until the queue promotes it.
-    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act, stageHandle: null };
+    const rec = { el, _node: node, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act, stageHandle: null };
+    if (act) {
+      node.actionEl = createToastActionButton(act, () => { dismiss(rec); runToastAction(act); });
+      el.appendChild(node.actionEl);
+    }
+    el._sfRec = rec;
     live.unshift(rec);
     if (stage) {
       rec.stageHandle = stage.show('feed', el, { id: `toast:${++toastSeq}`, severity: kind, bare: true });
@@ -465,6 +502,8 @@ export function createToasts(ctx) {
         // Session-boundary teardown: the scene is swapping underneath, so there is nothing
         // to fade out over — drop the card synchronously instead of the exit beat.
         if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+        releaseToastNode(rec._node);
+        rec._node = null;
       } else {
         // The tick's inline opacity ramp would pin the card mid-fade; hand the exit to the class.
         // --jsfade goes with it: its transition:none would kill the exit beat armed just below.
@@ -476,7 +515,12 @@ export function createToasts(ctx) {
         // departure, not a snap. Expiry already fades via tick(); the beat there is invisible
         // (opacity is ~0) and keeps one removal path. Focus restore below stays synchronous.
         const el = rec.el;
-        setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 170);
+        const node = rec._node;
+        setTimeout(() => {
+          if (el.parentNode) el.parentNode.removeChild(el);
+          releaseToastNode(node);
+        }, 170);
+        rec._node = null;
       }
     }
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
