@@ -392,6 +392,7 @@ import {
   detectGpu,
   createAdaptiveResolution,
   createGpuBudgetResolution,
+  createSmoothDrsGovernor,
   createAutoPresentationGovernor,
   shouldSuggestIntegratedPreset,
   applyAutoQualityPreset,
@@ -11230,6 +11231,7 @@ export const render = {
         // re-publishes it on quality-preset switches.
         sceneSamples: this._resolvePostSceneSamples(),
         packedHdr: bootIntegrated && bootPreset !== 'high' ? 'all' : 'off',
+        singlePassUpscale: bootIntegrated,
       });
       // Seed the CAS gate at boot — a below-res first frame must not wait for a resize.
       const disp = displayPixelFootprint();
@@ -11916,6 +11918,20 @@ export const render = {
       apply: (s) => {
         this.state.render.dynResScale = s;
         if (this._adaptive) this._adaptive.syncScale(s);
+        if (this.bloom && typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(s);
+        else this._applySize();
+      },
+    });
+    // Smooth hysteresis dynamic-resolution governor (DEMO-FRAME-1): uses GPU pass totals when
+    // available plus presented frame-time EMA, clamped to >=0.60 on integrated GPUs, paired with
+    // single-pass composite upscale in bloom.js. ?rfx=-drsSmooth holds native 1.0 scale.
+    this._smoothDrs = createSmoothDrsGovernor({
+      floor: dynFloor,
+      initialScale: gpu.software === true ? dynFloor : 1,
+      apply: (s) => {
+        this.state.render.dynResScale = s;
+        if (this._adaptive) this._adaptive.syncScale(s);
+        if (this._gpuBudget) this._gpuBudget.syncScale(s);
         if (this.bloom && typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(s);
         else this._applySize();
       },
@@ -33592,43 +33608,93 @@ export const render = {
           }
         }
       }
-      // GPU budget governor: drives the scale from the same-frame GPU total whenever the timer
-      // queries are delivering; otherwise the frame-time controller below runs as before.
+      // Dynamic resolution governor: drsSmooth owns the smooth >=0.6 hysteresis governor on
+      // integrated/hardware GPUs; ?rfx=-drsSmooth holds native 1.0 scale for clean A/B comparison.
+      const drsSmoothOn = frameCostFixOn('drsSmooth');
       const budget = this._gpuBudget;
+      const smoothDrs = this._smoothDrs;
       let budgetDriving = false;
       let gpuFrameMs = null;
-      if (budget && frameCostFixOn('gpuBudget')) {
-        const drsOn = this._adaptive.isEnabled?.() === true;
-        if (budget.isEnabled() !== drsOn) {
-          budget.syncScale(adaptiveState.render.dynResScale);
-          budget.setEnabled(drsOn);
+      if (!drsSmoothOn) {
+        // Switch OFF (A/B measurement or explicit kill): hold native 1.0 scale without reallocating.
+        if (smoothDrs && smoothDrs.isEnabled()) smoothDrs.setEnabled(false);
+        if (budget && budget.isEnabled()) budget.setEnabled(false);
+        if (adaptiveState.render && adaptiveState.render.dynResScale !== 1) {
+          adaptiveState.render.dynResScale = 1;
+          if (this._adaptive) this._adaptive.syncScale(1);
+          if (this.bloom && typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(1);
+          else this._applySize();
         }
-        if (drsOn && eligible && this._gpuDrsArmed === true && this._gpuDrsStaleFrames < 30
-            && typeof gpuTimers.frameTotalSeq === 'function') {
-          const seq = gpuTimers.frameTotalSeq();
-          if (seq > 0) {
-            budgetDriving = true;
-            gpuFrameMs = gpuTimers.frameTotalMs();
-            const fresh = seq !== this._gpuBudgetSeq;
-            this._gpuBudgetSeq = seq;
-            const sampleMs = fresh ? gpuFrameMs : null;
-            const sampleFrameId = gpuTimers.frameTotalFrameId();
-            const nextFrameId = ((this._perfFrameOrigin && this._perfFrameOrigin.renderFrameId) || 0) + 1;
-            tryPresentedCall(this, 'gpu-budget', () => {
-              budget.setFloor(this._adaptiveFloorForRelief());
-              budget.syncScale(adaptiveState.render.dynResScale);
-              budget.update(frameDt, sampleMs, sampleFrameId, nextFrameId);
-            });
+        this._gpuBudgetDriving = false;
+      } else if (smoothDrs && frameCostFixOn('gpuBudget')) {
+        const drsOn = this._adaptive.isEnabled?.() === true;
+        if (smoothDrs.isEnabled() !== drsOn) {
+          smoothDrs.syncScale(adaptiveState.render.dynResScale);
+          smoothDrs.setEnabled(drsOn);
+        }
+        if (drsOn && eligible) {
+          budgetDriving = true;
+          let sampleMs = null;
+          let sampleFrameId = 0;
+          if (this._gpuDrsArmed === true && this._gpuDrsStaleFrames < 30
+              && typeof gpuTimers.frameTotalSeq === 'function') {
+            const seq = gpuTimers.frameTotalSeq();
+            if (seq > 0) {
+              gpuFrameMs = gpuTimers.frameTotalMs();
+              const fresh = seq !== this._gpuBudgetSeq;
+              this._gpuBudgetSeq = seq;
+              sampleMs = fresh ? gpuFrameMs : null;
+              sampleFrameId = gpuTimers.frameTotalFrameId();
+            }
+          }
+          const nextFrameId = ((this._perfFrameOrigin && this._perfFrameOrigin.renderFrameId) || 0) + 1;
+          const drsSample = this._smoothDrsSample || (this._smoothDrsSample = {});
+          drsSample.eligible = eligible;
+          drsSample.targetMs = sample.targetMs;
+          drsSample.gpuMs = sampleMs != null ? sampleMs : (sample.gpuMs ?? null);
+          drsSample.sampleFrameId = sampleFrameId;
+          drsSample.currentFrameId = nextFrameId;
+          tryPresentedCall(this, 'smooth-drs', () => {
+            smoothDrs.setFloor(this._adaptiveFloorForRelief());
+            smoothDrs.syncScale(adaptiveState.render.dynResScale);
+            smoothDrs.update(frameDt, drsSample);
+          });
+        }
+        this._gpuBudgetDriving = budgetDriving;
+      } else {
+        if (budget && frameCostFixOn('gpuBudget')) {
+          const drsOn = this._adaptive.isEnabled?.() === true;
+          if (budget.isEnabled() !== drsOn) {
+            budget.syncScale(adaptiveState.render.dynResScale);
+            budget.setEnabled(drsOn);
+          }
+          if (drsOn && eligible && this._gpuDrsArmed === true && this._gpuDrsStaleFrames < 30
+              && typeof gpuTimers.frameTotalSeq === 'function') {
+            const seq = gpuTimers.frameTotalSeq();
+            if (seq > 0) {
+              budgetDriving = true;
+              gpuFrameMs = gpuTimers.frameTotalMs();
+              const fresh = seq !== this._gpuBudgetSeq;
+              this._gpuBudgetSeq = seq;
+              const sampleMs = fresh ? gpuFrameMs : null;
+              const sampleFrameId = gpuTimers.frameTotalFrameId();
+              const nextFrameId = ((this._perfFrameOrigin && this._perfFrameOrigin.renderFrameId) || 0) + 1;
+              tryPresentedCall(this, 'gpu-budget', () => {
+                budget.setFloor(this._adaptiveFloorForRelief());
+                budget.syncScale(adaptiveState.render.dynResScale);
+                budget.update(frameDt, sampleMs, sampleFrameId, nextFrameId);
+              });
+            }
           }
         }
-      }
-      else if (budget && budget.isEnabled()) {
-        // Switched off live (measurement harness): hand native resolution back to the old controller.
-        budget.setEnabled(false);
-      }
-      this._gpuBudgetDriving = budgetDriving;
-      if (!budgetDriving) {
-        tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
+        else if (budget && budget.isEnabled()) {
+          // Switched off live (measurement harness): hand native resolution back to the old controller.
+          budget.setEnabled(false);
+        }
+        this._gpuBudgetDriving = budgetDriving;
+        if (!budgetDriving) {
+          tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
+        }
       }
       // Presentation cadence: one sample per presented live frame (main-thread time of the last
       // presented callback, GPU time once resolution has nothing left to give).
@@ -33638,7 +33704,8 @@ export const render = {
         const sinceS = this._presentGovernorAt > 0 ? (nowMs - this._presentGovernorAt) / 1000 : 0;
         this._presentGovernorAt = nowMs;
         if (eligible) {
-          const atFloor = budgetDriving ? budget.atFloor()
+          const activeDrs = drsSmoothOn && smoothDrs && frameCostFixOn('gpuBudget') ? smoothDrs : budget;
+          const atFloor = budgetDriving && activeDrs ? activeDrs.atFloor()
             : !(Number(adaptiveState.render.dynResScale) > (this._adaptiveFloorForRelief() + 1e-3));
           presentGovernor.update(sinceS, Number(adaptiveState.render.lastPresentedCallbackMs),
             gpuFrameMs, atFloor);
@@ -33646,9 +33713,10 @@ export const render = {
         adaptiveState.render.autoPresentCap = presentGovernor.getCap();
       }
       if (adaptiveState.render) {
-        adaptiveState.render.dynResBound = budgetDriving ? 'gpu-budget' : this._adaptive.getBound?.().bound;
+        adaptiveState.render.dynResBound = !drsSmoothOn ? 'off'
+          : (budgetDriving ? (smoothDrs && frameCostFixOn('gpuBudget') ? 'smooth-drs' : 'gpu-budget') : this._adaptive.getBound?.().bound);
         adaptiveState.render.dynResEligible = eligible;
-        adaptiveState.render.dynResEnabled = this._adaptive.isEnabled?.() ?? null;
+        adaptiveState.render.dynResEnabled = drsSmoothOn ? (this._adaptive.isEnabled?.() ?? null) : false;
         adaptiveState.render.gpuFrameMs = gpuFrameMs;
       }
     }

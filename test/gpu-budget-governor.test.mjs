@@ -4,6 +4,8 @@ import {
   createGpuBudgetResolution,
   createAutoPresentationGovernor,
   autoPresentationCapFor,
+  createSmoothDrsGovernor,
+  SMOOTH_DRS_FLOOR,
   GPU_FRAME_BUDGET_MS,
 } from '../src/render/adaptiveQuality.js';
 
@@ -213,4 +215,40 @@ test('a 30 fps cap stored by the old automatic posture is cleared once; an expli
   assert.equal(manual.video.frameCap, 30, 'a Manual High performance preset keeps its documented 30');
   const sixty = mergeProfileSettings(base, { video: { frameCap: 60, qualityMode: 'auto', qualityPreset: 'low' } });
   assert.equal(sixty.video.frameCap, 60);
+});
+
+test('smooth DRS governor steps down smoothly to >=0.6 floor, holds deadband without pumping, and climbs back with headroom', () => {
+  const applied = [];
+  const g = createSmoothDrsGovernor({ floor: SMOOTH_DRS_FLOOR, apply: (s) => applied.push(s) });
+  assert.equal(g.getScale(), 1);
+  // Single isolated hitch (>120ms) is ignored
+  g.update(0.15, { eligible: true, targetMs: 16.67, gpuMs: 10, sampleFrameId: 1, currentFrameId: 2 });
+  assert.equal(g.getScale(), 1);
+  // Sustained miss lowers scale smoothly in <=0.15 steps and never drops below 0.60
+  let frame = 2;
+  for (let i = 0; i < 60; i++) {
+    frame++;
+    g.update(0.04, { eligible: true, targetMs: 16.67, gpuMs: 26 * g.getScale() * g.getScale() + 6, sampleFrameId: frame - 1, currentFrameId: frame });
+  }
+  assert.ok(g.getScale() >= 0.6 && g.getScale() < 1, `expected scale in [0.6, 1), got ${g.getScale()}`);
+  for (let i = 1; i < applied.length; i++) {
+    assert.ok(applied[i - 1] - applied[i] <= 0.1501, `step too abrupt: ${applied.join(',')}`);
+  }
+  // Deadband holds steady (no pumping)
+  const changesBeforeHold = applied.length;
+  for (let i = 0; i < 90; i++) {
+    frame++;
+    g.update(0.016, { eligible: true, targetMs: 16.67, gpuMs: 12, sampleFrameId: frame - 1, currentFrameId: frame });
+  }
+  assert.equal(applied.length, changesBeforeHold, 'deadband should not pump');
+  // Sustained headroom climbs back one 0.05 band at a time to 1.0
+  for (let i = 0; i < 1200; i++) {
+    frame++;
+    g.update(0.016, { eligible: true, targetMs: 16.67, gpuMs: 4, sampleFrameId: frame - 1, currentFrameId: frame });
+  }
+  assert.equal(g.getScale(), 1, 'sustained headroom restores native 1.0');
+  // Disabling restores native 1.0 immediately
+  g.syncScale(0.65);
+  g.setEnabled(false);
+  assert.equal(g.getScale(), 1);
 });

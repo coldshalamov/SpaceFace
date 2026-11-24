@@ -40,6 +40,7 @@ import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, casSupportsScaling, createCasUniforms, resolveCasSharpenActive } from './cas.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
 import {
   createAtmosphereCompositeUniforms,
@@ -271,18 +272,20 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   // the fixed neighbourhood range, where the old fwidth(y) term re-derived gradient energy per
   // pixel per frame and pooled/unpooled under any subpixel drift (the "congealing clumps" the
   // owner reported 2026-09-21). Bright cores stay unfiltered.
-  vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+  vec3 sampleSpaceIllustratedSceneBounded(sampler2D sceneTexture, vec2 uv, vec2 uvMax, out float outEdgeDetail) {
     vec2 texel = 1.0 / vec2(textureSize(sceneTexture, 0));
-    vec3 c = texture2D(sceneTexture, uv).rgb;
-    vec3 rgbNW = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
-    vec3 rgbNE = texture2D(sceneTexture, uv + texel).rgb;
-    vec3 rgbSW = texture2D(sceneTexture, uv - texel).rgb;
-    vec3 rgbSE = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
+    vec2 hi = max(uvMax - texel * 0.5, vec2(0.0));
+    vec3 c = texture2D(sceneTexture, clamp(uv, vec2(0.0), hi)).rgb;
+    vec3 rgbNW = texture2D(sceneTexture, clamp(uv + texel * vec2(-1.0, 1.0), vec2(0.0), hi)).rgb;
+    vec3 rgbNE = texture2D(sceneTexture, clamp(uv + texel, vec2(0.0), hi)).rgb;
+    vec3 rgbSW = texture2D(sceneTexture, clamp(uv - texel, vec2(0.0), hi)).rgb;
+    vec3 rgbSE = texture2D(sceneTexture, clamp(uv + texel * vec2(1.0, -1.0), vec2(0.0), hi)).rgb;
     float lumaNW = dot(rgbNW, vec3(0.2126, 0.7152, 0.0722));
     float lumaNE = dot(rgbNE, vec3(0.2126, 0.7152, 0.0722));
     float lumaSW = dot(rgbSW, vec3(0.2126, 0.7152, 0.0722));
     float lumaSE = dot(rgbSE, vec3(0.2126, 0.7152, 0.0722));
     float lumaM = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    outEdgeDetail = clamp(lumaM - 0.25 * (lumaNW + lumaNE + lumaSW + lumaSE), -0.35, 0.35);
     float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
     float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
     float contrast = lumaMax - lumaMin;
@@ -300,11 +303,11 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
       float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
       dir = clamp(dir * rcpDirMin, -6.0, 6.0) * texel;
       vec3 rgbA = 0.5 * (
-        texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
-        texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+        texture2D(sceneTexture, clamp(uv + dir * (1.0 / 3.0 - 0.5), vec2(0.0), hi)).rgb +
+        texture2D(sceneTexture, clamp(uv + dir * (2.0 / 3.0 - 0.5), vec2(0.0), hi)).rgb);
       vec3 rgbB = rgbA * 0.5 + 0.25 * (
-        texture2D(sceneTexture, uv + dir * -0.5).rgb +
-        texture2D(sceneTexture, uv + dir * 0.5).rgb);
+        texture2D(sceneTexture, clamp(uv + dir * -0.5, vec2(0.0), hi)).rgb +
+        texture2D(sceneTexture, clamp(uv + dir * 0.5, vec2(0.0), hi)).rgb);
       float lumaB = dot(rgbB, vec3(0.2126, 0.7152, 0.0722));
       resolved = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
     }
@@ -319,6 +322,11 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     // hard edge, just no longer as deep a seam over already-soft bloom spill.
     float deposit = uLookInk * solid * clamp(ink * 0.15 + pool * 0.40, 0.0, 0.46);
     return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
+  }
+
+  vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+    float unusedDetail = 0.0;
+    return sampleSpaceIllustratedSceneBounded(sceneTexture, uv, vec2(1.0), unusedDetail);
   }
 
   vec3 spaceAcesFilmic(vec3 x) {
@@ -1378,6 +1386,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
   uniform float uGrainFrame;
   uniform float uSharpen; // 0 = off (default picture); >0 = cheap unsharp after compose
+  uniform float uAutoSharpen; // >0 = zero-extra-fetch diagonal unsharp for single-pass dyn-res upscale
   uniform vec2 uSceneTexel; // 1/allocated scene size (WebGL1-safe; no textureSize)
 
   ${SPACE_POST_PRESENTATION_GLSL}
@@ -1400,7 +1409,8 @@ const COMPOSITE_FRAG = /* glsl */`
       sceneUv = clamp(sceneUv + (distortion.xy * 2.0 - 1.0)
         * step(1e-5, distortion.z) * uUvScale, vec2(0.0), vec2(1.0));
     }
-    vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
+    float edgeDetail = 0.0;
+    vec3 scene = sampleSpaceIllustratedSceneBounded(tScene, sceneUv, uUvScale, edgeDetail);
     // Participating media transports linear HDR radiance before the one exposure/tone-map/encode.
     // Vacuum is an exact uniform-disabled path; bloom never stands in for surface illumination.
     scene = composeNocturneAtmosphere(scene, (sceneUv - uUvOffset) / uUvScale, sceneUv);
@@ -1435,6 +1445,8 @@ const COMPOSITE_FRAG = /* glsl */`
       float sharpLuma = dot(scene, vec3(0.2126, 0.7152, 0.0722));
       float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
       color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
+    } else if (uAutoSharpen > 0.001) {
+      color = clamp(color + edgeDetail * uAutoSharpen, 0.0, 1.0);
     }
     gl_FragColor = vec4(color, 1.0);
   }
@@ -2378,9 +2390,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   };
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
+  // On integrated GPUs under drsSmooth, scaled frames composite directly to the display in one
+  // pass with zero-extra-fetch diagonal unsharp instead of paying rtPost + 12-tap fullscreen CAS.
   let casEnabled = true;
   let casActive = false;
   let casScaling = false;
+  let singlePassUpscale = !!(instrumentation && instrumentation.singlePassUpscale === true);
   // The display footprint the CAS gate compares against is owned by the caller (renderer
   // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
   // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
@@ -2714,6 +2729,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uUvScale: { value: new THREE.Vector2(1, 1) },
     uUvOffset: { value: new THREE.Vector2(0, 0) },
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uAutoSharpen: { value: 0 },       // >0 = zero-extra-fetch unsharp on single-pass dyn-res upscale
     uPresentationScale: { value: new THREE.Vector2(1, 1) },
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
     tLookContrastLut: { value: null },
@@ -3355,13 +3371,39 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // reconstruct those bytes instead of sharpening an already bilinearly enlarged image.
     // Ratios beyond the vendor's 4x-area limit keep the legacy linear + sharpen handoff.
     // Native/supersampled content presents directly, with no CAS draw.
-    const sharpen = casActive && rtPost;
-    const compositeW = sharpen && casScaling ? contentW : W;
-    const compositeH = sharpen && casScaling ? contentH : H;
+    const fastUpscale = singlePassUpscale && contentScale < 0.999 && frameCostFixOn('drsSmooth') && !!rtPost;
+    const sharpen = !fastUpscale && casActive && rtPost;
+    const useContentResComposite = (sharpen && casScaling) || fastUpscale;
+    const compositeW = useContentResComposite ? contentW : W;
+    const compositeH = useContentResComposite ? contentH : H;
+    compositeMat.uniforms.uAutoSharpen.value = fastUpscale ? 0.30 : 0.0;
     compositeMat.uniforms.uPresentationScale.value.set(W / compositeW, H / compositeH);
-    blit(compositeMat, sharpen ? rtPost : null, compositeW, compositeH);
+    blit(compositeMat, (sharpen || fastUpscale) ? rtPost : null, compositeW, compositeH);
     if (tier1) tier1.countRenderPassPixels(compositeW * compositeH, 'bloom-composite');
-    if (sharpen) {
+    if (fastUpscale) {
+      // Hardware WebGL2 bilinear upscale from rtPost (contentW x contentH) to default framebuffer
+      // (W x H): composite runs on contentW x contentH (64% fewer pixels at 0.6 scale) with
+      // zero-extra-fetch diagonal unsharp, and fixed-function ROP blit avoids a 1920x1080 CAS pass.
+      const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+      const rtProps = renderer.properties && typeof renderer.properties.get === 'function'
+        ? renderer.properties.get(rtPost) : null;
+      const srcFbo = rtProps && rtProps.__webglFramebuffer;
+      if (gl && srcFbo && typeof gl.blitFramebuffer === 'function' && gl.READ_FRAMEBUFFER != null) {
+        renderer.setRenderTarget(null);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, srcFbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+        const hadScissor = gl.isEnabled(gl.SCISSOR_TEST);
+        if (hadScissor) gl.disable(gl.SCISSOR_TEST);
+        gl.blitFramebuffer(0, 0, contentW, contentH, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+        if (hadScissor) gl.enable(gl.SCISSOR_TEST);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      } else {
+        casMat.uniforms.tSrc.value = rtPost.texture;
+        blit(casMat, null);
+        casMat.uniforms.tSrc.value = null;
+      }
+      if (tier1) tier1.countRenderPassPixels(W * H, 'drs-upscale-blit');
+    } else if (sharpen) {
       casMat.uniforms.tSrc.value = rtPost.texture;
       blit(casMat, null);
       casMat.uniforms.tSrc.value = null;
@@ -3683,6 +3725,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof o.enabled === 'boolean') enabled = o.enabled;
     if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
     if (typeof o.compactBloom === 'boolean') compactBloom = o.compactBloom;
+    if (typeof o.singlePassUpscale === 'boolean') singlePassUpscale = o.singlePassUpscale;
     if (typeof o.casEnabled === 'boolean' && o.casEnabled !== casEnabled) {
       casEnabled = o.casEnabled;
       syncCasSetup();

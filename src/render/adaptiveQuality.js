@@ -91,7 +91,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   low: Object.freeze({
     id: 'low',
     label: 'High performance',
-    adaptiveFloor: 0.5,
+    adaptiveFloor: 0.6,
     renderScale: 1,
     pixelRatioCap: 2,
     bloom: true,
@@ -448,7 +448,7 @@ export function autoPresentationCapFor(gpu, video = {}, render = null) {
 
 export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
   software: 0.34,
-  integrated: 0.5,
+  integrated: 0.6,
   default: 0.6,
 });
 
@@ -474,7 +474,9 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
 // Director ruling 2026-11-21: the GPU-budget governor (createGpuBudgetResolution) may use the
 // whole 0.5-1.0 range in Auto. 0.5 is exactly the CAS scaling pass's 4x-area limit, so the
 // contrast-adaptive upscale still reconstructs every band.
-export const COMBINED_READABILITY_FLOOR = 0.5;
+// DEMO-FRAME-1 (2026-11-23): floor held at 0.6 so the 3D scene stays crisp while still cutting
+// up to 64% of pixel shading area on Intel integrated GPUs (UI stays 100% native DOM).
+export const COMBINED_READABILITY_FLOOR = 0.6;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
@@ -1076,5 +1078,202 @@ export function createAutoPresentationGovernor(opts = {}) {
       return cap;
     },
     getState() { return { cap, overFraction, cleanS, holdS, inStateS, budgetMs }; },
+  };
+}
+
+// --- Smooth dynamic resolution governor (DEMO-FRAME-1, 2026-11-23) -------------------------------
+// Lowers internal 3D resolution when frames miss budget (by GPU pass time OR presented frame time)
+// and raises it cleanly once headroom returns, while keeping DOM UI at native resolution.
+// Designed for shared-TDP integrated GPUs:
+//   - never drops below floor (default 0.60, keeping silhouettes sharp while cutting up to 64% pixels)
+//   - smooth 0.05 bands with bounded step size (<=0.15 per decision) so scaling never pops
+//   - deadband [upRatio, downRatio] + sustained hold timers + doubling climb-backoff prevent pumping
+//   - does NOT bounce back to 1.0 when CPU is also busy: on a 15 W SoC, GPU pixel load shares the
+//     same power/thermal envelope as the CPU, so holding scaled resolution relieves both.
+//   - ignores isolated single-frame hitches (>outlierMs) unless sustained.
+export const SMOOTH_DRS_FLOOR = 0.6;
+
+export function createSmoothDrsGovernor(opts = {}) {
+  let floor = clamp(Number(opts.floor) || SMOOTH_DRS_FLOOR, 0.2, 1);
+  const apply = typeof opts.apply === 'function' ? opts.apply : () => {};
+  const band = clamp(Number(opts.band) || 0.05, 0.01, 0.25);
+  const maxStepDown = clamp(Number(opts.maxStepDown) || 0.15, band, 0.4);
+  const downRatio = clamp(Number(opts.downRatio) || 1.08, 1.02, 1.5);
+  const upRatio = clamp(Number(opts.upRatio) || 0.82, 0.4, 0.98);
+  const downHoldS = clamp(Number(opts.downHoldS) || 0.22, 0.05, 5);
+  const downCooldownS = clamp(Number(opts.downCooldownS) || 0.30, 0.05, 5);
+  const upHoldS = clamp(Number(opts.upHoldS) || 2.0, 0.2, 60);
+  const gpuBudgetCeilingMs = clamp(Number(opts.gpuBudgetMs) || 13, 4, 50);
+  const outlierMs = Number(opts.outlierMs) || 120;
+  const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
+  const FRAME_EMA_ALPHA = 0.22;
+
+  let enabled = true;
+  let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
+  let frameEmaMs = null;
+  const GPU_WIN = 5;
+  const gpuWindow = new Float64Array(GPU_WIN);
+  const gpuScratch = new Float64Array(GPU_WIN);
+  let gpuSamples = 0;
+  let gpuMedianMs = null;
+  let validFromFrameId = 0;
+  let slowStreak = 0;
+  let overS = 0;
+  let underS = 0;
+  let downCooldown = 0;
+  let upHold = upHoldS;
+  let sinceUpS = Infinity;
+  let lastReason = 'init';
+
+  const snapBand = (value) => Math.round(value / band) * band;
+
+  function medianGpu() {
+    const n = Math.min(gpuSamples, GPU_WIN);
+    if (n <= 0) return null;
+    for (let i = 0; i < n; i++) {
+      const v = gpuWindow[i];
+      let j = i - 1;
+      while (j >= 0 && gpuScratch[j] > v) { gpuScratch[j + 1] = gpuScratch[j]; j--; }
+      gpuScratch[j + 1] = v;
+    }
+    return n % 2 === 1 ? gpuScratch[(n - 1) >> 1] : (gpuScratch[n / 2 - 1] + gpuScratch[n / 2]) * 0.5;
+  }
+
+  function set(next, frameId, reason) {
+    const s = clamp(Math.round(snapBand(next) * 1000) / 1000, floor, 1);
+    if (Math.abs(s - scale) < 1e-3) return false;
+    scale = s;
+    gpuSamples = 0;
+    gpuMedianMs = null;
+    overS = 0;
+    underS = 0;
+    validFromFrameId = Number.isFinite(frameId) ? frameId : 0;
+    lastReason = reason;
+    apply(scale);
+    return true;
+  }
+
+  return {
+    setEnabled(on) {
+      enabled = !!on;
+      frameEmaMs = null;
+      gpuSamples = 0;
+      gpuMedianMs = null;
+      slowStreak = 0;
+      overS = 0;
+      underS = 0;
+      downCooldown = 0;
+      upHold = upHoldS;
+      sinceUpS = Infinity;
+      if (!enabled) set(1, 0, 'disabled');
+    },
+    isEnabled() { return enabled; },
+    getScale() { return scale; },
+    getFloor() { return floor; },
+    atFloor() { return scale <= floor + 1e-3; },
+    syncScale(value) {
+      const next = Number(value);
+      const s = clamp(Number.isFinite(next) ? next : 1, floor, 1);
+      if (Math.abs(s - scale) > 1e-3) {
+        scale = s;
+        gpuSamples = 0;
+        gpuMedianMs = null;
+        overS = 0;
+        underS = 0;
+      }
+    },
+    setFloor(nextFloor) {
+      floor = clamp(Number(nextFloor) || floor, 0.2, 1);
+      if (scale < floor) set(floor, validFromFrameId, 'floor');
+    },
+    /**
+     * @param {number} dtS wall seconds since previous presented frame
+     * @param {{ eligible?: boolean, targetMs?: number, gpuMs?: number|null,
+     *           sampleFrameId?: number, currentFrameId?: number }} sample
+     */
+    update(dtS, sample = {}) {
+      if (!enabled) return scale;
+      const dt = Number(dtS);
+      if (sample.eligible === false || !Number.isFinite(dt) || dt <= 0) {
+        overS = 0;
+        underS = 0;
+        slowStreak = 0;
+        return scale;
+      }
+      const rawMs = dt * 1000;
+      if (rawMs > outlierMs) {
+        slowStreak++;
+        if (slowStreak < 2) return scale;
+      } else {
+        slowStreak = 0;
+      }
+      const boundedDt = Math.min(dt, maxAcceptedMs / 1000);
+      const ms = boundedDt * 1000;
+      frameEmaMs = frameEmaMs == null ? ms : frameEmaMs + (ms - frameEmaMs) * FRAME_EMA_ALPHA;
+      if (downCooldown > 0) downCooldown = Math.max(0, downCooldown - boundedDt);
+      sinceUpS += boundedDt;
+
+      const targetMs = clamp(Number(sample.targetMs) || 1000 / 60, 1000 / 360, 1000 / 20);
+      const gpuBudgetMs = Math.min(gpuBudgetCeilingMs, targetMs * 0.78);
+      const gpuMs = sample.gpuMs;
+      const sampleFrameId = sample.sampleFrameId;
+      if (gpuMs != null && Number.isFinite(gpuMs) && gpuMs > 0
+          && (!Number.isFinite(sampleFrameId) || sampleFrameId >= validFromFrameId)) {
+        gpuWindow[gpuSamples % GPU_WIN] = Math.min(gpuMs, maxAcceptedMs);
+        gpuSamples++;
+        gpuMedianMs = medianGpu();
+      }
+
+      const frameRatio = frameEmaMs / targetMs;
+      const gpuValid = gpuMedianMs != null && gpuSamples >= 2;
+      const gpuRatio = gpuValid ? gpuMedianMs / gpuBudgetMs : 0;
+      const pressure = gpuValid ? Math.max(gpuRatio, frameRatio * 0.92) : frameRatio;
+      const currentFrameId = sample.currentFrameId;
+
+      if (pressure > downRatio) {
+        overS += boundedDt;
+        underS = 0;
+        if (overS >= downHoldS && downCooldown <= 0 && scale > floor + 1e-3) {
+          // Step smoothly proportional to excess pressure, capped to maxStepDown per move.
+          const ideal = scale / Math.sqrt(Math.max(1.05, pressure));
+          const stepDown = clamp(Math.ceil((scale - ideal) / band) * band, band, maxStepDown);
+          const next = Math.max(floor, scale - stepDown);
+          if (sinceUpS < 4) upHold = Math.min(upHold * 2, 16);
+          if (set(next, currentFrameId, gpuValid && gpuRatio >= frameRatio * 0.92 ? 'gpu-over' : 'frame-over')) {
+            downCooldown = downCooldownS;
+          }
+        }
+        return scale;
+      }
+
+      overS = 0;
+      // On a vsynced display, a healthy frame still reports dt == targetMs (frameRatio ~= 1.0).
+      // So upward recovery checks GPU headroom when timer queries are live (plus frame not missing),
+      // and periodic probe-up while meeting the frame budget when timer queries are absent.
+      const frameMeetingBudget = frameRatio <= 1.06;
+      const hasHeadroom = gpuValid ? (gpuRatio < upRatio && frameMeetingBudget) : frameMeetingBudget;
+      if (scale < 1 - 1e-3 && hasHeadroom) {
+        const nextUp = Math.min(1, scale + band);
+        const predictedGpuOk = !gpuValid
+          || (gpuMedianMs * (nextUp * nextUp) / (scale * scale)) < gpuBudgetMs * 0.92;
+        if (predictedGpuOk) {
+          underS += boundedDt;
+          const requiredHold = gpuValid ? upHold : Math.max(upHold, 8);
+          if (underS >= requiredHold && downCooldown <= 0) {
+            if (sinceUpS > 24) upHold = upHoldS;
+            sinceUpS = 0;
+            set(nextUp, currentFrameId, 'headroom');
+          }
+        } else {
+          underS = 0;
+        }
+      } else {
+        underS = 0;
+      }
+      return scale;
+    },
+    getState() {
+      return { scale, floor, frameEmaMs, gpuMedianMs, overS, underS, upHold, reason: lastReason };
+    },
   };
 }

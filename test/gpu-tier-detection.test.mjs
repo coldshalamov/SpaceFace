@@ -160,7 +160,7 @@ test('automatic resolution is available on every detected GPU tier', () => {
 test('the newly integrated machines get the integrated floor and the preset suggestion', () => {
   const gpu = detectGpu(fakeRenderer('ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001638) Direct3D11 vs_5_0 ps_5_0, D3D11)'));
   assert.equal(gpu.tier, 'integrated');
-  assert.equal(dynResFloorForTier(gpu.tier), 0.5);
+  assert.equal(dynResFloorForTier(gpu.tier), 0.6);
   assert.equal(shouldSuggestIntegratedPreset(gpu, { qualityPreset: 'medium' }), true);
   const arc = detectGpu(fakeRenderer('ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics (0x000056A0) Direct3D11 vs_5_0 ps_5_0, D3D11)'));
   assert.equal(shouldSuggestIntegratedPreset(arc, { qualityPreset: 'medium' }), false,

@@ -43,7 +43,15 @@
 // submitted, src/render/vfx/quarksSystem.js), foundryCheapMat (demotes static Foundry deck/steel/prop Standard/Phong materials to Lambert on integrated GPUs, src/render/arenaSets/foundrySet.js),
 // worldKtx2 (world textures — deep-sky plates, painted planets, rock maps — load their
 // sibling .ktx2 through the shared transcoder instead of decoding the PNG/JPG source,
-// src/render/assetLoader.js acquireSharedKtx2Loader + the four world-texture loaders).
+// src/render/assetLoader.js acquireSharedKtx2Loader + the four world-texture loaders),
+// coldHulks (a Swarm hulk whose ember is spent hands its leaves to the one cold dead material set
+// every spent hulk of its hull shares, hulks from the ready-body cache included,
+// src/render/visualFactory.js settleColdHulk + src/render/renderer.js), hulkPool (those cold leaves
+// join the cross-owner instance pool the ship hulls use: one instanced draw per leaf for every cold
+// hulk of a hull, src/render/partsLibrary.js poolColdHulkLeaves),
+// drsSmooth (smooth hysteresis dynamic resolution governor >=0.6 floor + single-pass composite
+// upscale on integrated GPUs; ?rfx=-drsSmooth holds native 1.0 scale,
+// src/render/adaptiveQuality.js + src/render/bloom.js + src/render/renderer.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).

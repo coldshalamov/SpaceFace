@@ -149,21 +149,21 @@ test('a borderline sustained miss parks at a shallow band instead of grinding to
   assert.equal(borderline.getScale(), 1, 'a ~1.25x miss never reaches even the first band');
 });
 
-test('raster relief raises the adaptive floor — Auto never presents below 0.5 combined', () => {
-  // Director ruling 2026-11-21: the GPU budget governor may use 0.5-1.0 with the CAS upscale.
-  assert.equal(adaptiveFloorForCombinedScale(0.5, 1), 0.5,
-    'no relief: Auto may go down to the 0.5 combined floor');
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.6, 'a tier floor above the combined floor wins');
-  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.5, 0.8) - 0.5 / 0.8) < 1e-9,
-    'hitch relief 0.8 raises the content floor so the product stays at 0.5');
-  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.5), 1,
+test('raster relief raises the adaptive floor — Auto never presents below 0.6 combined', () => {
+  // DEMO-FRAME-1 (2026-11-23): floor held at 0.6 so 3D readability stays sharp on integrated GPUs.
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.6,
+    'no relief: Auto may go down to the 0.6 combined floor');
+  assert.equal(adaptiveFloorForCombinedScale(0.7, 1), 0.7, 'a tier floor above the combined floor wins');
+  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.6, 0.8) - 0.6 / 0.8) < 1e-9,
+    'hitch relief 0.8 raises the content floor so the product stays at 0.6');
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 0.5), 1,
     'deep relief already at the floor holds content at native');
 
-  const controller = createAdaptiveResolution({ floor: 0.5 });
-  controller.syncScale(0.5);
+  const controller = createAdaptiveResolution({ floor: 0.6 });
+  controller.syncScale(0.6);
   controller.setFloor(0.8);
   assert.equal(controller.getScale(), 0.8, 'a raised floor lifts the live scale at once');
-  controller.setFloor(0.5);
+  controller.setFloor(0.6);
   assert.equal(controller.getScale(), 0.8, 'a lowered floor leaves the recovered scale alone');
 });
 
@@ -172,7 +172,7 @@ test('Manual adaptive resolution keeps its tier floor without changing the saved
   const video = state.settings.video;
   const gpu = state.render.gpu = { tier: 'integrated' };
   const renderer = Object.assign(Object.create(render), { state });
-  const controller = createAdaptiveResolution({ floor: 0.5 });
+  const controller = createAdaptiveResolution({ floor: 0.6 });
   const syncPolicy = () => {
     controller.setEnabled(adaptiveResolutionEnabledForSettings(gpu, video));
     controller.setFloor(renderer._adaptiveFloorForRelief());
@@ -181,7 +181,7 @@ test('Manual adaptive resolution keeps its tier floor without changing the saved
 
   applyQualityPreset(state.settings, 'integrated');
   const savedScale = video.renderScale;
-  assert.equal(renderer._adaptiveFloorForRelief(), 0.5);
+  assert.equal(renderer._adaptiveFloorForRelief(), 0.6);
   syncPolicy();
   feed(controller, 0.026, 130, slowFlight);
   assert.equal(controller.getScale(), 0.9, 'the explicit Manual toggle can start a resolution trial');
@@ -196,11 +196,11 @@ test('Manual adaptive resolution keeps its tier floor without changing the saved
 
   video.qualityMode = 'auto';
   syncPolicy();
-  // Auto's combined floor is 0.5 of native (director ruling 2026-11-21): with this preset's
-  // automatic render scale the content floor is at least 0.5 / renderScale, and the controller may step
-  // toward it on a GPU-bound frame (no CPU sample here = GPU-bound by default).
+  // Auto's combined floor is 0.6 of native (DEMO-FRAME-1): with this preset's automatic render
+  // scale the content floor is at least 0.6 / renderScale, and the controller may step toward it
+  // on a GPU-bound frame (no CPU sample here = GPU-bound by default).
   const floor = renderer._adaptiveFloorForRelief();
-  assert.ok(floor >= Math.min(1, 0.5 / video.renderScale) - 1e-9 && floor <= 1, `floor ${floor}`);
+  assert.ok(floor >= Math.min(1, 0.6 / video.renderScale) - 1e-9 && floor <= 1, `floor ${floor}`);
   feed(controller, 0.026, 130, slowFlight);
   assert.ok(controller.getScale() >= floor, 'Auto never presents below its combined floor');
 });
