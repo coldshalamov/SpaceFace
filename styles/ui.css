@@ -2034,10 +2034,11 @@ html.sf-reduce-motion .sf-drawer { transition: none; }
 html.sf-reduce-motion .sf-entity-link--row, html.sf-reduce-motion .sf-entity-link--row::before { transition: none; }
 
 .sf-drawer--entity { --sf-entity-accent: var(--sf-calm); }
-/* The dossier is a full-height sheet of glass: its leading edge dissolves (mask), its content sits in
-   the fully opaque 88 px+ of the sheet, and its head, facts, record, graph and apron arrive in order. */
+/* The dossier is a full-height sheet: a flat opaque face (the popups sheet fills it), with its
+   leading edge dissolving into the screen it arrives over. No blur — a blurred backdrop is a
+   2000s effect, and it cost a compositor pass on every frame the sheet was up. */
 .sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: 0; height: auto; max-height: none; width: min(600px, 48vw);
-  -webkit-backdrop-filter: blur(20px) saturate(1.12); backdrop-filter: blur(20px) saturate(1.12);
+  background:#191b1f;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 72px); mask-image: linear-gradient(90deg, transparent 0, #000 72px); }
 .sf-drawer--entity .sf-drawer__deck { gap: 24px; padding: 40px 36px 32px 88px; }
 .sf-drawer--entity .sf-drawer__deck > * { animation: sf-pop-rise 420ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) backwards; }

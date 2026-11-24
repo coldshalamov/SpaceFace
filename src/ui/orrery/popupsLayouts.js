@@ -10,6 +10,21 @@ const CHEVRON = 'url("data:image/svg+xml,'
   + '")';
 
 const CSS = `
+/* ── 0. The popup family's type system (2026-11-23) ─────────────────────────────────────────
+   One face, sentence case, no tracking, for every surface this sheet owns: the find palette, the
+   dossier sheet and (via the same tokens) the confirm dialog. The base sheet's tracked capitals in
+   the condensed faces read as a different decade; the flag word, kickers, tile keys and deck labels
+   all speak here in the reading voice, with the display face reserved for the sheet's own title. */
+.sf-find :is(.sf-find__kind, .sf-find__name, .sf-find__detail, .sf-find__hint),
+.sf-drawer--entity :is(.sf-drawer__kicker, .sf-tile__k, .sf-deck__label, .sf-drawer__facts, .sf-drawer__prose, .sf-entity-link--row),
+#sf-confirm-root .sf-confirm__flag {
+  text-transform:none !important; letter-spacing:0 !important;
+  font-family:var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif !important; }
+.sf-drawer--entity .sf-drawer__title {
+  font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
+  font-variation-settings:normal !important; letter-spacing:-.01em !important; }
+.sf-find .sf-find__kind { color:var(--dp-phos); }
+
 /* Search has one listening field, one result ladder and a fixed key legend. */
 .sf-find .sf-find__pane {
   display: flex; flex-direction: column; box-sizing: border-box; width: min(620px, calc(100% - 24px));

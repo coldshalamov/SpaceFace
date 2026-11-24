@@ -22,6 +22,10 @@ const STYLE_ID = 'sf-orrery-title-doors-layouts';
 const T = 'html body #screens .of-title.orr-title--doors';
 const BONE = '236 230 216';
 const GOLD = 'var(--dp-hand, #f2b950)';
+/* The frame's own outer gutter (--dp-margin, 64px by the frame's size step: 48px on a 1440 window).
+   The name block sits inside the frame's padding, so the doors and the fine line stand on the same
+   left edge as the name at every size. A hard 48px here put the name 16px right of the doors at 1920. */
+const GUTTER = 'var(--dp-margin, 48px)';
 const READ = "var(--dp-face-read, 'Instrument Sans'), system-ui, sans-serif";
 const DISPLAY = "var(--dp-face-display, 'Archivo'), system-ui, sans-serif";
 const EASE = 'cubic-bezier(.16, 1, .3, 1)';
@@ -37,14 +41,17 @@ export const TITLE_DOORS_LAYOUT_CSS = `
    containing block, so the body box must not claim it. */
 ${T} > .dp-frame__body { position:static !important; transform:none !important; contain:none !important; }
 ${T} .of-title-actions {
-  position:absolute !important; left:48px !important; right:auto !important; top:auto !important;
+  position:absolute !important; left:${GUTTER} !important; right:auto !important; top:auto !important;
   bottom:clamp(72px, 12vh, 104px) !important; transform:none !important;
   display:flex !important; flex-direction:column !important; gap:12px !important;
-  width:min(600px, 48vw, calc(100vw - 96px)) !important; max-width:none !important; min-height:0 !important; height:auto !important;
+  width:min(600px, 48vw, calc(100vw - 2 * ${GUTTER})) !important; max-width:none !important; min-height:0 !important; height:auto !important;
+  /* the column is exactly as tall as its words: clipping it cut off every focus ring and shadow that
+     a door or a row key draws outside itself, so keyboard focus was only a 1px change of border colour */
+  overflow:visible !important;
   margin:0 !important; padding:0 !important; z-index:2; }
 ${T} .dp-title__eyebrow:empty { display:none !important; }
 ${T} .of-title-strap { margin:12px 0 0 !important; max-width:44ch; font:500 clamp(15px, 2.2vh, 18px)/1.4 ${READ}; letter-spacing:.01em;
-  color:rgb(${BONE} / .9); text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 12px rgb(0 0 0 / .7); }
+  color:rgb(255 255 255 / .82); text-shadow:none; }
 /* the attention pool and lamp beads of the light kit say "awake" a second time; the doors say it themselves */
 ${T} .of-title-actions::before, ${T} .of-title-actions .dp-lit::before { display:none !important; }
 ${LIST} {
@@ -68,63 +75,68 @@ ${ROW_LI} { order:2; flex:0 0 auto !important; }
 ${T}[data-k-stage]:not([data-attract="live"]) .k-world--plate { opacity:1 !important; }
 
 /* ── THE DOORS ─────────────────────────────────────────────────────────────────────────────── */
+/* A door is a card: its picture fills the top at full colour, and the words stand on a flat caption
+   block underneath. A dark gradient used to be washed over the whole picture so the type could sit on
+   it, which turned both pictures muddy; with the type on its own block neither needs one. */
 ${DOOR} {
   position:relative !important; isolation:isolate; overflow:hidden !important; container-type:inline-size;
   display:flex !important; flex-direction:column !important; justify-content:safe flex-end !important; align-items:flex-start !important;
-  width:100% !important; height:clamp(188px, 34vh, 300px) !important; min-height:0 !important;
-  margin:0 !important; padding:52px 24px 20px !important; box-sizing:border-box;
+  /* the kit's lit item gaps its stacked lines by 16px; the caption sets its own spacing, or it runs
+     32px taller than its margins and the name climbs into the picture */
+  gap:0 !important;
+  width:100% !important; height:clamp(244px, 34vh, 300px) !important; min-height:0 !important;
+  margin:0 !important; padding:0 20px 18px !important; box-sizing:border-box;
   text-align:left !important; white-space:normal !important; cursor:pointer;
-  color:rgb(248 244 234) !important; background:#0a0c10 !important;
-  border:1px solid rgb(${BONE} / .26) !important; border-radius:4px !important; outline:none !important;
-  box-shadow:0 10px 32px rgb(0 0 0 / .45) !important; text-shadow:none !important;
+  color:#f4f5f7 !important; background:#141416 !important;
+  border:1px solid rgb(255 255 255 / .12) !important; border-radius:10px !important; outline:none !important;
+  box-shadow:none !important; text-shadow:none !important;
   font:inherit !important; letter-spacing:0 !important; text-transform:none !important;
   transform:none !important; opacity:1 !important;
-  transition:border-color .16s ${EASE}, box-shadow .16s ${EASE}, transform .16s ${EASE} !important; }
+  transition:border-color .16s ${EASE}, transform .16s ${EASE} !important; }
 ${DOOR}::before, ${DOOR}::after { display:none !important; content:none !important; }
 /* the picture is a clipped frame (the art span) around a painted plate (its ::before), so the awake zoom
    stays inside the frame: a scaled frame used to widen the door's scroll box by ~7px, which read as a
    horizontal clip to the layout checks */
-${DOOR} > .of-door__art { position:absolute; inset:0; z-index:-1; pointer-events:none; overflow:hidden; border-radius:inherit; }
+${DOOR} > .of-door__art { position:absolute; left:0; right:0; top:0; bottom:auto; height:46%; z-index:-1; pointer-events:none; overflow:hidden;
+  border-radius:10px 10px 0 0; }
 ${DOOR} > .of-door__art::before {
   content:""; position:absolute; inset:0;
-  background:
-    linear-gradient(0deg, rgb(5 6 9 / .95) 0%, rgb(5 6 9 / .84) 30%, rgb(5 6 9 / .46) 62%, rgb(5 6 9 / .22) 100%),
-    var(--door-img) var(--door-img-pos, center) / cover no-repeat;
-  filter:saturate(.82) brightness(.84);
+  background:var(--door-img) var(--door-img-pos, center) / cover no-repeat;
   transform:scale(1.0); transform-origin:50% 60%;
-  transition:transform .32s ${EASE}, filter .16s ${EASE}; }
+  transition:transform .32s ${EASE}; }
 ${DOOR}[data-door="swarm"] > .of-door__art { --door-img:url("${SWARM_IMG}"); --door-img-pos:50% 42%; }
 ${DOOR}[data-door="adventure"] > .of-door__art { --door-img:url("${ADVENTURE_IMG}"); --door-img-pos:58% 46%; }
+/* the kind of run is a small badge on the picture, inset from the card's corner as a badge on a photo is */
 ${DOOR} > .of-door__kicker {
-  position:absolute; top:16px; left:20px; max-width:calc(100% - 40px); box-sizing:border-box; overflow-wrap:anywhere; padding:4px 8px; border-radius:2px;
-  font:600 12px/1 ${READ}; letter-spacing:.14em; text-transform:uppercase;
-  color:rgb(${BONE} / .92); background:rgb(6 8 12 / .72); border:1px solid rgb(${BONE} / .16); }
+  position:absolute; top:12px; left:12px; max-width:calc(100% - 24px); box-sizing:border-box; overflow-wrap:anywhere; padding:5px 8px; border-radius:6px;
+  font:600 12px/1.2 ${READ}; letter-spacing:0; text-transform:none;
+  color:rgb(255 255 255 / .92); background:rgb(12 12 13 / .86); border:0; }
 ${DOOR} > .of-door__name {
-  display:block; max-width:100%; font:800 clamp(28px, min(5.6vh, 14cqw), 52px)/1 ${DISPLAY}; letter-spacing:.015em; text-transform:uppercase;
-  color:rgb(250 247 239); text-shadow:0 2px 12px rgb(0 0 0 / .55);
+  display:block; max-width:100%; font:800 clamp(28px, min(5.6vh, 14cqw), 52px)/1.05 ${DISPLAY}; letter-spacing:-.02em; text-transform:none;
+  color:#ffffff; text-shadow:none;
   /* a longer translation breaks inside the word before it can run past the card's clip */
   overflow-wrap:anywhere; hyphens:auto; }
 ${DOOR} > .of-door__line {
   display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important;
   position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
-  max-width:36ch; min-height:2.8em; margin:8px 0 0 !important; padding:0 !important; overflow-wrap:anywhere;
-  font:400 15px/1.4 ${READ} !important; letter-spacing:0 !important; text-transform:none !important;
-  color:rgb(${BONE} / .9) !important; opacity:1 !important; text-shadow:0 1px 6px rgb(0 0 0 / .7) !important; }
+  max-width:40ch; min-height:2.9em; margin:6px 0 0 !important; padding:0 !important; overflow-wrap:anywhere;
+  font:400 14px/1.45 ${READ} !important; letter-spacing:0 !important; text-transform:none !important;
+  color:#a3a6ad !important; opacity:1 !important; text-shadow:none !important; }
 ${DOOR} > .of-door__go {
-  display:inline-flex; align-items:center; gap:8px; margin-top:16px; padding:8px 12px 8px 14px; border-radius:2px;
-  font:600 13px/1 ${READ}; letter-spacing:.12em; text-transform:uppercase;
-  color:rgb(${BONE} / .92); background:rgb(${BONE} / .08); border:1px solid rgb(${BONE} / .24);
-  transition:color .16s ${EASE}, background-color .16s ${EASE}, border-color .16s ${EASE}; }
+  display:inline-flex; align-items:center; gap:8px; margin-top:14px; height:32px; padding:0 12px; border-radius:6px;
+  font:600 13px/1 ${READ}; letter-spacing:0; text-transform:none;
+  color:#f4f5f7; background:rgb(255 255 255 / .08); border:0;
+  transition:color .16s ${EASE}, background-color .16s ${EASE}; }
 ${DOOR} > .of-door__go::after { content:"\\2192"; font-size:15px; letter-spacing:0; transition:transform .16s ${EASE}; }
 ${DOOR} > .of-door__plain { display:none !important; }
-/* awake — the pointer moves focus, so exactly one door is ever lit */
+/* awake — the pointer moves focus, so exactly one door is ever lit, and the lit edge is its focus mark
+   too: a 2px gold edge (the 1px border and a 1px ring flush against it). */
 ${DOOR}:is(:hover, :focus, [data-awake]) {
   border-color:${GOLD} !important;
-  box-shadow:0 0 0 1px ${GOLD}, 0 14px 40px rgb(0 0 0 / .55), 0 0 36px rgb(242 185 80 / .2) !important; }
-${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art::before { transform:scale(1.045); filter:saturate(1) brightness(.98); }
-${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go { color:#1a1208; background:${GOLD}; border-color:${GOLD}; }
+  box-shadow:0 0 0 1px ${GOLD} !important; }
+${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art::before { transform:scale(1.035); }
+${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go { color:#141414; background:${GOLD}; }
 ${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__go::after { transform:translateX(3px); }
-${DOOR}:focus-visible { box-shadow:0 0 0 2px ${GOLD}, 0 0 0 5px rgb(242 185 80 / .28), 0 14px 40px rgb(0 0 0 / .55) !important; }
 ${DOOR}:active { transform:scale(.985) !important; transition-duration:.08s !important; }
 ${DOOR}[aria-disabled="true"] { cursor:progress; }
 ${DOOR}[aria-disabled="true"] > .of-door__go { opacity:.6; }
@@ -132,21 +144,21 @@ ${DOOR}[aria-disabled="true"] > .of-door__go { opacity:.6; }
 /* ── THE SMALL ROW ─────────────────────────────────────────────────────────────────────────── */
 ${ROW_BTN} {
   position:relative !important; display:inline-flex !important; align-items:center !important; justify-content:center !important;
-  min-height:40px !important; height:40px; padding:0 16px !important; margin:0 !important; box-sizing:border-box;
-  font:600 13px/1 ${READ} !important; letter-spacing:.1em !important; text-transform:uppercase !important; white-space:nowrap;
-  color:rgb(${BONE} / .94) !important; background:rgb(8 10 14 / .72) !important;
-  border:1px solid rgb(${BONE} / .24) !important; border-radius:4px !important; outline:none !important;
+  min-height:40px !important; height:40px; padding:0 14px !important; margin:0 !important; box-sizing:border-box;
+  font:600 14px/1 ${READ} !important; letter-spacing:0 !important; text-transform:none !important; white-space:nowrap;
+  color:#f4f5f7 !important; background:#1a1a1d !important;
+  border:1px solid rgb(255 255 255 / .12) !important; border-radius:8px !important; outline:none !important;
   box-shadow:none !important; text-shadow:none !important; transform:none !important; opacity:1 !important; cursor:pointer;
   transition:color .16s ${EASE}, background-color .16s ${EASE}, border-color .16s ${EASE}, transform .16s ${EASE} !important; }
 ${ROW_BTN}::before, ${ROW_BTN}::after { display:none !important; content:none !important; }
 ${ROW_BTN} .dp-lit__note { display:none !important; }
-${ROW_BTN}:is(:hover, :focus, [data-awake]) { color:#fff !important; background:rgb(22 25 32 / .9) !important; border-color:rgb(${BONE} / .72) !important; }
-${ROW_BTN}:focus-visible { box-shadow:0 0 0 2px ${GOLD} !important; border-color:${GOLD} !important; }
+${ROW_BTN}:is(:hover, :focus, [data-awake]) { color:#ffffff !important; background:#242428 !important; border-color:rgb(255 255 255 / .3) !important; }
+${ROW_BTN}:focus-visible { outline:2px solid ${GOLD} !important; outline-offset:2px !important; }
 ${ROW_BTN}:active { transform:scale(.97) !important; transition-duration:.08s !important; }
-${ROW_BTN}.dp-lit__item--danger:is(:hover, :focus) { color:#ffd2c8 !important; border-color:rgb(255 122 92 / .7) !important; }
-${ROW_BTN}[aria-disabled="true"] { color:rgb(${BONE} / .5) !important; cursor:progress; }
+${ROW_BTN}.dp-lit__item--danger:is(:hover, :focus) { color:#ff8a70 !important; border-color:rgb(255 122 92 / .6) !important; }
+${ROW_BTN}[aria-disabled="true"] { color:rgb(255 255 255 / .4) !important; cursor:progress; }
 /* New Game in the row (a save owns the Adventure door): the plain word, none of the door's art */
-${ROW_LI}.of-title-row-item > button.of-door { height:40px !important; padding:0 16px !important; display:inline-flex !important; width:auto !important; flex-direction:row !important; isolation:auto; }
+${ROW_LI}.of-title-row-item > button.of-door { height:40px !important; padding:0 14px !important; display:inline-flex !important; width:auto !important; flex-direction:row !important; isolation:auto; border-radius:8px !important; }
 ${ROW_LI}.of-title-row-item > button.of-door > :not(.of-door__plain) { display:none !important; }
 ${ROW_LI}.of-title-row-item > button.of-door > .of-door__plain { display:inline !important; }
 
@@ -160,31 +172,37 @@ ${LAB} .dp-lit__note { display:none !important; }
 ${LAB} .dp-lit__item:is(:hover, :focus) { color:#fff !important; border-color:rgb(${BONE} / .7) !important; }
 
 /* ── THE FINE LINE ─────────────────────────────────────────────────────────────────────────── */
-${T} > .dp-frame__foot { grid-area:auto !important; position:absolute !important; left:48px !important; right:48px !important; bottom:clamp(20px, 4vh, 32px) !important; top:auto !important; margin:0 !important; padding:0 !important;
-  display:flex !important; flex-wrap:wrap; align-items:center; gap:4px 8px; font:500 12px/1.4 ${READ} !important; letter-spacing:.06em !important; text-transform:uppercase; opacity:1 !important; }
+${T} > .dp-frame__foot { grid-area:auto !important; position:absolute !important; left:${GUTTER} !important; right:${GUTTER} !important; bottom:clamp(20px, 4vh, 32px) !important; top:auto !important; margin:0 !important; padding:0 !important;
+  display:flex !important; flex-wrap:wrap; align-items:center; gap:4px 8px; font:500 13px/1.4 ${READ} !important; letter-spacing:0 !important; text-transform:none; opacity:1 !important; }
 /* Credits · Achievements on the left; the build string stands apart at the far right, quieter and in
    tabular figures, so the line reads as two links and a stamp rather than one run-on sentence */
 ${T} > .dp-frame__foot > .of-title-foot__dot { opacity:.6; }
 ${T} > .dp-frame__foot > .of-title-build { margin-left:auto; display:inline-flex; align-items:center; gap:8px;
   font:500 12px/1.4 ${READ}; letter-spacing:.06em; font-variant-numeric:tabular-nums; }
-${T} > .dp-frame__foot > .of-title-build, ${T} > .dp-frame__foot > .of-title-build * { color:rgb(${BONE} / .62) !important; }
-${T} > .dp-frame__foot, ${T} > .dp-frame__foot * { color:rgb(${BONE} / .86) !important; text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 10px rgb(0 0 0 / .8); }
-${T} > .dp-frame__foot .dp-menu__item--fine { font:600 12px/1 ${READ} !important; letter-spacing:.06em !important; min-height:28px; padding:4px 6px !important;
+${T} > .dp-frame__foot > .of-title-build, ${T} > .dp-frame__foot > .of-title-build * { color:rgb(255 255 255 / .55) !important; }
+${T} > .dp-frame__foot, ${T} > .dp-frame__foot * { color:rgb(255 255 255 / .82) !important; text-shadow:none !important; }
+${T} > .dp-frame__foot .dp-menu__item--fine { font:600 13px/1 ${READ} !important; letter-spacing:0 !important; text-transform:none !important; min-height:28px; padding:4px 6px !important;
   border-radius:2px; transition:color .16s ${EASE}; background:none !important; border:0 !important; cursor:pointer; }
+/* the line's first word starts on the gutter like the name and the doors above it; its 6px of key
+   padding hangs into the margin, where there is nothing to collide with */
+${T} > .dp-frame__foot .dp-menu__item--fine:first-child { margin-left:-6px; }
 ${T} > .dp-frame__foot .dp-menu__item--fine:is(:hover, :focus) { color:#fff !important; text-decoration:underline; text-underline-offset:4px; text-decoration-color:${GOLD}; }
 ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${GOLD} !important; outline-offset:2px; }
 
 /* a short window: the doors give height before anything overlaps */
 @media (max-height:620px) and (min-width:701px) {
-  ${T} .of-title-actions { bottom:64px !important; }
-  ${DOOR} { height:clamp(160px, 32vh, 200px) !important; padding:44px 20px 16px !important; }
-  ${DOOR} > .of-door__go { margin-top:12px; }
+  ${T} .of-title-actions { bottom:56px !important; }
+  ${DOOR} { height:clamp(214px, 32vh, 232px) !important; padding:0 16px 14px !important; }
+  ${DOOR} > .of-door__art { height:38%; }
+  ${DOOR} > .of-door__line { min-height:2.9em; font-size:13px !important; }
+  ${DOOR} > .of-door__go { margin-top:10px; }
 }
 /* a narrow screen: the doors stack under the name, full width, then the row */
 @media (max-width:700px) {
   ${T} .of-title-actions { position:relative !important; left:auto !important; bottom:auto !important; width:100% !important; margin:24px 0 0 !important; }
   ${LIST} > li.of-title-door { flex:1 1 100% !important; }
-  ${DOOR} { height:auto !important; min-height:0 !important; padding:16px 20px !important; justify-content:flex-start !important; }
+  ${DOOR} { height:auto !important; min-height:0 !important; padding:0 16px 14px !important; justify-content:flex-start !important; }
+  ${DOOR} > .of-door__art { height:132px; }
   ${DOOR} > .of-door__kicker { display:none; }
   ${T} { overflow-y:auto !important; overscroll-behavior:contain; }
   ${T} > .dp-frame__body { overflow:visible !important; max-height:none !important; }

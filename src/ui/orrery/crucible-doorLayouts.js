@@ -1,3 +1,6 @@
+/* Voice (2026-11-23): the Swarm front's — bone text, gold for the one primary or chosen thing, neutral
+   hairlines on flat dark plates. No bevels, top gradient rules, ice borders or clipped corners; a rule that
+   adds one back is a regression, not a flourish. */
 // Crucible door + plain-rearm composition sheet (bench ids `crucible`, `crucible-door`,
 // `crucible-rearm`). The base compositions live in screenLayouts.js and
 // cruciblePreparationLayouts.js; this sheet carries the door unit's findings from the bench:
@@ -53,103 +56,109 @@ const SWARM_FRONT_CSS = `
 ${PV}.sf-crucible-door.sf-crucible-door.sf-crucible-door[data-door-view="play"][data-door-view] > :not(.sf-play):not(.sf-play) { display:none !important; }
 ${PV}:not([data-door-view="play"]) > .sf-play { display:none !important; }
 ${PF} { position:absolute; inset:0; z-index:3; display:block; overflow:hidden; margin:0;
-  background:var(--dp-metal-0, #0b0d10); color:var(--dp-ink, #e8e2d4);
+  background:#0c0c0d; color:#f4f5f7;
   font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); text-transform:none; letter-spacing:0; }
 ${PF} .sf-play__art { position:absolute; inset:0; overflow:hidden; }
 ${PF} .sf-play__img { position:absolute; inset:-2%; width:104%; height:104%; object-fit:cover; object-position:64% 50%;
   opacity:0; transition:opacity 280ms ease-out; }
 ${PF} .sf-play__img.is-on { opacity:1; animation:sf-play-drift 30s ease-in-out infinite alternate; }
 @keyframes sf-play-drift { from { transform:scale(1) translate3d(0, 0, 0); } to { transform:scale(1.06) translate3d(-1.2%, -.8%, 0); } }
-${PF} .sf-play__shade { position:absolute; inset:0; pointer-events:none;
-  background:linear-gradient(90deg, rgb(8 9 12 / .95) 0%, rgb(8 9 12 / .88) 36%, rgb(8 9 12 / .42) 60%, rgb(8 9 12 / .04) 100%),
-    linear-gradient(0deg, rgb(8 9 12 / .72) 0%, rgb(8 9 12 / 0) 28%); }
-${PF} .sf-play__room { position:absolute; right:40px; bottom:28px; margin:0; max-width:40%; text-align:right;
-  font:700 13px/1.2 var(--dp-face-etch, "Archivo", sans-serif); letter-spacing:.24em; text-transform:uppercase;
-  color:rgb(232 226 212 / .7); text-shadow:0 1px 8px rgb(0 0 0 / .8); }
-${PF} .sf-play__panel { position:absolute; left:clamp(24px, 5vw, 72px); top:50%; transform:translateY(-50%);
-  width:min(560px, calc(100% - 48px)); max-height:calc(100% - 32px); overflow:auto; overscroll-behavior:contain;
-  display:flex; flex-direction:column; scrollbar-width:thin; }
-${PF} .sf-play__kicker { margin:0 0 4px; font:600 12px/1.25 var(--dp-face-read, "Instrument Sans", sans-serif);
-  letter-spacing:.2em; text-transform:uppercase; color:var(--dp-lamp, #f2b950); }
-${PF} .sf-play__title { margin:0; font:800 64px/.95 var(--dp-face-display, "Archivo", sans-serif); letter-spacing:0;
-  text-transform:uppercase; color:#f6f1e6; text-shadow:0 2px 24px rgb(0 0 0 / .5); }
-${PF} .sf-play__pitch { margin:12px 0 20px; max-width:48ch; font:400 15px/1.45 var(--dp-face-read, "Instrument Sans", sans-serif);
-  color:var(--dp-ink-dim, #b7b4a6); }
+/* No veil over the art. The words stand on an opaque panel, so the picture shows sharp and at full colour
+   beside them, and nothing in it can show through behind the type. (A dark gradient washed across the
+   whole frame used to turn the orange key art muddy and let a machine in the picture read as a shadow
+   box stuck to the Play key.) */
+${PF} .sf-play__shade { display:none; }
+${PF} .sf-play__panel { position:absolute; left:0; top:0; bottom:0; transform:none; box-sizing:border-box;
+  width:min(664px, 100%); padding:40px 32px 40px clamp(24px, 5vw, 72px);
+  display:flex; flex-direction:column; justify-content:center; overflow:auto; overscroll-behavior:contain;
+  background:#0c0c0d; border-right:1px solid rgb(255 255 255 / .1); scrollbar-width:thin; }
+${PF} .sf-play__room { position:absolute; right:32px; bottom:28px; margin:0; max-width:40%; text-align:right;
+  font:600 13px/1.2 var(--dp-face-read, "Instrument Sans"); letter-spacing:0; text-transform:none;
+  color:rgb(255 255 255 / .78); background:rgb(12 12 13 / .92); padding:8px 12px; border-radius:8px; }
+${PF} .sf-play__kicker { margin:0 0 8px; font:600 14px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:0; text-transform:none; color:var(--dp-lamp, #f2b950); }
+${PF} .sf-play__title { margin:0; font:800 56px/1 var(--dp-face-display, "Archivo", sans-serif); letter-spacing:-.02em;
+  text-transform:none; color:#ffffff; }
+${PF} .sf-play__pitch { margin:12px 0 24px; max-width:52ch; font:400 15px/1.5 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color:#a3a6ad; }
 ${PF} .sf-play__picks { display:flex; flex-direction:column; gap:8px; }
-${PF} .sf-play-pick { display:grid; grid-template-columns:112px minmax(0, 1fr) 32px 32px;
-  grid-template-areas:"label face prev next" "label line line line"; align-items:center; column-gap:4px; row-gap:0;
-  padding:8px 12px 8px 16px; background:rgb(14 17 22 / .84); border:1px solid rgb(232 226 212 / .1); border-radius:4px;
-  transition:border-color 140ms ease-out, background-color 140ms ease-out, box-shadow 140ms ease-out; }
-${PF} .sf-play-pick:hover { border-color:rgb(232 226 212 / .22); }
-${PF} .sf-play-pick:focus-within { border-color:rgb(242 185 80 / .72); background:rgb(22 23 27 / .92);
-  box-shadow:inset 3px 0 0 var(--dp-lamp, #f2b950); }
-${PF} .sf-play-pick__label { grid-area:label; font:600 12px/1.25 var(--dp-face-read, "Instrument Sans", sans-serif);
-  letter-spacing:.12em; text-transform:uppercase; color:var(--dp-ink-mute, #b0aea6); }
+/* one row height for every pick: the same padding, the same 28px value line, so the four rows keep a rhythm */
+${PF} .sf-play-pick { display:grid; grid-template-columns:104px minmax(0, 1fr) 32px 32px;
+  grid-template-areas:"label face prev next" "label line line line"; align-items:center; column-gap:8px; row-gap:0;
+  padding:10px 10px 10px 16px; background:#141416; border:1px solid rgb(255 255 255 / .08); border-radius:8px;
+  transition:border-color 140ms ease-out, background-color 140ms ease-out; }
+${PF} .sf-play-pick:hover { border-color:rgb(255 255 255 / .18); }
+${PF} .sf-play-pick:focus-within { border-color:var(--dp-lamp, #f2b950); }
+${PF} .sf-play-pick__label { grid-area:label; font:500 13px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:0; text-transform:none; color:#9a9da4; }
+/* the steppers are keys a player can see they can press */
 ${PF} .sf-play-pick__step { width:32px; height:32px; margin:0; padding:0; display:grid; place-items:center; cursor:pointer;
-  background:transparent; border:1px solid transparent; border-radius:4px; color:var(--dp-ink-dim, #b7b4a6); box-shadow:none;
+  background:#1c1c1f; border:1px solid rgb(255 255 255 / .12); border-radius:6px; color:#e6e7ea; box-shadow:none;
   transition:color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out, transform 120ms ease-out; }
 ${PF} .sf-play-pick__step:first-of-type { grid-area:prev; }
 ${PF} .sf-play-pick__step:last-of-type { grid-area:next; }
-${PF} .sf-play-pick__step:hover { color:#f6f1e6; background:rgb(232 226 212 / .08); border-color:rgb(232 226 212 / .18); }
-${PF} .sf-play-pick__step:active { transform:translateY(1px); background:rgb(232 226 212 / .14); }
+${PF} .sf-play-pick__step:hover { color:#ffffff; background:#28282c; border-color:rgb(255 255 255 / .3); }
+${PF} .sf-play-pick__step:active { transform:translateY(1px); background:#303035; }
 ${PF} .sf-play-pick__step[hidden] { display:grid !important; visibility:hidden; }
-${PF} .sf-play-pick__step svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2;
+${PF} .sf-play-pick__step svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.75;
   stroke-linecap:round; stroke-linejoin:round; }
 ${PF} .sf-play-pick__face { grid-area:face; display:flex; align-items:center; gap:8px; min-width:0; }
-${PF} .sf-play-pick__thumb { width:36px; height:36px; flex:none; object-fit:contain; filter:drop-shadow(0 2px 6px rgb(0 0 0 / .6)); }
+${PF} .sf-play-pick__thumb { width:28px; height:28px; flex:none; object-fit:contain; }
 ${PF} .sf-play-pick__thumb[hidden] { display:none !important; }
 ${PF} .sf-play-pick__opts { min-width:0; flex:1; }
-${PF} .sf-play-pick__opt { display:block; width:100%; min-height:32px; margin:0; padding:4px; text-align:left; cursor:pointer;
-  background:none; border:0; border-radius:2px; box-shadow:none; outline:none;
-  font:600 18px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:0; text-transform:none;
-  color:#f6f1e6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color 140ms ease-out; }
+${PF} .sf-play-pick__opt { display:block; width:100%; min-height:28px; margin:0; padding:2px 4px; text-align:left; cursor:pointer;
+  background:none; border:0; border-radius:6px; box-shadow:none; outline:none;
+  font:600 16px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:0; text-transform:none;
+  color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color 140ms ease-out; }
 ${PF} .sf-play-pick__opt[hidden] { display:none !important; }
 ${PF} .sf-play-pick__opt:hover { color:var(--dp-lamp-hot, #ffd98c); }
 ${PF} .sf-play-pick__opt:focus-visible { color:var(--dp-lamp-hot, #ffd98c); outline:none !important; box-shadow:none !important; }
-/* the row carries the focus mark (lamp edge); the value only warms */
-${PF} .sf-play-pick__line { grid-area:line; margin:0; padding:0 4px 2px; font:400 13px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif);
-  color:var(--dp-ink-dim, #b7b4a6); }
-${PF} .sf-play-pick--sub { margin-top:-4px; padding:4px 12px 6px 16px; border-top-color:rgb(232 226 212 / .04);
-  border-top-left-radius:0; border-top-right-radius:0; background:rgb(14 17 22 / .74); }
+/* the row carries the focus mark (its lamp edge); the value only warms */
+${PF} .sf-play-pick__line { grid-area:line; margin:0; padding:0 4px; font:400 13px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color:#9a9da4; }
+/* the gun pick sits under the ship pick as its own row, at the same height and spacing as the rest */
+${PF} .sf-play-pick--sub { padding:10px 10px 10px 16px; background:#141416; }
 ${PF} .sf-play-pick--sub .sf-play-pick__opt { font-size:15px; min-height:28px; }
-${PF} .sf-play-pick--sub .sf-play-pick__label { letter-spacing:.1em; }
-${PF} .sf-play__go { margin:20px 0 0; height:56px; width:100%; display:flex; align-items:center; justify-content:center; gap:16px;
-  cursor:pointer; border:0; border-radius:4px; color:#17120a;
-  background:linear-gradient(180deg, #f8c962 0%, #e3a73f 100%);
-  font:700 20px/1 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.18em; text-transform:uppercase;
-  box-shadow:0 8px 24px rgb(242 185 80 / .24), inset 0 1px 0 rgb(255 240 200 / .6);
-  transition:transform 140ms ease-out, box-shadow 160ms ease-out, filter 140ms ease-out; }
-${PF} .sf-play__go:hover { filter:brightness(1.08); box-shadow:0 10px 32px rgb(242 185 80 / .38), inset 0 1px 0 rgb(255 240 200 / .7); }
-${PF} .sf-play__go:focus-visible { outline:2px solid #ffe7b0; outline-offset:3px; }
-${PF} .sf-play__go:active { transform:translateY(1px) scale(.995); filter:brightness(.96); box-shadow:0 4px 12px rgb(242 185 80 / .2); }
-${PF} .sf-play__key { display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:3px;
-  border:1px solid rgb(23 18 10 / .4); font:600 12px/1 var(--dp-face-code, "Spline Sans Mono", ui-monospace, monospace);
-  letter-spacing:.06em; text-transform:uppercase; }
+${PF} .sf-play-pick--sub .sf-play-pick__label { letter-spacing:0; }
+${PF} .sf-play__go { margin:20px 0 0; height:52px; width:100%; display:flex; align-items:center; justify-content:center; gap:12px;
+  cursor:pointer; border:0; border-radius:8px; color:#141414;
+  background:#f2b950;
+  font:700 17px/1 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:0; text-transform:none;
+  box-shadow:none;
+  transition:background 120ms linear, transform 120ms ease-out; }
+${PF} .sf-play__go:hover { background:#ffcf5c; box-shadow:none; }
+${PF} .sf-play__go:focus-visible { outline:2px solid #f2b950; outline-offset:3px; }
+${PF} .sf-play__go:active { transform:translateY(1px); background:#e6ad42; box-shadow:none; }
+${PF} .sf-play__key { display:inline-flex; align-items:center; height:24px; padding:0 8px; border-radius:6px;
+  border:0; background:rgb(0 0 0 / .12); font:600 12px/1 var(--dp-face-read, "Instrument Sans");
+  letter-spacing:0; text-transform:none; }
 ${PF} .sf-play__alt { margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; }
-${PF} .sf-play__quiet { height:40px; margin:0; padding:0 16px; display:inline-flex; align-items:center; gap:12px; cursor:pointer;
-  background:rgb(14 17 22 / .78); border:1px solid rgb(232 226 212 / .16); border-radius:4px; box-shadow:none;
-  color:var(--dp-ink, #e8e2d4); font:600 14px/1 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:.04em;
+${PF} .sf-play__quiet { height:40px; margin:0; padding:0 14px; display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+  background:#1a1a1d; border:1px solid rgb(255 255 255 / .12); border-radius:8px; box-shadow:none;
+  color:#f4f5f7; font:600 14px/1 var(--dp-face-read, "Instrument Sans", sans-serif); letter-spacing:0;
   text-transform:none; transition:border-color 140ms ease-out, background-color 140ms ease-out, transform 120ms ease-out; }
-${PF} .sf-play__quiet:hover { border-color:rgb(232 226 212 / .36); background:rgb(28 30 36 / .92); }
+${PF} .sf-play__quiet:hover { border-color:rgb(255 255 255 / .3); background:#242428; }
 ${PF} .sf-play__quiet:focus-visible { outline:2px solid var(--dp-lamp, #f2b950); outline-offset:2px; }
 ${PF} .sf-play__quiet:active { transform:translateY(1px); }
-${PF} .sf-play__quiet-sub { font-weight:400; font-size:13px; letter-spacing:0; color:var(--dp-ink-mute, #b0aea6); }
+${PF} .sf-play__quiet-sub { font-weight:400; font-size:13px; letter-spacing:0; color:#9a9da4; }
 ${PF} .sf-play__back { margin-left:auto; }
-${PF} .sf-play__key--quiet { border-color:rgb(232 226 212 / .26); color:var(--dp-ink-mute, #b0aea6); }
+${PF} .sf-play__key--quiet { background:rgb(255 255 255 / .06); color:#c9cbcf; }
 /* short windows (1366x650): the same stack, a little tighter */
 @media (max-height:700px) {
-  ${PF} .sf-play__title { font-size:52px; }
+  ${PF} .sf-play__panel { padding-top:24px; padding-bottom:24px; }
+  ${PF} .sf-play__title { font-size:48px; }
   ${PF} .sf-play__pitch { margin:8px 0 16px; font-size:14px; }
-  ${PF} .sf-play-pick { padding:6px 12px 6px 16px; }
-  ${PF} .sf-play__go { margin-top:16px; height:52px; }
+  ${PF} .sf-play-pick { padding:6px 8px 6px 16px; }
+  ${PF} .sf-play-pick--sub { padding:6px 8px 6px 16px; }
+  ${PF} .sf-play__go { margin-top:16px; height:48px; }
 }
 /* phones: the art is a band across the top, the panel fills the rest and scrolls */
 @media (max-width:640px) {
   ${PF} .sf-play__art { bottom:auto; height:34%; }
   ${PF} .sf-play__img { object-position:50% 50%; }
-  ${PF} .sf-play__shade { background:linear-gradient(180deg, rgb(8 9 12 / .1) 0%, rgb(8 9 12 / .6) 22%, rgb(8 9 12 / .96) 36%, rgb(8 9 12 / 1) 100%); }
   ${PF} .sf-play__room { display:none; }
-  ${PF} .sf-play__panel { left:16px; right:16px; width:auto; top:auto; bottom:16px; transform:none; max-height:calc(100% - 96px); }
+  ${PF} .sf-play__panel { left:0; right:0; width:auto; top:auto; bottom:0; transform:none; padding:20px 16px 16px;
+    max-height:calc(100% - 34%); border-right:0; border-top:1px solid rgb(255 255 255 / .1); }
   ${PF} .sf-play__title { font-size:44px; }
   ${PF} .sf-play__pitch { font-size:14px; margin:8px 0 16px; }
   ${PF} .sf-play-pick { grid-template-columns:minmax(0, 1fr) 32px 32px; grid-template-areas:"label label label" "face prev next" "line line line";
@@ -192,32 +201,32 @@ ${D} .orr-prep-settings.orr-prep-settings { gap:8px !important; }
   ${D} .sf-crd-modes .fh-tile-art { height:28px !important; }
   ${D} .sf-crd-modes .fh-tile-art svg { width:28px !important; height:28px !important; }
 }
-/* --- the zone pick is a compact machined hardware selector card --------------------------- */
+/* --- the zone pick is a compact selector card --------------------------- */
 ${D} .sf-crd-zones .sf-crd-zone-pick {
   min-height:32px !important; padding:4px 10px !important;
   justify-content:center !important;
-  border:1px solid rgb(154 198 218 / .26) !important; border-radius:2px !important;
-  background:linear-gradient(165deg, rgb(16 32 45 / .92), rgb(10 20 30 / .96)) !important;
-  box-shadow:inset 0 1px 0 rgb(210 238 250 / .10) !important;
+  border:1px solid rgb(255 255 255 / .26) !important; border-radius:8px !important;
+  background:rgb(21 21 22 / .96) !important;
+  box-shadow:none !important;
 }
 ${D} .sf-crd-zones .sf-crd-zone-pick:is(:hover, :focus-visible):not([aria-pressed="true"]) {
-  border-color:rgb(158 220 233 / .62) !important;
-  background:linear-gradient(165deg, rgb(22 44 60 / .95), rgb(13 27 39 / .98)) !important;
+  border-color:rgb(255 255 255 / .62) !important;
+  background:rgb(27 27 28 / .98) !important;
 }
 ${D} .sf-crd-zones .sf-crd-zone-pick[aria-pressed="true"] {
   border:1px solid rgb(230 202 143 / .82) !important;
-  background:linear-gradient(165deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 60%, rgb(13 28 40 / .95) 100%) !important;
-  box-shadow:inset 0 2px 0 #e6ca8f, inset 0 0 16px rgb(224 181 94 / .12), 0 4px 14px rgb(0 0 0 / .45) !important;
-  color:#fff1cf !important;
+  background:rgb(224 181 94 / .18) !important;
+  box-shadow:inset 0 0 16px rgb(224 181 94 / .12) !important;
+  color:#ffd98c !important;
 }
 ${D} .sf-crd-zones .sf-crd-zone-pick:disabled { opacity:.4 !important; }
 /* the zone caption speaks in the same reading voice as the mode and stake subs */
-${D} .sf-crd-zone { font:400 12.5px/1.35 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
-  letter-spacing:0 !important; color:rgb(198 224 236 / .84) !important; margin:4px 0 0 !important; }
+${D} .sf-crd-zone { font:400 12.5px/1.35 var(--dp-face-read, "Instrument Sans"), sans-serif !important;
+  letter-spacing:0 !important; color:rgb(255 255 255 / .84) !important; margin:4px 0 0 !important; }
 /* the arena matrix cards wrap cleanly */
 ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:visible !important;
-  text-overflow:clip !important; line-height:1.22 !important; letter-spacing:.08em !important;
-  text-align:left !important; font-variation-settings:'wdth' 94 !important; }
+  text-overflow:clip !important; line-height:1.22 !important; letter-spacing:0 !important;
+  text-align:left !important; font-variation-settings:normal !important; }
 /* --- short benches (the 768-high verdict) -------------------------------------------------- */
 @media (max-height:820px) {
   ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:58px !important; padding:6px 6px !important; }
@@ -242,7 +251,7 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
   ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:46px !important; padding:4px 4px !important; }
   ${D} .sf-crd-modes .fh-tile-art { height:20px !important; }
   ${D} .sf-crd-modes .fh-tile-art svg { width:20px !important; height:20px !important; }
-  ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:.08em !important; }
+  ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:0 !important; }
   ${D} > .k-stage { scroll-padding-block:12px; scrollbar-width:thin; }
   ${D} .orr-tile { scroll-margin-block:12px; }
   ${D} :is(.sf-crd-mode-sub, .sf-crd-stake-sub) {
@@ -260,8 +269,8 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
   ${D} .sf-crd-zones .sf-crd-zone-pick { min-height:28px !important; padding:4px 6px !important; }
   ${D} .sf-crd-zone { margin:2px 0 0 !important; font-size:12px !important; }
   ${D} .sf-crd-stakes .fh-tile-legend { white-space:normal !important; overflow:visible !important;
-    text-overflow:clip !important; font-size:12px !important; letter-spacing:.06em !important;
-    font-variation-settings:'wdth' 92 !important; line-height:1.15 !important; }
+    text-overflow:clip !important; font-size:12px !important; letter-spacing:0 !important;
+    font-variation-settings:normal !important; line-height:1.15 !important; }
 }
 @media (max-height:500px) {
   ${D} .orr-prep-daily { display:none !important; }
@@ -279,36 +288,36 @@ ${D} .sf-crd-arenas .fh-tile-art img { width:100% !important; height:100% !impor
   opacity:.82 !important; filter:saturate(.88) !important; transition:opacity .18s linear, filter .18s linear; }
 ${D} .sf-crd-arenas .orr-tile:is(:hover, :focus-visible) .fh-tile-art img { opacity:.95 !important; filter:saturate(1) !important; }
 ${D} .sf-crd-arenas .orr-tile[aria-pressed="true"] .fh-tile-art img { opacity:1 !important; filter:saturate(1.08) !important; }
-${D} .sf-crd-arenas .fh-tile-legend { font-size:12px !important; letter-spacing:.08em !important;
-  color:#d8eaf2 !important; }
+${D} .sf-crd-arenas .fh-tile-legend { font-size:12px !important; letter-spacing:0 !important;
+  color:#ffffff !important; }
 ${D} .sf-crd-arenas .orr-tile:is(:hover, :focus-visible) .fh-tile-legend { color:#f0f9fc !important; }
-${D} .sf-crd-arenas .orr-tile[aria-pressed="true"] .fh-tile-legend { color:#fff1cf !important;
+${D} .sf-crd-arenas .orr-tile[aria-pressed="true"] .fh-tile-legend { color:#ffd98c !important;
   text-shadow:0 0 1px rgb(255 226 178 / .4); }
 /* --- the plain rearm: one balanced sheet --------------------------------------------------- */
 ${RA} > .k-stage { display:flex; flex-direction:column; }
 ${RA} .sf-cru-stage > .sf-cru-cards { margin-top:auto; margin-bottom:auto; width:min(1480px, 100%); align-self:center;
   align-items:stretch; }
 ${RA} .sf-cru-stage > .sf-cru-note { width:min(1480px, 100%); align-self:center; }
-${RA} .sf-cru-wallet { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:normal;
-  font-weight:600 !important; font-size:13px !important; font-variant-numeric:tabular-nums; letter-spacing:.08em;
+${RA} .sf-cru-wallet { font-family:var(--dp-face-read, "Instrument Sans") !important; font-variation-settings:normal;
+  font-weight:600 !important; font-size:13px !important; font-variant-numeric:tabular-nums; letter-spacing:0;
   color:#f2b950 !important; }
 /* --- the foot keycaps ---------------------------------------------------------------------- */
-${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) { background:rgb(9 20 30 / .85) !important; border:1px solid rgb(158 220 233 / .38) !important; box-shadow:none !important;
-  border-radius:2px !important; padding:2px 6px !important; margin-left:8px !important; color:#9edce9 !important;
-  font-size:12px !important; letter-spacing:.1em !important; }
-${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(158 220 233 / .45) !important; }
-/* TRAINING / QUICK PLAY are machined hardware keys */
+${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) { background:rgb(20 20 21 / .85) !important; border:1px solid rgb(255 255 255 / .38) !important; box-shadow:none !important;
+  border-radius:8px !important; padding:2px 6px !important; margin-left:8px !important; color:rgb(255 255 255 / .66) !important;
+  font-size:12px !important; letter-spacing:0 !important; }
+${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(255 255 255 / .45) !important; }
+/* TRAINING / QUICK PLAY are keys */
 ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key:not(.k-word--primary) {
   display:inline-flex !important; align-items:center; box-sizing:border-box; min-height:38px !important; height:auto !important; padding:0 14px !important;
-  font:600 13px/1 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important; letter-spacing:.08em !important; text-transform:uppercase;
-  color:#d8eaf2 !important; background:linear-gradient(180deg, rgb(20 35 48 / .92), rgb(12 22 32 / .96)) !important;
-  border:1px solid rgb(154 198 218 / .34) !important; border-radius:2px !important;
-  box-shadow:inset 0 1px 0 rgb(210 238 250 / .14) !important; }
+  font:600 13px/1 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important; letter-spacing:0 !important; text-transform:none;
+  color:#ffffff !important; background:rgb(23 23 24 / .96) !important;
+  border:1px solid rgb(255 255 255 / .34) !important; border-radius:8px !important;
+  box-shadow:none !important; }
 ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key:not(.k-word--primary):is(:hover, :focus-visible) {
-  color:#fff1cf !important; background:linear-gradient(180deg, rgb(28 48 66 / .95), rgb(16 30 43 / .98)) !important; border-color:#e6ca8f !important; }
+  color:#ffd98c !important; background:rgb(30 30 31 / .98) !important; border-color:#ffd98c !important; }
 /* a toggle that is ON reads lit in gold-amber */
 ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not(.k-word--primary) {
-  color:#fff1cf !important; background:linear-gradient(165deg, rgb(224 181 94 / .24), rgb(13 28 40 / .95)) !important; border-color:rgb(230 202 143 / .85) !important; box-shadow:inset 0 2px 0 #e6ca8f !important; }
+  color:#ffd98c !important; background:rgb(224 181 94 / .18) !important; border-color:rgb(230 202 143 / .85) !important; box-shadow:none !important; }
 /* a short hero: keep words clear of the purse module below */
 @media (max-height:820px) {
   ${D} .orr-prep-brief { padding-top:8px !important; }
@@ -352,6 +361,27 @@ ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not
 }
 /* reduced motion: the one transition this sheet adds follows the game's own setting */
 html.sf-reduce-motion ${D} .sf-crd-arenas .fh-tile-art img { transition:none !important; }
+
+/* ── Rearm and the equipment catalog: one gutter, plain tabs, cards that read (2026-11-23) ────── */
+/* the tab rail (a rule, tick marks, a marker blade and a glow) said nothing a tab row needs; the tabs
+   keep their own gold underline on the chosen one, with room between neighbours */
+html body #screens > .k-screen.orr-crucible .sf-cru-filters .orr-stationrow__rule { display:none !important; }
+html body #screens > .k-screen.orr-crucible .sf-cru-filters { gap:6px 28px !important; }
+/* the three offers stand on the same left and right edges as the title and the footer above and below */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory .sf-cru-stage > .sf-cru-cards { width:100% !important; margin:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory .sf-cru-stage > .sf-cru-cards > .sf-cru-card {
+  flex:1 1 0 !important; min-width:0 !important; max-width:none !important; padding:16px 18px !important;
+  border:1px solid rgb(255 255 255 / .12) !important; border-radius:10px !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory .sf-cru-stage > .sf-cru-cards > .sf-cru-card:is(:hover, :focus-visible) { border-color:rgb(255 255 255 / .32) !important; }
+/* the card's name is its title: the brightest words on it */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory .sf-cru-name { color:#ffffff !important; }
+/* the thumbnail is a plain picture: no blue rim, no glow, and none of the 2px pips and 8px crest that
+   could not be read at this size */
+html body #screens > .k-screen.orr-crucible.orr-visual-armory .orr-rearm-card-thumb { border:1px solid rgb(255 255 255 / .14) !important; border-radius:8px !important;
+  background:#1a1a1d !important; background-image:none !important; }
+html body #screens > .k-screen.orr-crucible.orr-visual-armory .orr-rearm-card-thumb :is(.sf-thumb__pips, .sf-thumb__crest) { display:none !important; }
+/* the catalog's words start where the header's and the footer's do (the plates inset their text 18px) */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft:not(.orr-visual-armory) .sf-cru-stage { padding-left:18px !important; padding-right:18px !important; }
 ${SWARM_FRONT_CSS}`;
 
 export function injectCrucibleDoorLayouts(doc = globalThis.document) {

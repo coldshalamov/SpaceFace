@@ -1,3 +1,6 @@
+/* Voice (2026-11-23): the Swarm front's — bone text, gold for the one primary or chosen thing, neutral
+   hairlines on flat dark plates. No bevels, top gradient rules, ice borders or clipped corners; a rule that
+   adds one back is a regression, not a flourish. */
 // src/ui/orrery/crucible-refitLayouts.js — the Crucible Refit's own composition additions
 // (design/frontend/ORRERY.md §6 "Crucible door → draft/armory → refit → results").
 // This is the composition file the refit surface owns: rules that answer the refit's own audit
@@ -60,35 +63,32 @@ const STYLE_ID = 'sf-orrery-crucible-refit-screen';
 const RF = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
 
 export const CRUCIBLE_REFIT_SCREEN_CSS = `
-/* 0 — Tactical hangar deckplate backdrop & ruggedized metal-and-glass terminal framing */
+/* 0 — Hangar backdrop and the screen's plate framing */
 ${RF} {
   background:
-    radial-gradient(95% 75% at 50% 0%, rgb(20 44 62 / .38) 0%, transparent 68%),
-    radial-gradient(80% 60% at 85% 100%, rgb(38 28 14 / .24) 0%, transparent 65%),
-    repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 4px),
-    linear-gradient(180deg, #060d14 0%, #04080d 100%) !important;
+    rgb(29 29 30 / .24),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / .012) 0 1px, transparent 1px 4px),
+    #080809 !important;
 }
 ${RF} > .k-title,
 ${RF} .sf-cru-strip--refit {
   padding:8px 16px !important;
-  border:1px solid rgb(154 198 218 / .34) !important;
-  border-radius:2px !important;
+  border:1px solid rgb(255 255 255 / .34) !important;
+  border-radius:8px !important;
   background:
-    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 150px, rgb(158 220 233 / .14) 150px 100%) top left / 100% 2px no-repeat,
-    linear-gradient(180deg, rgb(25 36 47 / .95) 0%, rgb(14 21 29 / .98) 100%) !important;
-  box-shadow:inset 0 1px 0 rgb(215 238 248 / .18), inset 0 -2px 0 rgb(2 5 8 / .85), 0 10px 24px rgb(0 0 0 / .55) !important;
+    rgb(22 22 23 / .98) !important;
+  box-shadow:0 10px 24px rgb(0 0 1 / .55) !important;
 }
 ${RF} > .k-title .k-t-title,
 ${RF} > .k-title h1 {
-  color:#edf6fa !important;
+  color:#ffffff !important;
 }
 ${RF} :is(.sf-cru-bay, .sf-cru-rail) {
-  border:1px solid rgb(154 198 218 / .30) !important;
-  border-radius:2px !important;
+  border:1px solid rgb(255 255 255 / .30) !important;
+  border-radius:8px !important;
   background:
-    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
-    linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
-  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+    rgb(17 17 18 / .97) !important;
+  box-shadow:0 12px 28px rgb(0 0 1 / .58) !important;
 }
 /* Central diagnostic hangar bay bezel framing the ship schematic & 8 hardpoint callouts */
 ${RF} > .sf-cru-stage.orr-hull--on::before {
@@ -101,14 +101,13 @@ ${RF} > .sf-cru-stage.orr-hull--on::before {
   right:5% !important;
   z-index:0 !important;
   pointer-events:none !important;
-  border:1px solid rgb(154 198 218 / .30) !important;
-  border-radius:2px !important;
+  border:1px solid rgb(255 255 255 / .30) !important;
+  border-radius:8px !important;
   background:
-    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 160px, rgb(158 220 233 / .14) 160px 100%) top left / 100% 2px no-repeat,
-    linear-gradient(rgb(158 220 233 / .04) 1px, transparent 1px) 0 0 / 32px 32px,
-    linear-gradient(90deg, rgb(158 220 233 / .04) 1px, transparent 1px) 0 0 / 32px 32px,
-    radial-gradient(circle at 50% 50%, rgb(18 44 62 / .40) 0%, rgb(7 16 24 / .86) 78%) !important;
-  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 14px 32px rgb(0 0 0 / .58) !important;
+    linear-gradient(rgb(255 255 255 / .04) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgb(255 255 255 / .04) 1px, transparent 1px) 0 0 / 32px 32px,
+    rgb(17 17 18 / .86) !important;
+  box-shadow:0 14px 32px rgb(0 0 1 / .58) !important;
 }
 ${RF} > .sf-cru-stage.orr-hull--on > * {
   z-index:1;
@@ -122,15 +121,15 @@ ${RF} > .sf-cru-stage.orr-hull--on > * {
   }
 }
 
-/* 1 — Hardpoint callouts around the hull schematic & list rows are recessed visor-glass module cards */
+/* 1 — Hardpoint callouts around the hull schematic & list rows are flat module cards */
 ${RF} > .sf-cru-stage.orr-hull--on .sf-cru-row,
 ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row {
-  border:1px solid rgb(154 198 218 / .28) !important;
-  border-radius:2px !important;
+  border:1px solid rgb(255 255 255 / .28) !important;
+  border-radius:8px !important;
   background:
-    linear-gradient(90deg, rgb(158 220 233 / .42) 0 20px, transparent 20px 100%) top left / 100% 1px no-repeat,
-    linear-gradient(160deg, rgb(12 26 38 / .92) 0%, rgb(8 17 26 / .96) 100%) !important;
-  box-shadow:inset 0 1px 0 rgb(208 238 250 / .12), 0 8px 20px rgb(0 0 0 / .52) !important;
+    linear-gradient(90deg, rgb(255 255 255 / .42) 0 20px, transparent 20px 100%) top left / 100% 1px no-repeat,
+    rgb(18 18 19 / .96) !important;
+  box-shadow:0 8px 20px rgb(0 0 1 / .52) !important;
   padding:6px 10px !important;
 }
 ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row + .sf-cru-row {
@@ -139,30 +138,30 @@ ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row + .sf-cru-row {
 ${RF} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit,
 ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row.is-lit {
   border:1px solid rgb(230 202 143 / .82) !important;
-  background:linear-gradient(165deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 60%, rgb(13 28 40 / .95) 100%) !important;
-  box-shadow:inset 0 2px 0 #e6ca8f, inset 0 0 18px rgb(224 181 94 / .12), 0 6px 18px rgb(0 0 0 / .5) !important;
-  color:#fff1cf !important;
+  background:rgb(224 181 94 / .18) !important;
+  box-shadow:inset 0 0 18px rgb(224 181 94 / .12), 0 6px 18px rgb(0 0 1 / .5) !important;
+  color:#ffd98c !important;
 }
 
-/* STRIP / FIT / SELL are crisp machined micro-buttons */
+/* STRIP / FIT / SELL are small keys */
 ${RF} .sf-cru-act {
-  border:1px solid rgb(158 220 233 / .35) !important;
-  border-radius:2px !important;
-  background:rgb(18 36 50 / .92) !important;
-  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14) !important;
+  border:1px solid rgb(255 255 255 / .35) !important;
+  border-radius:8px !important;
+  background:rgb(35 35 36 / .92) !important;
+  box-shadow:none !important;
   padding:3px 8px !important;
-  color:#d8eaf2 !important;
+  color:#ffffff !important;
   font-size:12px !important;
   font-weight:650 !important;
-  letter-spacing:.12em !important;
-  text-transform:uppercase !important;
+  letter-spacing:0 !important;
+  text-transform:none !important;
 }
 ${RF} .sf-cru-row.is-lit .sf-cru-act:not(:disabled),
 ${RF} .sf-cru-act:not(:disabled):is(:hover, :focus-visible) {
-  border-color:#e6ca8f !important;
-  background:linear-gradient(180deg, rgb(224 181 94 / .30) 0%, rgb(224 181 94 / .14) 100%) !important;
-  color:#fff1cf !important;
-  box-shadow:inset 0 1px 0 rgb(255 241 207 / .28) !important;
+  border-color:#ffd98c !important;
+  background:var(--dp-lamp, #f2b950) !important;
+  color:#121213 !important;
+  box-shadow:none !important;
 }
 
 /* 2 — the callout line wraps between whole segments; a spare name never orphans a single size letter (S/M/L) */
@@ -172,19 +171,19 @@ ${RF} .orr-hp__item-thumb, ${RF} .orr-hp__spare-thumb { flex:none; }
 ${RF} .orr-hp__spares { white-space:normal !important; gap:4px 8px !important; }
 ${RF} .orr-hp__spare {
   display:inline-flex !important; flex-wrap:wrap !important; align-items:center !important; gap:2px 8px !important;
-  padding:4px 9px 4px 5px !important; border:1px solid rgb(154 198 218 / .28) !important;
-  border-radius:2px !important;
-  background:rgb(10 22 33 / .92) !important; box-shadow:inset 0 1px 0 rgb(208 238 250 / .10) !important;
+  padding:4px 9px 4px 5px !important; border:1px solid rgb(255 255 255 / .28) !important;
+  border-radius:8px !important;
+  background:rgb(22 22 23 / .92) !important; box-shadow:none !important;
 }
 ${RF} .orr-hp__spare-name { white-space:nowrap !important; }
 ${RF} .orr-hp__spare[aria-checked="true"] {
   border-color:rgb(230 202 143 / .82) !important;
-  background:linear-gradient(165deg, rgb(224 181 94 / .22), rgb(13 28 40 / .95)) !important;
-  color:#fff1cf !important;
+  background:rgb(224 181 94 / .18) !important;
+  color:#ffd98c !important;
 }
 ${RF} .orr-hp__spare:is(:hover,:focus-visible) {
-  border-color:#e6ca8f !important;
-  color:#fff1cf !important;
+  border-color:#ffd98c !important;
+  color:#ffd98c !important;
   box-shadow:none !important;
 }
 ${RF} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { white-space:nowrap !important; }
@@ -217,31 +216,30 @@ ${RF} > .sf-cru-stage.orr-hull--on .is-open .sf-cru-act { margin-top:4px !import
 /* 3 — keycaps inside foot buttons */
 ${RF} .k-foot .sf-cru-kbd,
 ${RF} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after {
-  background:rgb(9 20 30 / .85) !important; border:1px solid rgb(158 220 233 / .4) !important; border-radius:2px !important;
-  box-shadow:none !important; padding:2px 6px !important; color:#9edce9 !important;
+  background:rgb(20 20 21 / .85) !important; border:1px solid rgb(255 255 255 / .4) !important; border-radius:8px !important;
+  box-shadow:none !important; padding:2px 6px !important; color:rgb(255 255 255 / .66) !important;
 }
 ${RF} .k-foot .sf-cru-kbd { margin-left:10px !important; }
 
-/* 4 — Authoritative chamfered gold-amber launch key (DONE — FLY OUT / LAUNCH ROUND) */
+/* 4 — The launch key: the same solid gold key as PLAY */
 ${RF} .sf-cru-launch,
 ${RF} .k-foot .k-word.k-word--primary,
 ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) {
-  clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)) !important;
-  border:1px solid #e6ca8f !important;
-  border-radius:2px !important;
-  background:linear-gradient(180deg, rgb(224 181 94 / .30) 0%, rgb(224 181 94 / .14) 100%) !important;
-  box-shadow:inset 0 1px 0 rgb(255 241 207 / .30), 0 8px 22px rgb(0 0 0 / .55) !important;
-  color:#fff1cf !important;
+  border-radius:8px !important;
+  border:0 !important;
+  background:var(--dp-lamp, #f2b950) !important;
+  box-shadow:none !important;
+  color:#121213 !important;
   font-size:16px !important;
   font-weight:700 !important;
-  letter-spacing:.12em !important;
-  text-transform:uppercase !important;
+  letter-spacing:0 !important;
+  text-transform:none !important;
 }
 ${RF} .k-foot .k-word.k-word--primary .sf-cru-label {
-  color:#fff1cf !important;
+  color:#121213 !important;
 }
 ${RF} .k-foot .k-word.k-word--primary .sf-cru-kbd {
-  color:#ffe7b3 !important;
+  color:#ffd98c !important;
   border-color:rgb(230 202 143 / .55) !important;
 }
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
@@ -250,8 +248,8 @@ ${RF} .k-foot .k-word.k-word--primary .sf-cru-kbd {
 
 /* 5 — the next-round line wears the same voice as the armory's own */
 ${RF} > .k-title .sf-cru-preview {
-  font:400 13px/1.45 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
-  letter-spacing:.01em;
+  font:400 13px/1.45 var(--dp-face-read, "Instrument Sans"), sans-serif !important;
+  letter-spacing:0;
 }
 
 /* —— UI polish: short densify (list-mode hardpoints ∩ tall foot) ——
@@ -317,15 +315,15 @@ ${RF} > .k-title .sf-cru-preview {
     z-index:8 !important; position:relative !important; isolation:isolate;
     flex:none !important; grid-row:3 !important;
     margin:0 !important; padding:6px 0 4px !important;
-    border-top:1px solid rgb(236 230 216 / .16) !important;
-    background:rgb(5 7 10) !important;
-    box-shadow:0 48px 0 0 rgb(5 7 10), 0 -28px 28px -2px rgb(5 7 10 / .97) !important;
+    border-top:1px solid rgb(255 255 255 / .16) !important;
+    background:rgb(7 7 8) !important;
+    box-shadow:0 48px 0 0 rgb(7 7 8), 0 -28px 28px -2px rgb(7 7 8 / .97) !important;
   }
   ${RF} > .k-foot::before {
     content:'' !important; display:block !important; pointer-events:none !important;
     position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
     height:22px !important;
-    background:linear-gradient(180deg, transparent, rgb(5 7 10)) !important;
+    background:linear-gradient(180deg, transparent, rgb(7 7 8)) !important;
   }
   ${RF} .k-foot .k-words {
     position:relative; z-index:1;
@@ -399,15 +397,15 @@ ${RF} > .k-title .sf-cru-preview {
     z-index:8 !important; position:relative !important; isolation:isolate;
     flex:none !important; grid-row:3 !important;
     padding:6px 0 4px !important;
-    border-top:1px solid rgb(236 230 216 / .16) !important;
-    background:rgb(5 7 10) !important;
-    box-shadow:0 48px 0 0 rgb(5 7 10), 0 -28px 28px -2px rgb(5 7 10 / .97) !important;
+    border-top:1px solid rgb(255 255 255 / .16) !important;
+    background:rgb(7 7 8) !important;
+    box-shadow:0 48px 0 0 rgb(7 7 8), 0 -28px 28px -2px rgb(7 7 8 / .97) !important;
   }
   ${RF} > .k-foot::before {
     content:'' !important; display:block !important; pointer-events:none !important;
     position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
     height:22px !important;
-    background:linear-gradient(180deg, transparent, rgb(5 7 10)) !important;
+    background:linear-gradient(180deg, transparent, rgb(7 7 8)) !important;
   }
   ${RF} .k-foot .k-words {
     flex-wrap:wrap !important; gap:6px 10px !important; justify-content:flex-start !important;
@@ -472,8 +470,8 @@ ${RF} > .k-title .sf-cru-preview {
   ${RF} > .sf-cru-stage:not(.orr-hull--on) .orr-hull-fitcount { position:static !important; margin:0 0 4px !important; }
   ${RF} > .k-foot {
     z-index:8 !important; position:relative !important; isolation:isolate; flex:none !important; grid-row:3 !important;
-    margin:0 !important; padding:8px 0 4px !important; border-top:1px solid rgb(236 230 216 / .16) !important;
-    background:rgb(5 7 10) !important; min-height:0 !important; max-height:42dvh !important; overflow-y:auto !important; overflow-x:hidden !important;
+    margin:0 !important; padding:8px 0 4px !important; border-top:1px solid rgb(255 255 255 / .16) !important;
+    background:rgb(7 7 8) !important; min-height:0 !important; max-height:42dvh !important; overflow-y:auto !important; overflow-x:hidden !important;
   }
   ${RF} .k-foot .k-words {
     display:grid !important; width:100% !important; min-width:0 !important; gap:6px 18px !important; justify-content:stretch !important;

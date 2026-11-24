@@ -886,7 +886,7 @@ const CR = 'html body #screens > .k-screen:is(.sf-crucible-draft, .sf-crucible-r
 const CRUCIBLE = `
 ${CRD} .fh-key.fh-key--hazard {
   --dpk-fill:var(--dp-danger); --dpk-rule:none; --dpk-cut:none;
-  color:var(--dp-metal-0); font-variation-settings:"wght" 820, "wdth" 96; letter-spacing:.18em;
+  color:var(--dp-metal-0); font-variation-settings:normal; letter-spacing:0;
 }
 ${CRD} .fh-key.fh-key--hazard:is(:hover, :focus-visible) { --dpk-fill:var(--dp-danger-hot); color:var(--dp-metal-0); box-shadow:0 0 26px var(--dp-danger-bloom); }
 /* A door tile is pressable, so it is a printed field with the cut -- a GHOST field, because the
@@ -899,12 +899,12 @@ ${CRD_TILE}[aria-selected='true'] {
   color:var(--dp-lamp-hot); background:var(--dp-cut-lit) border-box, ${LAMP_EDGE} border-box, ${INK_FIELD_HI} border-box;
 }
 ${CRD_TILE}:focus-visible { outline:0 solid transparent !important; background:var(--dp-cut-lit) border-box, var(--dp-bracket) border-box, ${INK_FIELD_HI} border-box; }
-${CRD_TILE}[data-locked='1'] { background:linear-gradient(rgb(232 226 212 / .04) 0 0) border-box; }
+${CRD_TILE}[data-locked='1'] { background:linear-gradient(rgb(255 255 255 / .04) 0 0) border-box; }
 /* the window scrolls (share, modifiers and records sit under the seed): its last rows fade into
    the edge instead of stopping on a half-cut caption, and the fade is the cue to scroll */
 ${CRD} > .k-stage.fh-window {
-  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 48px), rgb(0 0 0 / .2));
-  mask-image:linear-gradient(180deg, #000 calc(100% - 48px), rgb(0 0 0 / .2));
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 48px), rgb(0 0 1 / .2));
+  mask-image:linear-gradient(180deg, #000 calc(100% - 48px), rgb(0 0 1 / .2));
 }
 /* the seed: one rail under the number (the input's), not a second one under its well */
 ${CRD} .fh-stepper-well { background:none !important; border-width:0 !important; padding:0 !important; min-height:0 !important; }
@@ -921,9 +921,9 @@ ${CRD} .sf-crd-stakes {
 }
 ${CRD} .sf-crd-stakes > li { min-width:0; }
 ${CRD} .sf-crd-stakes .fh-tile-art { min-height:0; }
-${CRD} .sf-crd-stakes .fh-tile-legend { font-size:12px; letter-spacing:.04em; line-height:1.1; }
+${CRD} .sf-crd-stakes .fh-tile-legend { font-size:12px; letter-spacing:0; line-height:1.1; }
 ${CRD} .sf-crd-stake-nums {
-  display:block; font-size:12px; letter-spacing:.02em; padding-inline:4px; opacity:.75;
+  display:block; font-size:12px; letter-spacing:0; padding-inline:4px; opacity:.75;
   text-align:center;
 }
 /* the any-hull grid: ship names as plain words under tier marks */
@@ -932,13 +932,13 @@ ${CRD} .sf-crd-anyhull-cap { margin:0 0 calc(6px * var(--k-s, 1)); }
 ${CRD} .sf-crd-anyhull-tier { display:flex; align-items:baseline; gap:14px; margin:2px 0; }
 ${CRD} .sf-crd-anyhull-mark { min-width:26px; }
 ${CRD} .sf-crd-anyhull-ships { gap:6px 18px; }
-${CR} { background:radial-gradient(130% 100% at 30% 30%, rgb(9 10 13 / .84), rgb(5 6 9 / .92) 70%, rgb(4 5 7 / .95)); }
+${CR} { background:radial-gradient(130% 100% at 30% 30%, rgb(10 10 11 / .84), rgb(6 6 7 / .92) 70%, rgb(5 5 6 / .95)); }
 ${printedKey(`${CR} .k-foot .k-word`)}
 ${printedKey(`${CR} .sf-cru-row .k-word`)}
 ${CR} .sf-cru-row .k-word { min-height:36px; font-size:12px; }
 /* the keyboard key a verb answers to, printed inside the verb: a hairline glyph from a manual */
 ${CR} .sf-cru-kbd { ${HINT} margin-left:4px; height:22px; min-width:22px; padding:0 5px; font-size: 12px; }
-${CR} .k-word--primary .sf-cru-kbd { border-color:rgb(12 12 14 / .38); color:var(--dp-metal-0); }
+${CR} .k-word--primary .sf-cru-kbd { border-color:rgb(12 12 13 / .38); color:var(--dp-metal-0); }
 /* the refit: the field hugs its hardpoints and stops at a readable width */
 ${CR} .sf-cru-stage.k-stage--scroll {
   box-sizing:border-box; padding:8px 16px; border:14px solid transparent; ${SURFACE} --sf-fade-edge:14px;
@@ -949,8 +949,8 @@ ${CR} .sf-cru-row .k-row__sub { display:block; width:max-content; max-width:100%
 /* a module's name is a link to its codex entry; it keeps the row's sub size, not the link's own */
 ${CR} .sf-cru-row .k-row__sub.sf-entity-link { font-size:14px; line-height:1.4; color:var(--dp-ink-dim); }
 ${CR} .sf-cru-slottag {
-  margin-left:12px; font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 78; font-size:12px;
-  letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink-mute);
+  margin-left:12px; font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; font-size:12px;
+  letter-spacing:0; text-transform:none; color:var(--dp-ink-mute);
 }
 /* the foot: each key with what it does printed beneath it */
 ${CR} .sf-cru-foot .k-words--row { align-items:flex-start; gap:12px 28px; }
@@ -966,11 +966,11 @@ ${CR} .sf-cru-card {
 }
 ${CR} .sf-cru-card:hover:not(:disabled) { --dpk-cut:var(--dp-cut-lit); --dpk-fill:var(--dp-field-ink-hi); }
 ${CR} .sf-cru-card:focus-visible:not(:disabled) { outline:0 solid transparent !important; --dpk-cut:var(--dp-cut-lit); --dpk-fill:var(--dp-field-ink-hi); --dpk-bracket:var(--dp-bracket); }
-${CR} .sf-cru-card:disabled { --dpk-fill:rgb(232 226 212 / .04); cursor:default; }
+${CR} .sf-cru-card:disabled { --dpk-fill:rgb(255 255 255 / .04); cursor:default; }
 ${CR} .sf-cru-card:disabled :is(.sf-cru-name, .sf-cru-blurb, .sf-cru-activation) { color:var(--dp-ink-mute); }
 ${CR} .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-verb { color:var(--dp-lamp-hot); }
-${CR} .sf-cru-verb { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.18em; color:var(--dp-ink-mute); }
-${CR} .sf-cru-name { font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; text-transform:uppercase; letter-spacing:.04em; color:var(--dp-ink); }
+${CR} .sf-cru-verb { font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; letter-spacing:0; color:var(--dp-ink-mute); }
+${CR} .sf-cru-name { font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; text-transform:none; letter-spacing:0; color:var(--dp-ink); }
 ${CR} .sf-cru-cardhead { display:flex; align-items:center; gap:10px; min-height:22px; }
 ${CR} .sf-cru-cardhead > * { margin:0; }
 ${CR} .sf-cru-cardhead .sf-cru-price { margin-left:auto; }
@@ -978,8 +978,8 @@ ${CR} .sf-cru-key { ${HINT} height:22px; min-width:22px; font-size: 12px; }
 ${CR} .sf-cru-key:empty { display:none; }
 /* the armory scrolls: its last visible row fades into the edge, which is the cue to scroll */
 ${CR}.sf-crucible-armory .sf-cru-stage {
-  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 56px), rgb(0 0 0 / .15));
-  mask-image:linear-gradient(180deg, #000 calc(100% - 56px), rgb(0 0 0 / .15));
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 56px), rgb(0 0 1 / .15));
+  mask-image:linear-gradient(180deg, #000 calc(100% - 56px), rgb(0 0 1 / .15));
 }
 /* a price and the wallet are readings: phosphor */
 ${CR} :is(.sf-cru-price, .sf-cru-wallet) { color:var(--dp-phos); font-variant-numeric:tabular-nums; text-shadow:var(--dp-text-legible); }
@@ -988,8 +988,8 @@ ${CR} .sf-cru-afford { color:var(--dp-ink-dim); }
 ${CR} .sf-cru-filters { display:inline-flex; gap:0 22px; width:max-content; max-width:100%; background:${RAIL}; }
 ${CR} .sf-cru-filters .k-word {
   padding:0 0 8px; border:0; background:none; box-shadow:none; cursor:pointer;
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 80; font-size:13px; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--dp-ink-dim);
+  font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; font-size:13px; letter-spacing:0;
+  text-transform:none; color:var(--dp-ink-dim);
 }
 ${CR} .sf-cru-filters .k-word::after { display:none; }
 ${CR} .sf-cru-filters .sf-cru-count { margin-left:6px; color:var(--dp-ink-mute); font-variant-numeric:tabular-nums; }
@@ -1023,13 +1023,13 @@ ${CRRES} {
   background:
     radial-gradient(90% 70% at 12% 8%, rgb(150 26 14 / .16), transparent 55%),
     url("/assets/ui/backdrops/backdrop-crucible-door.jpg") center / cover no-repeat,
-    linear-gradient(180deg, rgb(6 8 11 / .92), rgb(4 5 8 / .96));
+    linear-gradient(180deg, rgb(8 8 9 / .92), rgb(5 5 6 / .96));
 }
 ${CRRES}[data-outcome="victory"] {
   background:
     radial-gradient(90% 70% at 12% 8%, rgb(242 185 80 / .10), transparent 55%),
     url("/assets/ui/backdrops/backdrop-crucible-door.jpg") center / cover no-repeat,
-    linear-gradient(180deg, rgb(6 8 11 / .92), rgb(4 5 8 / .96));
+    linear-gradient(180deg, rgb(8 8 9 / .92), rgb(5 5 6 / .96));
 }
 ${CRRES} .k-title .k-t-title {
   display:inline-block; padding-bottom:12px;
@@ -1041,7 +1041,7 @@ ${CRRES}[data-outcome="victory"] .k-title .k-t-title { background:linear-gradien
 ${CRRES} .sf-crd-headline { color:var(--dp-ink); font-family:var(--dp-face-read); max-width:42em; }
 ${CRRES} .sf-crres__stage.k-panel { align-self:stretch; min-height:0; column-gap:clamp(16px, 2vw, 28px); }
 ${CRRES} .sf-crres__story, ${CRRES} .sf-crres__ledger { box-sizing:border-box; min-width:0; padding:16px 18px; border:12px solid transparent; ${SURFACE} }
-${CRRES} .sf-crres__band-title { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 66; font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-mute); text-shadow:none; }
+${CRRES} .sf-crres__band-title { font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; font-size:12px; letter-spacing:0; text-transform:none; color:var(--dp-ink-mute); text-shadow:none; }
 ${CRRES} .sf-crres__story-line, ${CRRES} .sf-crres__lead, ${CRRES} .sf-crres__empty,
 ${CRRES} .sf-crres__build-name, ${CRRES} .sf-crres__causal-lead { color:var(--dp-ink); }
 ${CRRES} .k-row { min-height:36px; }
@@ -1050,12 +1050,12 @@ ${CRRES} .k-row__num { font-family:var(--dp-face-read); font-weight:600; color:v
 /* the hero number is a reading on the veil, not a plate */
 ${CRRES} .sf-crres__hero.k-corner { padding:14px 18px 16px; border:12px solid transparent; border-image:none; background:none; box-shadow:none; }
 ${CRRES} .sf-crres__hero .k-hero__n {
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 84;
-  font-size:clamp(36px, min(4vw, 7vh), 72px); line-height:.92; letter-spacing:.02em;
+  font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal;
+  font-size:clamp(36px, min(4vw, 7vh), 72px); line-height:.92; letter-spacing:0;
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
 }
-${CRRES} .sf-crres__hero .k-hero__w { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
-${CRRES} .sf-crres__causal-tag { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.14em; color:var(--dp-ink-dim); }
+${CRRES} .sf-crres__hero .k-hero__w { font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; font-size:12px; letter-spacing:0; text-transform:none; color:var(--dp-ink-mute); }
+${CRRES} .sf-crres__causal-tag { font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; letter-spacing:0; color:var(--dp-ink-dim); }
 ${CRRES} .sf-crres__hit-track, ${CRRES} .k-bar { height:3px; border-radius:0; overflow:hidden; background:var(--dp-rule-hi); box-shadow:none; }
 ${CRRES} .sf-crres__hit-fill, ${CRRES} .k-bar__fill { background:var(--dp-danger); box-shadow:0 0 6px var(--dp-danger-bloom); }
 /* the share band reads as an instrument: each item is one aligned row — etched caption, the full
@@ -1063,9 +1063,9 @@ ${CRRES} .sf-crres__hit-fill, ${CRRES} .k-bar__fill { background:var(--dp-danger
 ${CRRES} .sf-crres__share-item + .sf-crres__share-item { margin-top:8px; }
 ${CRRES} .sf-crres__share-note { margin:0 0 8px; }
 ${CRRES} .sf-crres__share-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:14px; }
-${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-read, "Instrument Sans"); font-variation-settings:normal; font-size:12px; letter-spacing:0; text-transform:none; color:var(--dp-ink-mute); }
 ${CRRES} .sf-crres__share-code { display:block; width:100%; min-width:0; overflow-x:auto; scrollbar-width:none; white-space:nowrap;
-  font-family:var(--dp-face-code); font-size:13px; color:var(--dp-ink); }
+  font-family:var(--dp-face-read, "Instrument Sans"); font-size:13px; color:var(--dp-ink); }
 ${CRRES} .sf-crres__share-link { white-space:nowrap; }
 ${CRRES} .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:6px 22px; margin:10px 0 0; }
 ${CRRES} .sf-crres__share-status { margin:6px 0 0; }
