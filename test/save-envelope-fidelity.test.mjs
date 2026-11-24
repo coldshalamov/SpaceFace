@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
-import { cargo } from '../src/systems/cargo.js';
+import { cargo, addCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
 import { factions } from '../src/systems/factions.js';
 import { heat } from '../src/systems/heat.js';
@@ -52,7 +52,10 @@ function boot(seed) {
   state.playerId = player.id;
   if (state.player) {
     state.player.credits = 4200;
-    if (state.player.cargo && state.player.cargo.items) state.player.cargo.items = { ferrite: 6, water_ice: 3 };
+    // 7592bb895f: slots own the hold and `items` is a derived mirror — seed through the writer
+    // so the fixture is a hold the module could actually produce (direct items writes resync away).
+    addCargo(state, 'ferrite', 6);
+    addCargo(state, 'water_ice', 3);
   }
   sim.runTicks(120);
   // Cross one in-game day boundary (DAY_SECONDS = 600): the day:tick seeds lazily-initialized

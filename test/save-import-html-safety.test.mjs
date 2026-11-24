@@ -25,7 +25,9 @@ test('save-derived event types are allowlisted on restore and encoded at the mar
   assert.equal(normalizeEconomyEventType(HOSTILE), null);
   assert.equal(normalizeRestoredEconomyEvent({ type: HOSTILE }), null);
 
-  const restored = normalizeRestoredEconomyEvent({ type: ' SHORTAGE ' });
+  // 6fddfd284f: restored economy events now require a bounded window — a bare type restores
+  // to null. The allowlist claim (hostile types rejected, real types kept) is unchanged.
+  const restored = normalizeRestoredEconomyEvent({ type: ' SHORTAGE ', tStart: 10, tEnd: 20 });
   assert.equal(restored.type, 'shortage');
 
   const rendered = marketEventTypeHtml(HOSTILE);
