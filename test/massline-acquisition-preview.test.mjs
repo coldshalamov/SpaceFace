@@ -1006,7 +1006,10 @@ test('cached HUD geometry moves the mass words without moving the world mark or 
     const anchored = mark.style.transform, oldPosition = words.style.transform;
     words.getBoundingClientRect = () => { measurements++; return { width: 140, height: 30 }; };
     const [x, y] = [...oldPosition.matchAll(/(-?\d+)px/g)].map(match => Number(match[1]));
-    obstacles = Object.freeze([{ owner: 'radar', left: x - 4, top: y - 4, width: 168, height: 46 }]);
+    // A panel over the WORDS but clear of the latch point: the dodge moves the tag, nothing hides.
+    // (dbe362bec1 / 9aff7cb828: a rect over the cue itself hides the whole preview — mark included —
+    // so the fixture must not lay its obstacle across the body's cue point.)
+    obstacles = Object.freeze([{ owner: 'radar', left: x - 4, top: y - 4, width: 140, height: 20 }]);
     hud.update(1 / 60, state);
     assert.notEqual(words.style.transform, oldPosition, 'a changed HUD snapshot repaints even in a stationary world');
     assert.equal(mark.style.transform, anchored);
@@ -1017,12 +1020,13 @@ test('cached HUD geometry moves the mass words without moving the world mark or 
     const measured = measurements;
     hud.update(1 / 60, state);
     assert.equal(measurements, measured, 'an unchanged frame does not measure the label again');
+    // A screen-covering rect swallows the latch point itself: the whole preview stands down —
+    // the world mark too (576c1b986b: world marks hide under HUD rects) — not just the words.
     obstacles = Object.freeze([{ owner: 'panel', left: 0, top: 0, width: 390, height: 664 }]);
     hud.update(1 / 60, state);
     assert.equal(words.style.display, 'none');
-    assert.equal(mark.style.display, 'block');
-    assert.match(mark.attributes['aria-label'], /TOW/, 'the anchored mark retains its accessible latch read');
-    assert.equal(mark.style.transform, anchored);
+    assert.equal(mark.style.display, 'none');
+    assert.equal(mark.style.transform, anchored, 'the mark keeps its last world-anchored position while hidden');
   } finally {
     hud.destroy(); MASSLINE2_FLAGS.enabled = previousEnabled;
     if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
