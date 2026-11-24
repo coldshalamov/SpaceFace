@@ -532,9 +532,9 @@ export function pauseStatusLines(state) {
     const candidate = active[0];
     return {
       hit: pauseLastImpactLine(state),
-      objective: 'JOB NOT TRACKED · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objective: 'NOT PINNED · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
       objectiveMention: missionId(candidate)
-        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'JOB NOT TRACKED · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
+        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'NOT PINNED · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
       next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and track a job.',
       save: saveLine(state),

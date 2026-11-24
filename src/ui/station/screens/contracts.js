@@ -456,7 +456,7 @@ export function consequenceScalesSvg(m, state, { compact = false } = {}) {
 function riskSentence(m, consequences, facShort) {
   const r = Math.min(risk(m), 5);
   const pay = cr(reward(m));
-  const repUp = consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort}` : '';
+  const repUp = consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort} standing` : '';
   const repDown = consequences.repPenalty < 0
     ? `${Math.abs(consequences.repPenalty)} ${facShort} standing` : '';
   const miss = consequences.collateral
@@ -465,7 +465,7 @@ function riskSentence(m, consequences, facShort) {
   // SF-112: the premium names its cause when the offer was priced on a real complication —
   // a customs weir on the lane, or the destination sector's thin patrol cover.
   const note = typeof m.riskNote === 'string' && m.riskNote ? ` — ${m.riskNote}` : '';
-  return `${RISK_LABEL[r]} job${note}. Done pays ${pay}${repUp}. A miss: ${miss}.`;
+  return `${RISK_LABEL[r]} job${note}. Pays ${pay}${repUp}. If missed: ${miss}.`;
 }
 
 /**
@@ -804,7 +804,7 @@ export function createContractsScreen(ctx) {
         const badgePrefix = badge ? `${badge}${destTag ? ' ' + destTag : ''} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
-          : `${badgePrefix}${m.title || typeLabel(m.type, m)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+          : `${badgePrefix}${m.title || typeLabel(m.type, m)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} job${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
         // FEATURED (and the other one-word marks) ride the type line in the row's own small
         // caps: "BOUNTY HUNT · FEATURED", not a heading above the list.
         const typeChip = missionTypeChipHtml(m.type, { label: typeLabel(m.type, m) });

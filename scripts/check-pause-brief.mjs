@@ -97,7 +97,7 @@ lines = pauseStatusLines({
   ...trackedState,
   ui: { trackedMissionId: null },
 });
-assert.match(lines.objective, /^JOB NOT TRACKED/, 'Adventure words demo pass');
+assert.match(lines.objective, /^NOT PINNED/, 'Adventure words demo pass');
 assert.match(lines.next, /Mission Log \(J\).*track a job/, 'Adventure words demo pass');
 
 lines = pauseStatusLines({
