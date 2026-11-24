@@ -1160,9 +1160,9 @@ export class Sg02DynamicBodyOwner {
     let written = 0;
     try {
       for (const mirror of mirrors) {
-        Object.defineProperty(mirror.entity, mirror.key, mirror.descriptor
-          ? { ...mirror.descriptor, value: mirror.value }
-          : { value: mirror.value, writable: true, configurable: true, enumerable: true });
+        // A store, not a reconfigure. defineProperty on an existing data field deprecates the
+        // shared entity map, and the next property read migrates every body to dictionary mode.
+        mirror.entity[mirror.key] = mirror.value;
         written++;
         if (!destinationBoundary()) throw new Error('native_owner_superseded');
       }
@@ -1171,7 +1171,7 @@ export class Sg02DynamicBodyOwner {
     } catch (error) {
       for (let index = written - 1; destinationBoundary() && index >= 0; index--) {
         const mirror = mirrors[index];
-        if (mirror.descriptor) Object.defineProperty(mirror.entity, mirror.key, mirror.descriptor);
+        if (mirror.descriptor) mirror.entity[mirror.key] = mirror.descriptor.value;
         else delete mirror.entity[mirror.key];
       }
       throw error;

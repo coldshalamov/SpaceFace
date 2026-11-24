@@ -103,6 +103,17 @@ const DEFAULTS = Object.freeze({
    * so result-identical; off restores the per-contact string build for matched A/B runs.
    */
   aiContactKeyCache: true,
+  /**
+   * Live entities stay fast V8 objects through a fight (sim performance, 2026-11-23). Two things
+   * were putting the bodies the physics reads into dictionary mode, where every property read is a
+   * hash probe: bouncing and piercing rounds replaced `alive` with a per-body accessor, and the
+   * shared entity map was deprecated by the fan of fields added after construction (stations all
+   * migrated on the first read of a round). `alive` stays a data field — a pending continuation
+   * swallows one death write at the physics retire — and every entity is born with the fields the
+   * fight adds later, in one order, so those writes are stores. DEFAULT ON. Same values; off
+   * restores the accessor and the legacy field-at-a-time shape for a matched A/B run.
+   */
+  fastLiveEntities: true,
 });
 
 let overrides = null;

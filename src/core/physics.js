@@ -59,6 +59,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { SpatialHash } from './spatialHash.js';
 import { opticGenerationOf, opticMaterialOf, isOpticEnergyBolt, isOpticOrdnance } from '../combat/opticField.js';
+import { retireContinuingProjectile } from '../combat/attackHit.js';
 import { projectileTravelLimit } from '../combat/projectileFlight.js';
 import { traumaFromContact } from '../render/feel.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
@@ -1509,7 +1510,7 @@ export const physics = {
       const start = previousPosInto(this._prevPosScratch, proj, dt);
       const limit = this._projectileSweepLimitScratch;
       if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) {
-        proj.alive = false;
+        retireContinuingProjectile(proj);
         continue;
       }
       const end = limit;
@@ -1567,7 +1568,7 @@ export const physics = {
             projectileId: proj.id, ownerId: proj.ownerId, team: proj.team, pairId: wall.pairId,
             x: wall.x, z: wall.z, nx: wall.nx, nz: wall.nz, tick: state && Number.isInteger(state.tick) ? state.tick : 0,
           });
-          proj.alive = false;
+          retireContinuingProjectile(proj);
           continue;
         }
       }
@@ -1575,7 +1576,7 @@ export const physics = {
         const previousX = proj.pos.x, previousZ = proj.pos.z;
         proj.pos.x = broodCandidate.x;
         proj.pos.z = broodCandidate.z;
-        proj.alive = false;
+        retireContinuingProjectile(proj);
         const broodReceipt = broodOwner.commitBroodProjectileHit(broodCandidate, {
           projectileId: proj.id,
           ownerId: proj.ownerId,
@@ -1601,7 +1602,7 @@ export const physics = {
         if (limit.expired) {
           proj.pos.x = end.x;
           proj.pos.z = end.z;
-          proj.alive = false;
+          retireContinuingProjectile(proj);
         }
         continue;
       }
@@ -1618,7 +1619,7 @@ export const physics = {
         velocity: proj.vel,
       }, state && Number.isInteger(state.tick) ? state.tick : 0);
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, hitPos, receipt));
-      proj.alive = false;
+      retireContinuingProjectile(proj);
       this._diag.sweptProjectileHits++;
     }
   },
@@ -1962,7 +1963,7 @@ export const physics = {
         velocity: proj.vel,
       }, state && Number.isInteger(state.tick) ? state.tick : 0);
       bus.emit('projectile:hit', projectileHitPayload(proj, tgt, hitPos, receipt));
-      proj.alive = false;
+      retireContinuingProjectile(proj);
       return;
     }
     // pickups

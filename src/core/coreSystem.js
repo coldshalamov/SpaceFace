@@ -1,6 +1,6 @@
 // Core system: owns the entity store + lifecycle, the per-step prelude (tick/time/snapshot),
 // the end-of-step lifetime sweep, and the cross-cutting helpers exposed via ctx.helpers (§4.3).
-import { allocateEntityId, makeEntity, stampOccupantGeneration, stampAttackSource, worldLedgerHoldsId, clearEntityRuntime } from './entity.js';
+import { allocateEntityId, makeEntity, sealFastEntity, stampOccupantGeneration, stampAttackSource, worldLedgerHoldsId, clearEntityRuntime } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
@@ -378,7 +378,10 @@ export const core = {
       // A reserved id and a freeIds recycle are both a new occupant of that number.
       stampOccupantGeneration(state, e);
       stampAttackSource(state, e);
-      return e;
+      // Reseat onto a fresh literal after the id and occupant stamp. makeEntity's map is shared
+      // with every other spec shape; once that transition tree deprecates, the next read of a
+      // station migrates it to dictionary mode. The sealed literal is not part of that tree.
+      return sealFastEntity(e);
     };
     const spawnEntity = (spec) => {
       const index = ensureEntityIndex(state);

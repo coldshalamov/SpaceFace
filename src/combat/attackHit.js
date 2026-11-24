@@ -18,6 +18,7 @@ import { resolvePayload } from './attackPayload.js';
 import { resolveRicochet } from './surfaceReflection.js';
 import { bossSurfaceAuthoringOf, resolveBossSurfaceContact } from './bossSurface.js';
 import { refreshFlightAfterBounce } from './projectileFlight.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 
 const CONTINUE_ARMED = new WeakSet();
 const CONTINUE_NEXT = new WeakSet();
@@ -41,6 +42,9 @@ function publishBounceContinuation(event) {
 export function armAttackContinue(body) {
   if (!body || CONTINUE_ARMED.has(body)) return body;
   CONTINUE_ARMED.add(body);
+  // A per-body accessor puts the round in dictionary mode, so every later read of it
+  // (physics, weapons, lifetime) is a hash probe. The swallow lives on the retire instead.
+  if (simCoreFlag('fastLiveEntities')) return body;
   let alive = body.alive !== false;
   Object.defineProperty(body, 'alive', {
     configurable: true,
@@ -59,6 +63,24 @@ export function armAttackContinue(body) {
 
 export function requestAttackContinue(body) {
   if (body) CONTINUE_NEXT.add(body);
+}
+
+/**
+ * Physics' death write for a projectile. A continuation requested during the hit
+ * (bounce, pierce, gunner ricochet) swallows exactly one write and the same body
+ * stays alive. `alive` itself stays a plain data field.
+ */
+export function retireContinuingProjectile(body) {
+  if (!body) return;
+  if (!simCoreFlag('fastLiveEntities')) {
+    body.alive = false;
+    return;
+  }
+  if (CONTINUE_ARMED.has(body) && CONTINUE_NEXT.has(body)) {
+    CONTINUE_NEXT.delete(body);
+    return;
+  }
+  body.alive = false;
 }
 
 function statusIdsOf(state, entity) {

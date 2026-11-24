@@ -241,21 +241,30 @@ export function markFieldRockAtRest(entity, options = {}) {
   entity.physicsSleeping = true;
   if (entity.activity == null) {
     const simTime = Number.isFinite(options.simTime) ? options.simTime : 0;
-    Object.defineProperty(entity, 'activity', {
-      value: {
-        simTier: SIM_TIER.S3_DORMANT,
-        presentationTier: PRESENTATION_TIER.R3_UNLOADED,
-        nextEventAtT: -1,
-        pins: [],
-        pinnedExact: false,
-        lastExactT: -1,
-        lastObservedT: simTime,
-        graceUntilT: -1,
-      },
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    });
+    const rec = {
+      simTier: SIM_TIER.S3_DORMANT,
+      presentationTier: PRESENTATION_TIER.R3_UNLOADED,
+      nextEventAtT: -1,
+      pins: [],
+      pinnedExact: false,
+      lastExactT: -1,
+      lastObservedT: simTime,
+      graceUntilT: -1,
+    };
+    // A predeclared non-enumerable slot (fastLiveEntities) must be stored, not redefined.
+    // Redefining activity on one body deprecates the shared entity map; the next property
+    // read then migrates every station and rock into dictionary mode.
+    const desc = Object.getOwnPropertyDescriptor(entity, 'activity');
+    if (desc && desc.enumerable === false && desc.writable && 'value' in desc) {
+      entity.activity = rec;
+    } else {
+      Object.defineProperty(entity, 'activity', {
+        value: rec,
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
+    }
   }
   return entity;
 }
