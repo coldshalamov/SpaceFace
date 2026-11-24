@@ -166,7 +166,7 @@ export function masslineFlightRead(state) {
 export function createMasslineCadenceReadout(parent) {
   if (!parent?.ownerDocument) throw new TypeError('Cadence readout requires a DOM parent');
   const doc = parent.ownerDocument, root = doc.createElement('section');
-  root.className = 'ml-cadence'; root.setAttribute('aria-label', 'Massline release instrument');
+  root.className = 'ml-cadence'; root.setAttribute('aria-label', 'Line release instrument');
   root.innerHTML = `<style>
   .ml-cadence{position:relative;top:0;box-sizing:border-box;width:calc(262px * clamp(.9, var(--k-s, 1), 1.15));max-width:calc(100vw - 32px);
     padding:8px 12px;border-radius:4px;border:1px solid rgb(236 230 216 / .13);border-left:2px solid var(--dp-lamp,#f2b950);

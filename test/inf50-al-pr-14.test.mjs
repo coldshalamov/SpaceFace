@@ -26,7 +26,7 @@ test(`seed ${SEED}: accessibility and massline captions extract with placeholder
   const messages = new Set(entries.map((entry) => entry.message));
   const wanted = localizableCaptionMessages();
   assert.ok(wanted.includes('Incoming telegraph'));
-  assert.ok(wanted.includes('Repulsor deployed'));
+  assert.ok(wanted.includes('Repulsion ring deployed'));
   for (const text of Object.values(MASSLINE_CAPTIONS)) {
     assert.ok(wanted.includes(text), `massline caption missing from copy table: ${text}`);
   }

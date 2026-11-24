@@ -121,7 +121,7 @@ function objectiveFor(record) {
     id: 'return', title: 'TOW THE RECORDER HOME', detail: 'Bring the physical recorder into the receiver and slow the load. The core remains an optional detour.', target: 'receiver',
   };
   if (main === 'available') return {
-    id: 'recover', title: 'RECOVER THE FLIGHT RECORDER', detail: 'Latch the recorder with the Massline, or move it with Pull/Shove. Bring the whole load outside its cradle.', target: 'blackbox',
+    id: 'recover', title: 'RECOVER THE FLIGHT RECORDER', detail: 'Latch the recorder with the Line, or move it with Pull/Shove. Bring the whole load outside its cradle.', target: 'blackbox',
   };
   if (!obstacles.shutter?.opened) return { id: 'shutter', title: OBSTACLE_COPY.shutter.title, detail: OBSTACLE_COPY.shutter.instruction, target: 'counterweight' };
   if (!obstacles.vent?.opened) return { id: 'vent', title: OBSTACLE_COPY.vent.title, detail: OBSTACLE_COPY.vent.instruction, target: 'vent_baffle' };

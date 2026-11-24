@@ -350,7 +350,7 @@ export const BEATS = [
     // beyond it), and the first latch IS the lesson — the swing verb takes the held line.
     line: 'Latch the loose rock.',
     followups: [
-      { on: 'target:acquired', line: 'Latch it. Massline.' },
+      { on: 'target:acquired', line: 'Latch it. Line.' },
       { on: 'tether:latched', line: 'Winch in. Hold tether to reel.' },
       { on: 'tether:nearBreak', line: 'Ease off. Let the line settle.' },
       { on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' },

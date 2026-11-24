@@ -706,7 +706,7 @@ export const ENTRIES_EGG_B = [
     trigger: { type: 'receipt', event: 'dock:docked' },
     channel: 'memory',
     payload: {
-      text: 'During the dog watch, off-duty patrol pilots run a standing puzzle on the rail table: a physical massline knot nobody has undone in eleven months. The rules are one sentence — no tools, one hand, and if you are the guest, no hands but yours. The room does not watch you try. The room listens.',
+      text: 'During the dog watch, off-duty patrol pilots run a standing puzzle on the rail table: a physical line knot nobody has undone in eleven months. The rules are one sentence — no tools, one hand, and if you are the guest, no hands but yours. The room does not watch you try. The room listens.',
     },
     followup: 'dog-watch phase check + radial-sequence solve interaction (commsRadial offer pattern, src/ui/commsRadial.js); flag knot_undone pays free drinks at Coalition bars permanently and Concord rep +2 ("patience under watch")',
   },

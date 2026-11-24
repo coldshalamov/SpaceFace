@@ -46,7 +46,11 @@
     "src/ui/orrery/mobileFlightLayouts.js": "Build-time mobile flight CSS fragment composed into styles/hud-flight.generated.css.",
     "src/ui/views/hudStyles.js": "Build-time HUD CSS source; the runtime links styles/hud-flight.generated.css through hudStylesheet.js.",
     "src/ui/station/moduleCardMetrics.js": "Wave G11 metric admission plus tests; the P1 sheet replaced its UI consumer. Q4 decides delete or rewire; recorded here so the reachability gate is honest.",
-    "src/ui/ship/partVisuals.js": "P4 socket/mount contract, deliberately data-only until the renderer consumes it; one call site is the next P4 step."
+    "src/ui/ship/partVisuals.js": "P4 socket/mount contract, deliberately data-only until the renderer consumes it; one call site is the next P4 step.",
+    "src/render/modularLegacyMountPlacement.js": "Mount-seat fits for the released legacy hulls (multirole/starter/frigate) plus the V5 cockpit, deliberately not connected to composition until the assembled hull+cockpit+fin combinations have been visually reviewed. Gated by test/modular-legacy-mount-placement.test.mjs.",
+    "src/render/selectionSigil.js": "ORRERY world-space selection sigil (INF-045 successor to the flat lock ring). Committed vfx.js already carries its lifecycle slots (_selectionSigil dispose/reproject/scene-add/budget counter) but nothing imports or constructs it yet — staged pending the renderer mount. Gated by test/selection-sigil.test.mjs, test/opening-loading-admission.test.mjs, test/swarm-overhaul-vfx-grade.test.mjs.",
+    "src/render/targetContour.js": "Subject policy (who gets the world target mark) consumed by selectionSigil.js and by tests; same pending-mount status as the sigil — it has no production caller until the sigil mounts. Gated by test/target-truth-presentation.test.mjs and test/selection-sigil.test.mjs.",
+    "src/ui/station/stationCommands.js": "Retired station command palette: f791a472da removed its construction, so nothing builds the dialog; stationFrames.js still emits the .so-command-trigger button and orrery/mobile layouts still position it. Dead code kept in tree — delete with the trigger or rewire when a palette owner returns."
   },
   "recordedAt": "2026-09-16"
 }

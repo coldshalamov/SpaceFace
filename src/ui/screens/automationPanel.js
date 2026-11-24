@@ -2030,7 +2030,7 @@ export const automationScreen = {
   _loopTargets(groupId, type = 'all') {
     const st = this._ctx.state;
     const group = st.automation?.drones?.find((g) => g.id === groupId);
-    const options = type === 'all' ? [{ value: 'field', label: 'Field' }, { value: 'depot', label: 'Nearest depot' }, { value: 'player', label: 'Player' }] : [];
+    const options = type === 'all' ? [{ value: 'field', label: 'Asteroid field' }, { value: 'depot', label: 'Nearest depot' }, { value: 'player', label: 'Player' }] : [];
     if (type !== 'station') for (const b of st.claims?.bodies || []) {
       if (b.owned === true && b.spec?.status === 'active' && b.sectorId === group?.sectorId) options.push({ value: `claim:${b.id}`, label: b.name });
     }

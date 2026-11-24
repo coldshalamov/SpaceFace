@@ -8,13 +8,13 @@ export function yardWorkGuidance(job, layout, { couplingReason = () => null, bod
   // Finish the loose load before inviting another cut. This also clears a real extraction lane.
   const loose = active.find(m => live(m) && links(m).length === 0);
   if (loose) return { moduleId: loose.id, kind: 'tow', label: `Recover ${loose.label}`,
-    detail: `${loose.label} is free: tow it to the receiving scale on your MassLine.` };
+    detail: `${loose.label} is free: tow it to the receiving scale on your Line.` };
   const safeLink = m => links(m).find(c => !couplingReason(c));
   const beginner = active.find(m => m.beginner && live(m) && safeLink(m));
   if (beginner) {
     const link = safeLink(beginner);
     return { moduleId: beginner.id, kind: 'release', label: `Work on ${beginner.label}`,
-      detail: `Hold ${beginner.label} on your MassLine, then release ${link.label}.` };
+      detail: `Hold ${beginner.label} on your Line, then release ${link.label}.` };
   }
   const pressure = active.find(m => m.hazardous && live(m) && !job.hazard.vented && !job.hazard.burst);
   if (pressure) return { moduleId: pressure.id, kind: 'vent', label: `Inspect ${pressure.label} pressure`,
@@ -24,7 +24,7 @@ export function yardWorkGuidance(job, layout, { couplingReason = () => null, bod
   if (coupling) {
     const part = active.find(m => m.id === coupling.b);
     return { moduleId: part.id, kind: 'release', label: `Work on ${part.label}`,
-      detail: `Hold ${part.label} on your MassLine, then release ${coupling.label}.` };
+      detail: `Hold ${part.label} on your Line, then release ${coupling.label}.` };
   }
   return null;
 }

@@ -543,7 +543,7 @@ Current save version: `26`
 | `$.settings.controls.gamepad.enabled` | boolean | true |
 | `$.settings.controls.gamepad.glyphSet` | string | xb |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
-| `$.settings.controls.gamepad.scheme` | string | drive |
+| `$.settings.controls.gamepad.scheme` | string | twinstick |
 | `$.settings.controls.gamepad.schemeSuggested` | boolean | false |
 | `$.settings.controls.gamepad.sensitivityAim` | number | 1 |
 | `$.settings.controls.gamepad.sensitivityFly` | number | 1 |
@@ -574,6 +574,7 @@ Current save version: `26`
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
 | `$.settings.video.arcadeEffects` | string | full |
+| `$.settings.video.autoFrameCapVersion` | number | 1 |
 | `$.settings.video.bloom` | boolean | true |
 | `$.settings.video.bloomLevels` | number | 2 |
 | `$.settings.video.bloomStrength` | number | 0.4 |

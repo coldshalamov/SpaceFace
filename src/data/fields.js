@@ -340,7 +340,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'well',
     defKey: 'well',
-    name: 'Well',
+    name: 'Gravity well',
     action: 'deployWell',
     railSlot: 1,
     volume: FIELD_VOLUMES.RING,
@@ -350,7 +350,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'repulsor',
     defKey: 'repulsor',
-    name: 'Repulsor',
+    name: 'Repulsion ring',
     action: 'deployRepulsor',
     railSlot: 2,
     volume: FIELD_VOLUMES.RING,
@@ -360,7 +360,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'cone',
     defKey: 'cone',
-    name: 'Clearing Cone',
+    name: 'Clearing wedge',
     action: 'toggleClearingCone',
     railSlot: 5,
     volume: FIELD_VOLUMES.CONE,

@@ -459,7 +459,7 @@ export const ENTRIES_ANOMALY_A = [
     trigger: { type: 'receipt', event: 'scan:completed' },
     channel: 'memory',
     payload: {
-      text: 'The scanner insists one rock in the deep field has no mass. The massline insists otherwise — it pulls heavy. Inside: a void stasis crate, mass-canceled, older than the charter, stamped with a Verge-Layer interrogative glyph: WHAT WAS STORED HERE? (ANSWER WITHHELD). It holds one unit of a commodity that no longer exists on any market.',
+      text: 'The scanner insists one rock in the deep field has no mass. The line insists otherwise — it pulls heavy. Inside: a void stasis crate, mass-canceled, older than the charter, stamped with a Verge-Layer interrogative glyph: WHAT WAS STORED HERE? (ANSWER WITHHELD). It holds one unit of a commodity that no longer exists on any market.',
     },
     followup: 'one seeded rock per save flagged for a mass-0.0 reading; massline mass-override (pulls heavy); interior as a void stasis crate with the Verge-Layer glyph "WHAT WAS STORED HERE? (ANSWER WITHHELD)"; one unit of a discontinued commodity (codex-only page) whose page rewrites with the sale date when sold to an Archive berth',
   },

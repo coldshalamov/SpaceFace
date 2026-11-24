@@ -138,7 +138,7 @@ export const RAIL_SLOTS = Object.freeze([
 // to FIND and read: the Gyre (hold to gather, release to throw) and a fitted cloak. The ORRERY Cluster
 // unfolds them after the Line; the words come from the arsenal presentation, never from here.
 export const SUPPORT_SLOTS = Object.freeze([
-  { index: 7, band: 'GYRE', action: 'gyreSnare', name: 'Gyre', glyph: 'gyre',
+  { index: 7, band: 'GYRE', action: 'gyreSnare', name: 'Gather', glyph: 'gyre',
     description: staticVerbSentence('gyre') },
   { index: 8, band: 'CLOAK', action: 'cloak', name: 'Cloak', glyph: 'cloak',
     description: staticVerbSentence('cloak') },

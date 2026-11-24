@@ -380,6 +380,7 @@
     "check:ui:control-labels": "node scripts/check-ui-control-labels.mjs",
     "check:cargo-jettison-copy": "node scripts/check-cargo-jettison-copy.mjs",
     "check:player-facing-labels": "node scripts/check-player-facing-labels.mjs",
+    "check:plain-words": "node scripts/check-plain-words.mjs",
     "check:onboarding": "node scripts/check-onboarding.mjs && node --test test/onboarding-opportunity-admission.test.mjs",
     "check:new-game-first-run": "node scripts/check-new-game-first-run-rail.mjs && npm run check:new-game-layout:ci",
     "check:new-game-layout": "node scripts/check-new-game-layout.mjs",

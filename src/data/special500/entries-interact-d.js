@@ -101,7 +101,7 @@ export const ENTRIES_INTERACT_D = [
     channel: 'memory',
     followup: 'NPC hauler job (npcJobs, saveVersion v12) with a massline-attached boulder spawned on each station shift change (stationShiftAt), inbound on the refinery approach; taut-line presentation via MONOFILAMENT_BLADE_TAUT_RATIO (src/render/vfx.js); cutting the line is massline:playerLineCut and the band reacts.',
     payload: {
-      text: 'A yard tug drags a boulder bigger than itself down the refinery approach, its massline drawn bar-taut and singing, rock dust shedding behind it in a slow fan. Give way or get swept. Cut the line and the boulder rolls free, and everyone on the channel has opinions.',
+      text: 'A yard tug drags a boulder bigger than itself down the refinery approach, its line drawn bar-taut and singing, rock dust shedding behind it in a slow fan. Give way or get swept. Cut the line and the boulder rolls free, and everyone on the channel has opinions.',
     },
   },
 
@@ -146,7 +146,7 @@ export const ENTRIES_INTERACT_D = [
     channel: 'memory',
     followup: 'Numbered selfRegistered encounter gated to a claimed seam while you work it (cooldown one day): attachment tug-of-war on the massline — re-lasso your own rocks, shoot their lines, or out-score them by throwing bigger; scoring on massline throw events (tow_recovery precedent); they concede the seam with a tip of the hat.',
     payload: {
-      text: 'Claim-jumpers run a literal rodeo on your seam: lassoing loose boulders with masslines and dragging them out of the beacon ring, whooping, scoring themselves. It is theft as sport, and they want an audience. You are the audience. Also the mark.',
+      text: 'Claim-jumpers run a literal rodeo on your seam: lassoing loose boulders with lines and dragging them out of the beacon ring, whooping, scoring themselves. It is theft as sport, and they want an audience. You are the audience. Also the mark.',
     },
   },
 

@@ -346,6 +346,12 @@ button:disabled, .btn:disabled {
 #aim-reticle[data-mode="manual"] .sf-reticle-shape--open,
 #aim-reticle[data-mode="manual"] > svg > circle { display: none; }
 
+/* CONTROLLER-1: pad aim has no native cursor — the DOM marker draws the open gunsight at
+   the projected stick point, and the assist pull tints it hot so the ease reads. */
+#aim-reticle[data-mode="pad"] .sf-reticle-shape--open,
+#aim-reticle[data-mode="pad"] > svg > circle { display: block; }
+#aim-reticle[data-assist] .sf-reticle-shape { stroke: var(--dp-lamp-hot, #ffd27a); }
+
 /* Hit-confirm crosshair feedback */
 #aim-reticle .sf-reticle-hit-ticks {
   opacity: 0;
@@ -2038,7 +2044,7 @@ html.sf-reduce-motion .sf-entity-link--row, html.sf-reduce-motion .sf-entity-lin
    leading edge dissolving into the screen it arrives over. No blur — a blurred backdrop is a
    2000s effect, and it cost a compositor pass on every frame the sheet was up. */
 .sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: 0; height: auto; max-height: none; width: min(600px, 48vw);
-  background:#191b1f;
+  background:var(--panel);
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 72px); mask-image: linear-gradient(90deg, transparent 0, #000 72px); }
 .sf-drawer--entity .sf-drawer__deck { gap: 24px; padding: 40px 36px 32px 88px; }
 .sf-drawer--entity .sf-drawer__deck > * { animation: sf-pop-rise 420ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) backwards; }
@@ -2950,7 +2956,7 @@ body.ui-modal-open .sf-comm-backlog,
 body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
 .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:7px 10px 8px;
   border:1px solid rgba(147,174,195,.24); border-top-color:rgba(147,196,211,.42); border-radius:2px;
-  background:linear-gradient(108deg, rgba(17,25,36,.91), rgba(7,12,20,.78)); box-shadow:0 10px 24px rgba(0,0,0,.22);
+  background:linear-gradient(108deg, color-mix(in srgb, var(--panel) 91%, transparent), color-mix(in srgb, var(--bg) 78%, transparent)); box-shadow:0 10px 24px rgba(0,0,0,.22);
   color:var(--hud-paper,#e7edf5); font-size:12px; text-shadow:none;
   cursor:pointer; transform:translateX(-130%); opacity:0; transition:transform .18s ease, opacity .18s ease; }
 .sf-comm--in { transform:translateX(0); opacity:1; }
@@ -2972,14 +2978,14 @@ body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
 /* Joined top-left utility rail: explicit words beat another ambiguous glyph. */
 #ui-root > .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:66px; height:32px; z-index:1060;
   display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(180deg,rgba(20,29,41,.88),rgba(8,13,21,.9));
+  background:linear-gradient(180deg,color-mix(in srgb, var(--panel-2) 88%, transparent),color-mix(in srgb, var(--bg) 90%, transparent));
   border:1px solid rgba(147,174,195,.34); border-radius:2px 0 0 2px; color:#aebdce;
   font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em; cursor:pointer; pointer-events:auto;
   transition:color .12s, border-color .12s; text-shadow:none; }
-.sf-comm-backlog-btn:hover { border-color:var(--accent,#4f8fdd); color:#e7edf5; }
+.sf-comm-backlog-btn:hover { border-color:var(--accent,#4f8fdd); color:var(--ink); }
 /* The backlog lamp used to pulse an inset box-shadow — a repaint every frame. The same 2px
    bottom line now rides an ::after whose opacity animates, which the compositor owns. */
-.sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:var(--accent,#4f8fdd); }
+.sf-comm-backlog-btn--pulse { color:var(--ink); border-color:var(--accent,#4f8fdd); }
 .sf-comm-backlog-btn--pulse::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
   background:var(--accent,#4f8fdd); opacity:.15; will-change:opacity;
   animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
@@ -3034,7 +3040,7 @@ body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
 .sf-airlock--visible { opacity:1; }
 body.ui-modal-open .sf-airlock--visible { opacity:1; }
 .sf-airlock__line { font-family:var(--mono); font-size:clamp(13px, 1.5vw, 16px); letter-spacing:.08em;
-  color:#d7deea; text-transform:uppercase; text-shadow:0 0 16px rgba(0,0,0,.9), 0 1px 2px #000; }
+  color:var(--sf-paper); text-transform:uppercase; text-shadow:0 0 16px rgba(0,0,0,.9), 0 1px 2px #000; }
 @media (prefers-reduced-motion: reduce) { .sf-airlock { transition:none; } }
 html.sf-reduce-motion .sf-airlock { transition:none; }
 @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; top:auto; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:12px; letter-spacing:.06em; }
@@ -3048,13 +3054,13 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
 .sf-endgame.open { display:flex; opacity:1; }
 .sf-endgame__panel { width:min(880px, 94vw); max-height:90vh; overflow-y:auto; padding:24px 28px;
   background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--accent); border-radius:10px;
-  box-shadow:0 0 60px rgba(79,143,221,.15), 0 20px 60px rgba(0,0,0,.6); }
+  box-shadow:0 0 60px color-mix(in srgb, var(--accent) 15%, transparent), 0 20px 60px rgba(0,0,0,.6); }
 .sf-endgame__head { text-align:center; margin-bottom:18px; }
 .sf-endgame__title { margin:0; font-family:var(--mono); font-size:18px; letter-spacing:.06em; color:var(--accent);
-  text-transform:uppercase; text-shadow:0 0 14px rgba(79,143,221,.4); }
+  text-transform:uppercase; text-shadow:0 0 14px color-mix(in srgb, var(--accent) 40%, transparent); }
 .sf-endgame__sub { margin-top:6px; font-size:12px; color:var(--ink-mute); font-style:italic; }
 .sf-endgame__choices { display:flex; flex-direction:column; gap:14px; }
-.sf-endgame__choice { padding:14px 16px; background:rgba(4,9,18,.6); border:1px solid var(--panel-edge); border-radius:7px;
+.sf-endgame__choice { padding:14px 16px; background:color-mix(in srgb, var(--bg) 60%, transparent); border:1px solid var(--panel-edge); border-radius:7px;
   transition:border-color .15s, background .15s; }
 .sf-endgame__choice:hover { border-color:var(--accent-3); background:rgba(167,139,202,.05); }
 .sf-endgame__choice-head { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
@@ -3087,7 +3093,7 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
 
 /* ── Nemesis transmission (nemesisComms.js — G16-02: the <style> embedded in its innerHTML
    retired here verbatim; the card rides the Stage's prompt slot while visible) ───────────── */
-[data-nemesis-comms]{--nm-ink:#e6f1ed;--nm-dim:#a3b7b0;--nm-line:#40574e;--nm-accent:#c3e4a8;box-sizing:border-box;max-width:320px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--nm-ink);background:#101b1bf5;border:1px solid var(--nm-line);border-left:3px solid var(--nm-accent);padding:14px 16px;pointer-events:auto;box-shadow:0 8px 25px #0005}
+[data-nemesis-comms]{--nm-ink:var(--ink);--nm-dim:#a3b7b0;--nm-line:#40574e;--nm-accent:#c3e4a8;box-sizing:border-box;max-width:320px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--nm-ink);background:color-mix(in srgb, var(--sf-surface) 96%, transparent);border:1px solid var(--nm-line);border-left:3px solid var(--nm-accent);padding:14px 16px;pointer-events:auto;box-shadow:0 8px 25px #0005}
 [data-nemesis-comms][hidden]{display:none!important}
 [data-nemesis-comms] header{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--nm-line)}
 [data-nemesis-comms] svg{width:32px;flex:none;fill:none;stroke:var(--nm-accent);stroke-width:1.4}
@@ -3109,10 +3115,10 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
   padding: clamp(18px, 4vw, 64px); box-sizing: border-box; pointer-events: auto;
   color: #edf6ff; background:
     radial-gradient(circle at 50% 38%, rgba(39, 91, 121, .18), transparent 44%),
-    rgba(3, 7, 13, .96); animation: sf-ending-epilogue-in .42s ease-out both;
+    color-mix(in srgb, var(--bg) 96%, transparent); animation: sf-ending-epilogue-in .42s ease-out both;
 }
 .sf-ending-epilogue[data-ending-kind="continuation"] {
-  background: radial-gradient(circle at 50% 38%, rgba(88, 111, 128, .13), transparent 44%), rgba(3, 7, 13, .96);
+  background: radial-gradient(circle at 50% 38%, rgba(88, 111, 128, .13), transparent 44%), color-mix(in srgb, var(--bg) 96%, transparent);
 }
 .sf-ending-epilogue__panel {
   width: min(760px, 100%); max-height: min(760px, 92vh); overflow: auto;
@@ -3137,7 +3143,7 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
 .sf-ending-epilogue__rule { width: 72px; height: 1px; margin: 30px 0; background: #76d9f3; opacity: .75; }
 .sf-ending-epilogue__sections { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .sf-ending-epilogue__section-title { font-size: 12px; margin-bottom: 9px; color: #89a9bc; }
-.sf-ending-epilogue__section-copy { margin: 0; color: #e1ebf2; font-size: 14px; line-height: 1.55; }
+.sf-ending-epilogue__section-copy { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.55; }
 .sf-ending-epilogue__record { grid-column: 1 / -1; }
 .sf-ending-epilogue__record .sf-ending-epilogue__section-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
 .sf-ending-epilogue__objective-name { display: block; margin-bottom: 5px; color: #76d9f3; }

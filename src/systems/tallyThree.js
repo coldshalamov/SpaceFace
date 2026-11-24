@@ -12,7 +12,7 @@ const REFUSAL=Object.freeze({
   'body-or-receiver-changed':'The physical crate or receiver changed. Hail again.',
   'claim-or-contents-changed':'Claim or contents changed. The old quote is void.',
   'claim-disputed':'Claim disputed. Cite the scanned manifest before delivery.',
-  'player-custody-required':'Keep your Massline attached until the receiver accepts.',
+  'player-custody-required':'Keep your Line attached until the receiver accepts.',
   'crate-outside-receiver':'Tow the whole crate inside the receiver ring first.',
   'pilot-outside-receiver':'Bring your ship to the receiving ring with the crate.',
   'relative-speed-too-high':'Settle below 8 m/s relative to the receiver.',
@@ -116,7 +116,7 @@ export const tallyThree={
       const receiver=receiverOf(this.state);
       if(!receiver)text='Ordinary receiver is unavailable in this sector.';
       else {this.bus.emit('ui:setCourse',{pos:{x:receiver.pos.x,z:receiver.pos.z},targetEntityId:receiver.id,
-        label:'Ceres claim receiver',arrivalRadius:60,autopilot:true});text='Ceres Refinery receives the same crate. Keep your Massline attached; confirm at the ring.';}
+        label:'Ceres claim receiver',arrivalRadius:60,autopilot:true});text='Ceres Refinery receives the same crate. Keep your Line attached; confirm at the ring.';}
     }else if(choice==='tally_contest'){
       result=this.helpers.salvage?.contestTallyClaim();
       text=result?.ok?'The scanned manifest corrects the claimant. The old quote is void; hail again.':REFUSAL[result?.reason]||'No surviving evidence supports a correction.';

@@ -40,7 +40,7 @@ export const ADVENTURE_SPEED_CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'speed_tethys_lifeline', levelId: 'level_junction_return', kind: 'rescue',
     title: 'Lifeline Through the Queue', reward_cr: 2800, routeGateCount: 6,
-    brief: 'A marked evacuation pod waits before the first gate. Attach the Massline and physically tow the pod through every marker. Its life-support clock starts at the first crossing. Bring both pod and ship through the final handoff below 65 m/s; flying the route alone earns nothing.',
+    brief: 'A marked evacuation pod waits before the first gate. Attach the Line and physically tow the pod through every marker. Its life-support clock starts at the first crossing. Bring both pod and ship through the final handoff below 65 m/s; flying the route alone earns nothing.',
     summary: 'Tow the marked evacuation pod through six gates. Keep the line attached and brake both bodies below 65 m/s at the final handoff.',
     initialWindowS: 30, referenceSpeed: 75, gateGraceS: 6, finishSpeedLimit: 65,
     failureReason: 'speed_lifeline_expired', failureText: 'The pod missed its life-support transfer window. Tethys will dispatch another rescue contract.',
@@ -105,7 +105,7 @@ export function adventureSpeedOfferFor(id) {
   }
   if (row.kind === 'rescue') {
     params.adventureSpeed.rescue = { podMass: 40, podRadius: 9, podHull: 180, minTowedWU: 30 };
-    params.adventureSpeedHint = 'Find the marked evacuation pod before gate 1. Attach the Massline and tow it through the route.';
+    params.adventureSpeedHint = 'Find the marked evacuation pod before gate 1. Attach the Line and tow it through the route.';
     params.raceLease = false;
   }
   if (row.kind === 'listening') {

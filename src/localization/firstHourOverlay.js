@@ -36,20 +36,20 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
 
   // Accessibility cue captions.
   'Gravity well': L('Pozo de gravedad', 'Puits de gravité', 'Gravitationsbrunnen', 'Poço de gravidade'),
-  'Repulsor deployed': L('Repulsor desplegado', 'Répulseur déployé', 'Repulsor ausgebracht', 'Repulsor implantado'),
-  'Cone deployed': L('Cono desplegado', 'Cône déployé', 'Konus ausgebracht', 'Cone implantado'),
+  'Repulsion ring deployed': L('Repulsor desplegado', 'Répulseur déployé', 'Repulsor ausgebracht', 'Repulsor implantado'),
+  'Wedge deployed': L('Cono desplegado', 'Cône déployé', 'Konus ausgebracht', 'Cone implantado'),
   'Skim sheet deployed': L(
     'Lámina de deslizamiento desplegada',
     'Voile de glisse déployée',
     'Gleitfläche ausgebracht',
     'Lâmina de deslize implantada',
   ),
-  'Seed deployed': L('Semilla desplegada', 'Graine déployée', 'Seed ausgebracht', 'Semente implantada'),
+  'Anchor deployed': L('Semilla desplegada', 'Graine déployée', 'Seed ausgebracht', 'Semente implantada'),
   'Line taut': L('Cabo tenso', 'Câble tendu', 'Seil gespannt', 'Cabo tenso'),
   'Incoming telegraph': L('Telegrafía entrante', 'Télégraphe entrant', 'Telegraph eingehend', 'Telegrafia entrante'),
 
   // Massline instrument captions.
-  'Massline attached.': L('Massline enganchada.', 'Massline accrochée.', 'Massline verankert.', 'Massline engatada.'),
+  'Line attached.': L('Massline enganchada.', 'Massline accrochée.', 'Massline verankert.', 'Massline engatada.'),
   'Massline strain.': L('Tensión de la Massline.', 'Tension de la Massline.', 'Massline unter Zug.', 'Tensão da Massline.'),
   'Massline reel.': L('Recogida de la Massline.', 'Enroulement de la Massline.', 'Massline-Aufzug.', 'Recolhimento da Massline.'),
   'Massline release.': L('Suelta de la Massline.', 'Relâche de la Massline.', 'Massline-Lösung.', 'Soltura da Massline.'),
@@ -144,12 +144,12 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
 
   // Field deploys and loops.
   'Gravity well deploys.': L('El pozo de gravedad se despliega.', 'Le puits de gravité se déploie.', 'Der Gravitationsbrunnen fährt aus.', 'O poço de gravidade se implanta.'),
-  'Repulsor deploys.': L('El repulsor se despliega.', 'Le répulseur se déploie.', 'Der Repulsor fährt aus.', 'O repulsor se implanta.'),
-  'Cone deploys.': L('El cono se despliega.', 'Le cône se déploie.', 'Der Konus fährt aus.', 'O cone se implanta.'),
+  'Repulsion ring deploys.': L('El repulsor se despliega.', 'Le répulseur se déploie.', 'Der Repulsor fährt aus.', 'O repulsor se implanta.'),
+  'Wedge deploys.': L('El cono se despliega.', 'Le cône se déploie.', 'Der Konus fährt aus.', 'O cone se implanta.'),
   'Incoming telegraph.': L('Telegrafía entrante.', 'Télégraphe entrant.', 'Telegraph eingehend.', 'Telegrafia entrante.'),
   'Gravity well holding.': L('El pozo de gravedad sostiene.', 'Le puits de gravité tient.', 'Der Gravitationsbrunnen hält.', 'O poço de gravidade segura.'),
-  'Repulsor holding.': L('El repulsor sostiene.', 'Le répulseur tient.', 'Der Repulsor hält.', 'O repulsor segura.'),
-  'Cone holding.': L('El cono sostiene.', 'Le cône tient.', 'Der Konus hält.', 'O cone segura.'),
+  'Repulsion ring holding.': L('El repulsor sostiene.', 'Le répulseur tient.', 'Der Repulsor hält.', 'O repulsor segura.'),
+  'Wedge holding.': L('El cono sostiene.', 'Le cône tient.', 'Der Konus hält.', 'O cone segura.'),
 
   // Receipts and mission state.
   'Credits received.': L('Créditos recibidos.', 'Crédits reçus.', 'Credits erhalten.', 'Créditos recebidos.'),

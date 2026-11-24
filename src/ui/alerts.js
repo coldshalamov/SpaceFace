@@ -647,7 +647,7 @@ export function createAlerts(ctx) {
   bus.on('research:pointsChanged', (p) => {
     const granted = Number(p && p.granted);
     if (!(granted > 0)) return;
-    announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} RP — ${researchGrantLabel(p)}`, ttl: 4 });
+    announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} research — ${researchGrantLabel(p)}`, ttl: 4 });
   });
 
   // ECON-04 — an NPC salvage lot the market absorbed posts one receipt line naming the yard and
