@@ -1,6 +1,6 @@
 # DEMO-ADV-WORDS-1 — every word in the first ten minutes of Adventure, plain and in voice
 
-**For:** muse (a strong writer-engineer; no 3D). **Kind:** writing + display-string edits. Commit your own files.
+**For:** a writer-engineer agent (muse is out until 2026-11-30; reassigned). **Kind:** writing + display-string edits. Commit your own files.
 
 Adventure opens at Helios harbour: you are hired labour with a light ship and a rope (the Line). Rope
 a loose rock, throw it, dock at Helios Station, take a first job; the world is a working harbour of
