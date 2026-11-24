@@ -136,7 +136,7 @@ test('PQ-164.01 seed 16401: prompt glyph chips follow the last-used device', () 
   console.log(`  missionLog | ${'—'.padEnd(8)} | ${'—'.padEnd(8)} | ${touch.missionLog}`);
 
   assert.equal(kbm.dock, `[ ${BINDINGS.dock.label} ]`, 'kbm dock chip is the live key label');
-  assert.equal(pad.dock, '[ B ]', 'pad dock chip is the B glyph');
+  assert.equal(pad.dock, '[ X ]', 'pad dock chip is the X glyph');
   assert.equal(pad.codex, '[ Home ]', 'pad codex chip is the guide button');
   assert.equal(pad.starmap, '[ View ]', 'pad star map chip is the View glyph');
   assert.equal(pad.drill, `[ ${BINDINGS.drill.label} ]`, 'pad has no drill verb — honest fallback to the key label');
@@ -162,12 +162,16 @@ test('PQ-164.01: resolver merges overrides and never lets stored data beat the s
   assert.deepEqual(moved.mine, GAMEPAD_DEFAULT_BINDINGS.mine, 'untouched actions keep defaults');
   assert.deepEqual(moved.brake, GAMEPAD_DEFAULT_BINDINGS.brake);
 
-  // A stored same-context steal (the UI denies these at capture; only a hand-edited profile
-  // produces one) loses to the default claim — corrupt data can never leave the pad worse
-  // than stock.
-  const steal = resolveGamepadBindings(padState({ fire: ['l1'] }).settings);
-  assert.deepEqual(steal.brake, GAMEPAD_DEFAULT_BINDINGS.brake, 'brake keeps LB');
-  assert.deepEqual(steal.fire, GAMEPAD_DEFAULT_BINDINGS.fire, 'illegal fire override reverts to RT');
+  // A stored claim on a default seat wins under G18-02 — the saved remap keeps its meaning and
+  // the deferred verb is honestly unbound rather than silently eating the player's map.
+  const steal = resolveGamepadBindings(padState({ fire: ['l3'] }).settings);
+  assert.deepEqual(steal.fire, ['l3'], 'the stored claim keeps its seat');
+  assert.deepEqual(steal.brake, [], 'the displaced default defers honestly');
+  // A hand-edited share that IS context-legal is honored, not rejected: l1 is a modal seat
+  // (station tab prev), so a flight verb may sit on it.
+  const legal = resolveGamepadBindings(padState({ fire: ['l1'] }).settings);
+  assert.deepEqual(legal.fire, ['l1'], 'a disjoint-context claim resolves as a designed share');
+  assert.deepEqual(legal.tabPrev, ['l1'], 'the modal seat keeps its claim too');
 
   // Legal context-disjoint share survives: cancel (modal) may sit on fire's RT.
   const shared = resolveGamepadBindings(padState({ cancel: ['r2'] }).settings);
@@ -190,10 +194,12 @@ test('PQ-164.01: resolver merges overrides and never lets stored data beat the s
 test('PQ-164.01: conflict detection names the holder and honors designed shares', () => {
   const live = resolveGamepadBindings(padState(null).settings);
   const tentative = (action) => ({ ...live, [action]: [] });
-  assert.equal(findGamepadBindConflict(tentative('fire'), 'fire', 'l1'), 'brake', 'fire on LB conflicts with brake');
+  assert.equal(findGamepadBindConflict(tentative('fire'), 'fire', 'l3'), 'brake', 'fire on L3 conflicts with brake');
   assert.equal(findGamepadBindConflict(tentative('cancel'), 'cancel', 'r2'), null, 'cancel may share RT with fire');
   assert.equal(findGamepadBindConflict(tentative('pause'), 'pause', 'view'), 'map', 'pause cannot take View from map');
-  assert.equal(findGamepadBindConflict(tentative('massline'), 'massline', 'accept'), null, 'massline may re-share the accept button');
+  assert.equal(findGamepadBindConflict(tentative('shove'), 'shove', 'accept'), null, 'shove may re-share its designed A seat with accept');
+  assert.equal(findGamepadBindConflict(tentative('massline'), 'massline', 'l1'), null, 'the Line may share the modal LB');
+  assert.equal(findGamepadBindConflict(tentative('massline'), 'massline', 'accept'), 'shove', 'A is a flight seat now — the Line may not sit on it');
   assert.equal(findGamepadBindConflict(tentative('tabNext'), 'tabNext', 'r2'), null, 'station tab may share a flight trigger');
   assert.equal(findGamepadBindConflict(tentative('codex'), 'codex', 'r2'), 'fire', 'codex acts in flight and cannot sit on RT');
 });
@@ -278,7 +284,7 @@ test('PQ-164.01: UI tick routes captured presses and flips the prompt device on 
   installedPad.buttons[12] = { pressed: true, value: 1, touched: true };
   input.tick(0.016);
   assert.equal(getPromptDevice(), 'gamepad', 'pad activity edge flips the prompt device');
-  assert.equal(promptLabel('dock'), '[ B ]', 'dock chip reads as the pad glyph');
+  assert.equal(promptLabel('dock'), '[ X ]', 'dock chip reads as the pad glyph');
 
   // Capture: registered handler receives the button and the press cannot activate UI. FB-003:
   // the capture gesture commits on release, so the handler hears the resolved button name.

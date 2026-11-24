@@ -50,8 +50,11 @@ export const SLICES = Object.freeze([
   { action: 'autoFire',         label: 'Auto-Aim',     icon: 'target',   phase: 'tap' },
   { action: 'travelBurn',       label: 'Travel Burn',  icon: 'drive',    phase: 'tap' },
   { action: 'cruise',           label: 'Cruise',       icon: 'engine',   phase: 'tap' },
-  { action: 'jettisonLot',      label: 'Jettison',     icon: 'cargo',    phase: 'tap' },
+  // The beacon is legal ONLY in open space — seated before jettison/pylon so the
+  // WHEEL_MAX_SLICES cap never pushes its one legal context off the ring. Jettison and the
+  // pylon stay reachable through the combat ring, which has seats to spare.
   { action: 'deployBeacon',     label: 'Beacon',       icon: 'beacon',   phase: 'tap' },
+  { action: 'jettisonLot',      label: 'Jettison',     icon: 'cargo',    phase: 'tap' },
   { action: 'deployShieldPylon', label: 'Pylon',       icon: 'energy',   phase: 'tap' },
   // Swarm only: deploys the next bought called charge (turret, wing, dome, decoy). The slice
   // exists only while the swarmCallins director holds a pending call — the allowlist alone

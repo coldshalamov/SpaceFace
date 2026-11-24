@@ -26,10 +26,11 @@ test('bomb-bay actions are rebindable on keyboard and pad with labels', () => {
 });
 
 test('bomb-bay remap rows resolve to the shipped default bindings', () => {
-  assert.deepEqual(DEFAULTS.BINDINGS.bomb, ['Digit4', 'KeyY']);
-  assert.deepEqual(DEFAULTS.BINDINGS.cycleBomb, ['Comma']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['dRight']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.cycleBomb], ['dLeft']);
+  assert.deepEqual(DEFAULTS.BINDINGS.bomb, ['Digit4']);
+  assert.deepEqual(DEFAULTS.BINDINGS.cycleBomb, []);
+  // CONTROLLER-1: B/Circle is the bomb seat; the ordnance cycle is a wheel slice, not a solo button.
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['cancel']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.cycleBomb], []);
 });
 
 test('help screen teaches the bomb bay on keyboard and pad', () => {
@@ -39,6 +40,6 @@ test('help screen teaches the bomb bay on keyboard and pad', () => {
   assert.ok(flight.some((row) => row[1] === 'cycleBomb'), 'Flight teaches cycle payload');
   const pad = sections['Gamepad (Xbox / PlayStation)'] || [];
   const padText = pad.map((row) => `${row[0]} ${row[2]}`).join('\n');
-  assert.match(padText, /Bomb \(selected ordnance\).*D-Pad Right/);
-  assert.match(padText, /Cycle ordnance.*D-Pad Left/);
+  assert.match(padText, /Bomb \(selected ordnance\).*B/);
+  assert.match(padText, /Cycle ordnance.*context wheel/);
 });

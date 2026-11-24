@@ -139,6 +139,9 @@ function fakeGp(axes, actions = {}) {
 
 test('fly sensitivity scales derived turn/throttle and leaves the raw axes alone', () => {
   const state = flightState();
+  // CONTROLLER-1: the yaw/throttle axes this pins are the legacy 'drive' scheme — under the
+  // shipped twin-stick default the left stick is a world-frame drive vector, not a rudder.
+  state.settings.controls.gamepad.scheme = 'drive';
   const gp = fakeGp({ leftX: 0.5 });
   const host = makeHost(gp);
   host._movementSource = 'gamepad';

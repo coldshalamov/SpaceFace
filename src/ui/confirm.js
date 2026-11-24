@@ -362,6 +362,23 @@ export function confirmGamepadAccept() {
   return false;
 }
 
+/** Gamepad D-pad/stick: move focus between the dialog's keys (Cancel <-> verb). */
+export function confirmGamepadNav(dir) {
+  if (!_openResolver) return false;
+  const root = confirmRoot();
+  if (!root) return false;
+  const keys = Array.from(root.querySelectorAll('.sf-confirm__key'))
+    .filter((el) => el && !el.disabled && typeof el.focus === 'function');
+  if (!keys.length) return false;
+  const delta = (dir === 'left' || dir === 'up') ? -1 : 1;
+  const idx = keys.indexOf(typeof document !== 'undefined' ? document.activeElement : null);
+  const next = idx < 0 ? keys[delta > 0 ? 0 : keys.length - 1]
+    : keys[(idx + delta + keys.length) % keys.length];
+  try { next.focus({ preventScroll: true }); }
+  catch (_) { try { next.focus(); } catch (_) { return false; } }
+  return true;
+}
+
 /** Gamepad B/Circle: Cancel. */
 export function confirmGamepadCancel() {
   if (!_openResolver) return false;

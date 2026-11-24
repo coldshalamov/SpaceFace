@@ -430,24 +430,50 @@ const PAD_ACTION_BUTTONS = (() => {
   s.dom.setPads([pad]);
   s.tick();
   const found = new Map();
-  for (let i = 0; i < pad.buttons.length; i++) {
-    pad.buttons[i].pressed = true;
-    pad.buttons[i].value = 1;
+  const note = (action, combo) => {
+    if (!found.has(action)) found.set(action, []);
+    found.get(action).push(combo);
+  };
+  const sweep = (combo) => {
     s.tick();
     for (const action in s.ctx.gamepad.actions) {
       if (!s.ctx.gamepad.actions[action].held) continue;
-      if (!found.has(action)) found.set(action, []);
-      found.get(action).push(i);
+      note(action, combo);
     }
+  };
+  for (let i = 0; i < pad.buttons.length; i++) {
+    pad.buttons[i].pressed = true;
+    pad.buttons[i].value = 1;
+    sweep([i]);
     pad.buttons[i].pressed = false;
     pad.buttons[i].value = 0;
+    s.tick();
+  }
+  // CONTROLLER-1: the pad seats several verbs on modifier chords (LB+A countermeasure,
+  // RB+Y gyre snare, …). Hold each button as the modifier and press every other button —
+  // an action that only lights under the combo records the pair as its route.
+  for (let mod = 0; mod < pad.buttons.length; mod++) {
+    pad.buttons[mod].pressed = true;
+    pad.buttons[mod].value = 1;
+    s.tick();
+    for (let i = 0; i < pad.buttons.length; i++) {
+      if (i === mod) continue;
+      pad.buttons[i].pressed = true;
+      pad.buttons[i].value = 1;
+      sweep([mod, i]);
+      pad.buttons[i].pressed = false;
+      pad.buttons[i].value = 0;
+      s.tick();
+    }
+    pad.buttons[mod].pressed = false;
+    pad.buttons[mod].value = 0;
     s.tick();
   }
   return found;
 })();
 
 /** Driver pair that presses whatever KEY currently serves `action` in the given scheme. */
-function keyAction(action, scheme = 'pilot', slot = 0) {
+function keyAction(action, scheme = 'helm-assist', slot = 0) {
   const codes = DEFAULTS.SCHEMES[scheme][action] || [];
   assert.ok(codes.length > slot,
     `keyboard action "${action}" has no binding at slot ${slot} in the ${scheme} scheme`);
@@ -459,15 +485,15 @@ function keyAction(action, scheme = 'pilot', slot = 0) {
   };
 }
 
-/** Driver pair that presses whatever physical button currently serves `action`. */
+/** Driver pair that presses whatever physical button(s) currently serve `action`. */
 function padAction(action) {
-  const indices = PAD_ACTION_BUTTONS.get(action) || [];
-  assert.ok(indices.length > 0,
+  const combos = PAD_ACTION_BUTTONS.get(action) || [];
+  assert.ok(combos.length > 0,
     `gamepad action "${action}" is not reachable from any physical button (button map dropped?)`);
-  const idx = indices[0];
+  const combo = combos[0];
   return {
-    down: (d, p) => { p.buttons[idx].pressed = true; p.buttons[idx].value = 1; },
-    up: (d, p) => { p.buttons[idx].pressed = false; p.buttons[idx].value = 0; },
+    down: (d, p) => { for (const i of combo) { p.buttons[i].pressed = true; p.buttons[i].value = 1; } },
+    up: (d, p) => { for (const i of combo) { p.buttons[i].pressed = false; p.buttons[i].value = 0; } },
   };
 }
 
@@ -477,7 +503,9 @@ const FLIGHT_MATRIX = [
     read: (st) => st.input.moveZ > 0.5,
     serves: {
       keyboard: keyAction('forward'),
-      gamepad: { down: (d, p) => { p.axes[1] = -1; }, up: (d, p) => { p.axes[1] = 0; } },
+      // CONTROLLER-1: twin-stick is the shipped pad scheme — the left stick is a world-frame
+      // drive vector, so "forward" is the stick pushed toward the nose (player rot=0 → +x).
+      gamepad: { down: (d, p) => { p.axes[0] = 1; }, up: (d, p) => { p.axes[0] = 0; } },
       touch: { down: (d) => d.touchStick('left', 0, -60), up: (d) => d.releaseStick('left') },
     },
   },
@@ -486,26 +514,31 @@ const FLIGHT_MATRIX = [
     read: (st) => st.input.moveZ < -0.5,
     serves: {
       keyboard: keyAction('reverse'),
-      gamepad: { down: (d, p) => { p.axes[1] = 1; }, up: (d, p) => { p.axes[1] = 0; } },
+      gamepad: { down: (d, p) => { p.axes[0] = -1; }, up: (d, p) => { p.axes[0] = 0; } },
       touch: { down: (d) => d.touchStick('left', 0, 60), up: (d) => d.releaseStick('left') },
     },
   },
   {
     verb: 'turn the nose',
+    // Keyboard yaw lives on the opt-in pilot scheme — helm-assist gives A/D to strafe and
+    // the mouse owns the nose, so this row boots the session into pilot.
+    scheme: 'pilot',
     read: (st) => Math.abs(st.input.turnIntent) > 0.5,
     serves: {
-      keyboard: keyAction('yawRight'),
-      gamepad: { down: (d, p) => { p.axes[0] = 0.9; }, up: (d, p) => { p.axes[0] = 0; } },
+      keyboard: keyAction('yawRight', 'pilot'),
+      // Twin-stick: the right stick aims and the helm chase turns the nose onto it.
+      gamepad: { down: (d, p) => { p.axes[3] = -0.9; }, up: (d, p) => { p.axes[3] = 0; } },
       touch: { down: (d) => d.touchStick('left', 60, 0), up: (d) => d.releaseStick('left') },
     },
   },
   {
-    // Keyboard-only by design: the gamepad and touch left sticks map X to yaw, not lateral
-    // translation, so `moveX` has exactly one source. See the tpMoveX note in the report.
     verb: 'strafe',
     read: (st) => Math.abs(st.input.moveX) > 0.5,
     serves: {
       keyboard: keyAction('strafeRight'),
+      // Under twin-stick the drive stick's screen-lateral push IS the strafe — the same
+      // world vector decomposed onto the hull's side axis.
+      gamepad: { down: (d, p) => { p.axes[1] = -1; }, up: (d, p) => { p.axes[1] = 0; } },
     },
   },
   {
@@ -536,14 +569,12 @@ const FLIGHT_MATRIX = [
   },
   {
     verb: 'mining beam (fire group 2)',
-    // RMB is a world-tool hold (input.js WORLD_TOOL_HOLD_S, 0.28s), not a tap.
-    // 18 frames at the harness dt of 1/60 crosses that clock. Gamepad and touch
-    // mine are level-held, so the same hold still reads them. Other rows stay
-    // at one tick so edge-only verbs are not consumed before they are read.
-    holdTicks: 18,
+    // G18-02 one set of keys: RMB is the Line in every context — the mouse's world-tool
+    // hold lane is retired, so the mouse is no longer a mining modality. Mining ships a
+    // real seat on keyboard (G) and pad (D-pad left) plus the touch overlay button.
     read: (st) => st.input.fireGroup === 2 && st.input.actions.aimedMine === true,
     serves: {
-      mouse: { down: (d) => d.mouse('mousedown', 2), up: (d) => d.mouse('mouseup', 2) },
+      keyboard: keyAction('mine'),
       gamepad: padAction('mine'),
       touch: { down: (d) => d.touchPress('mine'), up: (d) => d.touchRelease('mine') },
     },
@@ -557,10 +588,12 @@ const FLIGHT_MATRIX = [
     },
   },
   {
+    // The shipped keyboard table seats countermeasure on the context wheel (Q → Counter);
+    // the wheel tap rides the same sampled-press queue this merge reads, so the verb stays
+    // keyboard-reachable without a dedicated key. The pad keeps its LB+A seat.
     verb: 'countermeasure',
     read: (st) => st.input.deployCountermeasure === true,
     serves: {
-      keyboard: keyAction('countermeasure'),
       gamepad: padAction('countermeasure'),
     },
   },
@@ -593,6 +626,7 @@ for (const row of FLIGHT_MATRIX) {
     const s = newSession();
     const pad = makeFakePad();
     if (modality === 'gamepad') s.dom.setPads([pad]);
+    if (row.scheme) s.state.settings.gameplay.controlScheme = row.scheme;
     // Settle one frame so connection edges and neutral state are established.
     s.tick();
     const before = { aimAngle: s.state.input.aimAngle, ndcX: s.state.input.mouseNdc.x };
@@ -609,21 +643,21 @@ for (const row of FLIGHT_MATRIX) {
 }
 
 check(coverage.keyboard >= 7, 'keyboard serves the flight verbs it is supposed to serve');
-check(coverage.mouse >= 3, 'mouse serves fire, mine and aim');
+check(coverage.mouse >= 2, 'mouse serves fire and aim');
 check(coverage.gamepad >= 9, 'gamepad serves the full flight verb set');
 check(coverage.touch >= 7, 'touch serves the flight verbs its overlay advertises');
 
 // The Massline ships with a primary key AND a permanent alias. Assert that EVERY declared
 // binding latches the line, rather than pinning the array's text — a rebind is still fine, an
 // alias that silently stops working is not.
-for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
-  const driver = keyAction('tether', 'pilot', slot);
+for (let slot = 0; slot < DEFAULTS.SCHEMES['helm-assist'].tether.length; slot++) {
+  const driver = keyAction('tether', 'helm-assist', slot);
   const s = newSession();
   s.tick();
   driver.down(s.dom);
   s.tick();
   checkEqual(s.state.input.actions.tetherFire, true,
-    `Massline binding ${slot + 1} of ${DEFAULTS.SCHEMES.pilot.tether.length} (${driver.code}) latches the line`);
+    `Massline binding ${slot + 1} of ${DEFAULTS.SCHEMES['helm-assist'].tether.length} (${driver.code}) latches the line`);
   driver.up(s.dom);
   s.tick();
 }
@@ -715,6 +749,7 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
 
 {
   const s = newSession();
+  s.state.settings.gameplay.controlScheme = 'pilot';
   const pilotSide = keyAction('yawRight', 'pilot');
   const pilotFwd = keyAction('forward', 'pilot');
   s.tick();
@@ -771,40 +806,54 @@ for (const scheme of ['pilot', 'classic', 'helm-assist']) {
 const REQUIRED_PAD_ACTIONS = [
   'fire', 'mine', 'boost', 'brake', 'accept', 'cancel', 'massline',
   'cycleTarget', 'map', 'codex', 'pause', 'countermeasure',
-  'tabPrev', 'tabNext', 'travelBurn',
+  'tabPrev', 'tabNext',
 ];
 
 {
+  // CONTROLLER-1: verbs the shipped map seats on the wheel (travelBurn, bulletTime, cloak,
+  // deployBeacon, …) deliberately carry no dedicated button — their pad route is the held
+  // D-pad-down wheel, and the slice contract is pinned by the context-wheel tests. Only
+  // dedicated seats are asserted here.
   for (const action of REQUIRED_PAD_ACTIONS) {
     const buttons = PAD_ACTION_BUTTONS.get(action) || [];
     check(buttons.length > 0,
       `gamepad action "${action}" is reachable from a physical button`);
   }
-  console.log(`ok   discovered gamepad map ${JSON.stringify(Object.fromEntries(PAD_ACTION_BUTTONS))}`);
+  const firstRoutes = Object.fromEntries(
+    [...PAD_ACTION_BUTTONS.entries()].map(([a, combos]) => [a, combos[0]]));
+  console.log(`ok   discovered gamepad map ${JSON.stringify(firstRoutes)}`);
 }
 
-// A/Cross is dock/activate plus the Massline thumb action — never a second fire trigger, and the
-// dock prompt outranks the Massline so docking cannot also throw a line.
+// CONTROLLER-1: the Line is the left trigger and dock is its own button (X). The Line seat
+// is never a second fire trigger, and because dock no longer shares it, a stay on the rope
+// even while the dock prompt is up — docking can never also throw a line because the two
+// are different buttons.
 {
   const s = newSession();
   const pad = makeFakePad();
   s.dom.setPads([pad]);
   s.tick();
-  pad.buttons[(PAD_ACTION_BUTTONS.get('accept') || [0])[0]].pressed = true;
-  pad.buttons[(PAD_ACTION_BUTTONS.get('accept') || [0])[0]].value = 1;
+  const massline = padAction('massline');
+  const dock = padAction('dock');
+  massline.down(s.dom, pad);
   s.tick();
-  checkEqual(s.state.input.fire, false, 'gamepad A/Cross does not fire weapons');
-  checkEqual(s.state.input.actions.tetherFire, true, 'gamepad A/Cross latches the Massline in flight');
-  pad.buttons[(PAD_ACTION_BUTTONS.get('accept') || [0])[0]].pressed = false;
+  checkEqual(s.state.input.fire, false, 'the pad Line trigger does not fire weapons');
+  checkEqual(s.state.input.actions.tetherFire, true, 'the pad Line latches the Massline in flight');
+  massline.up(s.dom, pad);
   s.tick();
 
   s.state.ui.dockInRange = true;
-  pad.buttons[(PAD_ACTION_BUTTONS.get('accept') || [0])[0]].pressed = true;
-  pad.buttons[(PAD_ACTION_BUTTONS.get('accept') || [0])[0]].value = 1;
+  massline.down(s.dom, pad);
+  s.tick();
+  checkEqual(s.state.input.actions.tetherFire, true,
+    'the Line stays on the rope under the dock prompt — dock is its own button');
+  massline.up(s.dom, pad);
+  s.tick();
+  dock.down(s.dom, pad);
   s.tick();
   checkEqual(s.state.input.actions.tetherFire, false,
-    'an active dock prompt outranks the gamepad Massline thumb action');
-  pad.buttons[(PAD_ACTION_BUTTONS.get('accept') || [0])[0]].pressed = false;
+    'pressing dock with a station in reach cannot throw a line');
+  dock.up(s.dom, pad);
   s.state.ui.dockInRange = false;
   s.tick();
 }
@@ -815,7 +864,7 @@ const REQUIRED_PAD_ACTIONS = [
   const pad = makeFakePad();
   s.dom.setPads([pad]);
   s.tick();
-  pad.axes[0] = 0.9;
+  pad.axes[3] = -0.9; // twin-stick: the right stick aims off-nose and the helm chase turns
   s.tick();
   check(Math.abs(s.state.input.turnIntent) > 0.5, 'gamepad steers while enabled');
   s.state.settings.controls = s.state.settings.controls || {};
@@ -847,8 +896,10 @@ const TOUCH_MENU_VERBS = ['dock', 'localmap', 'missionLog', 'starmap', 'pause'];
     s.tick();
     const routed = busEvents.some((e) => e.type === 'touch:uiAction' && e.payload && e.payload.action === verb);
     check(routed, `touch "${verb}" emits an immediate UI intent so a tap cannot be lost`);
-    check(s.ctx.touch.actions[verb].pressed === true,
-      `touch "${verb}" also raises a polled pressed edge for the UI tick`);
+    // Menu verbs ride the uiAction event ONLY — a polled pressed edge would re-toggle the
+    // screen the tap just opened (legacyTouch.js isMenuAction). Assert it stays clear.
+    check(s.ctx.touch.actions[verb].pressed !== true,
+      `touch "${verb}" stays off the polled edge so one tap cannot open then instantly close`);
     s.dom.touchRelease(verb);
     s.tick();
   }
@@ -957,13 +1008,14 @@ function restoreSettings(payload, seed = createGameState(3)) {
   check(empty.controls.gamepad && empty.controls.touch,
     'a save with no controls block is normalized rather than left undefined');
 
-  // Old saves carry the retired ambient helm-assist default as a non-choice; that migrates once.
-  // A genuine pre-v2 world has no controlSchemeV2 flag on either side of the merge.
+  // Old saves carry an ambient scheme default as a non-choice; that migrates once onto
+  // whatever the current shipping default is (helm-assist under R17). A genuine pre-v2
+  // world has no controlSchemeV2 flag on either side of the merge.
   const preV2 = createGameState(3);
   delete preV2.settings.gameplay.controlSchemeV2;
   const legacy = restoreSettings({ gameplay: { controlScheme: 'helm-assist' } }, preV2);
-  checkEqual(legacy.gameplay.controlScheme, 'pilot',
-    'a pre-v2 ambient helm-assist save migrates to the pilot default');
+  checkEqual(legacy.gameplay.controlScheme, 'helm-assist',
+    'a pre-v2 ambient scheme save migrates to the shipping default');
   // An explicit v2 pick of the same scheme must survive.
   const explicit = restoreSettings({ gameplay: { controlScheme: 'helm-assist', controlSchemeV2: true } });
   checkEqual(explicit.gameplay.controlScheme, 'helm-assist',
