@@ -8,7 +8,8 @@
 //   2. Top centre — the Round Plate: small-caps `ROUND N` over the authored round name in the
 //      display face, plus hostiles left (`12 left`) or `NEXT ROUND` countdown between rounds.
 //      In a boss round, the lit Boss Machine-Plate takes this seat with a heavy segmented bar.
-//      Yields cleanly whenever a transient Stage round/boss banner holds the top-centre lane.
+//      The plate never leaves its seat: a transient round/boss banner, FIGHT word or clear tally
+//      is an event line one row BELOW it.
 //   3. Directly under the Round/Boss plate — the Chain, only while live: a multiplier (`×2`,
 //      `×3`, ...) that climbs visibly, a quiet "· Scrap" once that multiplier pays, and at
 //      most one short line in Madame Kiln's voice.

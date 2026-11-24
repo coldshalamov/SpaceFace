@@ -10,7 +10,7 @@
 // Event surface (all swarm-only, all gated on a live swarm-ruleset run):
 //   swarm:killPopup    { pos, word, cause, friendlyFire, score, credits, wave } — one per paid
 //                      kill; `word` is the live arena's vocabulary (row 481)
-//   swarm:announce     { kind, text, count } — DOUBLE/TRIPLE/QUAD/SWARM WIPE, PILE-UP ×N,
+//   swarm:announce     { kind, text, count } — DOUBLE/TRIPLE/QUAD/SWARM WIPE, Pile-up N,
 //                      COLLATERAL, REVENGE, CLOSE CALL, LAST ONE
 //   swarm:roundSlam    { wave, boss, newcomer } — "ROUND N" with the boss card + debut card
 //   swarm:roundClear   { wave, tally } — the count-up rows (FLAWLESS / SPEED / KILLS / CHAIN)
@@ -294,7 +294,7 @@ export const swarmJuice = {
 
   _onPlayerKill(victim, payload, cause, now) {
     // The multi-kill window: prune then count. 2 DOUBLE · 3 TRIPLE · 4 QUAD · 5+ SWARM WIPE;
-    // a window of nothing but physics kills is a PILE-UP ×N instead.
+    // a window of nothing but physics kills is a Pile-up N instead.
     this._recent.push({ t: now, cause });
     while (this._recent.length && now - this._recent[0].t > SWARM_MULTI_WINDOW_S) this._recent.shift();
     const count = this._recent.length;
@@ -343,7 +343,7 @@ export const swarmJuice = {
    * SWARM-07 B1 — a batched brood-kill receipt: one receipt per cause per tick from the Brood
    * engine. One popup per receipt (the presenter's pool is sized for 30+ bodies a minute, not
    * one per mite), the batch counted into the same multi-kill window as ship kills, so a
-   * 40-body wipe reads SWARM WIPE / PILE-UP ×N exactly as the room-kill grammar promises.
+   * 40-body wipe reads SWARM WIPE / Pile-up N exactly as the room-kill grammar promises.
    */
   _onBroodKills(payload) {
     const st = this.state;
@@ -599,7 +599,7 @@ export const swarmJuice = {
    * pays the zone's chain star when the zone's chain peak reached swarmZoneChainTarget — but the
    * instant the live chain crossed that line, nothing on the glass said so: the star you were
    * told to chase was only revealed on the results plate. Now the announcer calls it once per
-   * zone per run ("CHAIN STAR · ×12"), on a ladder run only (a Daily, a typed Custom seed, a
+   * zone per run ("Chain 12 — star"), on a ladder run only (a Daily, a typed Custom seed, a
    * mutator run or practice pays no stars, so it never claims one). The settle stays the only
    * writer of stars; this reads the same law at the moment it is met.
    */
