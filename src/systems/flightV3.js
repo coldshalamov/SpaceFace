@@ -100,6 +100,12 @@ const AUTOPILOT_BACKOUT_TICKS = 45;
 // A hull that has closed this many wu since it last made progress is not stalled, whatever its
 // speed reads — the check must never fire on a slow creep that is actually arriving.
 const AUTOPILOT_STALL_PROGRESS = 12;
+// The governed settle creep inside the berth lane runs at 0.9x the authored dock gate (see the
+// creepCap below). The dock-envelope brake has to open under that ceiling or the two laws meet
+// exactly at the gate and the hull hovers on it instead of docking (DEMO-BERTH-1).
+const AUTOPILOT_BERTH_BRAKE_FRACTION = 0.8;
+// Arrive INSIDE a berth's dock gate, not on it. See resolveAutopilotArrivalRadius.
+const AUTOPILOT_BERTH_ARRIVAL_FRACTION = 0.85;
 
 // MASSLINE flight-lane handoff. A sling tag does not grant speed: it only tells the assisted
 // governor that the current overspeed came from an external physics verb, so the governor may
@@ -1612,6 +1618,16 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     1,
   );
   let desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
+  // A berth run plans to ARRIVE at the berth's own dock gate, never faster. The berth pocket is a
+  // 20 wu disc with a 12 wu/s gate; a plan that aims the hull at it at cruise speed relies on the
+  // brake to make up the difference in the last few wu, and the counter-burn cannot: measured on
+  // the after-throw seat, the hull crossed the berth line at 10-12 wu/s while the plan still read
+  // "cruise", sailed 43 wu past the berth to 22 wu from the station centre, and the aim fell out
+  // of the berth stage behind it (DEMO-BERTH-1). Capping the plan at the gate makes the whole last
+  // stretch a controlled crawl that can stop inside the pocket.
+  if (target && target.dockingProxyId && target.dockingStage === 'berth') {
+    desiredSpeed = Math.min(desiredSpeed, positive(target.dockSpeedGate, 12));
+  }
   // Lane-locked berth runs report the distance to a blocker squarely ahead as a virtual arrival
   // point: pace to ~30 WU behind it rather than ram. Below ~20 WU/s the hold releases — a slow
   // contact is bounded, and parking forever behind a static hull in the lane is worse.
@@ -1674,8 +1690,15 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   // tangential orbit inside the capture volume — aligned with the avoidance vector, so neither
   // terminalBrake (approach-half only) nor headingCapture (needs misalignment) sustains the
   // stop. Sustain the counter-burn until under the berth gate instead of flickering at it.
+  //
+  // The trigger sits BELOW the gate, not at it. The governed settle creep is capped at 0.9x the
+  // gate; a brake that only bites above 1.0x can never hold a hull that is already creeping at
+  // that cap, so the two laws left the hull oscillating either side of the gate while it drifted
+  // straight through the berth pocket at ~12 wu/s (measured: 24.5 wu was the closest it ever got
+  // to a 20 wu dock gate, on a 70 s run). Braking at the creep's own ceiling keeps the approach
+  // monotone and under the gate instead of hovering on it (DEMO-BERTH-1).
   const dockEnvelopeBrake = target && target.dockingProxyId && target.dockingStage === 'berth'
-    && speed > positive(target.dockSpeedGate, 12);
+    && speed > positive(target.dockSpeedGate, 12) * AUTOPILOT_BERTH_BRAKE_FRACTION;
   const trafficBrake = trafficHold != null && speed > 20 && closingSpeed > 4
     && trafficHold <= stoppingDistance + 45;
   let shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake || trafficBrake;
@@ -1701,8 +1724,12 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   if (!stalled) autopilot._stallDist0 = dist;
   if (autopilot._stallTicks > AUTOPILOT_STALL_TICKS && !(autopilot._backoutTicks > 0)) {
     autopilot._backoutTicks = AUTOPILOT_BACKOUT_TICKS;
-    autopilot._avoidanceSide = -(finite(autopilot._avoidanceSide, 1) || 1);
+    // Flip after the clear, not before: clearAutopilotAvoidance zeroes _avoidanceSide, so the
+    // old order wrote the opposite side and then erased it — the "come round the other way"
+    // half of the escape was dead code (review of DEMO-BERTH-1).
+    const previousSide = finite(autopilot._avoidanceSide, 0) || 1;
     clearAutopilotAvoidance(autopilot, true);
+    autopilot._avoidanceSide = previousSide === 1 ? -1 : 1;
   }
   if (autopilot._backoutTicks > 0) {
     autopilot._backoutTicks -= 1;
@@ -1743,9 +1770,21 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
       // HARMONY-FIX 6: the corridor's capture tug no longer helps the autopilot park, so the creep
       // must sit under the berth's own dock-speed gate too, or the dock-envelope brake duty-cycles
       // at that gate for the whole last stretch.
-      const creepCap = target && target.dockingProxyId && target.dockingStage === 'berth'
-        ? Math.min(brakeFloor, positive(target.dockSpeedGate, 12) * 0.9)
-        : brakeFloor;
+      //
+      // The creep also TAPERS into the pocket. A flat cap is fine at 45 wu out and far too fast at
+      // 15: the berth's own dock prompt is a 20 wu disc, so a constant 9 wu/s crawl carries the
+      // hull straight through the aim point, out the far side, and back — measured as a 19 wu
+      // closest approach that then swung out to 51 wu and had to re-approach twice before it
+      // parked (DEMO-BERTH-1). Scaling the cap by how much room is left makes the last stretch a
+      // proper arrival: full creep while there is distance to cover, a crawl inside it.
+      const berthCreepTarget = target && target.dockingProxyId && target.dockingStage === 'berth'
+        ? positive(target.dockSpeedGate, 12) * 0.9
+        : Infinity;
+      const creepCapBase = Math.min(brakeFloor, berthCreepTarget);
+      const arrivalRoom = Math.max(0, dist - arrivalRadius);
+      const creepCap = Number.isFinite(berthCreepTarget)
+        ? Math.max(1.5, Math.min(creepCapBase, arrivalRoom * 0.55))
+        : creepCapBase;
       const settleFraction = Math.min(0.3, (creepCap * 0.8) / combatSpeed);
       const commanded = Math.hypot(Math.max(0, throttle), strafe);
       if (commanded > settleFraction) {
@@ -1932,7 +1971,13 @@ export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
   const requested = Number.isFinite(target && target.arrivalRadius)
     ? target.arrivalRadius
     : finite(autopilot && autopilot.arrivalRadius, 0);
-  if (target && target.dockingProxyId && requested > 0) return requested;
+  if (target && target.dockingProxyId && requested > 0) {
+    // A berth's arrival radius IS its public dock gate; parking the hull exactly on that radius
+    // leaves it 20.2 wu from a 20 wu prompt, so the computer let go with the prompt down and the
+    // pilot had to nudge in by hand (DEMO-BERTH-1). Come inside the gate before declaring the
+    // berth reached — the prompt is up first, then the hand-back.
+    return requested * (target.dockingStage === 'berth' ? AUTOPILOT_BERTH_ARRIVAL_FRACTION : 1);
+  }
   return Math.max(
     AUTOPILOT_ARRIVAL_RADIUS,
     requested,

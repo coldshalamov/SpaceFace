@@ -74,14 +74,38 @@ test('a body lying on the aim line is always dodged, and the dodge is bounded', 
 });
 
 test('the sidestep is sized to the body, not a fixed hard turn', () => {
-  // Same body, moved from 350 wu ahead to 60 wu ahead: the closer it is, the sharper the angle a
-  // hull needs to clear it in the distance left. A constant angle would ignore the difference.
-  const far = scene({ bodies: [body('blocker', 350, 26)] });
+  // Same body, moved from far ahead to close: the closer it is, the sharper the angle a hull needs
+  // to clear it in the distance left. A constant angle would ignore the difference.
+  //
+  // The far body must sit INSIDE the computer's lookahead. The first version of this check put it
+  // at 350 wu, which is beyond the rest lookahead of 180 — it measured 0° against 0°+1 and passed
+  // for the wrong reason (review of DEMO-BERTH-1). 150 wu is unmistakably in the cone at rest.
+  const far = scene({ bodies: [body('blocker', 150, 26)] });
   const near = scene({ bodies: [body('blocker', 60, 26)] });
   const farAngle = Math.abs(deflection(far));
   const nearAngle = Math.abs(deflection(near));
+  assert.ok(farAngle > 0.5, `the far body must be seen at all, got ${farAngle.toFixed(2)}°`);
   assert.ok(nearAngle > farAngle + 1,
     `a close blocker must demand a sharper sidestep than a distant one: near ${nearAngle.toFixed(1)}° vs far ${farAngle.toFixed(1)}°`);
+});
+
+test('the station itself, seen 200 wu out down the mouth bearing, is a proportionate sidestep', () => {
+  // The reviewer's missing case: a run that starts far enough out that the corridor mouth is
+  // beyond the near lookahead, so the STATION becomes the body in the road. Under the old
+  // unbounded linear sum this alone saturated the steer and bent the run off the mouth. It must
+  // now read as an ordinary obstacle: a real sidestep, inside the quarter-turn bound, that still
+  // closes on the aim.
+  const helios = {
+    id: 'helios', type: 'station', alive: true, radius: 42, collides: true,
+    pos: { x: 200, z: 0 }, vel: { x: 0, z: 0 },
+    data: { stationId: 'station_helios', dockRadius: 90, corridorBearingDeg: 180 },
+  };
+  const near = scene({ bodies: [helios] });
+  const g = computeAutopilotGuidance(near.state, near.player, near.target, near.distance, 20, {});
+  const angle = Math.abs(Math.atan2(g.z, g.x) * DEG);
+  assert.ok(angle <= 45.0001, `a station ahead stays inside the quarter-turn bound, got ${angle.toFixed(1)}°`);
+  assert.ok(g.x > 0.6, `the course still closes on the aim, got x=${g.x.toFixed(2)}`);
+  assert.equal(g.avoiding, true, 'a station in the road is still an obstacle to clear');
 });
 
 test('one hull beside the course cannot rotate a berth run off its aim by a wide margin', () => {

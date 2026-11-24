@@ -123,7 +123,24 @@ export function resolveAutopilotTarget(state, autopilot) {
       );
       const alignedWithLane = shipAlong > 0 && shipLateral <= wedgeHalfWidth;
       const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
-      const berthStage = !player || !player.pos || inLane
+      // The capture LANE is wide (0.42R) because it is a tug's work volume; the berth LINE is
+      // narrow. Committing to the terminal aim merely because the hull is somewhere in the lane
+      // told a hull 24 wu off the axis to fly at a berth on the axis with only 65 wu of runway
+      // left — it could not shed the offset at the dock gate's creep speed, sailed past the berth
+      // 24.5 wu wide of a 20 wu gate, and crossed the station core to 22 wu from the centre with
+      // the aim 65 wu behind it (DEMO-BERTH-1, 18:00-19:00 of the after-throw seat). A hull off
+      // the line stays on the corridor-mouth aim, which sits ON the axis, so it lines up first
+      // and then slides straight in.
+      const berthLineReach = Math.max(berthDockRadius, captureHalfWidth * 0.5);
+      const onBerthLine = shipLateral <= berthLineReach;
+      // A hull inside the capture volume is already at the berth. The approach stage's far-side
+      // orbit aim is a way to GET here from a bearing where the straight line crosses the station;
+      // once the hull is in the pocket it must never reclaim the course, because the orbit aim is
+      // RADIAL and sits at 1.5x its radius off the centre — measured at 237 wu on Helios, which is
+      // how a run that had closed to 24.5 wu from a 65 wu berth turned around and flew 190 wu back
+      // out (DEMO-BERTH-1). Inside the capture volume the berth anchor is the only aim.
+      const inCapture = !!(corridor && corridor.inCapture);
+      const berthStage = !player || !player.pos || inCapture || (inLane && onBerthLine)
         || (approachDistance <= approachSwitchRadius && alignedWithLane);
       // SF-130: the terminal anchor is the hull's own dock anchor — the deck berth when its
       // planar envelope clears the pocket, else the corridor-axis mooring standoff. Same

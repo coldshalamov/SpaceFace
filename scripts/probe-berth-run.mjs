@@ -137,14 +137,23 @@ async function runCase(spec) {
   console.log(`RESULT ${spec} range ${minD.toFixed(0)}..${maxD.toFixed(0)} furthestAim ${maxShipAim.toFixed(0)}`
     + ` dockInRange ${!!state.ui?.dockInRange} prompt ${promptAt == null ? 'never' : promptAt.toFixed(1) + 's'}`
     + ` docked ${docked}`);
+  // The dock PROMPT is not a dock. A run that ends holding the prompt, parked at the gate, is a
+  // good berth; it is still not "docked", and reporting the prompt as success is what let a run
+  // that never reached the gate read as done (review of DEMO-BERTH-1).
+  const heldGate = promptAt != null && Math.hypot(player.vel.x, player.vel.z) <= 12
+    && !!(state.ui?.dockInRange);
+  if (heldGate && !docked) console.log(`AT GATE ${spec} — prompt is up at ${Math.hypot(player.vel.x, player.vel.z).toFixed(1)} wu/s, hull never docked`);
   lane.host.bus.off?.('dock:range', onRange);
   if (state.ui) state.ui.dockInRange = false;
-  return { spec, minD, maxD, maxShipAim, docked, promptAt };
+  return { spec, minD, maxD, maxShipAim, docked, promptAt, heldGate };
 }
 
 const results = [];
 for (const spec of CASES.split(',').filter(Boolean)) results.push(await runCase(spec));console.log('\n== summary');
-for (const r of results) console.log(` ${r.spec}: ${r.docked ? 'DOCKED' : 'no dock'} min ${r.minD.toFixed(0)} max ${r.maxD.toFixed(0)} furthestAim ${r.maxShipAim.toFixed(0)}`);
+for (const r of results) {
+  const outcome = r.docked ? 'DOCKED' : r.heldGate ? 'at gate (prompt up, not docked)' : 'no dock';
+  console.log(` ${r.spec}: ${outcome} min ${r.minD.toFixed(0)} max ${r.maxD.toFixed(0)} furthestAim ${r.maxShipAim.toFixed(0)}`);
+}
 try { lane.host.registry.get('save')._suppressUnloadExitSave = true; } catch (_) { /* teardown */ }
 try { lane.shutdown(); } catch (_) { /* teardown */ }
 process.exit(0);
