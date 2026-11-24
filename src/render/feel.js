@@ -104,6 +104,8 @@ function recoilWeight(weaponId) {
   return Math.min(0.28, weight);
 }
 
+const RECOIL_BY_WEAPON = new Map();
+
 /**
  * Mass-scaled muzzle kick. Pure. motionReduce returns null so the fire listener can no-op
  * without touching FOV or trauma. Light repeaters stay under a degree; a torpedo shoves harder.
@@ -112,23 +114,29 @@ export function resolveKineticRecoil(weaponId, context = {}) {
   if (context.motionReduce) return null;
   if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
   if (context.mode && context.mode !== 'flight') return null;
-  const w = weaponRecord(weaponId);
-  const weight = recoilWeight(weaponId);
-  const mass = w && Number.isFinite(w.mass) ? Math.max(0, w.mass) : 0;
-  const massU = Math.min(1, mass / CRUNCH_MASS_REF);
-  const fov = Math.min(
-    CRUNCH_RECOIL_FOV_MAX,
-    RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * Math.min(1, weight / 0.2) + massU * 0.85,
-  );
-  const trauma = weight * 0.4 * (1 + massU * 0.65);
-  return Object.freeze({
-    weaponId: weaponId == null ? null : String(weaponId),
-    weight,
-    mass,
-    fov,
-    trauma,
-    stallsSim: false,
-  });
+  const key = weaponId == null ? null : weaponId;
+  let cached = RECOIL_BY_WEAPON.get(key);
+  if (!cached) {
+    const w = weaponRecord(weaponId);
+    const weight = recoilWeight(weaponId);
+    const mass = w && Number.isFinite(w.mass) ? Math.max(0, w.mass) : 0;
+    const massU = Math.min(1, mass / CRUNCH_MASS_REF);
+    const fov = Math.min(
+      CRUNCH_RECOIL_FOV_MAX,
+      RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * Math.min(1, weight / 0.2) + massU * 0.85,
+    );
+    const trauma = weight * 0.4 * (1 + massU * 0.65);
+    cached = Object.freeze({
+      weaponId: key == null ? null : String(key),
+      weight,
+      mass,
+      fov,
+      trauma,
+      stallsSim: false,
+    });
+    RECOIL_BY_WEAPON.set(key, cached);
+  }
+  return cached;
 }
 
 function kineticBody(weapon, payload = {}) {

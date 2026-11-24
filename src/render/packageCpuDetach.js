@@ -1398,6 +1398,26 @@ export function presentedCompressedUploadUnsafe(renderer, material) {
  * or rescan every material three times. No material cache: versions, slot
  * replacements, disposed GPU records, and orientation holds can change each draw.
  */
+function checkPresentedTextureSlot(texture, hold, properties) {
+  if (!texture) return false;
+  let missing = compressedMipsMissing(texture);
+  let detached = false;
+  if (texture.isTexture === true) {
+    if (missing && (restoreSharedCompressedMips(texture) || adoptManifestCompressedMips(texture))) {
+      missing = false;
+    }
+    detached = isPackageTextureDetached(texture);
+  }
+  if (hold && detached) return true;
+  const detachedUpload = detached
+    && texture.isRenderTargetTexture !== true && texture.isExternalTexture !== true;
+  if ((!missing && !detachedUpload) || !(texture.version > 0)) return false;
+  const props = properties && typeof properties.get === 'function'
+    ? properties.get(texture)
+    : null;
+  return !props || props.__version !== texture.version;
+}
+
 export function preparePresentedDraw(renderer, geometry, material) {
   const hold = !!(renderer && orientationHolds.has(renderer));
   let blocked = false;
@@ -1416,26 +1436,16 @@ export function preparePresentedDraw(renderer, geometry, material) {
   for (let i = 0; i < length; i++) {
     const mat = array ? material[i] : material;
     if (!mat) continue;
-    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
-      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
-      if (!texture) continue;
-      let missing = compressedMipsMissing(texture);
-      let detached = false;
-      if (texture.isTexture === true) {
-        if (missing && (restoreSharedCompressedMips(texture) || adoptManifestCompressedMips(texture))) {
-          missing = false;
-        }
-        detached = isPackageTextureDetached(texture);
-      }
-      if (hold && detached) blocked = true;
-      const detachedUpload = detached
-        && texture.isRenderTargetTexture !== true && texture.isExternalTexture !== true;
-      if ((!missing && !detachedUpload) || !(texture.version > 0)) continue;
-      const props = properties && typeof properties.get === 'function'
-        ? properties.get(texture)
-        : null;
-      if (!props || props.__version !== texture.version) blocked = true;
-    }
+    if (mat.map && checkPresentedTextureSlot(mat.map, hold, properties)) blocked = true;
+    if (mat.normalMap && checkPresentedTextureSlot(mat.normalMap, hold, properties)) blocked = true;
+    if (mat.roughnessMap && checkPresentedTextureSlot(mat.roughnessMap, hold, properties)) blocked = true;
+    if (mat.metalnessMap && checkPresentedTextureSlot(mat.metalnessMap, hold, properties)) blocked = true;
+    if (mat.aoMap && checkPresentedTextureSlot(mat.aoMap, hold, properties)) blocked = true;
+    if (mat.emissiveMap && checkPresentedTextureSlot(mat.emissiveMap, hold, properties)) blocked = true;
+    if (mat.lightMap && checkPresentedTextureSlot(mat.lightMap, hold, properties)) blocked = true;
+    if (mat.bumpMap && checkPresentedTextureSlot(mat.bumpMap, hold, properties)) blocked = true;
+    if (mat.displacementMap && checkPresentedTextureSlot(mat.displacementMap, hold, properties)) blocked = true;
+    if (mat.alphaMap && checkPresentedTextureSlot(mat.alphaMap, hold, properties)) blocked = true;
   }
   return blocked;
 }

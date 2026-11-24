@@ -293,6 +293,10 @@ export function createIndustrialDisasterView({
 
   function update(alpha = 1) {
     if (disposed) return;
+    if (state.world?.currentSectorId !== SITE.sectorId) {
+      root.visible = false;
+      return;
+    }
     meshReadView.update();
     workerView.update();
     const now = Number(state.simTime) || 0;
@@ -301,7 +305,7 @@ export function createIndustrialDisasterView({
       const next = workerView.isWorker() ? workerView.readModel() : getReadModel(state);
       if (next) { model = next; syncBodies(next); }
     }
-    root.visible = state.world?.currentSectorId === SITE.sectorId && !!model && !model.hidden;
+    root.visible = !!model && !model.hidden;
     if (!root.visible) return;
     readFrameOrigin(state, origin);
     a11y.reducedMotion = state.settings?.video?.motionReduce === true;

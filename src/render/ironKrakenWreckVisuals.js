@@ -12,8 +12,9 @@ const TAU = Math.PI * 2;
 let wreckMaterials = null;
 
 export function ironKrakenWreckProfileFor(entity) {
-  const data = entity?.data;
-  if (entity?.type !== 'wreck' || !data?.hulkVisual || data.fracturePiece
+  if (!entity || entity.type !== 'wreck') return null;
+  const data = entity.data;
+  if (!data?.hulkVisual || data.fracturePiece
     || data.collisionTearOff || data.arenaShardOf || data.fractureVisual?.partId) return null;
   return ironKrakenProfileFor(data.hulkVisual.lootTableId || data.hulkVisual.enemyTypeId);
 }
