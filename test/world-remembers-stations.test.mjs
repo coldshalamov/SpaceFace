@@ -211,6 +211,10 @@ for (const seed of [4242, 8008]) {
     assert.ok(stationConditionsFor(state, CERES).strike);
     const live = economy.quote(CERES, good, 'sell', 3);
     const list = state.economy.markets[CERES][good].lastSell;
+    // Helios sits outside the home sector this fixture warms, and quote() is stateless now —
+    // a berth's book mints on dock/settlement, not on a price read. Mint it the way arrival
+    // does so the remembered list has a live row to compare against.
+    economy.ensureMarket(HELIOS);
     economy.snapshotIntel(CERES);
     economy.snapshotIntel(HELIOS);
     const remembered = state.economy.marketIntel[CERES].snapshot[good].sell;
@@ -261,7 +265,7 @@ for (const seed of [4242, 8008]) {
     assert.ok(Math.abs(serviceUnitCr(state, SERVICE_PRICES.fuelCrPerUnit, 'refuel') - SERVICE_PRICES.fuelCrPerUnit * STATION_CONDITION_LAW.boom.serviceCostMult) < 1e-9);
     state.ui.dockedStationId = HELIOS;
     assert.equal(serviceUnitCr(state, base, 'repair'), base, 'another berth is at list');
-    assert.match(stationConditionLine(state, CERES), /The yard is flush/);
+    assert.match(stationConditionLine(state, CERES), /The yard is flush|Yard's flush today/);
 
     state.ui.dockedStationId = CERES;
     state.player.hull = 40;
@@ -464,7 +468,7 @@ for (const seed of [4242, 8008]) {
     swim.bus.emit('economy:oreFlood', { sectorId: 'sector_ceres_belt', pricePressure: -0.2, yieldU: 40, commodityId: 'cmdty_ore_iron' });
     assert.deepEqual(prose(swim.emitted), [], 'a Swarm round hears none of the berth lines');
     assert.equal(receiptsOf(swim.emitted, 'station:boom').length, 1, 'the boom itself still settles and posts its receipt');
-    assert.match(stationConditionLine(swim.state, CERES), /The yard is flush/,
+    assert.match(stationConditionLine(swim.state, CERES), /The yard is flush|Yard's flush today/,
       'the condition is real; only the unsolicited line is withheld');
   });
 }
