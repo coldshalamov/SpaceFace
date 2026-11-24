@@ -93,7 +93,7 @@ test('two pile-ups keep their calls without slowing the world', () => {
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   advance(h, DT);
   assert.deepEqual(h.effects.describeRequests(), {});
-  const texts = named(h, 'swarm:announce').map((e) => e.payload.text).filter((t) => t.startsWith('PILE-UP'));
+  const texts = named(h, 'swarm:announce').map((e) => e.payload.text).filter((t) => t.startsWith('Pile-up'));
   assert.ok(texts.length >= 2, 'the count still climbs — presentation, not silence');
   swarmJuice.destroy();
 });
