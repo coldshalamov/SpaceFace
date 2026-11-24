@@ -568,10 +568,12 @@ test('an unwitnessed leg still completes abstractly when no hull ever manifested
   try {
     const { state } = sim;
     // Suppress physical manifestation before the leg exists — the same case as the player being
-    // out-of-sector for the whole transit, only synchronous.
+    // out-of-sector for the whole transit, only synchronous. Refuse hulls only: sliced sector
+    // entry (8866948964) now materializes stations and rocks on ticks inside this window, and a
+    // refused world body is not what "no hull manifested" means.
     const helpers = sim.helpers;
     const spawnEntity = helpers.spawnEntity;
-    helpers.spawnEntity = () => null;
+    helpers.spawnEntity = (spec) => (spec && spec.type === 'ship' ? null : spawnEntity(spec));
     const body = commissionRelay(sim);
     sim.runTicks(120);
     const convoy = body.spec.convoy;

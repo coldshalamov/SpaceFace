@@ -3,8 +3,8 @@
 // The staged run is an ordinary opening-sector route measured on this seed (seed 4242):
 // station_helios (trade hub) -> station_coalition (military) in cmdty_provisions on the starter
 // Hitch, sold in 25-u tranches with the market relaxing between them. Measured nets through the
-// real trade owners: full 250-u hold (175 t aboard) nets +2,207 cr at -67% thrust; the 50-u
-// manifest nets +1,354 cr at -24% thrust. Heavy buys money and loses the escape window — the
+// real trade owners: the slot-bound full hold (240 u, 168 t aboard) nets +6,055 cr at -66% thrust;
+// the 50-u manifest nets +1,737 cr at -24% thrust. Heavy buys money and loses the escape window — the
 // packet's outcome, pinned. Every clause runs through the live owners:
 //   * money      — economy.execute buy/sell (credits writer + cargo single writer addCargo)
 //   * mass       — cargo.usedMass -> ships.getDerivedStats -> MASS_LOAD_LAW (the one carrier)
@@ -32,7 +32,7 @@ const DT = 1 / 60;
 const HERE = 'station_helios';
 const THERE = 'station_coalition';
 const RUN_GOOD = 'cmdty_food';
-const HEAVY_UNITS = 250;   // the volume-bound full hold (volPerU 1.0, cap 250) — the staged heavy run
+const HEAVY_UNITS = 240;   // the slot-bound full hold: cap 250 -> 12 slots x 20-stack (CARGO-BUILD-1)
 const LIGHT_UNITS = 50;    // the lighter manifest of the same run: less money, more ship left
 const TRANCHE = 25;        // units per sale tranche (the dump-the-lot pricing is not the run)
 const RELAX_MIN = 30;      // econ minutes between tranches (stock drifts back toward demand)
@@ -174,12 +174,12 @@ test('the route preflight prints the load mass and the thrust the mass law takes
   const trades = computeBestTrades(state, HERE);
   const heavy = trades.find((t) => t.cmdtyId === RUN_GOOD && t.destStation === THERE);
   assert.ok(heavy, 'the measured heavy run must be among the routes the market preflights');
-  // Measured on this seed: 250 u of provisions = 175 t on the Hitch (designMass 35) -> -67% thrust.
+  // Measured on this seed: 240 u of provisions = 168 t on the Hitch (designMass 35) -> -66% thrust.
   assert.equal(heavy.loadUnits, HEAVY_UNITS);
-  assert.equal(heavy.loadMassT, 175);
-  assert.equal(heavy.loadThrustPct, 67);
+  assert.equal(heavy.loadMassT, 168);
+  assert.equal(heavy.loadThrustPct, 66);
   const card = formatRouteCard(heavy);
-  assert.match(card.sub, /\+175 t → -67% thrust/);
+  assert.match(card.sub, /\+168 t → -66% thrust/);
   // The printed number is the flown number: the same load factor the loaded hull flies with.
   const loaded = makeShipEntitySpec(KESTREL.id, { player: {
     ...state.player,
@@ -187,7 +187,7 @@ test('the route preflight prints the load mass and the thrust the mass law takes
       usedVolume: HEAVY_UNITS, usedMass: HEAVY_UNITS * 0.7 },
   } });
   const flownLoad = loaded.data.derived.propulsion.massLoadFactor;
-  assert.ok(flownLoad < 1, 'a 175 t load must bend the hull');
+  assert.ok(flownLoad < 1, 'a 168 t load must bend the hull');
   assert.equal(heavy.loadThrustPct, Math.round((1 - flownLoad) * 100),
     'preflight print and flown mass law must be one number');
 });
@@ -202,8 +202,8 @@ test('the staged heavy run beats the light manifest on credits through the real 
   assert.ok(lightRun.net > 0, `the light run must be profitable (net ${lightRun.net})`);
   assert.ok(heavyRun.net > lightRun.net,
     `full hold must out-earn the lighter manifest of the same run: ${heavyRun.net} vs ${lightRun.net}`);
-  assert.equal(heavyRun.thrustPct, 67, 'the heavy money rides the heavy load');
-  // The heavy hold really rode the honest carrier: cargo's mass cache holds 175 t.
+  assert.equal(heavyRun.thrustPct, 66, 'the heavy money rides the heavy load');
+  // The heavy hold really rode the honest carrier: cargo's mass cache holds 168 t.
   const reloaded = bootState();
   const inst = bootEconomy(reloaded);
   inst.execute(HERE, RUN_GOOD, 'buy', HEAVY_UNITS);
@@ -248,13 +248,13 @@ test('the heavy manifest measurably changes the flown outcome: slower sprint, sm
     `the unloaded pursuer must be gaining on the heavy runner (gap delta ${heavyGap.toFixed(1)} WU)`);
 });
 
-test('mass never becomes a second capacity: the hold gates on volume alone', () => {
+test('mass never becomes a second capacity: the hold gates on slots alone', () => {
   const state = bootState();
   bootEconomy(state);
-  // Weapon Systems: volPerU 0.9 fits 277 u in the 250 u hold; at massPerU 1.5 that is ~416 t
-  // on an 18 t hull — absurdly overweight, and the hold must still accept every volume-fit unit.
+  // Weapon Systems: the slot law admits 240 u (12 slots x 20-stack); at massPerU 1.5 that is
+  // 360 t on an 18 t hull — absurdly overweight, and the hold must still accept every slot-fit unit.
   const accepted = addCargo(state, 'cmdty_weapons', 400);
-  assert.ok(accepted > 0, 'an overweight-but-volume-fit load is not refused');
+  assert.equal(accepted, 240, 'an overweight-but-slot-fit load is not refused');
   assert.ok(state.player.cargo.usedVolume <= state.player.cargo.capVolume + 1e-6);
   assert.ok(state.player.cargo.usedMass > KESTREL.designMass, 'the accepted load is far past design mass');
   // The preflight names the cost instead of gating it — and with the hold volume-full nothing
@@ -280,10 +280,11 @@ test('the preflight forecast reads the current hold, not the stale docked derive
   const route = trades.find((t) => t.cmdtyId === RUN_GOOD);
   assert.ok(route, 'the measured run is listed from the loaded hold');
   // The forecast base must be dryMass (18 t) + the writer's current 150 t, not the stale 18 t
-  // block: 160 hold-bound units of provisions add 112 t -> 280 t total -> load law floor 0.30.
+  // block: the slot law sizes the plan — 5 weapons stacks leave 7 slots -> 140 u of provisions
+  // adds 98 t -> 266 t total -> load law floor 0.30.
   // Reading the stale block instead would print -60% (130 t) and understate the cost.
-  assert.equal(route.loadUnits, 160, 'the load plan sizes by the hold the writer actually holds');
-  assert.equal(route.loadMassT, 112);
+  assert.equal(route.loadUnits, 140, 'the load plan sizes by the hold the writer actually holds');
+  assert.equal(route.loadMassT, 98);
   assert.equal(route.loadThrustPct, 70, 'the printed thrust includes the unflushed mass aboard');
   // The refreshed truth agrees with the projection: same number the block would flush to.
   refreshPlayerEntity(state);
@@ -295,5 +296,5 @@ test('the preflight forecast reads the current hold, not the stale docked derive
       cargo: { ...state.player.cargo, usedMass: state.player.cargo.usedMass + route.loadMassT },
     } }).data.derived.propulsion.massLoadFactor) * 100),
     'projection and a real re-derive over the same manifest are one number');
-  assert.ok(Math.abs(projectedTotal - 280) < 1e-6);
+  assert.ok(Math.abs(projectedTotal - 266) < 1e-6);
 });

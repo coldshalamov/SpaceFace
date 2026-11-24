@@ -3,10 +3,16 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { allRegionalPressureRecipes } from '../src/economy/regionalSupply.js';
 import { economy } from '../src/systems/economy.js';
 
-const REGIONAL_RECIPES = Object.values(allRegionalPressureRecipes()).flat();
+// ECON-BUILD-1 note: the closed-form market model deleted the old tick's per-listing cycle
+// pass this file used to measure — `state.economy.cycles`, `applyRegionalSupply`,
+// `recomputeLivePrices`-as-listing-pass, and `recordLivePriceHistory` are gone. Regional
+// pressure recipes now only gate which listings a station mints; periodic stock work is
+// authored conveyor lines through the same applyStockPressure single-writer path every
+// other write takes, so there is no second derived pass to coalesce. What survives to
+// measure is the demand-projection share: one refresh pass must not re-derive the sector
+// signal per listing.
 
 function bootPopulatedEconomy(seed = 0xEC07_A11) {
   const sim = createSimulation({ seed, systems: [economy] });
@@ -19,101 +25,27 @@ function bootPopulatedEconomy(seed = 0xEC07_A11) {
   return { sim, state, econ };
 }
 
-function economySnapshot(state) {
-  return JSON.parse(JSON.stringify(state.economy));
-}
-
-function installLegacyRegionalSupply(econ) {
-  econ.applyRegionalSupply = function legacyRegionalSupply(tickDt) {
-    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
-    if (!(minuteShare > 0)) return;
-    for (const recipe of REGIONAL_RECIPES) {
-      if (!recipe.stationId || !(recipe.units > 0)) continue;
-      this.applyStockPressure(
-        recipe.stationId,
-        recipe.commodityId,
-        recipe.role === 'consume' ? 'buy' : 'sell',
-        recipe.units * minuteShare,
-      );
-    }
-  };
-}
-
-test('regional pressure shares the economy tick derived pass without changing state', () => {
-  const optimized = bootPopulatedEconomy();
-  const legacy = bootPopulatedEconomy();
-  installLegacyRegionalSupply(legacy.econ);
-  const boundaryRecipe = REGIONAL_RECIPES.find((recipe) =>
-    optimized.state.economy.cycles[recipe.stationId]?.[recipe.commodityId]);
-  assert.ok(boundaryRecipe, 'expected one regional listing with a live cycle');
-  for (const run of [optimized, legacy]) {
-    run.state.economy.cycles[boundaryRecipe.stationId][boundaryRecipe.commodityId].regimeEndT = 15;
-  }
-  const missingCycleRecipe = REGIONAL_RECIPES.find((recipe) =>
-    recipe !== boundaryRecipe
-    && optimized.state.economy.cycles[recipe.stationId]?.[recipe.commodityId]);
-  assert.ok(missingCycleRecipe, 'expected another regional listing for lazy cycle creation');
-  for (const run of [optimized, legacy]) {
-    delete run.state.economy.cycles[missingCycleRecipe.stationId][missingCycleRecipe.commodityId];
-  }
-
-  let insideRegionalSupply = false;
-  let regionalLivePriceRefreshes = 0;
-  let regionalLiveHistoryRefreshes = 0;
-  const applyRegionalSupply = optimized.econ.applyRegionalSupply;
-  const recomputeLivePrices = optimized.econ.recomputeLivePrices;
-  const recordLivePriceHistory = optimized.econ.recordLivePriceHistory;
-  optimized.econ.applyRegionalSupply = function measuredRegionalSupply(...args) {
-    insideRegionalSupply = true;
-    try {
-      return applyRegionalSupply.apply(this, args);
-    } finally {
-      insideRegionalSupply = false;
-    }
-  };
-  optimized.econ.recomputeLivePrices = function measuredLivePrices(...args) {
-    if (insideRegionalSupply) regionalLivePriceRefreshes++;
-    return recomputeLivePrices.apply(this, args);
-  };
-  optimized.econ.recordLivePriceHistory = function measuredLiveHistory(...args) {
-    if (insideRegionalSupply) regionalLiveHistoryRefreshes++;
-    return recordLivePriceHistory.apply(this, args);
-  };
-
-  optimized.state.simTime = 15;
-  legacy.state.simTime = 15;
-  optimized.econ.econTick(5, optimized.state);
-  legacy.econ.econTick(5, legacy.state);
-
-  assert.equal(regionalLivePriceRefreshes, 0,
-    'regional stock pressure must not recompute a quote that the owning listing pass immediately replaces');
-  assert.equal(regionalLiveHistoryRefreshes, 0,
-    'regional stock pressure must record its observation in the owning listing pass');
-  assert.deepEqual(economySnapshot(optimized.state), economySnapshot(legacy.state),
-    'coalescing derived work must preserve stock, quotes, history, cycles, clocks, events, and RNG state');
-});
-
-test('one economy tick reuses demand projections for matching sector listings', () => {
+test('one refresh pass reuses one demand projection for matching sector listings', () => {
   const { state, econ } = bootPopulatedEconomy(0xEC07_A12);
   const refreshListingDemand = econ.refreshListingDemand;
-  const seenProjectionCaches = new Set();
+  const projectorsPerStation = new Map();
   let listingRefreshes = 0;
-  econ.refreshListingDemand = function measuredDemandRefresh(...args) {
+  econ.refreshListingDemand = function measuredDemandRefresh(entry, def, stationId, info, projector) {
     listingRefreshes++;
-    const projectionCache = args[4];
-    if (projectionCache instanceof Map) seenProjectionCaches.add(projectionCache);
-    return refreshListingDemand.apply(this, args);
+    if (typeof projector === 'function') {
+      if (!projectorsPerStation.has(stationId)) projectorsPerStation.set(stationId, new Set());
+      projectorsPerStation.get(stationId).add(projector);
+    }
+    return refreshListingDemand.apply(this, arguments);
   };
 
-  state.simTime = 5;
-  econ.econTick(5, state);
+  econ.refreshAllPersistentDemand();
 
-  assert.equal(seenProjectionCaches.size, 1,
-    'the listing pass must share one tick-local demand projection cache');
-  const [projectionCache] = seenProjectionCaches;
-  const projectionCount = [...projectionCache.values()]
-    .reduce((sum, sectorCache) => sum + sectorCache.size, 0);
-  assert.ok(projectionCount > 0);
-  assert.ok(projectionCount < listingRefreshes,
-    `expected fewer sector/commodity projections than ${listingRefreshes} listing refreshes`);
+  assert.ok(listingRefreshes > 0, 'the persistent refresh touches real listings');
+  assert.ok(projectorsPerStation.size > 0, 'the refresh runs through the shared projection seam');
+  for (const [stationId, projectors] of projectorsPerStation) {
+    assert.equal(projectors.size, 1,
+      `station ${stationId} must share one pass-local sector projection across its listings`);
+  }
 });
+

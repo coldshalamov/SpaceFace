@@ -2155,12 +2155,16 @@ export const economy = {
     const state = this.state;
     const market = state && state.economy && state.economy.markets && state.economy.markets[stationId];
     if (!market) return false;
+    // One sector-signal snapshot serves the whole pass — the mint path shares its projector the
+    // same way, so a board refresh cannot read a sector state that shifted mid-pass.
+    const info = stationInfo(state, stationId);
+    const projectDemand = createSectorDemandProjector(state, info && info.sectorId);
     let changed = false;
     for (const cid in market) {
       const entry = market[cid];
       const def = commodityDef(state, cid);
       if (!entry || !def) continue;
-      const listingChanged = this.refreshListingDemand(entry, def, stationId);
+      const listingChanged = this.refreshListingDemand(entry, def, stationId, info, projectDemand);
       if (listingChanged) this._stampEntryQuote(entry, def, stationId, cid);
       changed = listingChanged || changed;
     }

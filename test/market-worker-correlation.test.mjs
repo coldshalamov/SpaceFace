@@ -6,6 +6,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
 import { applyDomainPathUpdate, createDomainMirroringProfile } from '../scripts/lib/simReadModel.mjs';
 import { consumeStationTradeReceipt, tradeClearedReceipt, TRADE_EXPECTATION_KEY } from '../src/ui/station/tradeReceipt.js';
+import { addCargo } from '../src/systems/cargo.js';
 
 const GOOD = 'cmdty_ore_iron', STATION = 'station_helios';
 
@@ -90,8 +91,10 @@ test('worker partial receipt preserves six of ten confirmed before the warm ledg
     }
     const confirmed = economy.quote(STATION, GOOD, 'buy', 10);
     assert.equal(confirmed.ok, true); assert.equal(confirmed.qty, 10);
-    const volume = state.player.cargo.usedVolume / state.player.cargo.items[GOOD];
-    state.player.cargo.capVolume = state.player.cargo.usedVolume + 6 * volume;
+    // Slot law (CARGO-BUILD-1): capacity is slots, not a volume edge. One partial iron stack
+    // (14/20, six free) plus eleven full slots elsewhere admits exactly six more units.
+    addCargo(state, GOOD, 6);
+    addCargo(state, 'cmdty_food', 220);
     const intentId = 'market:partial-after-eight';
     const expectation = { intentId, stationId: STATION, commodityId: GOOD, side: 'buy', qty: 10,
       total: confirmed.total, atSimTime: mirror.simTime, afterSequence: mirror.player.tradeLedger[0]?.tradeSequence || 0 };
