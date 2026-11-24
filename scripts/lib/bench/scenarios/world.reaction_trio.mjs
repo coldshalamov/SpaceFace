@@ -51,6 +51,8 @@ import { realPathProof } from '../realPath.mjs';
 import { SECTOR_ANCHORS } from '../../../../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../../../../src/data/sectorCoordinates.js';
 import { frameToGlobal } from '../../../../src/core/coordinates.js';
+import { protectedStationAt } from '../../../../src/ai/engagementAuthority.js';
+import { zoneAt } from '../../../../src/data/sectorZones.js';
 
 const DT = 1 / 60;
 const SECTOR_ID = 'sector_helios_prime';
@@ -237,11 +239,33 @@ export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
   // player kills something in a patrol's sight"), and it is also the branch `_handleDamage` routes
   // to `_openIncident` for a protected civilian. Both hulls are real, through the real ship factory.
   const attacker = h.player;
-  standPlayerOff(state, attacker, station.pos, 120, 40);
+
+  // Lawfuls hold the protection volume's lanes and edge now, not the dock apron — an apron kill is
+  // never inside a real patrol's 450 WU sight. Stage beside the live patrol instead: both hulls go
+  // where a lawful actually is (inside Helios's origin-anchored jurisdiction and the named zone,
+  // verified through the production seams, not assumed). A sector with no lawful in reach falls
+  // back to the apron and lets witnessPresentAtDeath report the truth.
+  const nearestLawful = () => {
+    const lawfuls = live(state).filter((e) => e && e.data && e.data.ai && e.data.ai.lawful);
+    lawfuls.sort((a, b) => dist(a.pos, station.pos) - dist(b.pos, station.pos));
+    return lawfuls[0] || null;
+  };
+  const patrol = nearestLawful();
+  const killPos = { x: station.pos.x + 200, z: station.pos.z + 90 };
+  if (patrol) {
+    const dx = station.pos.x - patrol.pos.x, dz = station.pos.z - patrol.pos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const staged = { x: patrol.pos.x + (dx / len) * 200, z: patrol.pos.z + (dz / len) * 200 };
+    if (protectedStationAt(state, { pos: staged }) && zoneAt(SECTOR_ID, staged.x, staged.z)) {
+      killPos.x = staged.x;
+      killPos.z = staged.z;
+    }
+  }
+  standPlayerOff(state, attacker, killPos, 120, 40);
   runtime.runTicks(120, DT); // let the sector settle around the player's real position
 
   const victim = runtime.spawn(makeShipEntitySpec('ship_mule', {
-    pos: { x: station.pos.x + 200, z: station.pos.z + 90 }, team: 2, factionId: 'faction_scn', fittings: [],
+    pos: killPos, team: 2, factionId: 'faction_scn', fittings: [],
   }));
   victim.data.trafficRole = 'hauler';
   victim.data.role = 'hauler';
@@ -628,6 +652,11 @@ export async function clauseWreckDrift(seed, { stimulus = true, collisionClear =
       }
       if (victim.alive !== false) throw new Error('world.reaction_trio: combat did not kill wreck victim');
     }
+    // 130ca11646: the kill-wreck mint drains on the deferred spawn lane (the step's
+    // lifetimeSweep owns it). This harness reads the bound wreck between steps, so it must
+    // materialize the owed spawn exactly where the sweep would — before _resolveBoundWreck
+    // and before the coast loop's first physics pass can admit a record we never observed.
+    withFeatures(runtime, () => runtime.getHelpers().drainEntitySpawnJobs());
     const aftermath = runtime.getSystem('aftermathWrecks');
     wreck = marker ? aftermath._resolveBoundWreck(marker.markerId) : null;
     const wreckId = wreck?.id, wreckGeneration = wreck?.occupantGeneration;
