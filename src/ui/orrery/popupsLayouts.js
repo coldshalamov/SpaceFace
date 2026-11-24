@@ -25,6 +25,13 @@ const CSS = `
   font-variation-settings:normal !important; letter-spacing:-.01em !important; }
 .sf-find .sf-find__kind { color:var(--dp-phos); }
 
+/* The sheet's keys speak like every other key: the reading face, sentence case, 8px corners. */
+.sf-drawer--entity :is(.sf-drawer__verb, .sf-drawer__x) {
+  text-transform:none !important; letter-spacing:0 !important;
+  font-family:var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif !important; }
+.sf-drawer--entity .sf-drawer__verb { font-size:14px !important; font-weight:600 !important; border-radius:8px !important; }
+.sf-drawer--entity .sf-drawer__x { border-radius:8px !important; }
+
 /* Search has one listening field, one result ladder and a fixed key legend. */
 .sf-find .sf-find__pane {
   display: flex; flex-direction: column; box-sizing: border-box; width: min(620px, calc(100% - 24px));
@@ -100,7 +107,7 @@ const CSS = `
   position: relative; bottom: auto; flex: 0 0 auto; min-height: 0; max-height: 50vh;
   background: transparent; box-shadow: none;
   box-sizing: border-box; overflow-y: auto; scroll-padding-block: 8px;
-  margin: 18px 36px 0 clamp(20px, 3vw, 40px);
+  margin: 18px 36px 0 max(14px, calc(clamp(20px, 3vw, 40px) - 6px));
   /* The rail scrolls, so it clips: keep a few px of side room so a key focus ring is not cut flat along the rail edges. */
   padding-left: 6px; padding-right: 6px;
 }
@@ -137,8 +144,8 @@ const CSS = `
 @media (min-width: 641px) and (max-width: 1100px) {
   .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
   .sf-drawer--entity .sf-drawer__deck { padding-left: 32px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 32px; column-gap: 10px; }
-  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 26px; column-gap: 10px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 16px; letter-spacing: 0; }
 }
 
 /* Short desktop: keep the compact record, but reserve the footer through normal flex layout.
@@ -165,7 +172,7 @@ const CSS = `
   .sf-drawer--entity .sf-entity-link--row { padding: 5px 2px 5px 0; font-size: 14px; }
   .sf-drawer--entity > .sf-drawer__apron {
     position: relative; left: auto; right: auto; bottom: auto;
-    z-index: 2; margin: 8px 28px 0 32px; height: auto; box-sizing: border-box;
+    z-index: 2; margin: 8px 28px 0 26px; height: auto; box-sizing: border-box;
     padding-top: 10px; padding-bottom: 10px;
   }
   .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 14px 0 12px; }
@@ -174,7 +181,7 @@ const CSS = `
 /* Wider short frames retain the same content and action inset. */
 @media (min-width: 1101px) and (max-height: 560px) {
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 40px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 40px; margin-right: 28px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 34px; margin-right: 28px; }
 }
 
 /* Focus lands on the sheet itself (entityLinks); the deck, rungs and verbs keep their own marks,

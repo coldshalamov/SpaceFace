@@ -11,11 +11,10 @@ export const PILOT_CARDS_CSS = `
   gap:clamp(14px, 3vh, 26px); width:100%; height:100%; padding:clamp(18px, 4vh, 44px) 24px;
   color:var(--pc-ink); font-family:var(--dp-face-read, var(--sf-data-face, system-ui, sans-serif)); }
 .pc-screen { flex:1 1 auto; align-self:stretch; width:100%; height:100%; }
-.pc--screen { background:
-  radial-gradient(ellipse 72% 62% at 50% 52%, rgb(8 10 14 / .30), rgb(3 4 7 / .72) 80%),
-  linear-gradient(180deg, rgb(3 4 7 / .45), rgb(3 4 7 / .7)); }
-.pc--overlay { position:fixed; inset:0; z-index:60; height:auto; background:
-  radial-gradient(ellipse 72% 62% at 50% 54%, rgb(8 10 14 / .30), rgb(3 4 7 / .72) 80%); }
+/* One flat dim over the paused fight. It was a radial pool with a vertical ramp, which darkened the
+   middle of the frame less than its edges for no reason the cards needed. */
+.pc--screen, .pc--overlay { background:rgb(5 6 8 / .8); }
+.pc--overlay { position:fixed; inset:0; z-index:60; height:auto; }
 
 .pc__head { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
 .pc__kicker { font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
@@ -25,10 +24,13 @@ export const PILOT_CARDS_CSS = `
 .pc__sub { margin:0; font-size:15px; color:var(--pc-dim); }
 
 .pc__hand { display:flex; justify-content:center; align-items:stretch; gap:clamp(12px, 1.6vw, 22px); width:100%; max-width:1080px; }
+/* A card is as tall as its words. It used to be pinned at 250–310px whatever it held, so a card with
+   a one-line description had a 100px hole between the description and its Take key. The row stretches
+   every card to the tallest one, which keeps the three key rows on one line. */
 .pc__card { --pc:#f2b950; --pc-bar:var(--pc);
-  position:relative; box-sizing:border-box; flex:1 1 0; min-width:0; max-width:340px; min-height:clamp(250px, 38vh, 310px);
-  display:grid; grid-template-rows:auto auto 1fr auto; row-gap:10px; justify-items:start; text-align:left;
-  padding:16px 18px 14px; cursor:pointer; color:inherit; font:inherit; border:1px solid rgb(255 255 255 / .1); border-radius:10px;
+  position:relative; box-sizing:border-box; flex:1 1 0; min-width:0; max-width:340px; min-height:0;
+  display:grid; grid-template-rows:auto auto 1fr auto; row-gap:8px; justify-items:start; text-align:left;
+  padding:20px 20px 18px; cursor:pointer; color:inherit; font:inherit; border:1px solid rgb(255 255 255 / .1); border-radius:10px;
   background:#16161a;
   box-shadow:none;
   transition:border-color 140ms ease-out, background-color 140ms ease-out;

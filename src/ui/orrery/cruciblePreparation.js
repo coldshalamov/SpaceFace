@@ -134,7 +134,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     tab.addEventListener('click', () => show(i));
     tablist.appendChild(tab); return tab;
   });
-  const nextStep = make('span', 'orr-prep-nextstep', '03 REVIEW EQUIPMENT');
+  const nextStep = make('span', 'orr-prep-nextstep', '03 Review equipment');
   const summary = make('p', 'orr-prep-summary', '');
   const stakeNumbers = [];
   nav.append(tablist, nextStep, summary); root.insertBefore(nav, stage);
@@ -242,7 +242,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     const purseBits = startsAtZero ? ' · 0 Scrap to start'
       : isSwarm ? ` · ${purse.toLocaleString('en-US')} cr to spend` : '';
     summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} · ${state.arenaLabel || 'Arena'} · ${loadout.hull.name}${purseBits}`;
-    nextStep.textContent = isSwarm ? '03 REVIEW EQUIPMENT' : '03 LAUNCH';
+    nextStep.textContent = isSwarm ? '03 Review equipment' : '03 Launch';
     if (isSwarm) enter.textContent = 'Review equipment →';
     // The purse is a mechanical counter: it rolls to the new stake and settles. Non-swarm terms
     // have no number to roll, so they arrive as plain readings.

@@ -244,7 +244,7 @@ ${T} .con-cost dt { align-self:end; }
     border-top:1px solid rgb(${BONE} / .18) !important; }
   ${T} > .k-corner.con-corner .con-read { flex:1 1 0; align-items:flex-start; }
   ${T} .con-read__n { font-size:clamp(26px, 7.4vw, 34px); }
-  ${T} .con-read__w { max-width:none; text-align:left; letter-spacing:.16em; }
+  ${T} .con-read__w { max-width:none; text-align:left; letter-spacing:0; }
   /* the dial's radius is bound by the width (its side names need ~150px each), so the sky's height
      follows the width too: 86vw left ~80px of empty sky over and under the dial at 600–744 wide */
   ${T} > .k-stage.con-stage { grid-area:stage; height:clamp(380px, calc(100vw - 190px), 620px); margin:0 -18px; }
@@ -255,7 +255,7 @@ ${T} .con-cost dt { align-self:end; }
   ${T} > .con-side::before { inset:-12px -18px; }
   ${T} .con-dossier__name { font-size:clamp(24px, 7vw, 32px); }
   ${T} > .k-foot.con-foot { position:sticky; bottom:0; flex-wrap:wrap; align-items:flex-end; row-gap:4px; column-gap:18px; margin:0 -18px; padding:10px 18px max(10px, env(safe-area-inset-bottom));
-    background:rgb(4 6 9) !important; box-shadow:0 -22px 22px -6px rgb(4 6 9 / .92); } /* opaque: at .97 the reading's REQUIRES ghosted through Back */
+    background:rgb(6 6 7) !important; box-shadow:0 -22px 22px -6px rgb(6 6 7 / .92); } /* opaque: at .97 the reading's REQUIRES ghosted through Back */
 }
 /* too narrow for the dial to stand (it needs 360px of sky): the node list takes its place, as a
    field beside Back in the docked foot, and the zoom reading it would report sleeps with it */
@@ -272,7 +272,7 @@ ${T} .con-cost dt { align-self:end; }
 @media (min-width:761px) and (max-width:1500px) {
   ${T} > .k-corner.con-corner { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:space-between; column-gap:12px !important; row-gap:0 !important; }
   ${T} > .k-corner.con-corner .con-read { align-items:flex-end; }
-  ${T} .con-read__w { max-width:none; white-space:normal; text-align:right; letter-spacing:.16em; }
+  ${T} .con-read__w { max-width:none; white-space:normal; text-align:right; letter-spacing:0; }
   ${T} .con-cost dt, ${T} .con-cost__sub { min-width:0; white-space:normal; overflow-wrap:normal; }
 }
 /* 1101–1500: the two costs stay side by side; the "% held" line runs under its gauge and figure,
@@ -283,7 +283,7 @@ ${T} .con-cost dt { align-self:end; }
 }
 /* the 270px reading of a ≤1100 frame: the reading words close up a little so the three stand apart */
 @media (min-width:761px) and (max-width:1100px) {
-  ${T} .con-read__w { letter-spacing:.06em; }
+  ${T} .con-read__w { letter-spacing:0; }
 }
 @media (min-width:761px) {
   /* the title stands over the dial's own rows, so a second curve line never pushes the reading down */
@@ -310,15 +310,15 @@ ${T} .con-cost dt { align-self:end; }
   ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:12px; row-gap:0; margin:2px 0 0 !important; }
   ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
   ${T} .con-cost__gauge { display:none; }
-  ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
+  ${T} .con-cost dt { line-height:1.2; letter-spacing:0; }
   ${T} .con-cost dd { font-size:24px; margin-top:1px; }
-  ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
+  ${T} .con-cost__sub { margin-top:2px; letter-spacing:0; }
   ${T} .con-actions { margin:4px 0 2px; }
   ${T} .con-actions .orr-lampkey { min-height:38px !important; }
   /* the foot keeps Back and the zoom reading on one row where the column allows, and a tighter
      second row where it does not */
   ${T} > .k-foot.con-foot { column-gap:14px; }
-  ${T} > .k-foot .con-back.sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; letter-spacing:.18em !important; }
+  ${T} > .k-foot .con-back.sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; letter-spacing:0 !important; }
   ${T} > .k-foot .con-back.sf-back.k-word::before { margin-right:8px !important; }
   ${T} > .k-foot .con-back.sf-back.k-word::after { margin-left:10px !important; }
   ${T} .con-view { gap:8px; }
@@ -361,7 +361,7 @@ ${T} .con-cost dt { align-self:end; }
     padding:clamp(4px, .6vh, 9px) clamp(7px, .6vw, 12px); border:1px solid rgb(${BONE} / .16); border-radius:6px;
     background:rgb(12 12 14 / .62); }
   ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(20px, min(1.6vw, 3.4vh), 40px); line-height:1.05; text-shadow:none; }
-  ${T} > .k-corner.con-corner .con-read__w { font-size:12px; max-width:none; white-space:nowrap; text-align:left; letter-spacing:.08em; line-height:1.2; text-shadow:none; }
+  ${T} > .k-corner.con-corner .con-read__w { font-size:12px; max-width:none; white-space:nowrap; text-align:left; letter-spacing:0; line-height:1.2; text-shadow:none; }
 }
 /* the 270–320px reading of a ≤1280 frame: the three words hold one line only in the label's narrow cut with the
    letters closed up, each card as wide as its word */
@@ -369,7 +369,7 @@ ${T} .con-cost dt { align-self:end; }
   ${T} > .k-corner.con-corner { column-gap:5px !important; }
   ${T} > .k-corner.con-corner .con-read { min-width:max-content; padding:4px 6px; }
   ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(19px, 1.6vw, 21px); }
-  ${T} > .k-corner.con-corner .con-read__w { letter-spacing:.02em; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 650 !important; }
+  ${T} > .k-corner.con-corner .con-read__w { letter-spacing:0; font-stretch:78% !important; font-variation-settings:normal !important; }
 }
 /* 1281–1560: the corner column is ~330px but its three one-line words need ~380 ("RESEARCH POINTS" ran
    under UNLOCKED at 1440). Let each word wrap inside its own chip; the chips stay equal height. */
@@ -390,7 +390,7 @@ ${A} { box-sizing:border-box; display:grid !important;
   padding:clamp(20px, 3.4vh, 52px) clamp(24px, 3.2vw, 80px) clamp(14px, 2.4vh, 36px) !important;
   grid-template-columns:minmax(0, 1fr) clamp(290px, 25vw, 520px) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
   grid-template-areas:"title read" "stage read" "foot foot" !important; column-gap:clamp(18px, 3vw, 72px) !important; row-gap:clamp(6px, 1.4vh, 20px) !important; }
-${A}::before { background:radial-gradient(120% 90% at 32% 50%, rgb(5 7 10 / .76), rgb(5 7 10 / .88) 70%) !important; }
+${A}::before { background:radial-gradient(120% 90% at 32% 50%, rgb(7 7 8 / .76), rgb(7 7 8 / .88) 70%) !important; }
 ${A} > .k-title { grid-area:title; max-width:none; padding-right:0 !important; display:block; }
 ${A} > .k-title .con-title { width:fit-content; margin:0; ${DISPLAY} font-size:clamp(32px, min(3.1vw, 5.6vh), 84px) !important; line-height:.92 !important;
   letter-spacing:.02em !important; color:rgb(${WARM}) !important; white-space:nowrap; ${HALO} }
@@ -437,7 +437,7 @@ ${A} > .con-medal-read { grid-area:read; position:relative; z-index:1; align-sel
 ${A} > .con-medal-read::before { ${POOL('-14% -20% -8% -24%')} }
 ${A} .con-medal-read > * { margin:0; }
 ${A} .con-medal-read__dial { position:relative; width:clamp(150px, 12vw, 280px); height:clamp(150px, 12vw, 280px); margin:0 0 clamp(6px, 1.4vh, 18px) !important; --ms:clamp(150px, 12vw, 280px); }
-${A} .con-medal-read__dial > .con-medal__body { position:absolute; inset:5%; border-radius:50% !important; background:rgb(6 8 11 / .96); }
+${A} .con-medal-read__dial > .con-medal__body { position:absolute; inset:5%; border-radius:50% !important; background:rgb(8 8 9 / .96); }
 ${A} .con-medal-read__dial > .con-medal__art { position:absolute; left:7%; top:7%; width:86%; height:86%; object-fit:contain; }
 ${A} .con-medal-read__dial[data-state="locked"] .con-medal__glyph:has(.con-medal__emblem) { opacity:.4; }
 ${A} .con-medal-read__dial .orr-svg .con-medal__arc { stroke-width:3.5; }
@@ -497,7 +497,7 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
 /* The 761–1100px reading column needs a little more room at 960px to keep the medal state phrase
    whole on one line. The category, separator, and progress words remain the original live reading. */
 @media (min-width:761px) and (max-width:1100px) {
-  ${A} .con-medal-read__kicker { letter-spacing:.18em; }
+  ${A} .con-medal-read__kicker { letter-spacing:0; }
   ${A} .con-medal-read__kicker span { margin:0 .2em; }
   ${A} .con-medal-read__kicker .con-medal-read__state { margin:0; }
 }
@@ -519,7 +519,7 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   /* Keep category words separate and counts above the scroller's bottom fade. */
   ${A} .con-filters .con-wordscale { width:100%; }
   ${A} .con-filters .k-words { gap:6px !important; padding:0; justify-content:space-between; }
-  ${A} .con-filters .k-word { font-size:12px; letter-spacing:.04em; font-stretch:100%; }
+  ${A} .con-filters .k-word { font-size:12px; letter-spacing:0; font-stretch:100%; }
   ${A} > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
 }
 /* a 561–760 window at least 520 tall: the orrery stands down under 320px of width, so the reading narrows to
@@ -550,7 +550,7 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} > .k-title .con-sub { margin:4px 0 0 !important; font-size:clamp(12px, 1.5vh, 15px) !important; }
   ${A} .k-hang.con-filters { margin-left:clamp(16px, 2.2vw, 40px); }
   ${A} .con-filters .k-words { gap:clamp(10px, 1.6vw, 28px) !important; padding:0 4px; }
-  ${A} .con-filters .k-word { min-height:26px; font-size:12px; letter-spacing:.16em; }
+  ${A} .con-filters .k-word { min-height:26px; font-size:12px; letter-spacing:0; }
   ${A} .con-wordscale { --con-scale-h:26px; }
   ${A} > .k-foot .con-back.sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
   ${A} > .k-foot .con-back.sf-back.k-word::before { margin-right:8px !important; font-size:13px !important; }
@@ -559,8 +559,8 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} .con-medal-read__dial { width:clamp(112px, 11vw, 168px); height:clamp(112px, 11vw, 168px);
     margin:0 0 clamp(4px, 1vh, 10px) !important; --ms:clamp(112px, 11vw, 168px); }
   ${A} .con-medal-read__rim { left:-22px; top:-22px; width:calc(100% + 44px); height:calc(100% + 44px); }
-  ${A} .con-medal-read__rim text { font-size:12px; letter-spacing:.22em; }
-  ${A} .con-medal-read__kicker { font-size:12px; letter-spacing:.18em; white-space:nowrap; }
+  ${A} .con-medal-read__rim text { font-size:12px; letter-spacing:0; }
+  ${A} .con-medal-read__kicker { font-size:12px; letter-spacing:0; white-space:nowrap; }
   ${A} .con-medal-read__name { font-size:clamp(18px, min(1.6vw, 3vh), 28px); }
   ${A} .con-medal-read__line { font-size:clamp(13px, .8vw, 16px); }
 }
@@ -577,6 +577,28 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
 @media (forced-colors:active) {
   ${A} > .con-medal-read::before, ${A} > .k-stage.con-medal-stage::before { display:none; }
 }
+/* ── The type system for the research screens (pilot tree, tech tree), 2026-11-24 ───────────────
+   The same system as every Swarm screen: sentence case, no letter-spacing, one text face, white on a
+   neutral dark; the display face for the title only. The base classes still set capitals, wide tracking
+   and the stretched face on the stat boxes, the detail card and the legend. SVG text inside the tree
+   (its ring labels and tier marks) keeps its own engraving. */
+html body #screens#screens > .k-screen.con-research { color:#f4f5f7 !important; }
+html body #screens#screens > .k-screen.con-research :not(svg, svg *) {
+  text-transform:none !important; letter-spacing:0 !important;
+  font-family:var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif !important; }
+html body #screens#screens > .k-screen.con-research :is(h1, .k-t-title, .con-title) {
+  font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
+  font-variation-settings:normal !important; font-weight:800 !important; letter-spacing:-.02em !important;
+  font-size:40px !important; line-height:1.1 !important; color:#ffffff !important; }
+html body #screens#screens > .k-screen.con-research .con-dossier__name {
+  font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
+  font-variation-settings:normal !important; font-weight:800 !important; letter-spacing:-.01em !important; color:#ffffff !important; }
+/* the names and counts engraved round the rings keep their face; they lose the capitals and the tracking */
+html body #screens#screens > .k-screen.con-research .orr-svg text { text-transform:none !important; letter-spacing:0 !important; }
+html body #screens#screens > .k-screen.con-research :is(h1, .k-t-title) {
+  font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
+  font-variation-settings:normal !important; font-weight:800 !important; letter-spacing:-.02em !important;
+  font-size:40px !important; line-height:1.1 !important; color:#ffffff !important; }
 `;
 
 export const CONSTELLATION_CSS = RESEARCH + ACHIEVEMENTS;

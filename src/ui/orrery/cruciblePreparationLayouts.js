@@ -1397,6 +1397,53 @@ html body #screens > .k-screen.orr-crucible :is(button, a, h1, h2, h3, h4, p, sp
 html body #screens > .k-screen.orr-crucible :is(h1, .k-t-title, .sf-runover__title, .sf-play__title) {
   font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
   font-variation-settings:normal !important; font-weight:800 !important; letter-spacing:-.02em !important; color:#ffffff !important; }
+
+/* ── The paused scene behind a Swarm configuration screen: one flat dim, nothing else (2026-11-24) ──
+   The base sheet lays a radial scrim over the whole screen and a 259px gradient band across the top
+   that ends on a hard line 70px under the header. Both were invisible while the screen had an opaque
+   navy background; with the plates flat and the scene showing through, the line showed from edge to
+   edge and the scrim pooled. A single uniform dim is all a menu needs over a paused world. */
+html body #screens > .k-screen.orr-crucible:not([data-door-view="play"]) { background:rgb(8 8 9 / .84) !important; }
+html body #screens > .k-screen.orr-crucible:not([data-door-view="play"])::before,
+html body #screens > .k-screen.orr-crucible:not([data-door-view="play"])::after { content:none !important; }
+html body #screens > .k-screen.orr-crucible .sf-cru-stage::before { content:none !important; }
+
+/* ── The page: a title, the work, the actions (2026-11-24) ─────────────────────────────────────
+   The header and the footer were full-width plates with a title in one corner and ~1,300px of empty
+   plate beside it. On the Swarm front and on Run Over the words stand straight on the dim, and these
+   screens do the same now. The only framed things left on a screen are the things that are surfaces:
+   the ship bay, the field map, a card. One page gutter, one title size, and 24px from the title to
+   the work and from the work to the actions.
+   The page's structure has the last word, so these rules outrank every screen sheet: #screens is
+   named twice on purpose. Neither Refit layout is touched here: each has a composition of its own, and
+   the line drawing of the ship is sized to the room under that screen's own header. */
+html body #screens#screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-fortify, .sf-crucible-door:not([data-door-view="play"])) .k-title {
+  background:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important;
+  min-height:0 !important; margin:0 !important; padding:0 !important; }
+html body #screens#screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-fortify, .sf-crucible-door:not([data-door-view="play"])) .k-foot {
+  background:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important;
+  min-height:0 !important; margin:0 !important; padding:0 !important; }
+html body #screens#screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-fortify, .sf-crucible-door:not([data-door-view="play"])) {
+  padding:24px clamp(24px, 5vw, 96px) !important; gap:24px !important; }
+html body #screens#screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-fortify, .sf-crucible-door:not([data-door-view="play"])) .k-title :is(h1, .k-t-title) { font-size:40px !important; line-height:1.1 !important; }
+/* Rearm is a sparse screen: a title, a row of tabs, three offers, two keys. Stretched between the top
+   and bottom edges it had ~300px of nothing above the offers and ~340px below. It is one block now,
+   centred, 24px between its parts. */
+html body #screens#screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory:has(.orr-rearm-card-thumb) {
+  display:flex !important; flex-direction:column !important; justify-content:center !important; gap:24px !important; }
+html body #screens#screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory:has(.orr-rearm-card-thumb) > * { flex:none !important; margin-top:0 !important; margin-bottom:0 !important; }
+html body #screens#screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory:has(.orr-rearm-card-thumb) .sf-cru-stage {
+  justify-content:flex-start !important; gap:32px !important; padding:0 !important; min-height:0 !important; }
+html body #screens#screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory:has(.orr-rearm-card-thumb) .sf-cru-filters { display:none !important; }
+
+/* The schematic Refit is built round its drawing, and the drawing is sized to the room between that
+   screen's header and footer. So those two keep their height and lose the box: a title in one corner of
+   a full-width plate, with ~1,300px of empty plate beside it, is not a header. */
+html body #screens#screens > .k-screen.orr-crucible.orr-refit:not(.sf-bench) .k-title {
+  background:none !important; border:0 !important; box-shadow:none !important;
+  padding-left:0 !important; padding-right:0 !important; }
+html body #screens#screens > .k-screen.orr-crucible.orr-refit:not(.sf-bench) .k-foot {
+  background:none !important; border:0 !important; box-shadow:none !important; }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;

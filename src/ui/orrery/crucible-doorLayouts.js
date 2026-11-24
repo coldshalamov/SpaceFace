@@ -366,7 +366,7 @@ html.sf-reduce-motion ${D} .sf-crd-arenas .fh-tile-art img { transition:none !im
 /* the tab rail (a rule, tick marks, a marker blade and a glow) said nothing a tab row needs; the tabs
    keep their own gold underline on the chosen one, with room between neighbours */
 html body #screens > .k-screen.orr-crucible .sf-cru-filters .orr-stationrow__rule { display:none !important; }
-html body #screens > .k-screen.orr-crucible .sf-cru-filters { gap:6px 28px !important; }
+html body #screens > .k-screen.orr-crucible .sf-cru-filters { gap:6px clamp(14px, 1.5vw, 28px) !important; }
 /* the three offers stand on the same left and right edges as the title and the footer above and below */
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory .sf-cru-stage > .sf-cru-cards { width:100% !important; margin:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory .sf-cru-stage > .sf-cru-cards > .sf-cru-card {
@@ -380,8 +380,19 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory 
 html body #screens > .k-screen.orr-crucible.orr-visual-armory .orr-rearm-card-thumb { border:1px solid rgb(255 255 255 / .14) !important; border-radius:8px !important;
   background:#1a1a1d !important; background-image:none !important; }
 html body #screens > .k-screen.orr-crucible.orr-visual-armory .orr-rearm-card-thumb :is(.sf-thumb__pips, .sf-thumb__crest) { display:none !important; }
-/* the catalog's words start where the header's and the footer's do (the plates inset their text 18px) */
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft:not(.orr-visual-armory) .sf-cru-stage { padding-left:18px !important; padding-right:18px !important; }
+/* the catalog's words start where the header's and the footer's do (the plates inset their text 18px), and
+   its tabs get the same room between neighbours. The equipment screen carries the same classes as Rearm, so
+   it is told apart by the one thing only it has (the search field); its stage and tab row are styled by the
+   Deckplate module at a higher weight, so these carry the doubled classes to outrank it. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.sf-crucible-draft.orr-armory.orr-armory.orr-visual-armory.orr-visual-armory .sf-cru-filters.sf-cru-filters { gap:8px clamp(14px, 1.5vw, 28px) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.sf-crucible-draft.orr-armory.orr-armory.orr-visual-armory.orr-visual-armory .sf-cru-stage.sf-cru-stage:has(.sf-cru-search) { padding-left:0 !important; padding-right:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.sf-crucible-draft.orr-armory.orr-armory.orr-visual-armory.orr-visual-armory .orr-armory-clear.orr-armory-clear {
+  min-height:36px !important; padding:0 14px !important; border-radius:8px !important; border:1px solid rgb(255 255 255 / .14) !important;
+  background:#1a1a1d !important; color:#f4f5f7 !important; font:600 14px/1 var(--dp-face-read, "Instrument Sans") !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.sf-crucible-draft.orr-armory.orr-armory.orr-visual-armory.orr-visual-armory .orr-armory-clear.orr-armory-clear:hover { background:#242428 !important; border-color:rgb(255 255 255 / .3) !important; }
+/* the purse is a plain card like the others: one hairline all round, the figure in gold */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.sf-crucible-draft.orr-armory.orr-armory.orr-visual-armory.orr-visual-armory .orr-armory-wallet.orr-armory-wallet {
+  border:1px solid rgb(255 255 255 / .14) !important; border-radius:10px !important; background:#1a1a1d !important; background-image:none !important; box-shadow:none !important; }
 ${SWARM_FRONT_CSS}`;
 
 export function injectCrucibleDoorLayouts(doc = globalThis.document) {
