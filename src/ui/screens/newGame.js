@@ -19,6 +19,7 @@ import { starterAirCard } from '../starterAirCard.js';
 import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../ship/shipSheet.js';
 import { paintStarterWorkPreview } from '../starterWorkPreview.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { promptLabel } from '../bindings.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
@@ -369,7 +370,7 @@ function starterLoadoutRows(starter) {
 const FIRST_MINUTES = [
   ['Latch the loose rock', 'F / RMB on the marked rock beside you. One verb at a time.'],
   ['Throw it at the wreck', 'Swing round, aim, and tap the Line again to let go.'],
-  ['Dock at Helios', 'Press E and the autopilot flies you to the berth.'],
+  ['Dock at Helios', 'DOCK_KEY · the autopilot flies you to the berth.'],
   ['Take a job', 'Pick work from the Helios Jobs board, then undock and do it.'],
 ];
 
@@ -751,7 +752,11 @@ export const newGameScreen = {
     const steps = el('ul', 'k-rows sf-ng-route__steps');
     steps.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
     let workHeading, workDetail;
-    for (const [index, [beat, verb]] of FIRST_MINUTES.entries()) {
+    const firstMinutes = FIRST_MINUTES.map(([beat, verb]) => [
+      beat,
+      verb.replace('DOCK_KEY', promptLabel('dock')),
+    ]);
+    for (const [index, [beat, verb]] of firstMinutes.entries()) {
       const row = el('li', 'k-row k-row--static sf-ng-route__step');
       pin(row, { 'box-shadow': 'none' });
       const cell = el('div');
@@ -759,7 +764,7 @@ export const newGameScreen = {
       const detail = el('div', 'k-row__sub', verb);
       cell.appendChild(heading);
       cell.appendChild(detail);
-      if (index === FIRST_MINUTES.length - 1) {
+      if (index === firstMinutes.length - 1) {
         workHeading = heading;
         workDetail = detail;
         cell.setAttribute('aria-live', 'polite');
