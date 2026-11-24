@@ -490,8 +490,10 @@ test('a held older durable ACK is serialized before a newer public save', { time
       await freshLane.readyPromise;
       freshBus.emit('game:load', { slot: 'latest' });
     phase = 'fresh-load-newest-generation';
+      // Same cold-boot + mature-restore envelope as the quota fresh loads below: the
+      // 12 s budget flaked on the shared machine while the restore was still progressing.
       await until(() => freshReceipts.some(row => row.type === 'save:loaded' || row.type === 'save:error'),
-        'fresh worker load of newest accepted generation', 12000);
+        'fresh worker load of newest accepted generation', 30000);
       assert.equal(freshReceipts.some(row => row.type === 'save:error'), false);
       const restored = await laneRpc('probeState');
       assert.equal(restored.result.gameplay.difficulty, 'casual',
@@ -513,7 +515,7 @@ test('a held older durable ACK is serialized before a newer public save', { time
 
 for (const scenario of ['raw-retry', 'compressed-reject']) {
   test(`fresh worker restores the ${scenario === 'raw-retry' ? 'accepted compressed replacement' : 'prior accepted generation after quota failure'}`,
-    { timeout: 30000 }, async () => {
+    { timeout: 280000 }, async () => {
       const saved = durableQuotaSnapshots.get(scenario);
       assert.ok(saved, `the ${scenario} writer case captured actually persisted bytes first`);
       const previousStorage = globalThis.localStorage;
@@ -550,9 +552,26 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
             onMessage(handler) { receive = handler; }, terminate() {} }),
         });
         await lane.readyPromise;
+        const freshLoadStartedAt = Date.now();
         bus.emit('game:load', { slot: 'latest' });
-        await until(() => receipts.some(row => row.type === 'save:restoreCommitted' || row.type === 'save:error'),
-          'fresh worker load from persisted host storage', 12000);
+        // A cold worker replaying a mature durable save is the longest leg in this file:
+        // ~4-5 s of paced restore chunks on a quiet host, and 10-30x that when the shared
+        // checkout's other agents load this machine (measured: the paced restore drain
+        // stretched a 120 s budget to its edge while the commit receipt was still in
+        // flight — it arrived on the next clockTick after the deadline). The budget
+        // spans the whole cold boot + restore envelope; a genuinely stalled restore
+        // still fails it.
+        try {
+          await until(() => receipts.some(row => row.type === 'save:restoreCommitted' || row.type === 'save:error'),
+            'fresh worker load from persisted host storage', 240000);
+        } catch (error) {
+          error.message += `; saveLoadedArrived=${receipts.some(row => row.type === 'save:loaded')}; `
+            + `waitedMs=${Date.now() - freshLoadStartedAt}; `
+            + `lastReplies=${JSON.stringify(replies.slice(-8).map(row => ({ kind: row.kind,
+              events: row.events?.map(event => event.t).slice(-6),
+              storageOps: row.storageOps?.map(op => ({ op: op.op, key: op.key })) })))}`;
+          throw error;
+        }
         assert.equal(receipts.some(row => row.type === 'save:error'), false,
           `the fresh owner restores from bytes that survived in main storage: ${JSON.stringify(receipts)}`);
         const loadedReceipt = receipts.find(row => row.type === 'save:loaded').payload;
