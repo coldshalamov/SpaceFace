@@ -55,6 +55,7 @@ import { localizeText } from '../localization/sourceText.js';
 import { journeyActForBeat, journeyActLabel, journeyActStoryClosed, journeyActTrackerLabel } from '../data/journeyActs.js';
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
+import { WEAPONS } from '../data/weapons.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { enemyMindTell } from '../presentation/enemyMindTells.js';
 import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
@@ -5496,15 +5497,23 @@ export function createHud(ctx, alerts) {
     });
   }
 
-  // Forced weapon-heat vent (Micro-Loops): when the player's guns peg heatMax, weapons.js locks them
-  // out for ~2s while heat dumps. Raise a top-center alert so the lockout
-  // reads as a rhythm beat ("vent, then resume"), not a dead trigger.
+  const WEAPON_NAME_BY_ID = new Map(WEAPONS.map((w) => [w.id, w.name]));
+  // Forced weapon-heat vent (OVH-08b): per-gun lock names the gun that locked for ~1.2 s so
+  // the player knows which mount is cooling; legacy ship-wide vents keep the generic word.
   on('weapons:vent', (p) => {
     if (!p || p.ownerId !== state.playerId) return;
     const venting = p.phase === 'start';
     if (alerts) {
-      if (venting) alerts.raise({ key: 'wpn-vent', sev: 'warn', text: 'WEAPONS VENTING', ttl: 2.3 });
-      else alerts.clear('wpn-vent');
+      if (venting) {
+        const gunName = p.perGun && p.weaponId ? (WEAPON_NAME_BY_ID.get(p.weaponId) || null) : null;
+        const text = gunName ? `${gunName.toUpperCase()} LOCKED` : 'WEAPONS VENTING';
+        const ttl = (Number.isFinite(p.until) && Number.isFinite(p.startedAt) && p.until > p.startedAt)
+          ? Math.max(1.2, p.until - p.startedAt)
+          : (p.perGun ? 1.2 : 2.3);
+        alerts.raise({ key: 'wpn-vent', sev: 'warn', text, ttl });
+      } else {
+        alerts.clear('wpn-vent');
+      }
     }
     if (venting) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
   });

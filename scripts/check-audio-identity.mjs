@@ -449,6 +449,7 @@ const EMITTED_CUES = {
   sfx_hauler_blast: { distinct: true },
   sfx_hauler_blast_double: { distinct: true },
   sfx_hauler_blast_lean: { distinct: true },
+  sfx_promotion_chord: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

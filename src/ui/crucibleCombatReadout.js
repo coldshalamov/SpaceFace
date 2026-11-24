@@ -59,10 +59,12 @@ export function crucibleFittingDescription(defId, state) {
 function gunReadiness(state, ship, accepts, emptyText = 'no primary weapon') {
   const guns = (ship?.data?.weapons || []).filter(w => accepts(w.defId));
   if (!guns.length) return { status: 'empty', text: emptyText };
-  if ((ship.data.weaponVentUntil || 0) > (state.simTime || 0)) {
+  const simT = state.simTime || 0;
+  if ((ship.data.weaponVentUntil || 0) > simT) {
     return { status: 'cooldown', text: 'cooling' };
   }
   const ready = guns.some(w => {
+    if ((w._lockUntil || 0) > simT) return false;
     const def = weapons.get(w.defId) || {};
     const heatCost = w.heat ?? def.heatPerShot ?? def.heatPerSec ?? 0;
     const heatMax = w.heatMax ?? def.heatMax ?? Infinity;
@@ -71,7 +73,8 @@ function gunReadiness(state, ship, accepts, emptyText = 'no primary weapon') {
     return !(w._cooldown > 0) && !(heatCost > 0 && (w._heat || 0) >= heatMax)
       && cap >= cost * ((w.continuous ?? def.continuous) ? 1 / 60 : 1);
   });
-  return ready ? { status: 'armed', text: 'armed' } : { status: 'cooldown', text: 'recharging' };
+  const anyLocked = guns.some(w => (w._lockUntil || 0) > simT);
+  return ready ? { status: 'armed', text: 'armed' } : { status: 'cooldown', text: anyLocked ? 'cooling' : 'recharging' };
 }
 
 function trapReadiness(state, ship) {

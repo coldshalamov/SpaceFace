@@ -1655,7 +1655,8 @@ export function resolveDryFireReadiness(player, state) {
     const heat = Number.isFinite(w._heat) ? w._heat : 0;
     // Homing tubes only release with a lock; an unlocked tube counts as blocked-by-lock.
     const lockBlocked = w.tracking === 'homing' && !locked;
-    const blocked = venting || lockBlocked
+    const mountLocked = Number.isFinite(w._lockUntil) && simT < w._lockUntil;
+    const blocked = venting || mountLocked || lockBlocked
       || (cap != null && cap < costNow)
       || heat >= heatMax;
     if (blocked) { anyBlocked = true; continue; }

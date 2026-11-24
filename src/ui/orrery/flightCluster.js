@@ -719,10 +719,14 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
       readouts?.setMeter('energy', energyF);
     }
     const heatF = Math.max(0, Math.min(1, Number(d.heat) || 0));
-    if (changed('heat', Math.round(heatF * 1000))) {
+    const heatLocked = d.heatLocked === true || d.heatOverheated === true;
+    const heatToneKey = heatLocked || heatF >= 0.99 ? 'threat' : (heatF >= 0.6 ? 'hand' : 'hi');
+    if (changed('heat', `${Math.round(heatF * 1000)}:${heatToneKey}`)) {
       heat.set(heatF);
-      heat.setTone(heatF > 0.75 ? 'threat' : 'hi');
-      heatVal.textContent = `${Math.round(heatF * 100)}%`;
+      heat.setTone(heatToneKey);
+      heatVal.textContent = heatLocked && Number(d.heatLockRemainingS) > 0
+        ? `${Math.round(heatF * 100)}% (${Number(d.heatLockRemainingS).toFixed(1)}s)`
+        : `${Math.round(heatF * 100)}%`;
       readouts?.setMeter('heat', heatF);
     }
     // speed and boost live in the Speed Dial; it keeps its own change detection, so a settled frame
