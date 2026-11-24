@@ -182,9 +182,9 @@ html.sf-reduce-motion #modal-backdrop { transition: none; }
    below the loading shell (z-index 1900 < 2000: test/startup-loading-presentation.test.mjs). The
    label reads in the frontend kit's text face and fine size (styles/kit.css tokens). */
 .sf-continue-fade { position:fixed; inset:0; z-index:1900; background:#000; opacity:0;
-  pointer-events:auto; transition:opacity 1s ease; display:flex; align-items:flex-end;
+  pointer-events:none; transition:opacity 1s ease; display:flex; align-items:flex-end;
   justify-content:flex-start; padding:0 0 calc(var(--k-margin, 5vw) * 0.42) var(--k-margin, 5vw); }
-.sf-continue-fade.open { opacity:1; }
+.sf-continue-fade.open { opacity:1; pointer-events:auto; }
 .sf-continue-fade__loc { font-family: var(--k-text, system-ui, sans-serif); font-size: var(--k-fs-fine, 12px);
   color: var(--k-bone-62, rgb(234 230 223 / 0.62)); }
 /* --- First-run splash (spec2/03 §3; src/ui/screens/newGame.js showFirstRunSplash) ---
