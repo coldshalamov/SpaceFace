@@ -8,17 +8,21 @@
 //   node scripts/bench-sim-fight.mjs --scene=swarm6|swarm12|adventure [--steps=3600] [--warm=900]
 //        [--profile]            per-system table (ms per step) over the measured span
 //        [--ab=<flag>[,<flag>]] run the scene with the named simCoreFlags OFF, then ON, alternating
-//                               (--rounds=2 pairs), in ONE process: the only matched comparison
-//                               on a machine whose load swings 2-3x a minute
+//                               (--rounds=2 pairs), one process per arm: the matched comparison
+//                               on a machine whose load swings 2-3x a minute, with a pristine
+//                               Rapier heap per arm so same-flags arms hash identically
 //        [--off=<flag>,..]      single arm with these flags off
 //        [--hash]               print a state hash (run twice: the same seed must give the same hash)
 //        [--mortal]             let the player die (default: the hull is refilled so the fight lasts)
+//        [--on=<flag>,..]       single arm with these flags on (complement of --off)
+//        [--emit-result]        arm-run output for the --ab parent: no banner, result JSON last line
 //
 // For a function-level profile:  node --cpu-prof --cpu-prof-dir=.devshots/sim-bench scripts/bench-sim-fight.mjs ...
 // Writes nothing but .devshots/sim-bench/<scene>.json.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 
 process.env.SPACEFACE_PLAYER_STORE_DIR = '';
@@ -36,7 +40,11 @@ const MORTAL = argv.mortal === true;
 const ROUNDS = Number(argv.rounds || 2);
 const AB = typeof argv.ab === 'string' ? argv.ab.split(',').filter(Boolean) : null;
 const OFF = typeof argv.off === 'string' ? argv.off.split(',').filter(Boolean) : [];
+const ON = typeof argv.on === 'string' ? argv.on.split(',').filter(Boolean) : [];
+const EMIT_RESULT = argv['emit-result'] === true;
+const LABEL = typeof argv.label === 'string' ? argv.label : SCENE;
 const TOP = Number(argv.top || 34);
+const RESULT_SENTINEL = 'BENCH_RESULT_JSON ';
 
 const { createSimHost } = await import('./lib/simWorkerHost.mjs');
 const { createSimCommandRing, pushLaneCommand } = await import('./lib/simCommandChannel.mjs');
@@ -220,11 +228,45 @@ function line(o) {
 const results = [];
 const flagSet = (names, on) => Object.fromEntries(names.map((n) => [n, on]));
 if (AB) {
+  // One process per arm. Sequential arms in a single process share the Rapier WASM heap:
+  // the first arm's world is collected and freed only at GC time, so the next arm's world
+  // can land on a different heap layout and flip low bits inside world.step (rapier#910 —
+  // observed as same-flags arms hashing differently). A fresh process per arm gives every
+  // arm a pristine heap; two arms of the same flags then always produce the same hash.
+  const self = fileURLToPath(import.meta.url);
+  const armArgs = (on) => {
+    const args = [self, `--scene=${SCENE}`, `--steps=${STEPS}`, `--warm=${WARM}`, '--emit-result'];
+    if (HASH) args.push('--hash');
+    if (MORTAL) args.push('--mortal');
+    if (PROFILE) args.push('--profile');
+    const offs = on ? OFF : [...OFF, ...AB];
+    if (offs.length) args.push(`--off=${offs.join(',')}`);
+    if (on) args.push(`--on=${AB.join(',')}`);
+    args.push(`--label=${on ? 'ON' : 'OFF'}`);
+    return args;
+  };
   for (let r = 0; r < ROUNDS; r++) {
     for (const on of [false, true]) {
-      const res = await runArm(on ? 'ON' : 'OFF', { ...flagSet(OFF, false), ...flagSet(AB, on) });
+      const arm = spawnSync(process.execPath, armArgs(on), {
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+        cwd: ROOT,
+      });
+      if (arm.error) throw arm.error;
+      if (arm.stderr) process.stderr.write(arm.stderr);
+      if (arm.status !== 0) {
+        if (arm.stdout) process.stdout.write(arm.stdout);
+        throw new Error(`bench arm ${on ? 'ON' : 'OFF'} exited ${arm.status}`);
+      }
+      const rows = String(arm.stdout || '').split('\n').filter(Boolean);
+      const sentinel = rows.findLast((row) => row.startsWith(RESULT_SENTINEL));
+      if (!sentinel) {
+        for (const row of rows) console.log(row);
+        throw new Error('bench arm produced no result row');
+      }
+      const res = JSON.parse(sentinel.slice(RESULT_SENTINEL.length));
       results.push(res);
-      console.log(line(res));
+      for (const row of rows) if (!row.startsWith(RESULT_SENTINEL)) console.log(row);
     }
   }
   const med = (arr) => { const s = arr.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
@@ -234,10 +276,11 @@ if (AB) {
     console.log(`  ${k.padEnd(16)} OFF ${off}  ON ${on}  (${r2((on - off) / off * 100)} %)`);
   }
 } else {
-  const res = await runArm(SCENE, flagSet(OFF, false));
+  const res = await runArm(LABEL, { ...flagSet(OFF, false), ...flagSet(ON, true) });
   results.push(res);
-  console.log(`bench-sim-fight ${SCENE} on ${os.cpus()[0].model.trim()} (${res.wallS} s wall for ${res.simTime} s sim)`);
+  if (!EMIT_RESULT) console.log(`bench-sim-fight ${SCENE} on ${os.cpus()[0].model.trim()} (${res.wallS} s wall for ${res.simTime} s sim)`);
   console.log(line(res));
+  if (EMIT_RESULT) console.log(RESULT_SENTINEL + JSON.stringify(res));
   if (res.systems) {
     console.log(`per-system (ms per step, measured span; ${res.systemsMeasured} rows, top-level sum ${res.topLevelMsPerTick}):`);
     for (const s of res.systems.slice(0, TOP)) console.log(`  ${(s.nested ? '. ' : '') + s.id}`.padEnd(40) + String(s.msPerTick).padStart(8) + '   p95 ' + String(s.p95).padStart(7));
