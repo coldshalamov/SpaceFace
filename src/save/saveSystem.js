@@ -4246,6 +4246,13 @@ export const save = {
   primeAutosaveCapture() {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
     const plan = this._saveCapturePlan();
+    // The warm keeps every reader but owns the slice order (nothing is retained), so the one
+    // mutating reader runs inside this synchronous first slice: 'physics' exports AND
+    // re-adopts the live Rapier world (save-time canonicalization in physics.serialize) —
+    // deferred into a later wall-clock slice it raced flight start and rebuilt the world
+    // with a different body set per run, flipping the sim's downstream hash.
+    const physicsIdx = plan.findIndex(([key]) => key === 'physics');
+    if (physicsIdx > 0) plan.unshift(plan.splice(physicsIdx, 1)[0]);
     const incrementalPlayer = this._shouldCapturePlayerIncrementally();
     // A slice armed by restore A must never resume inside restore B's loading window
     // (mode is 'loading' again, so the mode guard alone can't tell them apart — B's
