@@ -717,7 +717,8 @@ export const physics = {
     // An explicit prepare is bounded by user action — a backoff residual short enough
     // to fit inside the init envelope is worth waiting out so the prepare mints a real
     // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
-    // still see the refusal via rapierRuntimeBlocked (that's what the window exists for).
+    // retry on the sim clock (RAPIER_INIT_RETRY_S); the window still refuses the mint
+    // inside loadRapierCompatRuntime itself (that's what the window exists for).
     // Reset prepares wait too: in this state (`!_sg02Init && !_sg02`) the reset's
     // _disableSg02DynamicAuthority is a pure no-op — no live authority, no token bump —
     // so the exclusion only bought an instant PHYSICS_BACKEND_UNAVAILABLE bounce.
@@ -916,9 +917,11 @@ export const physics = {
   _updateSg02DynamicAuthority(dt, state) {
     this._disableRapierBackend();
     this._diag.backend = 'rapier-dynamic';
-    // Init is in failure backoff — retry when the window expires instead of
-    // minting a doomed attempt (and its warn) every tick.
-    if (!this._sg02Init && !this._sg02 && !rapierRuntimeBlocked()) {
+    // A missing authority retries every tick the sim runs — the only gate is whether an
+    // attempt is already pending. The runtime's wall-clock failure window refuses inside
+    // loadRapierCompatRuntime itself: a refused mint is one rejected promise, never a
+    // re-paid WASM bootstrap, so host timing never picks which tick an attempt lands on.
+    if (!this._sg02Init && !this._sg02) {
       const token = ++this._sg02Token;
       const init = (this._sg02OwnerFactory || createSg02DynamicBodyOwner)({
         orchardRestoreCapability:ORCHARD_RESTORE_CAPABILITIES.get(this),
@@ -2038,9 +2041,9 @@ export const physics = {
       return;
     }
     if (!this._rapierInit) {
-      // Init is in failure backoff — retry when the window expires instead of
-      // minting a doomed attempt (and its warn) every tick.
-      if (rapierRuntimeBlocked()) return;
+      // Same rule as the SG-02 mint: retry every tick an attempt is not pending. The
+      // loader's wall-clock failure window refuses inside loadRapierCompatRuntime itself,
+      // so host timing never picks which tick an attempt lands on.
       const token = ++this._rapierToken;
       this._rapierInit = import('./rapierCollisionWorld.js')
         .then((m) => m.createRapierCollisionWorld())
