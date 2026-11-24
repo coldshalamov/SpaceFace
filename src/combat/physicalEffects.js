@@ -219,6 +219,57 @@ export function deliverPhysicalImpulseDetailed(state, entity, impulse, evidence 
   return { accepted: accepted !== false, impulse: prepared, deltaV: Math.hypot(prepared.x, prepared.z) / mass };
 }
 
+// The continuous force-field write (fields' per-body pass, every body in a field, every step).
+// Same admission, player budget and queued command record as
+// deliverPhysicalImpulseDetailed(state, entity, impulse, evidence,
+// { scaleEnvironment: false, continuous: true, dt }) with no port, minus that path's per-call
+// garbage: the evidence copy is one retained scratch (prepareExternalPhysicsImpulse only reads
+// it, queuePhysicsImpulse copies the fields it keeps into its pooled command vector) and the
+// result is written into the caller's record. Scale is the identity here (no environment scale,
+// no reference impulse), so the resolved impulse is the finite input. `out` receives
+// { accepted, x, y, z } — the accepted impulse, zero when refused.
+const CONTINUOUS_META = {
+  kind: undefined, tick: 0, provenance: undefined, motionIntent: undefined,
+  externalEffect: true, continuous: true, dt: 1 / 60, isPlayerTarget: false, externalProtected: false,
+};
+const CONTINUOUS_RESOLVED = { x: 0, y: 0, z: 0 };
+export function deliverContinuousImpulseInto(state, entity, impulse, evidence, dt, out) {
+  out.accepted = false; out.x = 0; out.y = 0; out.z = 0;
+  if (!eligible(entity) || entity.flags?.docked || (entity.id === state?.playerId && state?.ui?.docked)) return out;
+  let deliveredImpulse = impulse;
+  const recoilTag = String(evidence?.tag ?? evidence?.provenance?.tag ?? '');
+  if (WINCH_BRACE_RECOIL_TAGS.has(recoilTag)) {
+    const braced = routeRecoilThroughWinchBrace(state, entity.id, impulse);
+    if (braced) deliveredImpulse = { x: braced.appliedX, z: braced.appliedZ };
+  }
+  // resolvePhysicalImpulse's spec read fills a missing physicsBody before anything else does.
+  resolvePhysicsBodySpec(entity);
+  const resolved = CONTINUOUS_RESOLVED;
+  resolved.x = finite(deliveredImpulse?.x); resolved.y = 0; resolved.z = finite(deliveredImpulse?.z);
+  const meta = CONTINUOUS_META;
+  const tick = evidence?.tick ?? state?.tick ?? 0;
+  meta.kind = evidence?.kind;
+  meta.tick = tick;
+  meta.motionIntent = evidence?.motionIntent;
+  meta.dt = dt ?? 1 / 60;
+  meta.isPlayerTarget = entity.id === state?.playerId || entity.isPlayer === true;
+  meta.externalProtected = false;
+  let provenance = evidence?.provenance;
+  if (!provenance && (evidence?.actorId != null || evidence?.weaponId || evidence?.tag)) {
+    provenance = { actorId: evidence.actorId ?? null, weaponId: evidence.weaponId ?? null,
+      tag: evidence.tag || evidence.kind || 'physical_effect', tick };
+  }
+  meta.provenance = provenance;
+  const prepared = prepareExternalPhysicsImpulse(entity, resolved, meta);
+  if (!prepared || Math.hypot(prepared.x, prepared.z) === 0) return out;
+  meta.externalProtected = true;
+  const accepted = queuePhysicsImpulse(entity, prepared, meta);
+  meta.provenance = undefined;
+  out.accepted = accepted !== false;
+  out.x = prepared.x; out.y = prepared.y; out.z = prepared.z;
+  return out;
+}
+
 export function deliverPhysicalImpulse(state, entity, impulse, evidence = null, options = {}) {
   return deliverPhysicalImpulseDetailed(state, entity, impulse, evidence, options).accepted;
 }

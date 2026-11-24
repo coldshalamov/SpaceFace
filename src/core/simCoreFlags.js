@@ -82,6 +82,13 @@ const DEFAULTS = Object.freeze({
    * once the trace's tick order is proven. DEFAULT ON. Result-identical; off restores the full walk.
    */
   aiSensorCaches: true,
+  /**
+   * The force-field pass writes each body's impulse through one lean continuous-delivery call
+   * (fields lane, 2026-11-23): same admission, player budget and queued command record as the
+   * generic membrane, without its three evidence copies and result objects per body per step.
+   * DEFAULT ON. Result-identical; off restores the generic delivery for matched A/B runs.
+   */
+  fieldLeanDelivery: true,
 });
 
 let overrides = null;

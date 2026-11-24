@@ -6,6 +6,8 @@ import {
   EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
 import { oneFeelPhaseTable, oneFeelCooldownS, oneFeelPhaseAt } from '../data/swarmFeelProfile.js';
+import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 export {
   FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
   FIELD_PHASE_WINDING, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
@@ -45,7 +47,7 @@ import {
   mergeClusterSecondaries,
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
-import { queryPhysicalBodies, deliverPhysicalImpulseDetailed } from '../combat/physicalEffects.js';
+import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverContinuousImpulseInto } from '../combat/physicalEffects.js';
 import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -1063,7 +1065,10 @@ export const fields = {
     // PT-FIX-C item 4 — queued combos fire HERE, after the force pass: iterative, capped, and
     // never inside the membership loop that queued them.
     this._drainComboQueue(state);
+    const ph = getSimStepProfiler();
+    const phT = ph.active ? nowNs() : 0;
     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
+    if (ph.active) ph.record('fields.publish', nowNs() - phT);
     state.fieldsRuntime = state.fieldsRuntime || {};
     state.fieldsRuntime.quietLatched = false;
   },
@@ -2273,6 +2278,10 @@ export const fields = {
   },
 
   _applyForces(dt, state, rt) {
+    // Sub-phase attribution for the step profiler: one boolean read per tick when it is off.
+    const ph = getSimStepProfiler();
+    const phOn = ph.active;
+    let phT = phOn ? nowNs() : 0;
     const pass = ++this._fieldForcePass;
     const now = nowOf(state);
     if (this._kernel && typeof this._kernel.expire === 'function') this._kernel.expire(now);
@@ -2364,7 +2373,9 @@ export const fields = {
         },
       });
       const unionOut = this._unionQueryOut || (this._unionQueryOut = []);
+      if (phOn) { ph.record('fields.prep', nowNs() - phT); phT = nowNs(); }
       queryPhysicalBodies(state, unionCenter, ur, this.helpers, unionOut, unionOpts);
+      if (phOn) { ph.record('fields.query', nowNs() - phT); phT = nowNs(); }
       if (typeof queryRadius === 'function') queries += forceFields.length;
       const perFieldOut = this._queryOut;
       for (let i = 0; i < forceFields.length; i++) {
@@ -2461,6 +2472,7 @@ export const fields = {
         }
       }
     }
+    if (phOn) { ph.record('fields.members', nowNs() - phT); phT = nowNs(); }
     const spare = this._membershipSpare || (this._membershipSpare = []);
     const stalePool = (pass & 1) ? this._membershipPoolEven : this._membershipPoolOdd;
     if (stalePool && stalePool.length) {
@@ -2489,6 +2501,8 @@ export const fields = {
       scaleEnvironment: false, continuous: true, dt: 0,
     });
     impulseOpts.dt = dt;
+    const leanDelivery = simCoreFlag('fieldLeanDelivery');
+    const deliveredScratch = this._deliveredScratch || (this._deliveredScratch = { accepted: false, x: 0, y: 0, z: 0 });
     let affectedCount = 0, accelSum = 0;
     for (const [e, mf] of affected) {
       const massStateField = this._massStateFields.get(e);
@@ -2518,12 +2532,20 @@ export const fields = {
       impulse.y = 0;
       impulse.z = accel.az * mass * dt;
       const evidence = this._fieldEvidence(e, mf, state, profile);
-      const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence, impulseOpts);
-      if (!delivered.accepted) continue;
+      let deliveredX, deliveredZ;
+      if (leanDelivery) {
+        const delivered = deliverContinuousImpulseInto(state, e, impulse, evidence, dt, deliveredScratch);
+        if (!delivered.accepted) continue;
+        deliveredX = delivered.x; deliveredZ = delivered.z;
+      } else {
+        const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence, impulseOpts);
+        if (!delivered.accepted) continue;
+        deliveredX = delivered.impulse.x; deliveredZ = delivered.impulse.z;
+      }
       let feedback = this._acceptedFieldAccel.get(e);
       if (!feedback) { feedback = {}; this._acceptedFieldAccel.set(e, feedback); }
-      feedback.ax = delivered.impulse.x / (mass * dt);
-      feedback.az = delivered.impulse.z / (mass * dt);
+      feedback.ax = deliveredX / (mass * dt);
+      feedback.az = deliveredZ / (mass * dt);
       feedback.tick = state.tick; feedback.pass = pass;
       feedback.generation = e.occupantGeneration;
       if (feedback.fields) {
@@ -2541,10 +2563,12 @@ export const fields = {
       affectedCount++;
       accelSum += Math.hypot(accel.ax, accel.az);
     }
+    if (phOn) { ph.record('fields.forces', nowNs() - phT); phT = nowNs(); }
     this._detectWellGrind(state);
     this._flushEndedWells(state);
     this._publishClusterWatch(state);
     this._flushInertOccupancy();
+    if (phOn) ph.record('fields.post', nowNs() - phT);
     return { queries, affected: affectedCount, accelSum };
   },
 

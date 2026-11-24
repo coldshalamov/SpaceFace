@@ -44,6 +44,7 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
 import { indexedShipLikeScan, indexedShipLikeOrEntitiesScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeaponId,
@@ -710,6 +711,10 @@ export function createTacticalAISystem({
     },
 
     update(_dt, state) {
+      // Sub-phase attribution for the step profiler: one boolean read per tick when it is off.
+      const ph = getSimStepProfiler();
+      const phOn = ph.active;
+      let phT = phOn ? nowNs() : 0;
       // The shared "where is the player" fix every brain reads this tick (cloak, reveals, timeout).
       updatePlayerAwareness(state);
       emitIncomingMassCue(state, ctxRef && ctxRef.bus);
@@ -719,7 +724,9 @@ export function createTacticalAISystem({
         rebindCounterplayCast(state, state.entityList);
         counterplayBindingVersion = bindingVersion;
       }
+      if (phOn) { ph.record('tacticalAI.pre', nowNs() - phT); phT = nowNs(); }
       ensureActivityClassified(state);
+      if (phOn) { ph.record('tacticalAI.classify', nowNs() - phT); phT = nowNs(); }
       // Quiet latch: no non-player needs AI think → skip cohort stamp, squad/fodder steps, stack
       // update, and maneuver replay. Probe think interest every tick (nextEventAtT / pins can flip
       // without membership). Injected-port fixtures keep every-tick cadence; production quiet
@@ -785,6 +792,7 @@ export function createTacticalAISystem({
       } else if (pack) {
         pack.releaseAll();
       }
+      if (phOn) { ph.record('tacticalAI.pack', nowNs() - phT); phT = nowNs(); }
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
       restoreShovePanics(state, shipLikeList);
@@ -796,6 +804,7 @@ export function createTacticalAISystem({
       assignAutoSquadRecipes(state, shipLikeList, liveStack.seed);
       stepSquadFrames(liveStack, state, tick, dt, shipLikeList);
       stepFodderCohorts(liveStack, state, tick, dt, shipLikeList);
+      if (phOn) { ph.record('tacticalAI.squads', nowNs() - phT); phT = nowNs(); }
       if (tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
@@ -805,6 +814,7 @@ export function createTacticalAISystem({
         applySquadTokenFireGate(liveStack, state, shipLikeList);
         applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
         stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
+        if (phOn) ph.record('tacticalAI.between', nowNs() - phT);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
@@ -820,6 +830,7 @@ export function createTacticalAISystem({
         ? { ...authored, pendingReinforcements }
         : authored;
       const result = liveStack.update(tick, authoredForStack);
+      if (phOn) { ph.record('tacticalAI.think', nowNs() - phT); phT = nowNs(); }
       lastDecisionEntityRefs.clear();
       if (tick - lastOwnershipRefreshTick >= OWNERSHIP_REFRESH_TICKS) {
         refreshFirstSessionAttackerOwnership(state, result.decisions || []);
@@ -973,6 +984,7 @@ export function createTacticalAISystem({
       // score-owned capital/wing must not double-fire its authored attacks through stock intent.
       applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
       stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
+      if (phOn) ph.record('tacticalAI.apply', nowNs() - phT);
     },
 
     inspect(query = {}) {
