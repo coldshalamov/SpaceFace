@@ -50,7 +50,7 @@ import * as THREE from 'three';
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from './uiStage.js';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
-import { createOpaqueStateSort } from './opaqueStateSort.js';
+import { createOpaqueStateSort, createTransparentStateSort } from './opaqueStateSort.js';
 import { frameCostFixOn } from './frameCostSwitches.js';
 import { createFrameTaskScheduler } from '../core/frameTaskScheduler.js';
 // Per-frame budget for render work that only has to be recent (see _ensureFrameTasks).
@@ -179,8 +179,8 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, optimizeStaticBatchesForRoot, setEnvMapForShips, setFactoryEventBus, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
-import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkEmberSpent, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, optimizeStaticBatchesForRoot, setEnvMapForShips, setFactoryEventBus, setFactoryPresentationNow, settleColdHulk, unsettleColdHulk, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, syncStandInMergeSwitch, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
@@ -224,6 +224,13 @@ import {
   cancelAuthoredUpgradeQueue,
   pumpAuthoredUpgradeQueue,
   releaseOwnerInstances,
+  poolColdHulkLeaves,
+  unpoolColdHulkLeaves,
+  poolStandInLeaves,
+  unpoolStandInLeaves,
+  poolStaticPropLeaves,
+  unpoolStaticPropLeaves,
+  syncHostileRetroIdleHotPool,
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   collectFlightRootTemplateContextLossRoots,
@@ -1142,6 +1149,16 @@ export function setSyncEntityLodRetainForBench(enabled) {
 export function getSyncEntityLodRetainForBench() {
   return SYNC_ENTITY_LOD_RETAIN !== false;
 }
+
+// rfx cosmeticCadence: how often a SETTLED craft's cosmetic enrichment (micro-motion ambient
+// channels, damage-state cosmetics) re-evaluates. Slot-staggered so a mass-dirty burst spreads
+// the work instead of paying every craft's full stack in one pass. Combat-live channels exempt
+// themselves per frame via globalShipMicroMotion.craftCombatHot, and transform sync above never
+// cadences — a settled ship's authored pose is identical when its turn arrives.
+const COSMETIC_SYNC_PERIOD = 3;
+// rfx shadowCadence: drifting/tumbling asteroid instance uploads re-arm the directional shadow
+// depth pass at most this often (the individual caster-pose gate still catches every real hull).
+const SHADOW_INSTANCE_DIRTY_PERIOD = 3;
 
 // The activity frame publishes every sim tick through one retained record instead of a fresh
 // `{...frame, complete:true}` spread — consumers only read it, and the membership sets inside
@@ -4858,6 +4875,21 @@ export function syncResolvingMarker(mesh, state) {
     else releaseAdmissionStandInFallback(mesh);
   }
   const marker = mesh.userData.resolvingMarker;
+  const standInMergedOn = syncStandInMergeSwitch(marker);
+  const standInScene = state && state.render && state.render.scene;
+  const syncStandInPool = () => {
+    if (!standInScene || !standInScene.isScene) return;
+    if (marker.visible === true) {
+      if (standInMergedOn && frameCostFixOn('drawBatchOpt') && marker.userData && marker.userData.standInPooled !== true) {
+        try { poolStandInLeaves(standInScene, mesh, marker); } catch (_) { /* fall back to direct stand-in */ }
+      }
+    } else if (marker.userData && marker.userData.standInPooled === true) {
+      // Unpool only when the stand-in itself hides (authored commit / hold), not on live A/B
+      // drawBatchOpt toggles — syncDrawBatchOptPoolBypass switches the resident chunk cleanly
+      // without retiring/re-compiling chunks every segment.
+      unpoolStandInLeaves(standInScene, mesh, marker);
+    }
+  };
   if (isAuthoredPendingStatus(mesh.userData.authoredAssetState)) {
     // The hull child carries the live bank/pitch — a stand-in that stays level
     // while the seat banks reads as a flat decal mid-turn, not the ship.
@@ -4870,9 +4902,11 @@ export function syncResolvingMarker(mesh, state) {
     if (hostileHeldUntilAuthored(mesh, pendingEntity, state)) {
       marker.visible = false;
       pendingEntity.presentationFallbackVisible = false;
+      syncStandInPool();
       return;
     }
     marker.visible = true;
+    syncStandInPool();
     return;
   }
   // Terminal admission failure with no other drawable: a non-required ship builds its
@@ -4916,6 +4950,7 @@ export function syncResolvingMarker(mesh, state) {
       || mesh.userData.authoredReadableFallbackRetained === true;
   }
   marker.visible = !parent || !parent.children.some((child) => child !== marker && child.visible !== false);
+  syncStandInPool();
 }
 
 /**
@@ -10030,6 +10065,9 @@ export const render = {
     // on almost every draw (opaqueStateSort.js). ?rfx=-sort restores the raw traversal order.
     if (typeof renderer.setOpaqueSort === 'function') {
       renderer.setOpaqueSort(frameCostFixOn('sort') ? createOpaqueStateSort(renderer) : () => 0);
+    }
+    if (typeof renderer.setTransparentSort === 'function') {
+      renderer.setTransparentSort(createTransparentStateSort(renderer));
     }
     this._opaqueBatchSupported = false;
     try {
@@ -20990,7 +21028,9 @@ export const render = {
     Object.assign(ctx.helpers, helperBindings);
     this._helperBindings = { target: ctx.helpers, values: helperBindings };
 
-    onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
+    // Aggregate membership notice only — the reconcile pass reads the live entity
+    // set, so one batch dispatch per step/reply window covers a whole spawn burst.
+    onBus('entity:spawnedBatch', () => { this._meshReconcileDirty = true; });
     onBus('world:residency', ({ sectors } = {}) => {
       this._meshReconcileDirty = true;
       // A sector leaving FULL loses the cohort its warm latches and session cook
@@ -27129,10 +27169,10 @@ export const render = {
     } : vd;
     const norm = this._applySectorPost(this._normalizePostVideo(effectiveVideo));
     const sceneSamples = this._resolvePostSceneSamples();
-    const compactBloom = !!this._foundrySet && vd.qualityPreset === 'low';
     const gpuTier = this.state?.render?.gpu?.tier;
     const integratedTier = gpuTier === 'integrated' || gpuTier === 'software';
     const packedHdr = integratedTier && vd.qualityPreset !== 'high' ? 'all' : 'off';
+    const compactBloom = (!!this._foundrySet && vd.qualityPreset === 'low') || hitchReliefLevel >= 1;
     const sig = this._postOptionsSignature(norm, vd, sceneSamples)
       + (compactBloom ? '|compact-bloom' : '')
       + `|hdr-${packedHdr}`;
@@ -30698,7 +30738,13 @@ export const render = {
     } else if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
       hull.rotation.x = world.bank[slot];
       hull.rotation.z = world.pitch[slot];
+      if (hull.matrixAutoUpdate === false && typeof hull.updateMatrix === 'function') hull.updateMatrix();
     }
+    // Socket-pose cache signal (rfx socketPoseCache): vfx memoizes trail/RCS socket world poses on
+    // the view until this stamp moves — the same "the renderer wrote a new root pose" signal this
+    // function already establishes. Stamped on EVERY successful application, not on delta: a pose
+    // that rewrote the same values still legitimately claims the frame's compose.
+    if (mesh.userData) mesh.userData.sfPoseWriteSeq = this._viewSyncSeq || 0;
     return true;
   },
 
@@ -30793,6 +30839,9 @@ export const render = {
     // fan/plume/damage flicker stay frozen with the world, yard work does not.
     const authoredNow = this._authoredClockAdvance ? this._authoredClockAdvance() : simNow;
     const presFrameDt = Math.max(0, this._presentationFrameDt || 0);
+    // rfx cosmeticCadence — settled craft pay ambient enrichment every COSMETIC_SYNC_PERIOD-th
+    // frame, staggered by slot; craftCombatHot keeps combat-critical channels per-frame.
+    const cosmeticCadenceOn = frameCostFixOn('cosmeticCadence');
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
@@ -31061,7 +31110,43 @@ export const render = {
         // right after a show) dwell-defers too, not only rows that once froze.
         userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
         // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
-        if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
+        if (userData.hulkEmber) {
+          updateHulkEmber(userData.hulkEmber, this.state.simTime);
+          // Spent: the hulk joins the cold material set its kind shares (?rfx=-coldHulks keeps
+          // every hulk on its own clones), and its leaves join the cross-hulk instance pool
+          // (?rfx=-hulkPool keeps them on direct draws). Under an in-run on/off measurement the
+          // private clones are kept so the OFF side really draws them again.
+          if (frameCostFixOn('coldHulks') && hulkEmberSpent(userData.hulkEmber, this.state.simTime)) {
+            const live = globalThis.__sfRfx;
+            settleColdHulk(mesh, { keepPrivate: !!(live && typeof live.coldHulks === 'boolean') });
+            if (frameCostFixOn('hulkPool')) {
+              tryPresentedCall(this, 'cold-hulk-pool', () => poolColdHulkLeaves(this.scene, mesh));
+            }
+          }
+        } else if (userData.coldHulk === 'reversible') {
+          // Measurement harness only (keepPrivate above): follow the live switches both ways.
+          if (!frameCostFixOn('coldHulks')) {
+            unpoolColdHulkLeaves(this.scene, mesh);
+            unsettleColdHulk(mesh);
+          } else if (frameCostFixOn('hulkPool') !== (userData.coldHulkPooled === true)) {
+            if (userData.coldHulkPooled === true) unpoolColdHulkLeaves(this.scene, mesh);
+            else tryPresentedCall(this, 'cold-hulk-pool', () => poolColdHulkLeaves(this.scene, mesh));
+          }
+        }
+        // Repeated static place props (rocks, monoliths, arena furniture) and BroodRemain debris
+        // join the cross-owner instance pool once. Live drawBatchOpt A/B toggles bypass the
+        // resident chunks in syncAuthoredInstancePools without tearing down or recompiling them.
+        if (this.scene && (userData.authoredAssetState === 'authored' || userData.broodRemainKind)) {
+          if (frameCostFixOn('drawBatchOpt') && userData.staticPropPooled !== true && userData.staticPropPoolChecked !== true) {
+            tryPresentedCall(this, 'static-prop-pool', () => {
+              const pooled = poolStaticPropLeaves(this.scene, mesh);
+              if (pooled === 0) userData.staticPropPoolChecked = true;
+            });
+          }
+        }
+        if (this.scene && userData.retroIdleHotItems && frameCostFixOn('drawBatchOpt') && userData.retroIdleHotPooled !== true) {
+          syncHostileRetroIdleHotPool(this.scene, mesh, true);
+        }
         if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
         const viewRadius = (entity && entity.alive !== false)
           ? entityVisualCullRadius(entity, mesh)
@@ -31134,6 +31219,10 @@ export const render = {
         // _viewBandOptions already carries forceInner; a middle band can only exist with it
         // false, so the pooled struct answers exactly like the callee's `{}` default.
         const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
+        // cosmeticCadence: settled cosmetic channels stagger by slot; the player and
+        // off-switch keep every frame. Combat-live craft override this at the call site.
+        const cosmeticDue = !cosmeticCadenceOn || isPlayer
+          || ((this._viewSyncSeq + slot) % COSMETIC_SYNC_PERIOD) === 0;
         const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
         let lodLevel = userData.lod ? userData.lod.level : null;
         const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
@@ -31185,12 +31274,18 @@ export const render = {
         }
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          const protectedShip = shipFamily && (isPlayer || !isOrdinaryLodShip(entity)
+          // In-file tiers (Swarm, partsLibrary IN-FILE SHIP TIERS): the body carries its own lower
+          // levels as pooled leaves, so the same selector and dwell pick the level and updateLod
+          // flips which leaves are shown; no sibling body is loaded.
+          const inFileTiers = !shipFamily && sampledShip && userData.inFileShipTiers === true;
+          const shipTiered = shipFamily || inFileTiers;
+          const protectedShip = shipTiered && (isPlayer || !isOrdinaryLodShip(entity)
             || entityIsMissionCritical(entity, this.state));
-          if (shipFamily && !userData.shipLodSelection) userData.shipLodSelection = createShipLodState(userData.wholeShipLodActiveLevel);
-          const desiredLod = shipFamily
+          if (shipTiered && !userData.shipLodSelection) userData.shipLodSelection = createShipLodState(userData.wholeShipLodActiveLevel);
+          const desiredLod = shipTiered
             ? userData.shipLodSelection.resolve(projectedPx, this.state.simTime, protectedShip)
             : resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
+          if (inFileTiers) userData.inFileShipTierLevel = desiredLod;
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
           if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== desiredLod
@@ -31209,7 +31304,7 @@ export const render = {
         // 'place' covers the landmark casters (hub, refinery, wreck cathedral) — the same
         // cast-radius + LOD gate as stations bounds them to the shadow ortho.
         let shadowPolicyRefreshed = false;
-        if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
+        if (this._shadowSettingOn === true && (typeName === 'ship' || typeName === 'station' || typeName === 'place')) {
           // entity may be null for a world-record row; the retained stand-in keeps the old
           // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
           const policyResult = this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity, _shadowPolicyFrameExtra);
@@ -31408,8 +31503,14 @@ export const render = {
             resolveHitFlashAccessibility(this.state.settings).flashOpacityScale < 1);
         }
         if (entity && runClosures && userData.updateDamageState) {
-          if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
-            || entity.alive !== userData._dmgAlive) {
+          // cosmeticDue: a settled row pays the hull/shield-fraction write (emissive/armor/smoke
+          // state) on its stagger frame at worst COSMETIC_SYNC_PERIOD-1 frames late. The change
+          // check itself stays per-frame so the latch reads fresh hull/shield/alive, and the
+          // alive transition — the readable death boundary — never waits on the cadence.
+          const damageTransition = entity.alive !== userData._dmgAlive;
+          if ((cosmeticDue || damageTransition)
+            && (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
+            || damageTransition)) {
             // Latches commit after the call: a faulting updateDamageState retried
             // by the row-fault machinery must still read stale (pre-commit
             // latches would claim the transition applied and skip it forever).
@@ -31455,9 +31556,22 @@ export const render = {
               _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
               _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
               _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
-              globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
-              globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
-              globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+              // cosmeticCadence: a settled craft's ambient enrichment (breath, turret settle,
+              // drill, gimbal) re-runs on its stagger frame; the accumulated dt keeps those
+              // channels at real rate. craftCombatHot returns TRUE whenever any per-frame
+              // channel is live — flinch, recoil, impact yaw, actuators, tumbles, dock clamps,
+              // jump/hazard clocks — so combat-critical motion never cadences.
+              const craftDue = cosmeticDue
+                || globalShipMicroMotion.craftCombatHot(entity, simTime, _craftMicroMotionOptions);
+              if (craftDue) {
+                const motionDt = frameDt + (userData._mmDtCarry || 0);
+                userData._mmDtCarry = 0;
+                globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, motionDt, _craftMicroMotionOptions);
+                globalForgeCrown.updateForgeCrown(entity, mesh, simTime, motionDt, _craftMicroMotionOptions);
+                globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, motionDt, _craftMicroMotionOptions);
+              } else {
+                userData._mmDtCarry = (userData._mmDtCarry || 0) + frameDt;
+              }
             }
             if (isPlayer && this.scene) {
               slipstreamSeen = true;
@@ -31682,7 +31796,12 @@ export const render = {
     const active = isFoundrySetEntry(event, run?.arenaId);
     if (active === !!this._foundrySet) return false;
     if (active) {
-      const set = createFoundrySet(this.scene, { renderer: this.renderer, nocturne: this._nocturne, gpu: this.state?.render?.gpu || null });
+      const set = createFoundrySet(this.scene, {
+        renderer: this.renderer,
+        nocturne: this._nocturne,
+        gpu: this.state?.render?.gpu || null,
+        shadows: this.state.settings?.video?.shadows !== false,
+      });
       this._foundrySet = set;
       const pos = this.state.entities.get(this.state.playerId)?.pos;
       if (pos) { set.center.x = pos.x; set.center.z = pos.z; }
@@ -32480,7 +32599,24 @@ export const render = {
     options.recordsDirty = this._presentationWorld.consumeAsteroidDirty()
       || (this._cameraOccluderState && this._cameraOccluderState.sinksDirty === true);
     const result = syncAsteroidInstancePool(this._asteroidInstancePool, options);
-    if ((result?.shadowMatrixUploads || 0) > 0) this._shadowMapDirty = true;
+    if ((result?.shadowMatrixUploads || 0) > 0) {
+      // rfx shadowCadence: a tumbling debris field uploads shadow-relevant matrices every frame,
+      // keeping the directional depth pass armed forever at full cost. Latch the upload and
+      // promote it on a bounded cadence — per-caster shadow-relevant change detection stays in
+      // the pool (only real matrix deltas count as uploads), so tumbling below the resolution
+      // gate never reaches this line at all. Outside flight the flag promotes immediately: the
+      // opening picture and loading transitions need the true cast set, not a deferred one.
+      if (frameCostFixOn('shadowCadence')) {
+        this._shadowInstanceUploadPending = true;
+        if ((this.state && this.state.mode) !== 'flight'
+          || ((this._viewSyncSeq || 0) % SHADOW_INSTANCE_DIRTY_PERIOD) === 0) {
+          this._shadowMapDirty = true;
+          this._shadowInstanceUploadPending = false;
+        }
+      } else {
+        this._shadowMapDirty = true;
+      }
+    }
     if (this.state && this.state.render) this.state.render.asteroidInstancePool = result;
     return result;
   },
@@ -34571,6 +34707,7 @@ export const render = {
         }
         if (this._shadowRefreshScheduled === true) {
           this._shadowMapDirty = false;
+          this._shadowInstanceUploadPending = false;
           this._shadowRefreshScheduled = false;
         }
       } catch (error) {

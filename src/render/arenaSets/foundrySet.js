@@ -312,18 +312,19 @@ function staticMaterialKey(material) {
     textureIdentityKey(material.aoMap),
     textureIdentityKey(material.emissiveMap),
   ].join('/');
+  const isLambert = material.isMeshLambertMaterial === true;
   return [
     material.type,
     programKey,
-    role,
+    isLambert ? '' : role,
     lampChannel,
-    Number(material.roughness ?? 1).toFixed(3),
-    Number(material.metalness ?? 0).toFixed(3),
-    Number(material.envMapIntensity ?? 1).toFixed(3),
+    isLambert ? '0' : Number(material.roughness ?? 1).toFixed(3),
+    isLambert ? '0' : Number(material.metalness ?? 0).toFixed(3),
+    isLambert ? '0' : Number(material.envMapIntensity ?? 1).toFixed(3),
     material.dithering ? 1 : 0,
     material.flatShading ? 1 : 0,
     emissiveHex,
-    emissiveIntensity.toFixed(3),
+    emissiveHex === '000000' ? '0.000' : emissiveIntensity.toFixed(3),
     textures,
   ].join('|');
 }
@@ -493,15 +494,17 @@ function coalesceMaterialBuckets(chunks, own, keepSingleInFallback = false, inte
     }
     return cached;
   };
+  const mergePostDemote = integratedTier && frameCostFixOn('drawBatchOpt');
   for (const chunk of chunks) {
-    const key = staticMaterialKey(chunk.material);
+    const mat = mergePostDemote ? demote(chunk.material) : chunk.material;
+    const key = staticMaterialKey(mat);
     if (!key || !chunk.geometry?.isBufferGeometry) {
       fallback.push(integratedTier ? { ...chunk, material: demote(chunk.material) } : chunk);
       continue;
     }
     let bucket = buckets.get(key);
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
-    bucket.push(chunk);
+    bucket.push(mergePostDemote ? { ...chunk, material: mat } : chunk);
   }
   const merged = [];
   for (const bucket of buckets.values()) {
@@ -623,11 +626,12 @@ function mountPart(root, record, placements, name, batches, own, staticChunks = 
   }
 }
 
-export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAuthoredPart, gpu = null } = {}) {
+export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAuthoredPart, gpu = null, shadows = true } = {}) {
   const root = new THREE.Group();
   root.name = 'Foundry industrial deck';
   const integratedTier = gpu?.tier === 'integrated' || gpu?.tier === 'software';
   const cheapMat = integratedTier && frameCostFixOn('foundryCheapMat');
+  const shareDeckProgram = cheapMat && !shadows && frameCostFixOn('drawBatchOpt');
   const center = { x: 0, z: 0 };
   const local = { x: 0, z: 0 };
   const resources = new Set();
@@ -635,12 +639,16 @@ export function createFoundrySet(scene, { renderer, nocturne, loadPart = loadAut
   const steel = own(cheapMat
     ? new THREE.MeshLambertMaterial({ color: 0xffffff })
     : new THREE.MeshStandardMaterial({ roughness: 0.76, metalness: 0.22, color: 0xffffff }));
-  const floor = own(cheapMat
-    ? new THREE.MeshLambertMaterial({ color: 0xffffff })
-    : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x252322, shininess: 19 }));
+  const floor = shareDeckProgram
+    ? steel
+    : own(cheapMat
+      ? new THREE.MeshLambertMaterial({ color: 0xffffff })
+      : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x252322, shininess: 19 }));
   const grout = own(new THREE.MeshLambertMaterial({ color: 0x252729 }));
-  useDeckShadowFilter(floor);
-  useDeckShadowFilter(grout);
+  if (!shareDeckProgram) {
+    useDeckShadowFilter(floor);
+    useDeckShadowFilter(grout);
+  }
   const fixtures = {
     hot: own(new THREE.MeshBasicMaterial({ color: new THREE.Color(FOUNDRY_LIGHT.furnaceCore).multiplyScalar(3.4) })),
     lamp: own(new THREE.MeshBasicMaterial({ color: new THREE.Color(FOUNDRY_LIGHT.lampCore).multiplyScalar(1.4) })),

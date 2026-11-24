@@ -16,7 +16,8 @@
 // Within a segment: renderOrder (an author's "draw this big occluder first/last"), then program,
 // then program variant and material, then front-to-back distance (early depth rejection), with the original traversal
 // order as the final tie-break (stable).
-import { LessEqualDepth, LessDepth } from 'three';
+import { AdditiveBlending, LessEqualDepth, LessDepth } from 'three';
+import { frameCostFixOn } from './frameCostSwitches.js';
 
 function isBarrier(material) {
   return material.colorWrite === false
@@ -26,21 +27,26 @@ function isBarrier(material) {
     || (material.depthFunc !== LessEqualDepth && material.depthFunc !== LessDepth);
 }
 
+function isCommutativeAdditive(material) {
+  return !!material && material.blending === AdditiveBlending && material.depthWrite === false;
+}
+
 function byState(a, b) {
   return (a.renderOrder - b.renderOrder) || (a.__sfProgramKey - b.__sfProgramKey)
     || (a.__sfMaterialKey - b.__sfMaterialKey) || (a.z - b.z) || (a.__sfOrder - b.__sfOrder);
 }
 
+function programIdFor(props, material) {
+  if (!props || typeof props.get !== 'function' || !material) return 0;
+  const rec = props.get(material);
+  const program = rec && rec.currentProgram;
+  // A never-drawn material has no program yet: keep it at the end of its segment.
+  return program && Number.isFinite(program.id) ? program.id : 0xfffff;
+}
+
 export function createOpaqueStateSort(renderer) {
   const props = renderer && renderer.properties;
   const scratch = [];
-  function programIdOf(material) {
-    if (!props || typeof props.get !== 'function') return 0;
-    const rec = props.get(material);
-    const program = rec && rec.currentProgram;
-    // A never-drawn material has no program yet: keep it at the end of its segment.
-    return program && Number.isFinite(program.id) ? program.id : 0xfffff;
-  }
   function sortRange(list, start, end) {
     const n = end - start;
     if (n < 2) return;
@@ -48,7 +54,7 @@ export function createOpaqueStateSort(renderer) {
     for (let i = 0; i < n; i++) {
       const item = list[start + i];
       item.__sfOrder = i;
-      item.__sfProgramKey = programIdOf(item.material);
+      item.__sfProgramKey = programIdFor(props, item.material);
       // One material can draw as several program variants (instanced bucket and direct leaf):
       // keep each variant's draws together so they do not ping-pong between programs.
       item.__sfMaterialKey = (item.materialVariant | 0) * 0x1000000 + (item.material.id & 0xffffff);
@@ -62,6 +68,7 @@ export function createOpaqueStateSort(renderer) {
     // An unpatched three (node tests resolve node_modules/three) calls this as a comparator:
     // answer "equal", which is exactly the old traversal-order behaviour.
     if (!Array.isArray(list)) return 0;
+    if (!frameCostFixOn('sort') || !frameCostFixOn('drawBatchOpt')) return;
     let start = 0;
     const n = list.length;
     for (let i = 0; i < n; i++) {
@@ -77,4 +84,31 @@ export function createOpaqueStateSort(renderer) {
   return opaqueStateSort;
 }
 
-export const __test = { isBarrier };
+/**
+ * Transparent comparator that preserves exact back-to-front painter order for alpha-blended
+ * surfaces while coalescing purely commutative AdditiveBlending (depthWrite:false) draws at the
+ * same (groupOrder, renderOrder) by shader program and material. Strictly transitive weak order.
+ */
+export function createTransparentStateSort(renderer) {
+  const props = renderer && renderer.properties;
+  return function transparentStateSort(a, b) {
+    if (a.groupOrder !== b.groupOrder) return a.groupOrder - b.groupOrder;
+    if (a.renderOrder !== b.renderOrder) return a.renderOrder - b.renderOrder;
+    if (!frameCostFixOn('sort') || !frameCostFixOn('drawBatchOpt')) {
+      return (b.z - a.z) || (a.id - b.id);
+    }
+    const addA = isCommutativeAdditive(a.material) ? 1 : 0;
+    const addB = isCommutativeAdditive(b.material) ? 1 : 0;
+    if (addA !== addB) return addA - addB;
+    if (addA === 1) {
+      const progDiff = programIdFor(props, a.material) - programIdFor(props, b.material);
+      if (progDiff !== 0) return progDiff;
+      const matDiff = (a.material.id | 0) - (b.material.id | 0);
+      if (matDiff !== 0) return matDiff;
+      return a.id - b.id;
+    }
+    return (b.z - a.z) || (a.id - b.id);
+  };
+}
+
+export const __test = { isBarrier, isCommutativeAdditive };

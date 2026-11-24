@@ -51,7 +51,12 @@
 // hulk of a hull, src/render/partsLibrary.js poolColdHulkLeaves),
 // drsSmooth (smooth hysteresis dynamic resolution governor >=0.6 floor + single-pass composite
 // upscale on integrated GPUs; ?rfx=-drsSmooth holds native 1.0 scale,
-// src/render/adaptiveQuality.js + src/render/bloom.js + src/render/renderer.js).
+// src/render/adaptiveQuality.js + src/render/bloom.js + src/render/renderer.js),
+// drawBatchOpt (live opaque + additive-transparent state sort, stand-in merge with recomputed
+// normals when detached + cross-ship stand-in instancing, Foundry post-demotion material merge +
+// shared deck shader, hostile retro idle-throat/iris pooling, and repeated static PlaceProp +
+// BroodRemain debris instancing; ?rfx=-drawBatchOpt = off,
+// src/render/opaqueStateSort.js + visualOverrides.js + partsLibrary.js + arenaSets/foundrySet.js + renderer.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).
