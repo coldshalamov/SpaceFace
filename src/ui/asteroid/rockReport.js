@@ -95,11 +95,12 @@ export function rockReportSentence(report) {
   return `${head}${makes}${lift}`;
 }
 
+import { counted } from '../../core/numberFormat.js';
+
 // The cockpit's line for a rock the pilot owns: "Your claim: mining, grade B · 3 machines · 1 line out".
 // The grade needs the rock's interior, so it is worked out once per change to the claim and kept.
 const claimCache = new Map();
 const CLAIM_CACHE_MAX = 64;
-const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export function claimedRockLine(entity, state) {
   if (!entity || entity.type !== 'asteroid' || !state || !state.sites || !state.sites.byId) return null;
@@ -128,8 +129,8 @@ export function claimedRockLine(entity, state) {
   const head = roleId === 'outpost'
     ? 'Your claim'
     : `Your claim: ${TRADE_WORD[roleId] || 'works'}${hit.grade ? `, grade ${hit.grade}` : ''}`;
-  const parts = [head, count(site.machines.length, 'machine')];
-  if (out) parts.push(`${count(out, 'line')} out`);
+  const parts = [head, counted(site.machines.length, 'machine')];
+  if (out) parts.push(`${counted(out, 'line')} out`);
   return parts.join(' · ');
 }
 

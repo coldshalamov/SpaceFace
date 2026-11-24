@@ -13,6 +13,7 @@
 // consumed exactly once, so it can never attach to a later unrelated settle of the same lot.
 
 import { COMMODITIES } from '../../data/commodities.js';
+import { pluralWord } from '../../core/numberFormat.js';
 import { projectTradeOutcome } from '../sim/tradeTruth.js';
 
 export const TRADE_EXPECTATION_KEY = 'marketTradeExpectation';
@@ -137,7 +138,7 @@ function formatTradeClearedReceipt(state, p, expectation) {
   const name = CMDTY_NAME.get(p.commodityId) || titleCaseWords(p.commodityId || 'cargo');
   const verb = p.side === 'sell' ? 'Sold' : 'Bought';
   // "Sold 1 unit of Fuel Cells", never "1 units"
-  const amount = (q) => `${fmtCr(q)} ${Math.round(Number(q) || 0) === 1 ? 'unit' : 'units'} of`;
+  const amount = (q) => `${fmtCr(q)} ${pluralWord(Number(q) || 0, 'unit')} of`;
   const sign = p.side === 'sell' ? '+' : '−';
   const premium = p.side === 'sell' && p.shortagePremium === true
     ? ' · shortage premium included' : '';

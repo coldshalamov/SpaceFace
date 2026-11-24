@@ -116,12 +116,17 @@ test('a fractional-volume commodity fills to the cap boundary without overflow',
     }
   }
   assert.ok(found, 'fixture has a 0.8-volume commodity on some market');
-  state.player.cargo.capVolume = 4.0; // exactly 5 units at 0.8/u
-  state.player.cargo.usedVolume = 0;
+  // R22 / CARGO-BUILD-1: slots are the only admission cap (20 ordinary units per slot); pre-fill
+  // the single slot to 15 so only 5 more whole units fit before the bag hits its cap boundary.
+  state.player.cargo.slotCount = 1;
+  state.player.cargo.slots = [{ commodityId: found.cid, qty: 15 }];
+  state.player.cargo.items = { [found.cid]: 15 };
+  state.player.cargo.capVolume = 16.0; // 20 units at 0.8/u
+  state.player.cargo.usedVolume = 12.0;
   const r = econ.execute(found.sid, found.cid, 'buy', 8);
   assert.equal(r.ok, true);
-  assert.equal(r.qty, 5, 'partial fill takes the whole units that fit');
-  assert.ok(state.player.cargo.usedVolume <= 4.0 + 1e-9, 'no overflow past the cap');
+  assert.equal(r.qty, 5, 'partial fill takes the whole units that fit in the remaining slot capacity');
+  assert.ok(state.player.cargo.usedVolume <= 16.0 + 1e-9, 'no overflow past the cap');
   sim.dispose();
 });
 
@@ -131,7 +136,11 @@ test('a non-finite hold cache refuses the trade instead of reporting a phantom s
   const entry = state.economy.markets[sid][cid];
   const stock0 = entry.stock;
   const credits0 = state.player.credits;
-  state.player.cargo.capVolume = NaN; // corrupted cache — must fail closed, not settle NaN
+  // R22 / CARGO-BUILD-1: corrupt the slot bag bound alongside capVolume (an over-cap hold with
+  // more stacks than slotCount must fail closed and refuse the buy).
+  state.player.cargo.capVolume = NaN;
+  state.player.cargo.slotCount = 1;
+  state.player.cargo.slots = [{ commodityId: 'cmdty_ice_water', qty: 1 }, { commodityId: 'cmdty_ice_water', qty: 1 }];
   const r = econ.execute(sid, cid, 'buy', 3);
   assert.equal(r.ok, false, 'refused, never a phantom ok:true');
   assert.equal(r.reason, 'cargo_full');
@@ -139,6 +148,8 @@ test('a non-finite hold cache refuses the trade instead of reporting a phantom s
   assert.equal(state.player.credits, credits0, 'nothing charged');
   assert.equal(entry.stock, stock0, 'market stock untouched');
   assert.equal(events.length, 0, 'no tradeCompleted');
+  state.player.cargo.slotCount = 8;
+  state.player.cargo.slots = [];
   assert.ok(econ.quote(sid, cid, 'buy', 1).ok, 'the listing stays tradeable after the refusal');
   sim.dispose();
 });

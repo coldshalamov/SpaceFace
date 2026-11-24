@@ -114,9 +114,9 @@ test('active ORRERY line controls name only the actual bound keys and omit unbou
     yawLeft: ['KeyJ'], yawRight: [], boost: [] });
   state.player = { cargo: { items: {} }, tether: { active: true } };
   state.entities = new Map();
-  // The Line sits after the five powers (2026-10-22): its socket is POWER_SLOT.line, never a digit seat.
+  // R17: The Line is on right mouse and its keyboard seat — one button with one grammar.
   const line = readOrdnanceModel(state, null)[String(POWER_SLOT.line)];
-  assert.equal(line.key, 'P');
+  assert.equal(line.key, 'RMB / P');
   assert.match(line.tip, /Hold P.*I REEL.*J ORBIT/);
   assert.doesNotMatch(line.tip, /PAY OUT|PUMP|Space|SHIFT|KeyI/);
   const host = Object.create(input);

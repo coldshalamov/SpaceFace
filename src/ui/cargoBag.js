@@ -23,7 +23,7 @@ import { CARGO_SLOTS } from '../data/cargoSlots.js';
 import { bagSections, reservedCargoQty, unitsPerSlotFor } from '../systems/cargo.js';
 import { bestKnownSellFor, calculateHoldWorth, resolveCargoSellPrice } from './market/tradeLogic.js';
 import { itemThumbHtml, injectItemThumbnailStyles } from './icons/itemThumbnails.js';
-import { formatCount } from './numberFormat.js';
+import { counted, formatCount } from './numberFormat.js';
 import { promptLabel } from './bindings.js';
 import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack.js';
 
@@ -295,7 +295,7 @@ export function createCargoBag({ root, state, bus, ctx = null }) {
       meta.append(used, val, m);
       if (model.overCapacity) meta.appendChild(el(doc, 'span', 'is-over', 'Over capacity: drop a stack'));
     } else if (tab === 'gear') {
-      meta.textContent = model.used ? `${model.used} unfitted part${model.used === 1 ? '' : 's'} · fit them at a station` : 'No unfitted parts aboard';
+      meta.textContent = model.used ? `${counted(model.used, 'unfitted part')} · fit them at a station` : 'No unfitted parts aboard';
     } else {
       meta.textContent = model.empty ? 'No salvage bay on this hull' : `Salvage bay · ${model.slots.filter(Boolean).length} / ${model.slotCount} slots · cash in at any station`;
     }

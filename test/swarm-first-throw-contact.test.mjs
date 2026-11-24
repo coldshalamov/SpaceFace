@@ -74,7 +74,7 @@ function harness({ runPatch = {}, planPatch = {}, rockPatch = {}, victimPatch = 
     ENEMY_TYPES: [WASP], SURVIVAL_TEMPLATE_BLOCK: 30,
     physicalProblemFromPackages: () => null, shippedQuestionFor: () => null,
     SWARM_CHAMPION_LEAD_WAVES: 3, swarmNextBossFor: () => null, SWARM_AFFIX_BY_ID: {},
-    validateRunState: () => ({ ok: true }), SURVIVAL_ARENA_INTRO_TICKS: 60,
+    validateRunState: () => ({ ok: true }), validateRunStateForTick: () => ({ ok: true }), SURVIVAL_ARENA_INTRO_TICKS: 60,
     SURVIVAL_WAVE_INTRO_TICKS: 60, playerBearingName: () => 'east',
     CRYO_ARENA_ID: 'cryo', GATE_BEARINGS: { east: { x: 1, z: 0 } },
     isSwarmSpecialistRun: () => false, swarmSpecialistBriefForEnemy: () => null,
