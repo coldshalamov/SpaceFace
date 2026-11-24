@@ -3010,11 +3010,11 @@ export function breachPhrase(layer) {
  * and an id is frequently null — a hit whose weapon nothing recorded still has to name itself.
  */
 export function weaponDisplayName(weaponId) {
-  if (!weaponId) return 'Unidentified fire';
+  if (!weaponId) return 'Direct fire';
   const known = WEAPON_NAME_BY_ID.get(weaponId);
   if (known) return known;
   const words = String(weaponId).replace(/^(wpn|unique)_/, '').split('_').filter(Boolean);
-  if (!words.length) return 'Unidentified fire';
+  if (!words.length) return 'Direct fire';
   return words
     .map((word) => (word.length === 1 ? word.toUpperCase() : word[0].toUpperCase() + word.slice(1)))
     .join(' ');
@@ -3146,8 +3146,10 @@ export function buildLead(picks) {
 export function killChainRows(defeat, death = null) {
   if (!defeat) return [];
   const environmental = defeat.source?.kind === 'environment';
+  const physicalName = typeof defeat.physicalLabel === 'string' && defeat.physicalLabel
+    ? capFirst(defeat.physicalLabel) : null;
   const attacker = environmental ? defeat.source.label || 'Environmental hazard'
-    : defeat.attacker || defeat.source?.label || 'Unidentified attacker';
+    : defeat.attacker || defeat.source?.label || physicalName || 'Enemy fire';
   const killer = !environmental && defeat.faction ? `${attacker} — ${defeat.faction}` : attacker;
   // Polish list: the death screen always names what killed you — never "Unidentified weapon" or
   // "?". With no recorded weapon the row says the hull itself did it (a ram or a blast is a body).
@@ -5120,7 +5122,7 @@ export function deathDialSpec(result, ctx) {
     engraving: Number(result.deepestWave || result.wave) > 0 ? `${result.ruleset === SWARM_RULESET ? 'Round' : 'Wave'} ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',
-      name: rows.get('Killed by') || 'Unidentified attacker',
+      name: rows.get('Killed by') || 'Enemy fire',
       detail: [rows.get('Damage cause') || rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')]
         .filter(Boolean).join(' · '),
       warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',

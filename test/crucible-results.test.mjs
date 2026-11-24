@@ -539,8 +539,9 @@ test('a weapon id becomes the name in the catalog, and an unknown one still read
   // Not in the catalog: humanised, never printed raw as wpn_snake_case.
   assert.equal(weaponDisplayName('wpn_scrap_thrower_l'), 'Scrap Thrower L');
   // The trail records weaponId: null constantly — collision, environment, anything unattributed.
-  assert.equal(weaponDisplayName(null), 'Unidentified fire');
-  assert.equal(weaponDisplayName(''), 'Unidentified fire');
+  // W2-3 (04_SWARM.md §8): never print "Unidentified fire" on screen.
+  assert.equal(weaponDisplayName(null), 'Direct fire');
+  assert.equal(weaponDisplayName(''), 'Direct fire');
 });
 
 test('the damage trail aggregates by weapon, heaviest first, and rounds once at display', () => {
@@ -624,9 +625,10 @@ test('the kill chain names who, with what, from where, and through which layer',
   assert.equal(rows.get('It came from'), 'Astern');
   assert.equal(rows.get('It got in'), 'Through the hull');
 
-  // A receipt missing every optional field still produces four complete rows, never a blank value.
+  // A receipt missing every optional field still produces four complete rows, never a blank value
+  // or "Unidentified attacker" (W2-3, 04_SWARM.md §8).
   const bare = new Map(killChainRows({}));
-  assert.equal(bare.get('Killed by'), 'Unidentified attacker');
+  assert.equal(bare.get('Killed by'), 'Enemy fire');
   assert.equal(bare.get('Its weapon'), 'Its own hull — a ram or a blast', 'the death screen always names what killed you');
   assert.equal(bare.size, 4);
   assert.equal(new Map(killChainRows({ attacker: 'Wreck' })).get('Killed by'), 'Wreck');

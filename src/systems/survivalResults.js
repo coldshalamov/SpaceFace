@@ -202,7 +202,10 @@ export function closingSpeedPhrase(receipt) {
  */
 export function deathCauseText(receipt, trail = []) {
   if (receipt && typeof receipt === 'object') {
-    const attacker = receipt.attacker || (receipt.source && receipt.source.label) || 'Unidentified attacker';
+    const rawAttacker = receipt.attacker || (receipt.source && receipt.source.label) || '';
+    const attackerNamed = rawAttacker && rawAttacker !== 'Unidentified attacker' && rawAttacker !== 'Unknown contact';
+    const attacker = attackerNamed ? rawAttacker
+      : (receipt.physicalLabel ? receipt.physicalLabel[0].toUpperCase() + receipt.physicalLabel.slice(1) : 'Enemy fire');
     // SFQ-B058 — a known gun reads as its name; a physical kill (whip, thrown
     // mass, collision slam) reads as the plain-word impact label the defeat
     // receipt resolved, never 'unidentified weapon'.
@@ -211,11 +214,11 @@ export function deathCauseText(receipt, trail = []) {
         ? receipt.weapon : null);
     // 04_SWARM.md §8 — the killer is never unnamed: with no weapon the line falls
     // back to the attacking hull's own display name, and the last resort stays plain
-    // words rather than "unidentified weapon".
-    const hullName = attacker !== 'Unidentified attacker' && attacker !== 'Unknown contact' ? attacker : null;
+    // words rather than "unidentified weapon" or "Unidentified attacker".
+    const hullName = attackerNamed ? attacker : null;
     const weapon = receipt.source?.kind === 'environment'
       ? receipt.physicalLabel || 'Environmental impact'
-      : receipt.weapon || physicalFallback || hullName || 'the ship that hit you';
+      : receipt.weapon || physicalFallback || hullName || 'direct fire';
     const direction = receipt.direction || 'bearing unknown';
     const layer = receipt.dominantLayer || 'hull';
     return `${attacker} · ${weapon} · ${direction}${closingSpeedPhrase(receipt)} · ${layer} breach`;
@@ -228,9 +231,9 @@ export function deathCauseText(receipt, trail = []) {
       byWeapon.set(id, (byWeapon.get(id) || 0) + 1);
     }
     const top = [...byWeapon.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    return `${top ? weaponLabel(top) : 'Unidentified'} fire took you apart — no single hull to name.`;
+    return `${top ? weaponLabel(top) : 'Crossfire'} took you apart — no single hull to name.`;
   }
-  return 'Unidentified fire took you apart — no single hull to name.';
+  return 'Enemy fire took you apart — no single hull to name.';
 }
 
 /**

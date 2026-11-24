@@ -238,7 +238,8 @@ test('PQ-174.06: the telegraph resolver reports a recent matched tell, fire, or 
   assert.equal(wave.source, 'unrecorded');
 
   assert.equal(telegraphWord('some_new_tell'), 'Some New Tell', 'unknown kinds stay specific');
-  assert.equal(deathCauseText(null, []), 'Unidentified fire took you apart — no single hull to name.');
+  // W2-3 (04_SWARM.md §8): never print "Unidentified fire" or "Unidentified attacker".
+  assert.equal(deathCauseText(null, []), 'Enemy fire took you apart — no single hull to name.');
   assert.ok(counterplayFor({ direction: 'AFT' }).length > 0);
 });
 
