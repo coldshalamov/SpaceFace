@@ -107,6 +107,9 @@ test('a live Swarm round records lifetime deeds but never speaks them over the f
   assert.equal(byId.get('six_figures')?.announce, false, 'a lifetime deed stays quiet mid-fight');
   assert.ok(h.said.some((line) => /Made Contact/.test(line.text)));
   assert.ok(!h.said.some((line) => /Six Figures/.test(line.text)));
+  // ...and the held deed is named when the run's record lands (Run Over), not lost.
+  h.bus.emit('run:resultsReady', { outcome: 'defeat', ruleset: 'swarm', seed: 4242, wave: 1 });
+  assert.ok(h.said.some((line) => /Six Figures/.test(line.text)), 'the lifetime deed speaks on the results plate');
 });
 
 test('a recorded event stream unlocks each achievement exactly once, and a replay unlocks nothing', () => {

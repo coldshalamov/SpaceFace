@@ -857,6 +857,8 @@ export function installAchievements({
   const eventContext = { state };
   const unsubs = [];
   const pendingNotice = [];
+  /** Lifetime deeds unlocked during a live Swarm fight; their notice waits for Run Over. */
+  const deferredNotices = [];
   let lastNotice = null;
   let saveTimer = null;
   let disposed = false;
@@ -1053,6 +1055,13 @@ export function installAchievements({
     speak(defs);
   }
 
+  /** A lifetime deed held out of the fight is named on the results plate. */
+  function flushDeferredNotice() {
+    if (!deferredNotices.length || isOnboardingTeaching(state)) return;
+    const defs = deferredNotices.splice(0, deferredNotices.length);
+    speak(defs);
+  }
+
   function mirrorToShell(ids) {
     const shellApi = resolveShell(shell);
     if (!shellApi || typeof shellApi.unlockAchievement !== 'function') return;
@@ -1102,8 +1111,15 @@ export function installAchievements({
     // saved, but its notice waits for Run Over / the results plate instead of interrupting the
     // first minute of the fight.
     const midFight = inLiveSwarmFight(state);
+    const audible = [];
     for (const def of fresh) {
       const quiet = !announce || (midFight && lifetimeCategory(def.category));
+      if (announce && midFight && lifetimeCategory(def.category)
+        && deferredNotices.length < 8 && !deferredNotices.some((held) => held.id === def.id)) {
+        deferredNotices.push(def);
+      } else if (!quiet) {
+        audible.push(def);
+      }
       try {
         bus.emit(ACHIEVEMENT_UNLOCKED_EVENT, {
           id: def.id,
@@ -1118,7 +1134,7 @@ export function installAchievements({
         // a presenter fault must never lose the unlock, which is already saved
       }
     }
-    if (announce) speak(fresh.filter((def) => !(midFight && lifetimeCategory(def.category))));
+    speak(audible);
     mirrorToShell(fresh.map((def) => def.id));
     return fresh;
   }
@@ -1157,6 +1173,7 @@ export function installAchievements({
     refreshCrucible();
     const fresh = evaluate('run:resultsReady');
     if (!fresh.length) saveNow();
+    flushDeferredNotice();
     flushPendingNotice();
   }
 
@@ -1226,6 +1243,9 @@ export function installAchievements({
   if (typeof offDockSample === 'function') unsubs.push(offDockSample);
   const offResults = bus.on('run:resultsReady', onRunResults);
   if (typeof offResults === 'function') unsubs.push(offResults);
+  // A fresh run supersedes a deferred lifetime deed from a run the player left without results.
+  const offRunStarted = bus.on('run:started', () => { deferredNotices.length = 0; });
+  if (typeof offRunStarted === 'function') unsubs.push(offRunStarted);
   const offSynced = bus.on('save:store-synced', onStoreSynced);
   if (typeof offSynced === 'function') unsubs.push(offSynced);
   const offTutorial = bus.on('tutorial:finished', () => flushPendingNotice());
