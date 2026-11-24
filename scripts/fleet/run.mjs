@@ -196,7 +196,15 @@ function launch(resume) {
   child.stdout.on('data', () => { lastOutputAt = Date.now(); });
   child.stderr.on('data', () => { lastOutputAt = Date.now(); });
   const idleWatch = setInterval(() => {
-    if (existsSync(join(runDir, 'RECEIPT.md')) && Date.now() - lastOutputAt > 180_000) {
+    // Only a receipt that says the work is finished ends an idle worker: packets ask for an early,
+    // incremental receipt (Result: PARTIAL / in progress), and cursor-agent prints nothing until it
+    // ends, so 'receipt exists + quiet' alone cut live workers off mid-task (2026-11-24).
+    let receiptDone = false;
+    try {
+      const head = readFileSync(join(runDir, 'RECEIPT.md'), 'utf8').slice(0, 400);
+      receiptDone = /Result:\s*(DONE|BLOCKED|FAILED)/i.test(head) && !/in progress|PARTIAL/i.test(head);
+    } catch { /* no receipt yet */ }
+    if (receiptDone && Date.now() - lastOutputAt > 180_000) {
       log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
       clearInterval(idleWatch);
       killWorkerTree(child);
