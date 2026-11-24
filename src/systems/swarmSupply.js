@@ -324,7 +324,7 @@ export const swarmSupply = {
     this._emit('toast', {
       // A repair is the hull that came back, not a percentage that can already read 100
       // (DEMO-SWARM-UX-2: 'Repair cell — hull 100%' read as a no-op).
-      text: `Repair cell — +${Math.round(healed - before)} hull`,
+      text: `Repair cell — +${Math.max(1, Math.round(healed - before))} hull`,
       kind: 'good',
       ttl: 2.2,
     });
