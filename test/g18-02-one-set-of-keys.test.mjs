@@ -137,7 +137,7 @@ test('G18-02: the Swarm card matches the unified table', () => {
   assert.equal(verbs['Move'], 'W A S D');
   assert.equal(verbs['Aim'], 'Mouse');
   assert.equal(verbs['Fire'], 'LMB');
-  assert.equal(verbs['Line — fire / release'], 'F / RMB');
+  assert.equal(verbs['Line: hook, swing, throw'], 'F / RMB', 'the Line speaks one grammar, director 2026-11-23');
   assert.equal(verbs['Boost / dash'], 'Shift');
   assert.equal(verbs['Interact'], 'E');
   // G18-02b: Q is the wheel in the Swarm door too; the Call-in slice lives inside it.

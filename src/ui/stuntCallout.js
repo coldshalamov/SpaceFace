@@ -106,7 +106,8 @@ export function handlineSenseLine(eventName, payload) {
   // the first-beat ledger; repeats keep the snap and its sound (the break cue), no word.
   // THROW-01: letting go of a fixed anchor is a result, not a silent nothing (the twang plays from
   // the cut cue). The one callout voice, no toast.
-  if (eventName === 'anchor:released') return { key: 'anchor-let-go', name: 'LET GO', detail: '' };
+  // The Line speaks one grammar (director 2026-11-23): letting go of an anchor has no extra word.
+  if (eventName === 'anchor:released') return null;
   if (eventName === 'tether:broke') {
     return p.reason === 'target_lost' ? { key: 'line-lost', name: 'LOST', detail: '' } : null;
   }
@@ -261,10 +262,9 @@ export function comboReadout(combo, nowTick) {
   };
 }
 
-/** One line. The number is the existing bonus law, rounded. */
-export function selfSlingCalloutText(bonusDv) {
-  const whole = Math.round(Number(bonusDv) || 0);
-  return `SELF-SLING +${whole}`;
+/** The self-sling score line does not draw. The throw tag's colour and second frame name the timing. */
+export function selfSlingCalloutText() {
+  return '';
 }
 
 /**
@@ -903,15 +903,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:styleBanked', (b) => onBank(b)));
-    unsubs.push(bus.on('massline:selfSling', (payload) => {
-      const st = getState();
-      if (!calloutScope(st)) return;
-      const whole = payload && payload.selfSlingBonusDv;
-      const text = selfSlingCalloutText(whole);
-      // Swarm glass (S2): only a readable plain callout may draw. X3 carries the same check to
-      // Adventure flight, so a self-sling reads "SELF SLING", never a telemetry sentence.
-      if ((isSwarmGlass(st) || isAdventureFlight(st)) && !plainCallout(text)) return;
-      addLine('self-sling', text, '', calloutNow(), CALLOUT_TTL_MS, false);
+    unsubs.push(bus.on('massline:selfSling', () => {
+      // The Line speaks one grammar (director 2026-11-23): no SELF-SLING callout and no +N score.
     }));
     // FB-014 — the minted right, its claim, the completed line contract and the combo bridge
     // tick were emit-only. The callout column is their eye; the ship ledger (FB-014's projector)

@@ -40,12 +40,11 @@ test('native release receipt follows its body but not a recycled target id', asy
     h.bus.on('tether:releaseRated', p => { if (p.deliberate) ratings.push(p); });
     h.step(1, { before() { h.state.input.actions.massline = { cut: true }; } });
     h.step(2, { before() { h.state.input.actions.massline = {}; } });
-    assert.match(toasts[0], /Line released:/);
+    assert.deepEqual(toasts, [], 'the Line speaks one grammar, director 2026-11-23');
     assert.equal(ratings[0].load, releaseLoad);
     assert.equal(ratings[0].targetGeneration, rock.occupantGeneration);
     assert.equal(ratings[0].tonnageU, rock.mass);
     nativeRating = structuredClone(ratings[0]);
-    assert.match(toasts[0], new RegExp(`load ${Math.round(releaseLoad * 100)}%`));
     const verdict = h.state.masslineReleaseVerdict;
     assert.ok(verdict, 'the native cut produces the HUD receipt');
     const dom = { previewEl: element(), previewMark: element(), previewSourceMark: element(), previewSvg: element() };
@@ -130,7 +129,7 @@ test('native release receipt follows its body but not a recycled target id', asy
     const paint = () => hud._renderVerdictPill(dom, main, main.entities.get(main.playerId), project, main.masslineReleaseVerdict);
     paint();
     assert.equal(dom.previewMark.style.transform, 'translate3d(150px, 40px, 0)', 'same generation follows the moved target');
-    assert.match(toasts.at(-1), new RegExp(`load ${Math.round(nativeRating.load * 100)}%`));
+    assert.deepEqual(toasts, [], 'the Line speaks one grammar, director 2026-11-23');
 
     assert.equal(host.host.sim.helpers.removeEntity(rock.id, { immediate: true }), true);
     const replacement = runtime.spawn({ ...spec, pos: { x: 600, z: 200 }, mass: 10 });
@@ -143,7 +142,7 @@ test('native release receipt follows its body but not a recycled target id', asy
       'the replacement projection is installed before event replay');
     paint();
     assert.equal(dom.previewMark.style.transform, `translate3d(${Math.round(nativeRating.targetX)}px, ${Math.round(nativeRating.targetZ)}px, 0)`);
-    assert.match(toasts.at(-1), /960 t/, 'the new occupant cannot supply the old receipt mass');
+    assert.deepEqual(toasts, [], 'a recycled body still does not mint a mass toast');
 
     for (const [type, payload] of nativeBreakEvents) host.host.bus.emit(type, structuredClone(payload));
     reply = await deliver();
@@ -188,10 +187,10 @@ test('legacy missing values remain unknown while an actual zero is retained', ()
   hud.init({ state, bus, helpers: {} });
   bus.on('toast', p => toasts.push(p.text));
   bus.emit('tether:releaseRated', { deliberate: true, targetId: 2, strain: .2 });
-  assert.equal(toasts.pop(), 'Line released: strain 20%');
+  assert.deepEqual(toasts, [], 'the Line speaks one grammar, director 2026-11-23');
   assert.equal(state.masslineReleaseVerdict.targetGeneration, null);
   assert.equal(state.masslineReleaseVerdict.atX, null);
   bus.emit('tether:releaseRated', { deliberate: true, tonnageU: 0, load: 0, receiptStrain: 0 });
-  assert.equal(toasts.pop(), 'Line released: 0 t, load 0%, strain 0%');
+  assert.deepEqual(toasts, []);
   hud.destroy();
 });

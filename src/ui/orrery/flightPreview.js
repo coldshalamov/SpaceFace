@@ -154,7 +154,7 @@ export const orreryFlightScreen = {
     cluster.update({
       hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armor: 20, armorMax: 30,
       energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, speedMax: 405, boost: 0.7, drift: 24,
-      tether: { state: 'Payload', mass: 960, strain: 0.62 },
+      tether: { state: 'Payload', weight: 'Heavy', strain: 0.62 },
       ordnance: readOrdnanceModel(previewOrdnanceState(), null, PREVIEW_BINDINGS),
     });
     radar.setContacts([

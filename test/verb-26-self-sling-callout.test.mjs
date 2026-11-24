@@ -6,13 +6,13 @@ import { selfSlingCalloutText } from '../src/ui/stuntCallout.js';
 import { combatVerbRecipe } from '../src/audio/combatVerbCues.js';
 import { RECIPES } from '../src/data/audioRecipes.js';
 
-test('a self-sling callout names the rounded bonus the law already returns', () => {
+test('a self-sling draws no score line — the Line speaks one grammar, director 2026-11-23', () => {
   const earned = selfSlingBonusDv(100, 0.55, true);
   assert.equal(earned, 0, 'the bonus law stays zero free energy');
-  assert.equal(selfSlingCalloutText(earned), 'SELF-SLING +0');
-  assert.equal(selfSlingCalloutText(12.6), 'SELF-SLING +13');
-  assert.equal(selfSlingCalloutText(-0.4), 'SELF-SLING +0');
-  assert.match(selfSlingCalloutText(3), /^SELF-SLING \+\d+$/);
+  assert.equal(selfSlingCalloutText(earned), '');
+  assert.equal(selfSlingCalloutText(12.6), '');
+  assert.equal(selfSlingCalloutText(-0.4), '');
+  assert.equal(selfSlingCalloutText(3), '');
 });
 
 test('planting and releasing the momentum sink use two cues that are not gravitic fire', () => {

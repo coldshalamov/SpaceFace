@@ -363,16 +363,9 @@ export function tetherRingRead(tether) {
   return Object.freeze({ load, strain, hot: load >= 0.5 || strain >= 0.5 });
 }
 
-/** The release-read receipt line: tonnage and strain the moment the Line lets go. */
-export function releaseReadReceipt({ tonnageU = 0, load = 0, strain = 0 } = {}) {
-  const t = Math.max(0, Math.round(Number(tonnageU) || 0));
-  const l = Math.max(0, Math.min(1, Number(load) || 0));
-  const s = Math.max(0, Math.min(1, Number(strain) || 0));
-  if (!t && !l && !s) return '';
-  // A plain sentence, not a stat string: the flight glass never tier (D240) drops compact debug
-  // fields, and the receipt lane reads in sentence case.
-  const read = [t ? `${t} t` : '', `load ${Math.round(l * 100)}%`, `strain ${Math.round(s * 100)}%`].filter(Boolean);
-  return `Line released: ${read.join(', ')}`;
+/** The release toast stays quiet. Strain is the cable's colour; the grade pill is the word. */
+export function releaseReadReceipt() {
+  return '';
 }
 
 /** VERB-05 — one receipt, the trick's name. Amendments are a different event and stay quiet. */

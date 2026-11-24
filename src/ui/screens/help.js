@@ -294,7 +294,7 @@ export function controlSections(state) {
       ...arsenal.weapons.slice(0, 4).map((w) => [`${w.name} — ${[w.sentence, ...w.changes].join(' ')}`, 'fire']),
       ['Draw-to-fly (optional toggle)', 'autoFire'],
       ['Countermeasure', 'countermeasure'],
-      ['Line tap: latch / cut', 'tether'],
+      ['Line: hook, swing, throw', 'tether'],
       ['Line directional control', null, directional || '—'],
       ['Line dedicated reel in', 'reelIn'],
       ['Line dedicated pay out', 'reelOut'],
@@ -332,7 +332,7 @@ export function controlSections(state) {
     ])],
     ['Interface (fixed keys)', [
       ['Aim weapons freely', null, 'Backspace, then Mouse'],
-      ['The Line (fire / release; press also selects under the cursor)', null, 'RMB'],
+      ['Line: hook, swing, throw', null, 'RMB'],
       ['Mine / salvage / weld', null, 'hold Q → MINE/SITE BEAM'],
       ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
       ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
@@ -434,7 +434,7 @@ function fixedRowCodes(state) {
   return new Map([
     ['Aim weapons freely', ['Backspace']],
     // G18-02: RMB lights the Line row; the mine row lights on the live wheel key.
-    ['The Line (fire / release; press also selects under the cursor)', ['Mouse2']],
+    ['Line: hook, swing, throw', ['Mouse2']],
     ['Mine / salvage / weld', resolveActionCodes(state, 'contextWheel')],
     ['Deep-core extraction', code(BINDINGS.drill)],
     ['Claim body / open base', code(BINDINGS.claimBase)],

@@ -19,13 +19,13 @@ import { weaponHeatSummary } from '../weaponHeat.js';
 import { BOMB_SLOT_INDEX, FLIGHT_POWER_COPY, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { createArsenalPresentation, readArsenalBindings } from '../../data/arsenalPresentation.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
-import { isAdventureFlight } from '../attentionGlass.js';
 import { isSwarmGlass } from '../swarmGlass.js';
 import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
 import { targetDisplayName } from '../targetPanel.js';
 import { couplingBodyMass, resolveMassInterpretation } from '../masslineHud.js';
+import { lineBodyFixed, lineBodyMassT, lineWeightWord } from '../lineRelation.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
 import { swarmRailSlotAllowed } from '../../data/swarmControls.js';
@@ -314,11 +314,16 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
       const tipKeyLine = slot.index === 6
         ? entry.key
         : (keys[slot.index] || entry.key || '');
+      // An unbound socket has no keycap to aim at; surface the presentation's bind guidance on the
+      // reason line so the tip still tells the player where the key is set.
+      const bindHint = !tipKeyLine && pe
+        ? ((pe.hints || []).find((h) => /^Bind /.test(h)) || '')
+        : '';
       entry.tip = railSlotTip({
         name: entry.label,
         keys: tipKeyLine,
         description: copy.caption,
-        why: cleanWhy,
+        why: cleanWhy || bindHint,
       });
       if (slot.action === 'tether') {
         const hint = activeLineControlHint(state, claimedDigits);
@@ -443,7 +448,14 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
       if (Number.isFinite(slipMass) && slipMass > 0) mass = slipMass;
       else if (Number.isFinite(mwMass) && mwMass > 0) mass = mwMass;
     }
-    tetherModel = { state: 'Payload', mass: mass != null && mass > 0 ? Math.round(mass) : null, strain: ml.load };
+    const shownMass = mass != null && mass > 0 ? Math.round(mass) : null;
+    tetherModel = {
+      state: 'Payload',
+      mass: shownMass,
+      strain: ml.load,
+      // One plain word. A declared load stays blank until the rope has actually weighed it.
+      weight: lineWeightWord(shownMass, lineBodyMassT(p), !decl && lineBodyFixed(body)),
+    };
   }
   return {
     hull: finite(p.hull), hullMax: finite(p.hullMax, 1),
@@ -457,9 +469,10 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     // burning, not recovering: the dial's DRIVE tag and halo belong to a spooling or engaged drive only
     driveActive: !!(drive && (drive.state === 'spooling' || drive.state === 'engaged')),
     drift,
-    // X3 Adventure glass: the beam and strain dial are instruments, the payload's
-    // label/tonnage/strain words are telemetry. The Cluster drops only the words.
-    quietTelemetry: isAdventureFlight(state),
+    // Swarm hides the weight word. Adventure (and a docked or mapped cluster) may show Light
+    // or Heavy. Tonnes and strain percent are not part of this readout.
+    quietTelemetry: isSwarmGlass(state),
+    swarm: isSwarmGlass(state),
     ordnance: ordnance || readOrdnanceModel(state, tracker, bindings),
     tether: tetherModel,
   };
@@ -822,9 +835,10 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
             : 'Payload';
           const shortName = rawName.length > 14 ? `${rawName.slice(0, 13).trim()}…` : rawName;
           const interp = body ? resolveMassInterpretation(couplingBodyMass(p), couplingBodyMass(body)) : null;
-          const band = interp?.key === 'likely-payload' ? 'Light'
-            : interp?.key === 'likely-anchor' ? 'Heavy'
-            : interp?.key === 'comparable' ? 'Even' : '';
+          // DEMO-SWARM-UX-2: the grade reads as plain weight, not an unexplained 'Even / Heavy'.
+          const band = interp?.key === 'likely-payload' ? 'light enough to throw'
+            : interp?.key === 'likely-anchor' ? 'too heavy to throw'
+            : interp?.key === 'comparable' ? 'even mass' : '';
           lineTag = band ? `${shortName} · ${band}` : shortName;
         }
         model.shipStatus = { hits, hardpoints, lineTag };

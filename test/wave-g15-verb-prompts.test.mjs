@@ -24,7 +24,7 @@ test('G15 rope and shove prompts follow the live binding on flight and combat', 
   const state = reboundState();
   for (const key of ['flight', 'combat', 'firstCombat']) {
     const line = controlPrompt(key, 'kbm', state);
-    assert.match(line, /P Massline|P controls the Massline/, `${key} shows the rebound rope key`);
+    assert.match(line, /P Line: hook, swing, throw/, `${key} shows the rebound rope key — the Line speaks one grammar, director 2026-11-23`);
     assert.match(line, /Z shove/, `${key} shows the rebound shove key`);
     assert.doesNotMatch(line, /Space\/F/, `${key} does not keep the default rope key`);
     assert.doesNotMatch(line, /\b2\/R shove\b/, `${key} does not keep the default shove key`);

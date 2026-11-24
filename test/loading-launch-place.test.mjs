@@ -32,6 +32,7 @@ test('the controls card ships the taught set: the Line row carries its key besid
   const line = LOADING_CONTROLS.find(([, verb]) => /^Line/.test(verb));
   assert.ok(line, 'the card still has its Line row');
   assert.match(line[0], /^F \/ RMB$/, 'the shipped Line row prints the taught key and the mouse seat');
+  assert.equal(line[1], 'Line: hook, swing, throw', 'the Line speaks one grammar, director 2026-11-23');
   assert.deepEqual(loadingKeyCapTokens(line[0]), [
     { kind: 'kbd', text: 'F' },
     { kind: 'sep', text: '/' },

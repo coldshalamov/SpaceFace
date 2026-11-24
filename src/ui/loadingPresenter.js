@@ -88,7 +88,7 @@ export const LOADING_CONTROLS = Object.freeze([
   Object.freeze(['W A S D', 'Fly', 'move']),
   Object.freeze(['Mouse', 'Aim', null]),
   Object.freeze(['LMB', 'Fire', 'fire']),
-  Object.freeze(['F / RMB', 'Line: latch, swing, throw', 'tether']),
+  Object.freeze(['F / RMB', 'Line: hook, swing, throw', 'tether']),
   Object.freeze(['Shift', 'Boost', 'boost']),
 ]);
 /** Split a row's keys so a spaced slash is a separator, never a chip: 'F / RMB' paints two keys

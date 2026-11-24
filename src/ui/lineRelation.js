@@ -59,3 +59,14 @@ export function lineRelationWord(entity, playerMass) {
   if (targetMass < selfMass * LINE_RELATION_ANCHOR_RATIO) return 'TUG';
   return 'ANCHOR';
 }
+
+/** Adventure's one weight word. '' when either mass is unknown, so a hidden stamp never prints.
+ *  Light: the body is no heavier than you. Heavy: it is heavier, or it is bolted down. */
+export function lineWeightWord(targetMass, playerMass, fixed = false) {
+  const self = positive(playerMass);
+  if (!(self > 0)) return '';
+  if (fixed) return 'Heavy';
+  const target = positive(targetMass);
+  if (!(target > 0)) return '';
+  return target <= self ? 'Light' : 'Heavy';
+}

@@ -305,7 +305,7 @@ export const GAMEPAD_REBIND_LABELS = {
   dock: 'Dock (when prompted)',
   shove: 'Shove: tap for outward blast + detonate armed explosives',
   cancel: 'Back / cancel',
-  massline: 'Line: tap latch/cut; hold line control',
+  massline: 'Line: hook, swing, throw',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   fire: 'Fire',
   mine: 'Mine beam (wheel latch by default)',

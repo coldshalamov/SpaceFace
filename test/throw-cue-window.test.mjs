@@ -17,7 +17,8 @@ test('the throw action names its gesture, independent of the keyboard tether bin
   setPromptDevice('touch');
   assert.equal(throwActionCue(state), 'FLICK · THROW');
   setPromptDevice('gamepad');
-  assert.match(throwActionCue(state), /RELEASE$/);
+  assert.match(throwActionCue(state), /THROW$/, 'the Line speaks one grammar, director 2026-11-23');
+  assert.doesNotMatch(throwActionCue(state), /RELEASE|ALIGN|LET GO/);
 });
 
 test('the throw tag lights only while the rope\'s release window is open on a valid solution', () => {

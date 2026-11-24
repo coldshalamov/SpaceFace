@@ -45,7 +45,7 @@ export const SWARM_HELP_ROWS = Object.freeze([
   ['W A S D', 'Move'],
   ['Mouse', 'Aim'],
   ['LMB', 'Fire'],
-  ['F / RMB', 'Line — fire / release', 'tether'],
+  ['F / RMB', 'Line: hook, swing, throw', 'tether'],
   ['1–5', 'Pull · Shove · Pin · Bomb · Plow'],
   ['Shift', 'Boost / dash', 'boost'],
   ['Q', 'Wheel — hold · aim · release'],  // Call-in lives on the wheel (G18-02b)

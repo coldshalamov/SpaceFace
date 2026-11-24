@@ -83,6 +83,6 @@ test('Swarm: the first latch goes to the centre announcer, not the column', () =
   } finally { callout.destroy(); }
 });
 
-test('THROW-01: letting go of a fixed anchor gets a short word in the one voice', () => {
-  assert.equal(handlineSenseLine('anchor:released', {}).name, 'LET GO');
+test('letting go of a fixed anchor says nothing — the Line speaks one grammar, director 2026-11-23', () => {
+  assert.equal(handlineSenseLine('anchor:released', {}), null);
 });

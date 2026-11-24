@@ -235,9 +235,10 @@ test('PQ-006 release cues clamp offscreen without visor arcs and keep a static n
       label: throwCue.label,
       state: throwCue.state,
     },
-    { visible: true, x: 30, y: 450, offscreen: true, direction: 'left', label: 'RELEASE', state: 'open' },
+    { visible: true, x: 30, y: 450, offscreen: true, direction: 'left', label: '', state: 'open' },
   );
-  assert.match(throwCue.ariaLabel, /Massline throw release window open/i);
+  assert.match(throwCue.ariaLabel, /Line throw window open/i);
+  assert.doesNotMatch(throwCue.ariaLabel, /ALIGN|RELEASE|LET GO|SELF-SLING/i, 'the Line speaks one grammar, director 2026-11-23');
   assert.match(throwCue.ariaLabel, /offscreen left/i);
 
   const waypointCue = masslineHudModule.resolveReleaseCue({ x: 1720, y: -80, onScreen: false }, {

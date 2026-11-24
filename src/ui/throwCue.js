@@ -5,7 +5,7 @@ import { verbChip } from './controlPrompts.js';
 export function throwActionCue(state) {
   const device = getPromptDevice();
   if (device === 'touch') return 'FLICK · THROW';
-  if (device === 'gamepad') return verbChip(state, 'tether', 'RELEASE');
+  if (device === 'gamepad') return verbChip(state, 'tether', 'THROW');
   return 'RMB · THROW';
 }
 

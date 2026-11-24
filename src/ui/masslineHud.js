@@ -102,14 +102,14 @@ export function releaseVerdictCopy(rating, { plain = false } = {}) {
     if (rating.broke === true) return 'BROKE';
     if (rating.severed === true) return 'CUT';
     if (rating.quickThrow === true) return 'QUICK';
-    return VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+    return VERDICT_GRADE_COPY[rating.classification] || 'THROWN';
   }
   // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
   if (rating.broke === true) return 'LINE BROKE';
   if (rating.severed === true) return 'LINE CUT';
   // THROW-01: a throw on a short swing is a throw, not a messy release.
   if (rating.quickThrow === true) return 'QUICK THROW';
-  const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+  const grade = VERDICT_GRADE_COPY[rating.classification] || 'THROWN';
   // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
   // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
   if (rating.ride && Number.isFinite(rating.ride.keptFraction)) {
@@ -117,7 +117,7 @@ export function releaseVerdictCopy(rating, { plain = false } = {}) {
   }
   if (rating.releasedAtApex) return `${grade} · AT THE APEX`;
   const cause = rating.classification === 'razor' || rating.classification === 'clean'
-    ? 'CREST RELEASE'
+    ? 'AT THE CREST'
     : VERDICT_CAUSE_COPY[rating.technique] || 'OFF THE SWING';
   return `${grade} · ${cause}`;
 }
@@ -622,14 +622,10 @@ export function lineBreakInvolvesPlayer(state, payload) {
   return payload.actorId === pid;
 }
 
-// Format only the facts carried by the release event; missing legacy fields are unknown.
-function lineReleaseReceipt(payload) {
-  const parts = [];
-  if (Number.isFinite(payload.tonnageU)) parts.push(`${Math.max(0, Math.round(payload.tonnageU))} t`);
-  if (Number.isFinite(payload.load)) parts.push(`load ${Math.round(clamp01(payload.load) * 100)}%`);
-  const strain = Object.hasOwn(payload, 'receiptStrain') ? payload.receiptStrain : payload.strain;
-  if (Number.isFinite(strain)) parts.push(`strain ${Math.round(clamp01(strain) * 100)}%`);
-  return parts.length ? `Line released: ${parts.join(', ')}` : '';
+// The Line speaks one grammar (director 2026-11-23): the grade pill is the word. Tonnes, load
+// percent and strain percent do not toast.
+function lineReleaseReceipt() {
+  return '';
 }
 
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
@@ -860,12 +856,11 @@ export function resolveReleaseCue(projection, options = {}) {
     ? offscreenDirection(rawX - viewportWidth / 2, rawY - viewportHeight / 2)
     : 'onscreen';
   const onSolution = !!options.onSolution;
-  const kind = options.kind === 'self' ? 'self-sling' : 'throw';
-  const target = options.targetKind === 'waypoint' ? ' waypoint' : '';
-  const state = onSolution ? 'open' : 'aligning';
-  // A cue pinned to the screen corner for an offscreen target has no room for a word (it clipped
-  // under the edge); the arrow/diamond marks the direction and aria-label keeps the full state.
-  const label = onSolution ? 'RELEASE' : (offscreen ? '' : 'ALIGN');
+  const waypoint = options.targetKind === 'waypoint' ? ' waypoint' : '';
+  const state = onSolution ? 'open' : 'lining-up';
+  // One verb. Timing is the tag's colour and its second frame (ml2-hot), never a second word.
+  // A cue pinned to the screen corner has no room for that verb.
+  const label = offscreen ? '' : 'THROW';
   const offscreenCopy = offscreen ? `, target offscreen ${direction}` : ', target onscreen';
   return {
     visible: true,
@@ -875,7 +870,7 @@ export function resolveReleaseCue(projection, options = {}) {
     direction,
     state,
     label,
-    ariaLabel: `Massline ${kind}${target} release window ${state}${offscreenCopy}`,
+    ariaLabel: `Line throw${waypoint} window ${state}${offscreenCopy}`,
   };
 }
 
@@ -2226,7 +2221,9 @@ export const masslineHud = {
         collateral = ownRoute;
       }
       if (collateral) {
-        const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
+        const advisory = cue.label
+          ? `${cue.label} · COLLATERAL RISK · ${collateral.label}`
+          : `COLLATERAL RISK · ${collateral.label}`;
         if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {
           dom.throwLabel.textContent = advisory;
         }

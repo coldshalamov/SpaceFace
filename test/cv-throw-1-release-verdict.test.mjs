@@ -35,8 +35,8 @@ function initHud(state) {
 
 test('CV-THROW-1 verdict copy names the grade and its measured cause', () => {
   assert.equal(releaseVerdictCopy({ classification: 'razor', releasedAtApex: true }), 'RAZOR · AT THE APEX');
-  assert.equal(releaseVerdictCopy({ classification: 'razor', technique: 'swing' }), 'RAZOR · CREST RELEASE');
-  assert.equal(releaseVerdictCopy({ classification: 'clean', technique: 'swing' }), 'CLEAN · CREST RELEASE');
+  assert.equal(releaseVerdictCopy({ classification: 'razor', technique: 'swing' }), 'RAZOR · AT THE CREST', 'the Line speaks one grammar, director 2026-11-23');
+  assert.equal(releaseVerdictCopy({ classification: 'clean', technique: 'swing' }), 'CLEAN · AT THE CREST');
   assert.equal(releaseVerdictCopy({ classification: 'good', technique: 'swing' }), 'GOOD · NEEDED MORE SPEED');
   assert.equal(releaseVerdictCopy({ classification: 'messy', technique: 'tow' }), 'MESSY · NEVER SWUNG');
   assert.equal(releaseVerdictCopy({ classification: 'messy', technique: 'radial' }), 'MESSY · OFF THE ARC');
@@ -203,7 +203,7 @@ test('an unstamped legacy release never borrows the current entity life or posit
   assert.equal(state.masslineReleaseVerdict.targetGeneration, null);
   assert.equal(state.masslineReleaseVerdict.atX, null);
   assert.equal(state.masslineReleaseVerdict.atZ, null);
-  assert.equal(receipts[0], 'Line released: load 0%', 'numeric zero remains a valid receipt');
+  assert.deepEqual(receipts, [], 'the Line speaks one grammar, director 2026-11-23: no tonnes and no strain percent');
   hud.destroy();
 });
 
@@ -234,6 +234,7 @@ function fakeDocument() {
         setProperty(name, value) { this[name] = value; },
       },
       appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+      append(...children) { for (const child of children) this.appendChild(child); },
       removeChild(child) { this.children = this.children.filter((entry) => entry !== child); child.parentNode = null; },
       setAttribute(name, value) {
         this.attributes[name] = String(value);

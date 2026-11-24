@@ -19,7 +19,6 @@
 import { svg, arcD, polar, circularText, ticksD } from './svg.js';
 import { arcGauge, orbitRing, ring } from './instruments.js';
 import { createSpring } from './motion.js';
-import { createCounter } from './text.js';
 import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
@@ -199,9 +198,10 @@ const CSS = `
 .orr-cluster.is-ship-under .orr-cluster__next,
 .orr-cluster.is-ship-under .orr-cluster__payload { opacity:.16; }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
-/* X3 Adventure glass: the line's beam and strain dial stay; its "Body · on the line" / tonnage /
-   strain words are telemetry for the details surfaces, not the flight glass. */
+/* The beam and the strain dial stay. The words are one weight: Light or Heavy. Swarm hides them. */
 .orr-cluster__payload.is-quiet { display:none; }
+.orr-cluster__weight { font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-weight:650; font-size:14px; letter-spacing:.04em; text-transform:none; color:var(--dp-ink, #e8e2d4); }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__beam { stroke-dasharray:1 5; }
@@ -652,15 +652,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
   }
 
   const payload = el('div', 'orr-cluster__payload orr-cluster__fade orr-soft');
-  const massEl = el('span');
-  const strainEl = el('small');
-  payload.append(el('span', 'orr-label', 'Body · on the line'), massEl, strainEl);
+  const weightEl = el('span', 'orr-cluster__weight');
+  payload.append(weightEl);
   place(payload, px + 36, py - 26);
   // hidden by visibility, not opacity: the arrival animation drives opacity and would flash it
   payload.style.visibility = 'hidden';
-  // An unweighed line prints the empty mark, never a number: the counter's own format owns
-  // the unknown reading so its digit layout still re-arms when the measurement lands.
-  const massCounter = createCounter(massEl, { format: (n) => (Number.isFinite(n) ? `${Math.round(n)} T` : '— T') });
 
   const readouts = visor ? createVisorReadouts(dial.el, shipId, variantId, name, [
     ['hull', hullRow.lab, hullRow.val], ['shield', shieldRow.lab, shieldRow.val],
@@ -953,24 +949,26 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     syncRigMirror();
     // tether
     const t = d.tether || null;
-    // X3 Adventure glass: the payload readout is mass/strain prose. The beam, the strain dial
-    // and the target still draw; only the words retire.
+    // Swarm hides the weight word. Adventure shows Light or Heavy — never tonnes or a strain percent.
+    // The beam and the strain dial still draw; the cable's colour is the strain.
     const quietPayload = d.quietTelemetry === true;
     if (changed('quietPayload', quietPayload)) payload.classList.toggle('is-quiet', quietPayload);
-    // The instrument answers the line, not the scale: tonnage is earned by the loaded
-    // dwell, so before the measurement the tether still draws and live strain still reads —
-    // only the mass numeral sits at the honest empty mark instead of a fabricated count.
     const tethered = !!(t && t.state && t.state !== 'Idle');
-    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); tetherG.dataset.tethered = tethered ? '1' : '0'; payload.style.visibility = tethered ? 'visible' : 'hidden'; }
+    if (changed('tethered', tethered)) {
+      tetherG.setAttribute('opacity', tethered ? '1' : '0');
+      tetherG.dataset.tethered = tethered ? '1' : '0';
+    }
+    const weight = !quietPayload && tethered && (t.weight === 'Light' || t.weight === 'Heavy') ? t.weight : '';
+    if (changed('weight', weight)) {
+      weightEl.textContent = weight;
+      payload.style.visibility = weight ? 'visible' : 'hidden';
+    }
     if (tethered) {
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
-      const massShown = Number(t.mass) > 0 ? Math.round(Number(t.mass)) : null;
-      if (changed('mass', massShown)) massCounter.set(massShown == null ? NaN : massShown);
       strain.set(st);
       if (changed('strain', Math.round(st * 100))) {
         setSag(st);
         strain.setTone(st > 0.85 ? 'threat' : 'phos');
-        strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
       }
     }
     const decision = nextFlightDecision(d);
