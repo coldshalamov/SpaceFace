@@ -20,9 +20,14 @@ function harness(seed = 47) {
   state.mode = 'flight';
   state.simTime = 10;
   state.playerId = 1;
+  // The 47-A recovery contract targets Helios Prime; the marked rock binds a real field slot.
+  state.world.currentSectorId = 'sector_helios_prime';
   state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
-  const asteroid = { id: 2, type: 'asteroid', alive: true, pos: { x: 180, z: -60 }, data: { typeId: 'ast_common_rock' } };
+  const asteroid = { id: 2, type: 'asteroid', alive: true, pos: { x: 180, z: -60 }, data: {
+    typeId: 'ast_common_rock', fieldId: 'f_helios_starter',
+    asteroidSlotId: 'boulder:helios_boulder_rim', authoredBoulderId: 'helios_boulder_rim',
+  } };
   const station = { id: 3, type: 'station', alive: true, pos: { x: -420, z: 100 }, data: { stationId: 'station_helios', name: 'Helios Station' } };
   for (const e of [player, asteroid, station]) state.entities.set(e.id, e);
   state.entityList.push(asteroid, station);
@@ -102,10 +107,18 @@ test('47-A recovery site stays fixed across an empty index and a sector change',
   assert.deepEqual(mission.params.samplePos, fix, 'the saved fix is not rewritten');
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1, minerId: 1, pos: { ...other.pos } });
   assert.equal(h.state.player.cargo.items[CONTRACT_47A_SAMPLE_ID], undefined, 'a yield elsewhere is not the sample');
-  // Back home at the fix with the rock genuinely gone: the site re-marks onto the rock nearest it.
+  // Back home at the fix with the bound rock genuinely gone: the site re-marks onto the
+  // same-field replacement once the resource owner has recorded the bound slot's outcome.
   h.state.world.currentSectorId = mission.destSectorId;
-  const near = { id: 10, type: 'asteroid', alive: true, pos: { x: fix.x + 150, z: fix.z }, data: {} };
+  const near = { id: 10, type: 'asteroid', alive: true, pos: { x: fix.x + 150, z: fix.z }, data: {
+    fieldId: 'f_helios_starter', asteroidSlotId: 'boulder:helios_boulder_sibling',
+    homeSectorId: 'sector_helios_prime',
+  } };
   h.state.entityList.push(near);
+  h.state.world.resourceBodies = { byId: {
+    depleted1: { sectorId: 'sector_helios_prime', fieldId: 'f_helios_starter',
+      slotId: 'boulder:helios_boulder_rim', outcome: 'depleted' },
+  } };
   h.player.pos = { x: fix.x, z: fix.z };
   const remarked = h.missions._resolveContract47aSampleSource(mission);
   assert.equal(remarked, near);
