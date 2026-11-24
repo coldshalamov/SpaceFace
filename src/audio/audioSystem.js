@@ -46,7 +46,7 @@ import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livin
 import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { isSwarmGlass } from '../ui/swarmGlass.js';
-import { openingThrowLessonCurrent } from '../onboarding/openingQuiet.js';
+import { openingThrowPayoffWait } from '../onboarding/openingQuiet.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -6192,10 +6192,16 @@ export const audio = {
   // lesson rock is a hull thrown with the Line — "Light Ships Are Ammunition") used to speak its
   // caption and fanfare over the sentence asking for the throw. The payoff is held and played once
   // when the throw lands, checked on the audio frame (the same clock the one-shots ride).
+  //
+  // Review (DEMO-ADV-2-R2): the hold keyed off `rescue.current === 'swing'`, which onboarding
+  // clears in the SAME dispatch that earns the deed — so `achievement:unlocked` reached this
+  // listener with the lesson already closed and the caption spoke anyway. The wait now outlasts
+  // that clear: it ends when the instruction asking for the throw has left the tracker (the rail's
+  // next tick, ~0.2 s later), which is the moment the payoff is no longer talking over it.
   _holdForOpeningThrow(play) {
     const rt = this.rt;
     if (!rt || rt._destroyed) return false;
-    if (!openingThrowLessonCurrent(this.state)) return false;
+    if (!openingThrowPayoffWait(this.state)) return false;
     const held = rt._openingPayoffs || (rt._openingPayoffs = []);
     // Every payoff the beat is owed still speaks, once, after the throw. A deed and the level it
     // paid are different facts; dropping one to "keep it to one line" would lose the other.
@@ -6209,7 +6215,7 @@ export const audio = {
     const rt = this.rt;
     const held = rt && rt._openingPayoffs;
     if (!held || !held.length) return;
-    const closed = !openingThrowLessonCurrent(this.state);
+    const closed = !openingThrowPayoffWait(this.state);
     const nowWall = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const keep = [];
     for (const rec of held) {
