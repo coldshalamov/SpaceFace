@@ -4273,11 +4273,9 @@ export const crucibleResultsScreen = {
 
     if (!result) {
       // No record kept. Say so — a dead player must never be handed a blank plate — and still
-      // offer every way out below. A live Swarm run is a record still settling: the plate refreshes
-      // into Run Over when it lands, so it says that instead of claiming nothing was kept.
-      const pendingRun = !!(ctx?.state?.run && ctx.state.run.kind === 'survival');
-      story.appendChild(el('p', 'k-empty sf-crres__empty',
-        pendingRun ? 'Reading the run back…' : 'No flight record was kept for that run.'));
+      // offer every way out below. A live survival run never reaches this plate: it mounts the
+      // Run Over reading plate above, with Again already live.
+      story.appendChild(el('p', 'k-empty sf-crres__empty', 'No flight record was kept for that run.'));
     }
 
     for (const id of resultSectionOrder(result)) {
