@@ -1431,6 +1431,9 @@ test('one Again press on a Run Over plate with a running replay starts the next 
       const buttons = findButtons(root);
       const again = buttons.find((button) => button.dataset.action === 'again');
       assert.ok(again, 'Again is on the plate');
+      assert.equal(again.attributes['aria-label'], 'Again', 'Again\'s accessible name is the word, not the key chip');
+      const keyChip = again.children.find((child) => String(child.className || '').includes('sf-runover__key'));
+      assert.equal(keyChip && keyChip.attributes['aria-hidden'], 'true', 'the Enter chip is not part of the name');
       assert.equal(again.dataset.padPrimary, 'true', 'pad A has a declared primary when focus missed the plate');
       assert.ok(buttons.some((button) => String(button.className || '').includes('sf-runover__skip')),
         'Skip replay is offered because the film is running');
@@ -1446,6 +1449,11 @@ test('one Again press on a Run Over plate with a running replay starts the next 
       assert.equal(again.disabled, true, 'Again does not queue a second launch from the same plate');
       assert.equal((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0), 0,
         'the plate removes its document key listener on launch so flight Space/Enter stays free');
+      assert.equal(root.hidden, true, 'Again takes the plate out of layout so a probe does not see it under the loading veil');
+      assert.equal(root.classList.contains('sf-runover'), false);
+      crucibleResultsScreen.refresh({ bus, registry, state });
+      assert.equal(named(emitted, 'game:new').length, 1, 'a refresh during the load does not rebuild the plate or launch again');
+      assert.equal(root.hidden, true);
 
       // Simulate cached plate re-show via onShow, then onHide / empty screenStack cleanup.
       state.ui.screenStack = ['crucibleResults'];
@@ -1501,6 +1509,82 @@ test('one Again press on a Run Over plate with a running replay starts the next 
   } finally {
     clearKillcamTape();
     try { killcamRecorder.destroy(); } catch { /* recorder may already be idle */ }
+    clearCrucibleSetup();
+    if (previousMatch === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previousMatch;
+  }
+});
+
+test('a press while Run Over is still reading the run back starts the next run', () => {
+  // DEMO-RUNOVER-2: the first frame of the plate used to be a generic "Reading the run back…"
+  // with no Again. One Enter on that frame starts the next run, and the plate leaves the layout.
+  const previousMatch = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+  const setup = crucibleSetupFor({ seed: 4242 });
+  assert.ok(setup.ok);
+  const previousDocument = globalThis.document;
+  try {
+    requestCrucibleRun({ emit() {}, on() {}, off() {}, once() {} }, setup.value, 'swarm');
+    const doc = fakeDom();
+    globalThis.document = doc;
+    const emitted = [];
+    const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+    const state = { ui: { screenStack: ['crucibleResults'] }, run: { kind: 'survival', phase: 'ended' } };
+    const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => null } : null) };
+    const root = doc._make('div');
+    crucibleResultsScreen.mount(root, { bus, registry, state });
+    const again = findButtons(root).find((button) => button.dataset.action === 'again');
+    assert.ok(again, 'Again is live while the record is still settling');
+    assert.equal(again.attributes['aria-label'], 'Again');
+    const keyChip = again.children.find((child) => String(child.className || '').includes('sf-runover__key'));
+    assert.equal(keyChip && keyChip.attributes['aria-hidden'], 'true');
+    assert.ok(root.classList.contains('sf-runover'));
+    assert.ok(textLines(root).some((line) => line.includes('Reading the run back')));
+    firePlateConfirm(doc, 'Enter', root);
+    assert.equal(named(emitted, 'game:new').length, 1, 'one Enter during reading starts the next run');
+    assert.equal(named(emitted, 'ui:closeAll').length, 1);
+    assert.equal(root.hidden, true);
+    assert.equal(root.classList.contains('sf-runover'), false);
+    assert.equal((doc.listeners.keydown || []).length, 0);
+    crucibleResultsScreen.refresh({ bus, registry, state });
+    assert.equal(named(emitted, 'game:new').length, 1, 'the settling record does not put the plate back');
+  } finally {
+    try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+    globalThis.document = previousDocument;
+    clearCrucibleSetup();
+    if (previousMatch === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previousMatch;
+  }
+});
+
+test('an Again press before the launch setup is remembered is acted on when the setup arrives', () => {
+  const previousMatch = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+  const previousDocument = globalThis.document;
+  try {
+    clearCrucibleSetup();
+    const doc = fakeDom();
+    globalThis.document = doc;
+    const emitted = [];
+    const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+    const state = { ui: { screenStack: ['crucibleResults'] }, run: { kind: 'survival', phase: 'ended' } };
+    const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => null } : null) };
+    const root = doc._make('div');
+    crucibleResultsScreen.mount(root, { bus, registry, state });
+    const again = findButtons(root).find((button) => button.dataset.action === 'again');
+    firePlateConfirm(doc, 'Enter', again);
+    assert.equal(named(emitted, 'game:new').length, 0, 'there is nothing to launch yet, so the press is kept');
+    assert.equal(root.hidden, false);
+    const setup = crucibleSetupFor({ seed: 4242 });
+    requestCrucibleRun({ emit() {}, on() {}, off() {}, once() {} }, setup.value, 'swarm');
+    crucibleResultsScreen.refresh({ bus, registry, state });
+    assert.equal(named(emitted, 'game:new').length, 1, 'the remembered press starts the run once the setup exists');
+    assert.equal(root.hidden, true);
+    crucibleResultsScreen.refresh({ bus, registry, state });
+    assert.equal(named(emitted, 'game:new').length, 1, 'the remembered press is not launched twice');
+  } finally {
+    try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+    globalThis.document = previousDocument;
     clearCrucibleSetup();
     if (previousMatch === undefined) delete globalThis.matchMedia;
     else globalThis.matchMedia = previousMatch;

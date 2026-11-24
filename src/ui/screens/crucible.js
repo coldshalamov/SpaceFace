@@ -4088,6 +4088,77 @@ function bindRunOverConfirm(screenDef, rootEl, ctx, button) {
   });
 }
 
+/** The visible word is "Again". The Enter chip is a hint, not part of the name. */
+function appendAgainFace(button) {
+  button.appendChild(el('span', 'sf-runover__again-word', 'Again'));
+  const key = el('span', 'sf-runover__key', 'Enter');
+  if (typeof key.setAttribute === 'function') key.setAttribute('aria-hidden', 'true');
+  button.appendChild(key);
+  if (typeof button.setAttribute === 'function') button.setAttribute('aria-label', 'Again');
+}
+
+/**
+ * DEMO-RUNOVER-2 — the loading veil covers #screens but does not remove it from layout, so a
+ * plate left at display:flex still answers the probe (and a second Enter) for the whole load.
+ * Hide the element itself, drop the class the probe looks for, and close the screen stack.
+ * A later periodic refresh must not build the plate back over the veil (_runOverDismissed).
+ */
+function dismissRunOverPlate(screenDef, rootEl, ctx, doc) {
+  screenDef._runOverDismissed = true;
+  screenDef._plateOpen = false;
+  screenDef._againQueued = false;
+  removeRunOverKeys(screenDef, doc);
+  if (rootEl) {
+    if (typeof rootEl.classList?.remove === 'function') rootEl.classList.remove('sf-runover');
+    else if (typeof rootEl.className === 'string') {
+      rootEl.className = rootEl.className.split(/\s+/).filter((name) => name && name !== 'sf-runover').join(' ');
+    }
+    rootEl.hidden = true;
+    if (typeof rootEl.setAttribute === 'function') rootEl.setAttribute('aria-hidden', 'true');
+    try { rootEl.inert = true; } catch { /* the hidden flag is the contract */ }
+    const style = rootEl.style;
+    if (style && typeof style.setProperty === 'function') style.setProperty('display', 'none', 'important');
+    else if (style) style.display = 'none';
+  }
+  const manager = ctx && (ctx.screenManager || ctx.screens);
+  if (manager && typeof manager.closeAll === 'function') {
+    try { manager.closeAll(); } catch { /* the bus path is the same owner */ }
+  }
+  if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:closeAll', {});
+}
+
+/** One Again press: end the film, start the next run, and take the plate off the screen. */
+function startRunOverAgain(screenDef, rootEl, ctx, doc, retry, button) {
+  if (!retry) {
+    dismissRunOverPlate(screenDef, rootEl, ctx, doc);
+    leaveCrucibleResults(ctx, true);
+    return;
+  }
+  if (button && button.disabled) return;
+  endRunOverFilm(rootEl, ctx);
+  try { clearKillcamTape(); } catch { /* the replay is optional */ }
+  if (button) button.disabled = true;
+  const setup = retry.setup;
+  if (setup.dailyDateKey || setup.weeklyMutatorId) {
+    queueSurvivalChallenge({
+      seed: setup.seed, ruleset: retry.ruleset,
+      mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
+      dailyDateKey: setup.dailyDateKey, weeklyMutatorId: setup.weeklyMutatorId, ghostHash: setup.ghostHash,
+    });
+  } else if (setup.ghostHash != null) {
+    queueGhostPlayback(setup.ghostHash);
+  } else {
+    clearQueuedChallenge();
+  }
+  cue('confirm');
+  if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) {
+    if (button) button.disabled = false;
+    screenDef._runOverDismissed = false;
+    return;
+  }
+  dismissRunOverPlate(screenDef, rootEl, ctx, doc);
+}
+
 /** The Kill button's own film-end, shared by every launch word: the staged replay stops and the
  *  authored still is the picture, exactly as the visible Skip leaves it. */
 function endRunOverFilm(rootEl, ctx) {
@@ -4134,8 +4205,14 @@ export const crucibleResultsScreen = {
     // The plate's signature is what refresh() compares — a new run always ends at a new mark.
     this._root = rootEl;
     this._plateOpen = true;
+    this._runOverDismissed = false;
+    this._againQueued = false;
     this._runOverKeySpec = null;
     this._resultSig = resultVersion(owner);
+    rootEl.hidden = false;
+    try { rootEl.inert = false; } catch { /* optional */ }
+    if (typeof rootEl.removeAttribute === 'function') rootEl.removeAttribute('aria-hidden');
+    if (rootEl.style && typeof rootEl.style.removeProperty === 'function') rootEl.style.removeProperty('display');
     rootEl.dataset.stamp = resultStamp(result);
 
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
@@ -4149,6 +4226,12 @@ export const crucibleResultsScreen = {
     const plateKind = swarmPlateKind(result);
     if (plateKind) {
       this._mountRunOver(rootEl, ctx, result, plateKind);
+      return;
+    }
+    // The record is still settling. Again is live on this first frame — a press now starts the
+    // next run, and a press that arrives before the launch setup is remembered until it is.
+    if (!result && ctx?.state?.run?.kind === 'survival') {
+      this._mountRunOverReading(rootEl, ctx);
       return;
     }
 
@@ -4445,6 +4528,57 @@ export const crucibleResultsScreen = {
   },
 
   /**
+   * The record is still settling. The plate already says Run over, and Again is the same button
+   * the settled plate uses: one Enter, Space, pad A or click starts the next run. A press that
+   * arrives before the launch setup is remembered and acted on at the next refresh.
+   */
+  _mountRunOverReading(rootEl, ctx) {
+    rootEl.classList.add('sf-runover');
+    rootEl.dataset.plate = 'reading';
+    const doc = rootEl.ownerDocument || document;
+    const plate = el('section', 'sf-runover__plate');
+    const title = el('h1', 'sf-runover__title', 'Run over');
+    plate.appendChild(title);
+    const note = el('p', 'sf-runover__note', 'Reading the run back…');
+    plate.appendChild(note);
+    const foot = el('div', 'sf-runover__foot');
+    const again = el('button', 'sf-runover__again');
+    again.type = 'button';
+    again.dataset.action = 'again';
+    appendAgainFace(again);
+    again.addEventListener('click', () => {
+      const live = buildSwarmAgainRequest(null, lastCrucibleSetup(), lastCrucibleRuleset());
+      if (!live) {
+        this._againQueued = true;
+        return;
+      }
+      this._againQueued = false;
+      startRunOverAgain(this, rootEl, ctx, doc, live, again);
+    });
+    foot.appendChild(again);
+    const hangar = el('button', 'sf-runover__quiet sf-runover__hangar', 'Hangar');
+    hangar.type = 'button';
+    hangar.dataset.action = 'hangar';
+    hangar.addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx, true); });
+    const menu = el('button', 'sf-runover__quiet sf-runover__menu', 'Menu');
+    menu.type = 'button';
+    menu.dataset.action = 'menu';
+    menu.addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx); });
+    foot.appendChild(hangar);
+    foot.appendChild(menu);
+    plate.appendChild(foot);
+    rootEl.appendChild(plate);
+    bindRunOverConfirm(this, rootEl, ctx, again);
+    injectRunOverLayouts(doc);
+    this._dial = null;
+    this._regions = { title, story: plate, ledger: plate, foot, again };
+    rootEl.dataset.kReady = '1';
+    if (typeof again.focus === 'function') {
+      try { again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  /**
    * RUN OVER for a Swarm death (04_SWARM.md §8): Kiln's line, what killed you (always named),
    * your best moment, round/kills/chain/time big, your build in one line — then Again under
    * Enter, the exact seed as a second key when Again deals a fresh layout, Hangar, Menu. The
@@ -4586,45 +4720,9 @@ export const crucibleResultsScreen = {
     const again = el('button', 'sf-runover__again');
     again.type = 'button';
     again.dataset.action = 'again';
-    again.appendChild(el('span', 'sf-runover__again-word', 'Again'));
-    again.appendChild(el('span', 'sf-runover__key', 'Enter'));
+    appendAgainFace(again);
     const request = buildSwarmAgainRequest(result, lastCrucibleSetup(), lastCrucibleRuleset());
-    const launch = (retry, button) => {
-      if (!retry) { leaveCrucibleResults(ctx, true); return; }
-      if (button.disabled) return;
-      // The round boundary: the kill-cam stops and the last fight's tape goes now (the
-      // run:started listener clears it too — this is the same boundary, named early). The
-      // staged film ends with the press itself: one Again both ends the replay and starts
-      // the run, whatever surface the press came from.
-      endRunOverFilm(rootEl, ctx);
-      try { clearKillcamTape(); } catch { /* the replay is optional */ }
-      button.disabled = true;
-      const setup = retry.setup;
-      if (setup.dailyDateKey || setup.weeklyMutatorId) {
-        queueSurvivalChallenge({
-          seed: setup.seed, ruleset: retry.ruleset,
-          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
-          dailyDateKey: setup.dailyDateKey, weeklyMutatorId: setup.weeklyMutatorId, ghostHash: setup.ghostHash,
-        });
-      } else if (setup.ghostHash != null) {
-        queueGhostPlayback(setup.ghostHash);
-      } else {
-        clearQueuedChallenge();
-      }
-      cue('confirm');
-      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) {
-        button.disabled = false;
-        return;
-      }
-      // Close the Run Over plate immediately and disarm its confirm key so the loading veil is
-      // visible at once (never sitting behind a stale plate for 8+ s) and Space/Enter stay free
-      // for flight.
-      this._plateOpen = false;
-      removeRunOverKeys(this, doc);
-      if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:closeAll', {});
-    };
-    again.setAttribute('aria-label', request?.sameSeed ? 'Again: round 1, a fresh layout' : 'Again: back to round 1');
-    again.addEventListener('click', () => launch(request, again));
+    again.addEventListener('click', () => startRunOverAgain(this, rootEl, ctx, doc, request, again));
     foot.appendChild(again);
     const quiet = (label, cls) => {
       const b = el('button', `sf-runover__quiet ${cls}`, label);
@@ -4636,7 +4734,7 @@ export const crucibleResultsScreen = {
     if (request?.sameSeed) {
       const same = quiet('Same seed', 'sf-runover__same');
       same.setAttribute('aria-label', `Same seed: replay seed ${result.seed} exactly`);
-      same.addEventListener('click', () => launch(request.sameSeed, same));
+      same.addEventListener('click', () => startRunOverAgain(this, rootEl, ctx, doc, request.sameSeed, same));
     }
     if (result?.stopReason !== 'player_retired' && ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
       const skip = quiet('Skip replay', 'sf-runover__skip');
@@ -4691,6 +4789,21 @@ export const crucibleResultsScreen = {
 
   onShow() {
     this._plateOpen = true;
+    // A plate closed by Again stays hidden through the load. The next time this screen is
+    // actually shown, it is a new visit and may rebuild.
+    if (this._runOverDismissed) {
+      this._runOverDismissed = false;
+      // The cached plate is the run we just left (Again already disabled). The refresh that
+      // follows this onShow must rebuild, even when the record is still the unsettled null.
+      this._resultSig = null;
+      const root = this._root;
+      if (root) {
+        root.hidden = false;
+        try { root.inert = false; } catch { /* optional */ }
+        if (typeof root.removeAttribute === 'function') root.removeAttribute('aria-hidden');
+        if (root.style && typeof root.style.removeProperty === 'function') root.style.removeProperty('display');
+      }
+    }
     if (this._runOverKeySpec) {
       const doc = this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null);
       mountRunOverKeys(this, doc, this._runOverKeySpec.isTop, this._runOverKeySpec.confirm);
@@ -4725,9 +4838,23 @@ export const crucibleResultsScreen = {
   refresh(ctx) {
     const root = this._root;
     if (!root) return;
-    if (resultVersion(resultsOwner(ctx)) === this._resultSig) return;
+    // Again already started the next run. Rebuilding here would put the plate back under the
+    // loading veil, where it still has a box and still eats the next Enter.
+    if (this._runOverDismissed) return;
+    const version = resultVersion(resultsOwner(ctx));
+    if (version === this._resultSig) {
+      if (!this._againQueued) return;
+      const again = this._regions && this._regions.again;
+      if (again && typeof again.click === 'function') again.click();
+      return;
+    }
+    const queued = this._againQueued === true;
+    this._againQueued = false;
     this.dispose();
     this.mount(root, ctx);
+    if (queued && this._regions && this._regions.again && typeof this._regions.again.click === 'function') {
+      this._regions.again.click();
+    }
   },
 
   dispose() {
