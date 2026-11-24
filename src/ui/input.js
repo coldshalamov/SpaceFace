@@ -1437,11 +1437,16 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
 
   function activateFocused(root = activeScreenEl()) {
     const active = document.activeElement;
-    if (!active || !root || !root.contains(active)) return;
+    // A declared primary (Run Over's Again / Keep going) still answers pad A when focus
+    // missed the plate — the same first-press race that swallowed Enter on the demo.
+    const target = (active && root && root.contains(active))
+      ? active
+      : (root && typeof root.querySelector === 'function' ? root.querySelector('[data-pad-primary="true"]') : null);
+    if (!target) return;
     document.documentElement.classList.add('sf-gamepad-focus');
-    if (typeof active.click === 'function') active.click();
+    if (typeof target.click === 'function') target.click();
     else {
-      active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
     }
   }
 
