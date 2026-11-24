@@ -69,6 +69,9 @@ import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { svg, lightPath } from '../orrery/svg.js';
 import { createHullSchematic } from '../orrery/hullSchematic.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { loadHullPosterManifest, markForSlot } from '../ship/hullPoster.js';
+import { separateBeads } from '../ship/calloutLayout.js';
 import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
 import { equipmentPlate } from '../orrery/armoryIllustrations.js';
@@ -185,6 +188,11 @@ function focusedControlId(rootEl) {
   const active = typeof document !== 'undefined' ? document.activeElement : null;
   if (!active || !rootEl || typeof rootEl.contains !== 'function' || !rootEl.contains(active)) return null;
   if (active.dataset && active.dataset.offerId) return { card: active.dataset.offerId };
+  const insp = active.closest ? active.closest('.sf-bench__inspector') : null;
+  if (insp) {
+    if (active.dataset && active.dataset.spare != null) return { inspector: true, kind: 'spare', spare: active.dataset.spare };
+    if (active.classList && active.classList.contains('sf-bench__sell')) return { inspector: true, kind: 'sell' };
+  }
   const rowEl = active.closest ? active.closest('.sf-cru-row') : null;
   if (!rowEl) return null;
   const rows = rowEl.parentNode ? [...rowEl.parentNode.children] : [];
@@ -198,6 +206,14 @@ function restoreFocusedControl(rootEl, saved) {
   if (typeof document === 'undefined') return null;
   let target = null;
   if (saved.card) target = rootEl.querySelector(`[data-offer-id="${saved.card}"]`);
+  if (saved.inspector) {
+    const insp = rootEl.querySelector('.sf-bench__inspector');
+    if (insp && saved.kind === 'spare') {
+      target = insp.querySelector(`[data-spare="${saved.spare}"]`) || insp.querySelector('[data-spare]');
+    } else if (insp && saved.kind === 'sell') {
+      target = insp.querySelector('.sf-bench__sell');
+    }
+  }
   if (saved.rowIndex != null) {
     const row = rootEl.querySelectorAll('.sf-cru-row')[saved.rowIndex];
     if (row && saved.kind === 'spare') {
@@ -444,6 +460,220 @@ export function weaponSpareContrast(spares) {
   }
   return `${fire.name} hits hardest (fire ${shortNum(fire.dps)}). `
     + `${shove.name} pushes hardest (impact ${shortNum(shove.impulse)}).`;
+}
+
+/**
+ * Plain-English weapon comparison for the Swarm Bench inspector: compares a chosen weapon spare
+ * against either its strongest sibling spare for the same slot or a currently fitted gun on the
+ * ship, using only the defs' real fire (dps) and impact (impulsePerHit) values.
+ */
+export function plainWeaponComparison(spareDefId, siblingSpares = [], fittedRows = []) {
+  const mineDef = spareDefId ? WEAPON_DEF_BY_ID.get(spareDefId) : null;
+  const myDps = finiteNum(mineDef && mineDef.dps);
+  const myImp = finiteNum(mineDef && mineDef.impulsePerHit);
+  if (myDps == null || myImp == null) return null;
+  const toEntry = (defId, fallbackName) => {
+    const def = defId ? WEAPON_DEF_BY_ID.get(defId) : null;
+    const dps = finiteNum(def && def.dps);
+    const impulse = finiteNum(def && def.impulsePerHit);
+    if (dps == null || impulse == null) return null;
+    return { defId, name: fallbackName || def.name || fittingName(defId), dps, impulse };
+  };
+  const mine = { defId: spareDefId, name: mineDef.name || fittingName(spareDefId), dps: myDps, impulse: myImp };
+  const siblings = (Array.isArray(siblingSpares) ? siblingSpares : [])
+    .filter((s) => s && s.defId && s.defId !== spareDefId)
+    .map((s) => toEntry(s.defId, s.name))
+    .filter(Boolean);
+  let ref = null;
+  if (siblings.length) {
+    siblings.sort((a, b) => (b.dps - a.dps) || (b.impulse - a.impulse));
+    ref = siblings[0];
+  } else {
+    const fitted = (Array.isArray(fittedRows) ? fittedRows : [])
+      .filter((r) => r && r.defId && r.defId !== spareDefId)
+      .map((r) => toEntry(r.defId, r.name))
+      .filter(Boolean);
+    // Prefer a fitted gun that shows a real trade-off (one axis higher, the other lower).
+    ref = fitted.find((f) => (mine.dps > f.dps && mine.impulse < f.impulse) || (mine.dps < f.dps && mine.impulse > f.impulse))
+      || fitted.find((f) => mine.dps !== f.dps || mine.impulse !== f.impulse)
+      || null;
+  }
+  if (!ref) return null;
+  const dFire = mine.dps - ref.dps;
+  const dPush = mine.impulse - ref.impulse;
+  let phrase;
+  if (dFire > 0 && dPush < 0) phrase = `Hits harder, pushes less than ${ref.name}.`;
+  else if (dFire < 0 && dPush > 0) phrase = `Hits softer, pushes harder than ${ref.name}.`;
+  else if (dFire > 0 && dPush > 0) phrase = `Hits harder and pushes harder than ${ref.name}.`;
+  else if (dFire < 0 && dPush < 0) phrase = `Lighter fire, pushes less than ${ref.name}.`;
+  else if (dFire > 0) phrase = `Hits harder, same push as ${ref.name}.`;
+  else if (dFire < 0) phrase = `Lighter fire, same push as ${ref.name}.`;
+  else if (dPush > 0) phrase = `Same fire, pushes harder than ${ref.name}.`;
+  else if (dPush < 0) phrase = `Same fire, pushes less than ${ref.name}.`;
+  else return null;
+  return { sentence: phrase, spare: mine, ref };
+}
+
+/**
+ * Ring-free ship diagram for the Swarm Bench: the Cycles top-down hull picture with clickable
+ * numbered pins placed at the hull's real projected sockets. Zero concentric circles or dials.
+ */
+function createBenchShipView({ host, stage, onPick }) {
+  const doc = host && host.ownerDocument;
+  if (!doc || typeof doc.createElement !== 'function') {
+    return { update() {}, light() {}, dispose() {} };
+  }
+  const head = el('div', 'sf-bench__ship-head');
+  const titleEl = el('span', 'sf-bench__ship-name', '');
+  const countEl = el('span', 'sf-bench__ship-count', '');
+  head.appendChild(titleEl);
+  head.appendChild(countEl);
+
+  const canvas = el('div', 'sf-bench__ship-canvas');
+  const img = el('img', 'sf-bench__ship-img');
+  img.alt = '';
+  img.decoding = 'async';
+  img.draggable = false;
+  img.hidden = true;
+  const pins = el('div', 'sf-bench__pins');
+  pins.setAttribute('role', 'group');
+  pins.setAttribute('aria-label', 'Ship slots');
+  canvas.appendChild(img);
+  canvas.appendChild(pins);
+  host.appendChild(head);
+  host.appendChild(canvas);
+
+  let manifest = null;
+  let currentHullId = null;
+  let currentNodes = [];
+  let litIndex = -1;
+  let disposed = false;
+  let pinButtons = [];
+
+  const markSettled = () => {
+    if (disposed || !host || !host.classList) return;
+    host.classList.add('orr-hull--settled');
+  };
+
+  img.addEventListener('load', () => {
+    if (disposed) return;
+    img.hidden = false;
+    placePins();
+    markSettled();
+  });
+  img.addEventListener('error', () => {
+    if (disposed) return;
+    if (currentHullId && img.dataset.fallback !== '1') {
+      const alt = hullPosterUrl(currentHullId, 'jig');
+      if (alt && img.src !== alt) {
+        img.dataset.fallback = '1';
+        img.src = alt;
+        return;
+      }
+    }
+    img.hidden = true;
+    markSettled();
+  });
+  loadHullPosterManifest().then((m) => {
+    if (disposed) return;
+    manifest = m;
+    placePins();
+    markSettled();
+  });
+
+  function slotPoints(hullId, nodes) {
+    const entry = manifest && manifest.hulls && manifest.hulls[hullId] && manifest.hulls[hullId].top;
+    const marks = entry && entry.marks ? entry.marks : null;
+    const counts = new Map();
+    for (const n of nodes) counts.set(n.slotType, (counts.get(n.slotType) || 0) + 1);
+    const seen = new Map();
+    const raw = nodes.map((n, i) => {
+      const ord = seen.get(n.slotType) || 0;
+      seen.set(n.slotType, ord + 1);
+      const totalOfType = counts.get(n.slotType) || 1;
+      const uv = marks ? markForSlot(marks, n.slotType, ord, totalOfType) : null;
+      if (uv) {
+        let x = uv[0] * 100;
+        let y = uv[1] * 100;
+        // Fan multiple slots sharing one projected socket (e.g. 3 nose guns or 2 dorsal utilities)
+        // cleanly across port/center/starboard so numbered pins never pile on top of each other.
+        if (totalOfType > 1) {
+          const offset = ord - (totalOfType - 1) / 2;
+          x += offset * (n.slotType === 'weapon' ? 21 : 18);
+          if (n.slotType === 'weapon') y += Math.abs(offset) * 4;
+        }
+        return { x, y };
+      }
+      const col = i % 2 === 0 ? 30 : 70;
+      const row = 20 + Math.floor(i / 2) * (60 / Math.max(1, Math.ceil(nodes.length / 2) - 1));
+      return { x: col, y: Math.min(84, row) };
+    });
+    const separated = separateBeads(raw, 19);
+    return separated.map((p) => ({
+      x: Math.max(12, Math.min(88, p.x)),
+      y: Math.max(12, Math.min(88, p.y)),
+    }));
+  }
+
+  function placePins() {
+    if (disposed) return;
+    pins.innerHTML = '';
+    pinButtons = [];
+    if (!currentNodes.length) return;
+    const pts = slotPoints(currentHullId, currentNodes);
+    currentNodes.forEach((node, i) => {
+      const b = el('button', `sf-bench__pin is-${node.state}${i === litIndex ? ' is-lit' : ''}`, String(i + 1));
+      b.type = 'button';
+      b.style.left = `${pts[i].x.toFixed(1)}%`;
+      b.style.top = `${pts[i].y.toFixed(1)}%`;
+      b.dataset.slotIndex = String(i);
+      b.setAttribute('aria-pressed', String(i === litIndex));
+      b.setAttribute('aria-label', node.ariaLabel || `Slot ${i + 1}`);
+      b.title = node.ariaLabel || `Slot ${i + 1}`;
+      b.addEventListener('click', () => {
+        if (typeof onPick === 'function') onPick(i);
+      });
+      pins.appendChild(b);
+      pinButtons.push(b);
+    });
+  }
+
+  return {
+    update({ hullId, hullName, nodes, lit }) {
+      if (disposed) return;
+      currentNodes = Array.isArray(nodes) ? nodes : [];
+      litIndex = Number.isInteger(lit) ? lit : -1;
+      const fitted = currentNodes.filter((n) => n.state === 'fitted').length;
+      titleEl.textContent = hullName || 'Ship';
+      countEl.textContent = currentNodes.length ? 'Select a slot' : '';
+      if (hullId !== currentHullId) {
+        currentHullId = hullId || null;
+        img.dataset.fallback = '0';
+        const url = currentHullId ? (hullPosterUrl(currentHullId, 'top') || hullPosterUrl(currentHullId, 'jig')) : null;
+        if (url) {
+          img.hidden = false;
+          img.src = url;
+        } else {
+          img.hidden = true;
+        }
+      }
+      placePins();
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(markSettled);
+      else markSettled();
+    },
+    light(index) {
+      litIndex = Number.isInteger(index) ? index : -1;
+      pinButtons.forEach((b, i) => {
+        const on = i === litIndex;
+        b.classList.toggle('is-lit', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    },
+    dispose() {
+      disposed = true;
+      pinButtons = [];
+    },
+  };
 }
 
 /**
@@ -2319,9 +2549,32 @@ export const crucibleRefitScreen = {
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-refit-title');
 
     const title = el('header', 'k-title');
+    const headRow = el('div', 'sf-bench__head-row');
+    const headLeft = el('div', 'sf-bench__head-left');
+    const kicker = el('p', 'sf-bench__kicker', '');
+    headLeft.appendChild(kicker);
+    this._benchKicker = kicker;
     const h = el('h1', 'k-display k-t-title', 'Refit');
     h.id = 'sf-crucible-refit-title';
-    title.appendChild(h);
+    headLeft.appendChild(h);
+    headRow.appendChild(headLeft);
+
+    const headMeta = el('div', 'sf-bench__head-meta');
+    const fitPill = el('p', 'sf-bench__pill sf-bench__pill--fit');
+    const fitVal = el('span', 'sf-bench__pill-val', '');
+    const fitLbl = el('span', 'sf-bench__pill-lbl', 'fitted');
+    fitPill.append(fitVal, fitLbl);
+    const walletPill = el('p', 'sf-bench__pill sf-bench__pill--wallet');
+    const walletVal = el('span', 'sf-bench__pill-val', '');
+    const walletLbl = el('span', 'sf-bench__pill-lbl', 'Scrap');
+    walletPill.append(walletVal, walletLbl);
+    headMeta.append(fitPill, walletPill);
+    headRow.appendChild(headMeta);
+    title.appendChild(headRow);
+    this._benchFitVal = fitVal;
+    this._benchWalletVal = walletVal;
+    this._benchWalletPill = walletPill;
+
     title.appendChild(el('p', 'k-t-emph k-62 sf-cru-sub',
       'Strip a fitting, or choose any spare the run has earned and fit it.'));
     rootEl.appendChild(title);
@@ -2349,6 +2602,26 @@ export const crucibleRefitScreen = {
     rows.setAttribute('aria-label', 'Loadout slots');
     stage.appendChild(rows);
     this._rows = rows;
+
+    // Swarm Bench companion pane: the ship's top-down picture with clickable slot pins (no rings)
+    // and the selected slot's plain comparison, spare picker, and single Sell action.
+    const aside = el('aside', 'sf-bench__aside');
+    aside.setAttribute('aria-label', 'Ship and selected slot');
+    const shipCard = el('div', 'sf-bench__ship-card');
+    const inspector = el('div', 'sf-bench__inspector');
+    aside.append(shipCard, inspector);
+    stage.appendChild(aside);
+    this._benchAside = aside;
+    this._benchInspector = inspector;
+    this._benchData = [];
+    this._benchShip = createBenchShipView({
+      host: shipCard,
+      stage,
+      onPick: (index) => {
+        this._selectBenchSlot(index, { focusRow: true });
+      },
+    });
+
     rootEl.appendChild(stage);
     rootEl.classList.add('orr-refit');
     this._lit = null;
@@ -2368,11 +2641,19 @@ export const crucibleRefitScreen = {
     // The Hand follows the player: the hardpoint under the pointer or holding focus is lit.
     const lightRow = (event) => {
       const rowEl = event && event.target && event.target.closest ? event.target.closest('.sf-cru-row') : null;
-      if (!rowEl || !this._jig) return;
-      if (event.type === 'pointerover' && typeof performance !== 'undefined'
-        && performance.now() - this._jig.laidOutAt() < 420) return;
+      if (!rowEl) return;
       const index = [...rows.children].indexOf(rowEl);
       if (index < 0) return;
+      if (this._isSwarmBench) {
+        // On Swarm Bench, only focus/click selects a slot so moving the mouse toward the right-hand
+        // inspector never accidentally switches slots on the way over.
+        if (event.type === 'pointerover') return;
+        this._selectBenchSlot(index);
+        return;
+      }
+      if (!this._jig) return;
+      if (event.type === 'pointerover' && typeof performance !== 'undefined'
+        && performance.now() - this._jig.laidOutAt() < 420) return;
       this._lit = index;
       this._jig.light(index);
     };
@@ -2539,7 +2820,7 @@ export const crucibleRefitScreen = {
       if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         const active = document.activeElement;
         if (!active || active.tagName === 'SELECT') return;
-        const walkable = [...rootEl.querySelectorAll('.sf-cru-row button, .sf-cru-row select, .k-foot .k-word')]
+        const walkable = [...rootEl.querySelectorAll('.sf-cru-row button, .sf-cru-row select, .sf-bench__inspector button, .k-foot .k-word')]
           .filter((el) => !el.disabled && !el.hidden && typeof el.focus === 'function');
         const here = walkable.indexOf(active);
         if (here < 0 || walkable.length === 0) return;
@@ -2646,6 +2927,9 @@ export const crucibleRefitScreen = {
     this._pendingRefit = null;
     if (this._jig) this._jig.dispose();
     this._jig = null;
+    if (this._benchShip) this._benchShip.dispose();
+    this._benchShip = null;
+    this._benchData = [];
     if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
     if (this._doneHold) { this._doneHold.dispose(); this._doneHold = null; }
     if (this._extractHold) { this._extractHold.dispose(); this._extractHold = null; }
@@ -2733,15 +3017,159 @@ export const crucibleRefitScreen = {
     // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
     const rootEl = this._root;
     const savedFocus = rootEl ? focusedControlId(rootEl) : null;
+    const isSwarmBench = !!(runForPreview && runForPreview.ruleset === 'swarm' && rootEl && rootEl.classList);
+    this._isSwarmBench = isSwarmBench;
+    if (rootEl && rootEl.classList) rootEl.classList.toggle('sf-bench', isSwarmBench);
     rows.innerHTML = '';
     const jigNodes = [];
+    const benchEntries = [];
+    const rawRows = this._rows_data(context);
 
-    for (const row of this._rows_data(context)) {
+    if (isSwarmBench) {
+      if (this._benchKicker) {
+        this._benchKicker.textContent = runForPreview.phase === 'draft'
+          ? 'Armory · Loadout'
+          : `Round ${currentWave} · Bench`;
+      }
+      if (this._benchWalletVal) {
+        const purse = Math.max(0, Math.trunc(Number(runForPreview.credits) || 0));
+        this._benchWalletVal.textContent = purse.toLocaleString('en-US');
+      }
+      if (this._benchWalletPill) this._benchWalletPill.hidden = false;
+      if (this._preview && this._preview.textContent) {
+        this._preview.title = this._preview.textContent;
+      }
+    }
+
+    for (const row of rawRows) {
       const lines = refitRowLines(row);
       if (!lines) continue;
 
       const state = row.defId || row.intrinsicDefId ? 'fitted' : (lines.options.length ? 'open' : 'bare');
       const item = el('li', `k-row k-row--static sf-cru-row orr-hp is-${state}`);
+      const rowIndex = benchEntries.length;
+
+      if (isSwarmBench) {
+        // Swarm Bench: one plain line per slot ('Gun 1 · Bank Stream M') and ONE inline action
+        // (Strip on fitted slots, Fit on open slots with spares). Spare comparison and Sell live
+        // in the selected slot's inspector beside the ship picture so every row reads in one glance.
+        let pick = null;
+        let spareNameEl = null;
+        let spareCountEl = null;
+        let rowThumbHost = null;
+        if (lines.options.length) {
+          pick = el('select', 'k-select sf-cru-pick');
+          pick.hidden = true;
+          pick.tabIndex = -1;
+          pick.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
+          for (const option of lines.options) {
+            const opt = el('option', '', option.label);
+            opt.value = String(option.instanceId);
+            pick.appendChild(opt);
+          }
+          const remembered = rememberedSpareChoice(lines.options, this._spareChoice.get(row.slotIndex));
+          if (remembered != null) {
+            pick.value = remembered;
+          } else {
+            this._spareChoice.delete(row.slotIndex);
+          }
+          pick.addEventListener('change', () => {
+            this._spareChoice.set(row.slotIndex, pick.value);
+            const activeSpare = this._chosenSpare(row);
+            if (spareNameEl && activeSpare) spareNameEl.textContent = activeSpare.name || fittingName(activeSpare.defId);
+            if (rowThumbHost && activeSpare && activeSpare.defId) {
+              rowThumbHost.innerHTML = '';
+              const nextThumb = itemThumbElement({ defId: activeSpare.defId, slotSize: lines.slotSize },
+                { size: 'xs', showCrest: false, className: 'sf-bench__thumb' },
+                rowThumbHost.ownerDocument || globalThis.document);
+              if (nextThumb) rowThumbHost.appendChild(nextThumb);
+            }
+            if (this._lit === rowIndex) this._renderBenchInspector(context);
+          });
+          row._pick = pick;
+        }
+
+        const chosenSpare = state === 'open' ? this._chosenSpare(row) : null;
+        const thumbDef = lines.defId || lines.intrinsicDefId || (chosenSpare && chosenSpare.defId) || null;
+        rowThumbHost = el('span', 'sf-bench__thumb-box');
+        if (thumbDef) {
+          const t = itemThumbElement({ defId: thumbDef, slotSize: lines.slotSize },
+            { size: 'xs', showCrest: false, className: 'sf-bench__thumb' },
+            item.ownerDocument || globalThis.document);
+          if (t) rowThumbHost.appendChild(t);
+        } else {
+          const g = equipmentSvg({ defId: row.slotType || 'utility' }, item.ownerDocument || globalThis.document);
+          if (g) rowThumbHost.appendChild(g);
+        }
+
+        const lineText = el('div', 'sf-bench__row-main');
+        lineText.appendChild(el('span', 'sf-bench__slot', lines.label));
+        lineText.appendChild(el('span', 'sf-bench__dot', '·'));
+        if (state === 'fitted') {
+          const valSpan = el('span', 'sf-bench__item', lines.value);
+          if (lines.valueRef) decorateEntityNode(valSpan, lines.valueRef);
+          lineText.appendChild(valSpan);
+        } else if (state === 'open') {
+          lineText.appendChild(el('span', 'sf-bench__item sf-bench__item--empty', 'Empty'));
+          if (chosenSpare) {
+            spareNameEl = el('span', 'sf-bench__spare-tag', chosenSpare.name || fittingName(chosenSpare.defId));
+            lineText.appendChild(spareNameEl);
+            if (lines.options.length > 1) {
+              spareCountEl = el('span', 'sf-bench__spare-more', `+${lines.options.length - 1}`);
+              lineText.appendChild(spareCountEl);
+            }
+          }
+        } else {
+          lineText.appendChild(el('span', 'sf-bench__item sf-bench__item--empty', 'Empty'));
+        }
+
+        const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
+        action.classList.add('sf-cru-act', 'sf-bench__act');
+        if (state === 'open') action.classList.add('sf-bench__act--fit');
+        action.disabled = pending || !!lines.disabled;
+        if (state === 'bare') action.hidden = true;
+        if (!lines.disabled) {
+          action.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            this._lit = rowIndex;
+            let requested = false;
+            if (row.defId) {
+              this._emitIntentAndRefresh(context, 'run:refitStripRequested', { slotIndex: row.slotIndex });
+              requested = true;
+            } else {
+              const chosen = this._chosenSpare(row);
+              if (chosen) {
+                this._emitIntentAndRefresh(context, 'run:refitFitRequested', {
+                  slotIndex: row.slotIndex, instanceId: chosen.instanceId,
+                });
+                requested = true;
+              }
+            }
+            if (!requested) this.refresh(context);
+          });
+        }
+
+        item.addEventListener('click', (ev) => {
+          if (ev.target && ev.target.closest && ev.target.closest('button, select')) return;
+          this._selectBenchSlot(rowIndex);
+        });
+
+        item.append(rowThumbHost, lineText);
+        if (state === 'bare') {
+          item.appendChild(el('span', 'sf-bench__bare-word', 'No spare'));
+        }
+        item.appendChild(action);
+        if (pick) item.appendChild(pick);
+        rows.appendChild(item);
+
+        const ariaLabel = state === 'fitted'
+          ? `${lines.label}: ${lines.value}`
+          : (state === 'open' && chosenSpare ? `${lines.label}: Empty, ${chosenSpare.name || fittingName(chosenSpare.defId)} ready` : `${lines.label}: Empty`);
+        benchEntries.push({ row, lines, state, item, pick, ariaLabel });
+        jigNodes.push({ el: item, slotType: row.slotType, state, num: String((row.slotIndex || 0) + 1).padStart(2, '0'), ariaLabel });
+        continue;
+      }
+
       const left = el('div', 'orr-hp__body');
       const head = el('div', 'orr-hp__head');
       const numeral = el('span', 'orr-hp__n', String((row.slotIndex || 0) + 1).padStart(2, '0'));
@@ -2888,11 +3316,25 @@ export const crucibleRefitScreen = {
       jigNodes.push({ el: item, slotType: row.slotType, state, num: String((row.slotIndex || 0) + 1).padStart(2, '0') });
     }
 
+    this._benchData = benchEntries;
     this._jigStates = jigNodes.map((node) => node.state);
-    if (this._jig) {
-      const hullId = activeLoadout(context).hullId;
-      const fitted = jigNodes.filter((n) => n.state === 'fitted').length;
-      const hullName = hullId ? (entityLabel('hull:' + hullId) || hullId.replace(/^ship_/, '')) : '';
+    const hullId = activeLoadout(context).hullId;
+    const fitted = jigNodes.filter((n) => n.state === 'fitted').length;
+    const hullName = hullId ? (entityLabel('hull:' + hullId) || hullId.replace(/^ship_/, '')) : '';
+    if (this._benchFitVal) this._benchFitVal.textContent = `${fitted} / ${jigNodes.length}`;
+
+    if (isSwarmBench) {
+      // Stand the circular compass jig down on Swarm Bench; the ring-free ship view owns the stage.
+      if (this._jig) this._jig.setHull(null);
+      if (!Number.isInteger(this._lit) || this._lit < 0 || this._lit >= benchEntries.length) {
+        const open = benchEntries.findIndex((entry) => entry.state === 'open');
+        this._lit = open >= 0 ? open : 0;
+      }
+      if (this._benchShip) {
+        this._benchShip.update({ hullId, hullName, nodes: jigNodes, lit: this._lit });
+      }
+      this._selectBenchSlot(this._lit);
+    } else if (this._jig) {
       this._jig.setHull(hullId);
       this._jig.setNodes(jigNodes, {
         engraving: hullName ? `${hullName} · ${fitted} of ${jigNodes.length} fitted` : '',
@@ -2914,6 +3356,158 @@ export const crucibleRefitScreen = {
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
     if (this._note) this._note.textContent = this._pendingRefit?.line || notice || '';
     this._dressHull();
+  },
+
+  /** Select a slot on the Swarm Bench: highlight its row, light its ship pin, update the inspector. */
+  _selectBenchSlot(index, { focusRow = false } = {}) {
+    if (!this._isSwarmBench || !Array.isArray(this._benchData) || !this._benchData.length) return;
+    const clamped = Math.max(0, Math.min(this._benchData.length - 1, Number.isInteger(index) ? index : 0));
+    this._lit = clamped;
+    this._benchData.forEach((entry, i) => {
+      if (entry.item && entry.item.classList) entry.item.classList.toggle('is-lit', i === clamped);
+    });
+    if (this._benchShip) this._benchShip.light(clamped);
+    this._renderBenchInspector(this._ctx);
+    if (focusRow) {
+      const targetRow = this._benchData[clamped] && this._benchData[clamped].item;
+      const btn = targetRow && (targetRow.querySelector('.sf-cru-act:not([hidden]):not(:disabled)') || targetRow.querySelector('button'));
+      if (btn && typeof btn.focus === 'function') {
+        try { btn.focus(); } catch { /* focus is best-effort */ }
+      }
+    }
+  },
+
+  /** Render the selected slot's plain details, spare picker, weapon comparison, and Sell button. */
+  _renderBenchInspector(context) {
+    const host = this._benchInspector;
+    if (!host || !Array.isArray(this._benchData) || !this._benchData.length) return;
+    host.innerHTML = '';
+    const entry = this._benchData[this._lit] || this._benchData[0];
+    if (!entry) return;
+    const { row, lines, state, pick } = entry;
+    const pending = !!this._pendingRefit;
+    const doc = host.ownerDocument || globalThis.document;
+
+    const head = el('div', 'sf-bench__insp-head');
+    const titleWrap = el('div', 'sf-bench__insp-titles');
+    titleWrap.appendChild(el('p', 'sf-bench__insp-kicker', lines.slotTag ? `${lines.label} · ${lines.slotTag}` : lines.label));
+    head.appendChild(titleWrap);
+    const badgeText = state === 'fitted' ? 'Fitted' : (state === 'open' ? 'Empty · spare ready' : 'Empty');
+    head.appendChild(el('span', `sf-bench__insp-badge is-${state}`, badgeText));
+    host.appendChild(head);
+
+    if (state === 'fitted') {
+      const eqDef = lines.defId || lines.intrinsicDefId;
+      const partRow = el('div', 'sf-bench__insp-part');
+      if (eqDef) {
+        const th = itemThumbElement({ defId: eqDef, slotSize: lines.slotSize },
+          { size: 'sm', showCrest: true, className: 'sf-bench__insp-thumb' }, doc);
+        if (th) partRow.appendChild(th);
+      }
+      const partText = el('div', 'sf-bench__insp-part-text');
+      const nameEl = el('p', 'sf-bench__insp-name', lines.value);
+      if (lines.valueRef) decorateEntityNode(nameEl, lines.valueRef);
+      partText.appendChild(nameEl);
+      if (lines.description) partText.appendChild(el('p', 'sf-bench__insp-desc', lines.description));
+      partRow.appendChild(partText);
+      host.appendChild(partRow);
+    } else if (state === 'open') {
+      const chosen = this._chosenSpare(row);
+      const chosenDef = chosen && chosen.defId;
+      if (lines.options.length > 1 && pick) {
+        const picker = el('div', 'sf-bench__spares');
+        picker.setAttribute('role', 'radiogroup');
+        picker.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
+        for (const option of lines.options) {
+          const [spareName] = String(option.label).split(' — ');
+          const b = el('button', 'sf-bench__spare-opt');
+          b.type = 'button';
+          b.dataset.spare = String(option.instanceId);
+          b.setAttribute('role', 'radio');
+          b.setAttribute('aria-checked', String(String(option.instanceId) === pick.value));
+          b.setAttribute('aria-label', option.label);
+          if (option.defId) {
+            const spThumb = itemThumbElement({ defId: option.defId, slotSize: lines.slotSize },
+              { size: 'xs', showCrest: false, className: 'sf-bench__spare-thumb' }, doc);
+            if (spThumb) b.appendChild(spThumb);
+          }
+          b.appendChild(el('span', 'sf-bench__spare-opt-name', spareName));
+          b.addEventListener('click', () => {
+            if (pick.value === b.dataset.spare) return;
+            pick.value = b.dataset.spare;
+            pick.dispatchEvent(new Event('change'));
+          });
+          picker.appendChild(b);
+        }
+        host.appendChild(picker);
+      } else if (chosen) {
+        const partRow = el('div', 'sf-bench__insp-part');
+        if (chosenDef) {
+          const th = itemThumbElement({ defId: chosenDef, slotSize: lines.slotSize },
+            { size: 'sm', showCrest: true, className: 'sf-bench__insp-thumb' }, doc);
+          if (th) partRow.appendChild(th);
+        }
+        const partText = el('div', 'sf-bench__insp-part-text');
+        partText.appendChild(el('p', 'sf-bench__insp-name', chosen.name || fittingName(chosenDef)));
+        const blurb = chosenDef ? (arsenalIdentity(chosenDef)?.sentence
+          || catalogBlurbFor(WEAPON_DEF_BY_ID.get(chosenDef) || MODULES.find((d) => d.id === chosenDef))) : '';
+        if (blurb) partText.appendChild(el('p', 'sf-bench__insp-desc', blurb));
+        partRow.appendChild(partText);
+        host.appendChild(partRow);
+      }
+
+      // Plain weapon comparison ('Hits harder, pushes less than ...') + two flat comparison bars.
+      const fittedRows = this._benchData.map((e) => e.row).filter((r) => r && r.defId);
+      const cmp = chosenDef ? plainWeaponComparison(chosenDef, row.spares, fittedRows) : null;
+      if (cmp) {
+        const cmpBox = el('div', 'sf-bench__compare');
+        cmpBox.appendChild(el('p', 'sf-bench__compare-line', cmp.sentence));
+        const bars = el('div', 'sf-bench__compare-bars');
+        for (const [label, mineVal, refVal] of [
+          ['Fire', cmp.spare.dps, cmp.ref.dps],
+          ['Impact', cmp.spare.impulse, cmp.ref.impulse],
+        ]) {
+          const max = Math.max(mineVal, refVal, 1);
+          const barRow = el('div', 'sf-bench__bar-row');
+          barRow.appendChild(el('span', 'sf-bench__bar-lbl', label));
+          const track = el('div', 'sf-bench__bar-track');
+          const fill = el('div', 'sf-bench__bar-fill');
+          fill.style.width = `${Math.max(4, Math.min(100, (mineVal / max) * 100)).toFixed(1)}%`;
+          const mark = el('div', 'sf-bench__bar-ref');
+          mark.style.left = `${Math.max(2, Math.min(98, (refVal / max) * 100)).toFixed(1)}%`;
+          mark.title = `${cmp.ref.name}: ${shortNum(refVal)}`;
+          track.append(fill, mark);
+          barRow.appendChild(track);
+          barRow.appendChild(el('span', 'sf-bench__bar-val', shortNum(mineVal)));
+          bars.appendChild(barRow);
+        }
+        cmpBox.appendChild(bars);
+        host.appendChild(cmpBox);
+      } else if (lines.contrast) {
+        host.appendChild(el('p', 'sf-bench__compare-line', lines.contrast));
+      }
+    } else {
+      host.appendChild(el('p', 'sf-bench__insp-desc', 'No spare in your run inventory fits this slot.'));
+    }
+
+    // Single Sell action for the currently selected slot (fitted part or chosen spare).
+    const run = context && context.state && context.state.run;
+    if (run && run.ruleset === 'swarm') {
+      const part = row.defId ? row : this._chosenSpare(row);
+      const sellPrice = part?.defId && !part.startingEquipment ? swarmSellPrice(part.defId) : null;
+      if (sellPrice != null && sellPrice > 0) {
+        const sellTarget = row.defId ? { slotIndex: row.slotIndex } : { instanceId: part.instanceId };
+        const foot = el('div', 'sf-bench__insp-foot');
+        const sell = el('button', 'sf-bench__sell', `Sell · ${sellPrice} Scrap`);
+        sell.type = 'button';
+        sell.disabled = pending;
+        sell.addEventListener('click', () => {
+          this._emitIntentAndRefresh(context, 'run:refitSellRequested', sellTarget);
+        });
+        foot.appendChild(sell);
+        host.appendChild(foot);
+      }
+    }
   },
 
   /**

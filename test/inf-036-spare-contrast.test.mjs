@@ -11,7 +11,7 @@ import { WEAPONS } from '../src/data/weapons.js';
 import { describeAttackMetrics } from '../src/combat/attackSpec.js';
 import { createRunState } from '../src/core/runState.js';
 import { compileFittedAttackSpec } from '../src/systems/adventureMigration.js';
-import { refitRowLines, weaponSpareContrast } from '../src/ui/screens/crucibleDraft.js';
+import { plainWeaponComparison, refitRowLines, weaponSpareContrast } from '../src/ui/screens/crucibleDraft.js';
 import { arsenalIdentity } from '../src/data/arsenalIdentity.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
@@ -82,4 +82,16 @@ test('INF-036: the advertised damage difference appears in the compiled encounte
   const specOrder = Math.sign(compiledDamage(AUTO.id) - compiledDamage(PULSE.id));
   assert.equal(specOrder, defOrder, 'the encounter spec keeps the defs’ damage order');
   assert.ok(compiledDamage(PULSE.id) > 0 && compiledDamage(AUTO.id) > 0);
+});
+
+test('plainWeaponComparison speaks trade-offs in plain words with zero jargon', () => {
+  const vsSibling = plainWeaponComparison(PLASMA.id, [spare(PLASMA, 1), spare(RAILGUN, 2)], []);
+  assert.ok(vsSibling, 'compares against the sibling spare');
+  assert.equal(vsSibling.sentence, `Hits harder, pushes less than ${RAILGUN.name}.`);
+  assert.doesNotMatch(vsSibling.sentence, /dps|impulse/i);
+
+  const vsFitted = plainWeaponComparison(AUTO.id, [spare(AUTO, 1)], [{ defId: 'wpn_bank_stream_m', name: 'Bank Stream M' }]);
+  assert.ok(vsFitted, 'falls back to comparing a lone weapon spare against the ship’s fitted gun');
+  assert.equal(vsFitted.sentence, 'Hits softer, pushes harder than Bank Stream M.');
+  assert.doesNotMatch(vsFitted.sentence, /dps|impulse/i);
 });
