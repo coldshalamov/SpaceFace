@@ -156,6 +156,32 @@ test('a refused pulled pickup becomes credits and never parks on the hull; run w
   });
 });
 
+test('a refused custody pod keeps its own rules: alive, unconverted, still retrying', () => {
+  withFlag(true, () => {
+    // A custody-annotated pod (a named owner on the cargo identity) is somebody's property —
+    // the claim-holder is flying to reach it. The arcade-loot overflow path must never launder
+    // it into silent player cash the way free ore converts.
+    const h = harness({
+      pickupX: 10,
+      pickupData: COMBAT_ORE({ cargoIdentity: { ownerId: 'npc_freighter_7' } }),
+      acceptUnits: 0,
+    });
+    h.state.simTime = 1;
+    mining.update(DT, h.state);
+    assert.equal(h.pickup.alive, true, 'the vacuum cannot destroy a pod it has no title to');
+    assert.equal(h.grants.length, 0, 'no silent credit conversion');
+    assert.equal(h.conversions.length, 0, 'no overflow conversion receipt');
+    assert.ok(Number.isFinite(h.pickup.data.pickupAcceptanceRetryAt),
+      'the refusal parks and retries on the custody/law adjudication instead');
+
+    // Later sweeps still leave it alone — the custody gate is not a one-tick accident.
+    h.state.simTime = 3;
+    for (let i = 0; i < 5; i++) mining.update(DT, h.state);
+    assert.equal(h.pickup.alive, true);
+    assert.equal(h.grants.length, 0);
+  });
+});
+
 test('only the player\'s own kill burst spawns combat loot', () => {
   const drop = (source) => {
     const h = harness({ pickupX: 10, pickupData: { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 1 } });

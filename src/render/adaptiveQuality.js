@@ -91,7 +91,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   low: Object.freeze({
     id: 'low',
     label: 'High performance',
-    adaptiveFloor: 0.6,
+    adaptiveFloor: 0.5,
     renderScale: 1,
     pixelRatioCap: 2,
     bloom: true,
@@ -448,7 +448,7 @@ export function autoPresentationCapFor(gpu, video = {}, render = null) {
 
 export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
   software: 0.34,
-  integrated: 0.6,
+  integrated: 0.5,
   default: 0.6,
 });
 
@@ -474,9 +474,9 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
 // Director ruling 2026-11-21: the GPU-budget governor (createGpuBudgetResolution) may use the
 // whole 0.5-1.0 range in Auto. 0.5 is exactly the CAS scaling pass's 4x-area limit, so the
 // contrast-adaptive upscale still reconstructs every band.
-// DEMO-FRAME-1 (2026-11-23): floor held at 0.6 so the 3D scene stays crisp while still cutting
-// up to 64% of pixel shading area on Intel integrated GPUs (UI stays 100% native DOM).
-export const COMBINED_READABILITY_FLOOR = 0.6;
+// DEMO-FRAME-1 (2026-11-23): the 0.6 readability floor belongs to the smooth governor alone —
+// see SMOOTH_DRS_FLOOR / createSmoothDrsGovernor. This shared floor stays at the ruling's 0.5.
+export const COMBINED_READABILITY_FLOOR = 0.5;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
@@ -484,10 +484,11 @@ export const COMBINED_READABILITY_FLOOR = 0.6;
  * product at COMBINED_READABILITY_FLOOR. `rasterRelief` is the product of the automatic
  * reliefs only — the player's own renderScale choice belongs to Manual and is not rescued here.
  */
-export function adaptiveFloorForCombinedScale(tierFloor, rasterRelief) {
+export function adaptiveFloorForCombinedScale(tierFloor, rasterRelief, readabilityFloor = COMBINED_READABILITY_FLOOR) {
   const relief = clamp(Number(rasterRelief) || 1, 0.2, 1);
   const base = clamp(Number(tierFloor) || 0.6, 0.2, 1);
-  return clamp(Math.max(base, COMBINED_READABILITY_FLOOR / relief), 0.2, 1);
+  const readability = clamp(Number(readabilityFloor) || COMBINED_READABILITY_FLOOR, 0.2, 1);
+  return clamp(Math.max(base, readability / relief), 0.2, 1);
 }
 
 export function dynResFloorForTier(tier) {

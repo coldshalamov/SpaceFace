@@ -41,6 +41,7 @@ import { RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
 import { projectileHitPayload } from '../src/core/physics.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { OPTIC_MATERIALS } from '../src/combat/opticField.js';
+import { retireContinuingProjectile } from '../src/combat/attackHit.js';
 
 
 function opticGalleryBodies(state, structureId = CERES_PRISM_GALLERY_ID) {
@@ -631,7 +632,7 @@ test('visited diamond keys treat number and string ids as the same surface', () 
   assert.equal(again.reason, 'spent');
 });
 
-test('metal reflect keeps the same body alive after physics sets alive=false', () => {
+test('metal reflect keeps the same body alive through the physics retire handshake', () => {
   const metal = makeEntity({
     id: 3, type: 'asteroid', pos: { x: 0, z: 0 }, radius: 16, collides: true,
     data: { opticMaterial: 'metal' },
@@ -645,8 +646,15 @@ test('metal reflect keeps the same body alive after physics sets alive=false', (
   );
   assert.equal(plan.kind, 'reflect');
   assert.ok(energy.vel.x < 0);
-  energy.alive = false;
-  assert.equal(energy.alive, true);
+  // d690a74a91: under default fastLiveEntities, `alive` stays a plain data field — the
+  // continuation handshake is physics' retire write, swallowed once for a pending reflect.
+  const aliveField = Object.getOwnPropertyDescriptor(energy, 'alive');
+  assert.equal(aliveField.value, true);
+  assert.equal(typeof aliveField.get, 'undefined', 'alive is a data field, not an accessor');
+  retireContinuingProjectile(energy);
+  assert.equal(energy.alive, true, 'the physics retire of a reflected bolt is swallowed once');
+  retireContinuingProjectile(energy);
+  assert.equal(energy.alive, false, 'a second retire with no continuation pending kills the bolt');
 });
 
 test('reflect stamps a travel budget so metal ping-pong cannot run forever', () => {

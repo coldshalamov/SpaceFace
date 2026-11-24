@@ -10,7 +10,7 @@ import { createSurfaceContactReceipt, surfaceContactFromBodies } from '../src/co
 import { compileAttackSpec, digestAttackSpec } from '../src/combat/attackSpec.js';
 import { createLineage } from '../src/combat/attackLineage.js';
 import { tryBounce } from '../src/combat/attackPropagation.js';
-import { armAttackContinue, resolveLiveAttackHit } from '../src/combat/attackHit.js';
+import { armAttackContinue, resolveLiveAttackHit, retireContinuingProjectile } from '../src/combat/attackHit.js';
 import { resolveRicochet, steerAfterBounce } from '../src/combat/surfaceReflection.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { WEAPONS } from '../src/data/weapons.js';
@@ -105,8 +105,12 @@ test('eligible reflection continues one body, preserves AttackSpec and exhausts 
     assert.equal(result.consume, false);
     assert.equal(result.projectile, identity);
     assert.equal(body.vel.x, -12);
-    body.alive = false; // the existing physics continuation handshake
+    // d690a74a91: under default fastLiveEntities, `alive` stays a plain data field — the
+    // continuation handshake is physics' retire write, swallowed once for a pending bounce.
+    retireContinuingProjectile(body);
     assert.equal(body.alive, true);
+    retireContinuingProjectile(body);
+    assert.equal(body.alive, false, 'a second retire with no continuation pending kills the body');
     assert.equal(runtime.budget.consumed, 1);
     assert.equal(runtime.remaining.bounces, 0);
     assert.equal(tryBounce(runtime).reason, 'no_remaining_bounces');

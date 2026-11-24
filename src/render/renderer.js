@@ -400,6 +400,8 @@ import {
   createAdaptiveResolution,
   createGpuBudgetResolution,
   createSmoothDrsGovernor,
+  SMOOTH_DRS_FLOOR,
+  COMBINED_READABILITY_FLOOR,
   createAutoPresentationGovernor,
   shouldSuggestIntegratedPreset,
   applyAutoQualityPreset,
@@ -11961,10 +11963,12 @@ export const render = {
       },
     });
     // Smooth hysteresis dynamic-resolution governor (DEMO-FRAME-1): uses GPU pass totals when
-    // available plus presented frame-time EMA, clamped to >=0.60 on integrated GPUs, paired with
-    // single-pass composite upscale in bloom.js. ?rfx=-drsSmooth holds native 1.0 scale.
+    // available plus presented frame-time EMA, paired with single-pass composite upscale in
+    // bloom.js. Its 0.6 readability floor is its own (SMOOTH_DRS_FLOOR), not the shared 0.5
+    // tier/combined floor — the software tier keeps its deeper emergency floor instead.
+    // ?rfx=-drsSmooth hands control back to the _gpuBudget governor / frame-time controller.
     this._smoothDrs = createSmoothDrsGovernor({
-      floor: dynFloor,
+      floor: gpu.software === true ? dynFloor : Math.max(SMOOTH_DRS_FLOOR, dynFloor),
       initialScale: gpu.software === true ? dynFloor : 1,
       apply: (s) => {
         this.state.render.dynResScale = s;
@@ -27323,7 +27327,7 @@ export const render = {
   // must stay proportionally shallower or the two reliefs compound far below the readability
   // floor (integrated + hitch + old dyn floor presented ~0.36×). Manual renderScale choices
   // are the player's own and do not raise the floor. Software keeps its emergency depth.
-  _adaptiveFloorForRelief() {
+  _adaptiveFloorForRelief(readabilityFloor = COMBINED_READABILITY_FLOOR) {
     const renderState = this.state && this.state.render;
     const gpu = renderState && renderState.gpu;
     const tierFloor = this._dynFloor || dynResFloorForTier(gpu?.tier);
@@ -27341,7 +27345,7 @@ export const render = {
     const tierRelief = gpu.tier === 'integrated'
       ? Math.min(hitch, INTEGRATED_RELIEF_RASTER_CAP) : hitch;
     const relief = tierRelief * autoScale;
-    return adaptiveFloorForCombinedScale(tierFloor, relief);
+    return adaptiveFloorForCombinedScale(tierFloor, relief, readabilityFloor);
   },
 
   _setHitchReliefLevel(renderState, level, eased) {
@@ -33745,24 +33749,17 @@ export const render = {
         }
       }
       // Dynamic resolution governor: drsSmooth owns the smooth >=0.6 hysteresis governor on
-      // integrated/hardware GPUs; ?rfx=-drsSmooth holds native 1.0 scale for clean A/B comparison.
+      // integrated/hardware GPUs; ?rfx=-drsSmooth hands control back to the _gpuBudget
+      // governor (or the frame-time adaptive controller when GPU timers are absent) — the
+      // kill switch restores native through the governor's own apply, then the ordinary
+      // path below drives again; it must not lock resolution at 1.0.
       const drsSmoothOn = frameCostFixOn('drsSmooth');
       const budget = this._gpuBudget;
       const smoothDrs = this._smoothDrs;
       let budgetDriving = false;
       let gpuFrameMs = null;
-      if (!drsSmoothOn) {
-        // Switch OFF (A/B measurement or explicit kill): hold native 1.0 scale without reallocating.
-        if (smoothDrs && smoothDrs.isEnabled()) smoothDrs.setEnabled(false);
-        if (budget && budget.isEnabled()) budget.setEnabled(false);
-        if (adaptiveState.render && adaptiveState.render.dynResScale !== 1) {
-          adaptiveState.render.dynResScale = 1;
-          if (this._adaptive) this._adaptive.syncScale(1);
-          if (this.bloom && typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(1);
-          else this._applySize();
-        }
-        this._gpuBudgetDriving = false;
-      } else if (smoothDrs && frameCostFixOn('gpuBudget')) {
+      if (!drsSmoothOn && smoothDrs && smoothDrs.isEnabled()) smoothDrs.setEnabled(false);
+      if (drsSmoothOn && smoothDrs && frameCostFixOn('gpuBudget')) {
         const drsOn = this._adaptive.isEnabled?.() === true;
         if (smoothDrs.isEnabled() !== drsOn) {
           smoothDrs.syncScale(adaptiveState.render.dynResScale);
@@ -33791,7 +33788,7 @@ export const render = {
           drsSample.sampleFrameId = sampleFrameId;
           drsSample.currentFrameId = nextFrameId;
           tryPresentedCall(this, 'smooth-drs', () => {
-            smoothDrs.setFloor(this._adaptiveFloorForRelief());
+            smoothDrs.setFloor(this._adaptiveFloorForRelief(SMOOTH_DRS_FLOOR));
             smoothDrs.syncScale(adaptiveState.render.dynResScale);
             smoothDrs.update(frameDt, drsSample);
           });
@@ -33849,10 +33846,11 @@ export const render = {
         adaptiveState.render.autoPresentCap = presentGovernor.getCap();
       }
       if (adaptiveState.render) {
-        adaptiveState.render.dynResBound = !drsSmoothOn ? 'off'
-          : (budgetDriving ? (smoothDrs && frameCostFixOn('gpuBudget') ? 'smooth-drs' : 'gpu-budget') : this._adaptive.getBound?.().bound);
+        adaptiveState.render.dynResBound = budgetDriving
+          ? (drsSmoothOn && smoothDrs && frameCostFixOn('gpuBudget') ? 'smooth-drs' : 'gpu-budget')
+          : this._adaptive.getBound?.().bound;
         adaptiveState.render.dynResEligible = eligible;
-        adaptiveState.render.dynResEnabled = drsSmoothOn ? (this._adaptive.isEnabled?.() ?? null) : false;
+        adaptiveState.render.dynResEnabled = this._adaptive.isEnabled?.() ?? null;
         adaptiveState.render.gpuFrameMs = gpuFrameMs;
       }
     }

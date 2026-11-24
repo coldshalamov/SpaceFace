@@ -717,8 +717,9 @@ export const physics = {
     // An explicit prepare is bounded by user action — a backoff residual short enough
     // to fit inside the init envelope is worth waiting out so the prepare mints a real
     // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
-    // retry on the sim clock (RAPIER_INIT_RETRY_S); the window still refuses the mint
-    // inside loadRapierCompatRuntime itself (that's what the window exists for).
+    // retry every sim tick no attempt is pending (the `_sg02Init`/`_sg02` gate in
+    // _updateSg02DynamicAuthority); the runtime's own failure window still refuses the
+    // mint inside loadRapierCompatRuntime itself (that's what the window exists for).
     // Reset prepares wait too: in this state (`!_sg02Init && !_sg02`) the reset's
     // _disableSg02DynamicAuthority is a pure no-op — no live authority, no token bump —
     // so the exclusion only bought an instant PHYSICS_BACKEND_UNAVAILABLE bounce.

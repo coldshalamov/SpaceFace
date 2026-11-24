@@ -150,6 +150,7 @@ export class QuarksVfxSystem {
     this.flow = new ForceParticleFlow(this.root, { capacity: 256 });
     this._flowSequence = 0;
     this._budgetActive = false;
+    this._emptyBatchPending = false;
     this._flowFrame = { reducedMotion: false, reducedFlash: false };
     this._flowEvent = { kind: 'heat', x: 0, y: 0, z: 0, dx: 1, dz: 0, radius: 10,
       seed: 0, count: 8, life: 0.8, strength: 1 };
@@ -746,7 +747,8 @@ export class QuarksVfxSystem {
         batch.onAfterRender = function onFirstBatchDraw(...args) {
           data.sfDrawnOnce = true;
           batch.onAfterRender = previous;
-          return previous.apply(this, args);
+          if (typeof previous === 'function') return previous.apply(this, args);
+          return undefined;
         };
       }
       const geometry = batch.geometry;

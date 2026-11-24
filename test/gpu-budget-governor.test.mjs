@@ -224,13 +224,23 @@ test('smooth DRS governor steps down smoothly to >=0.6 floor, holds deadband wit
   // Single isolated hitch (>120ms) is ignored
   g.update(0.15, { eligible: true, targetMs: 16.67, gpuMs: 10, sampleFrameId: 1, currentFrameId: 2 });
   assert.equal(g.getScale(), 1);
-  // Sustained miss lowers scale smoothly in <=0.15 steps and never drops below 0.60
+  // A moderate sustained miss (frame cadence near budget, GPU cost easing as scale drops)
+  // settles mid-range, not at the floor
   let frame = 2;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 90; i++) {
     frame++;
-    g.update(0.04, { eligible: true, targetMs: 16.67, gpuMs: 26 * g.getScale() * g.getScale() + 6, sampleFrameId: frame - 1, currentFrameId: frame });
+    g.update(0.018, { eligible: true, targetMs: 16.67, gpuMs: 13 * g.getScale() * g.getScale() + 2, sampleFrameId: frame - 1, currentFrameId: frame });
   }
-  assert.ok(g.getScale() >= 0.6 && g.getScale() < 1, `expected scale in [0.6, 1), got ${g.getScale()}`);
+  assert.ok(g.getScale() > SMOOTH_DRS_FLOOR && g.getScale() < 1,
+    `moderate load should settle mid-range, got ${g.getScale()}`);
+  // A sustained heavy load that resolution cannot fix must reach the 0.6 floor in <=0.15 steps
+  for (let i = 0; i < 90; i++) {
+    frame++;
+    g.update(0.04, { eligible: true, targetMs: 16.67, gpuMs: 40, sampleFrameId: frame - 1, currentFrameId: frame });
+  }
+  assert.equal(g.getScale(), SMOOTH_DRS_FLOOR,
+    `sustained slow frames must drive the governor to the 0.6 floor, got ${g.getScale()}`);
+  assert.equal(g.atFloor(), true, 'the governor reports it is parked on the floor');
   for (let i = 1; i < applied.length; i++) {
     assert.ok(applied[i - 1] - applied[i] <= 0.1501, `step too abrupt: ${applied.join(',')}`);
   }

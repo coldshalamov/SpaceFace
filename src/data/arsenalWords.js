@@ -11,7 +11,6 @@ import { MASS_SEED_DEF } from './massSeed.js';
 import { GYRE_SNARE } from './gyreSnare.js';
 import { BOMB_DEFS, BOMB_DRIFT } from './bombs.js';
 import { IMPULSE_CHARGES } from './impulseCharges.js';
-import { PLANET_REGION_RANK } from './planets.js';
 import { swarmCallinById } from './swarmDraft.js';
 import { pluralWord } from '../core/numberFormat.js';
 
@@ -82,25 +81,11 @@ export function pinWords() {
   };
 }
 
+// R17 (2026-11-20): resolveRigTarget is 'cone' always — the Plow key never flips to the planet-band
+// ore scoop (the scoop is a labelled context-wheel slice with its own owner), so these words only
+// ever describe the clearing wedge.
 export function rigWords(target, on) {
   const cone = FIELD_DEFS.cone;
-  const skim = FIELD_DEFS.skim;
-  if (target === 'skim') {
-    return {
-      name: 'Plow', verb: `Scoop ${on ? 'ON' : 'OFF'}`, role: 'Harvest', glyph: 'field_skim_standard',
-      sentence: on
-        ? 'The ore scoop stays on while you fly. Tap Plow again to turn it off.'
-        : 'Tap Plow once to turn on the ore scoop, then graze the planet band to collect ore.',
-      limits: [`Collects through a ${wu(skim.radius)} sheet. Outside a planet band, Plow uses the clearing wedge instead.`],
-      target: 'along your flight line',
-      range: { shape: 'sheet', radiusWu: skim.radius, reachWu: skim.originGap },
-      cost: null, cooldownS: 0,
-      combos: [],
-      sources: { range: 'data/fields.FIELD_DEFS.skim', target: 'systems/powerVerbs.resolveRigTarget',
-        band: `data/planets.PLANET_REGION_RANK.skim=${PLANET_REGION_RANK.skim}` },
-      other: 'cone',
-    };
-  }
   return {
     name: 'Plow', verb: `Wedge ${on ? 'ON' : 'OFF'}`, role: 'Clear', glyph: 'field_cone_standard',
     sentence: on
@@ -112,7 +97,6 @@ export function rigWords(target, on) {
     cost: null, cooldownS: 0,
     combos: ['Sweep a lane with the wedge so loose rocks bunch up, then Pull or Gather collects them.'],
     sources: { range: 'data/fields.FIELD_DEFS.cone', target: 'systems/powerVerbs.resolveRigTarget' },
-    other: 'skim',
   };
 }
 
