@@ -29,9 +29,12 @@ import { fileURLToPath } from 'node:url';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PACKETS = join(REPO, 'design', 'program', 'fleet', 'packets');
 const RUNS = join(REPO, '.devshots', 'fleet', 'runs');
-const HOME = process.env.USERPROFILE || 'C:\\Users\\93rob';
+const REAL_HOME = existsSync('C:\\Users\\93rob\\.config\\opencode') ? 'C:\\Users\\93rob' : (process.env.USERPROFILE || 'C:\\Users\\93rob');
+const HOME = REAL_HOME;
 const BASH = 'C:\\Program Files\\Git\\bin\\bash.exe';
-const OPENCODE = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe');
+const OPENCODE = existsSync(join(REAL_HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe'))
+  ? join(REAL_HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe')
+  : join(REAL_HOME, '.opencode', 'bin', 'opencode.exe');
 const AGY = join(HOME, 'AppData', 'Local', 'agy', 'bin', 'agy.exe');
 const CURSOR = join(HOME, 'AppData', 'Local', 'cursor-agent', 'cursor-agent.cmd');
 const CODEX_JS = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
@@ -98,7 +101,15 @@ function gitHead() {
 const before = gitStatus();
 const headBefore = gitHead();
 
-let cmd; let cmdArgs; const env = { ...process.env, FLEET_PROMPT: prompt };
+let cmd; let cmdArgs;
+const env = {
+  ...process.env,
+  FLEET_PROMPT: prompt,
+  USERPROFILE: REAL_HOME,
+  HOME: REAL_HOME,
+  APPDATA: join(REAL_HOME, 'AppData', 'Roaming'),
+  LOCALAPPDATA: join(REAL_HOME, 'AppData', 'Local'),
+};
 const devin = /^(?:devin([1-4])|sonnet([12]))$/.exec(backend);
 const devinAcct = devin ? (devin[1] || devin[2]) : null;
 const devinModel = devin && devin[2] ? 'claude-sonnet-5-5-high' : 'swe-2-max';
