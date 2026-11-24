@@ -11,6 +11,7 @@ import { runHasPerk } from '../data/swarmPerks.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { bankActive, resetRound, settleCrash } from './stuntCombo.js';
 import { circuitRoundFor } from './survivalCircuit.js';
+import { swarmChain, swarmKillPayMultiplier } from './swarmChain.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 export const KILL_XP_BASE = 2;
@@ -196,7 +197,13 @@ export const survivalRewards = {
     const swarm = isSwarmRuleset(run.ruleset);
     const roomKill = swarm && ROOM_KILL_PHRASES.has(causePhrase);
     const bossKill = swarm && (victim.data?.swarmChampion === true || threat.threatClass === 'boss');
-    const xp = Math.round(killXpFor(victim.data?.level) * (roomKill ? SWARM_ROOM_KILL_PAY : 1))
+    // The chain meter multiplies this kill's base Scrap and XP (04_SWARM §4). The tier is the
+    // one already showing — swarmChain steps this kill afterwards. Room pay (2.5×) stacks with
+    // that tier only up to ×6. A boss's 5× scrap and flat XP sit outside that cap. Adventure
+    // and a chain owned by some other state pay ×1.
+    const chainMult = swarm && swarmChain.state === this.state ? swarmChain.livePayMultiplier() : 1;
+    const payMult = swarmKillPayMultiplier(chainMult, roomKill ? SWARM_ROOM_KILL_PAY : 1);
+    const xp = Math.round(killXpFor(victim.data?.level) * payMult)
       + (bossKill ? SWARM_BOSS_KILL_XP : 0);
     this._emit('run:awardRequested', {
       xp,
@@ -208,8 +215,8 @@ export const survivalRewards = {
     // SWARM-06: Bounty Hunter pays triple on champions — the perk's whole contract. The scale
     // rides the same entitlement, so the chip the body drops IS the triple, not a side award.
     const bountyMult = runHasPerk(run, 'bounty_hunter') && victim.data?.swarmChampion === true ? 3 : 1;
-    const roomMult = (roomKill ? SWARM_ROOM_KILL_PAY : 1) * (bossKill ? SWARM_BOSS_SCRAP_MULT : 1);
-    const credits = Math.max(0, Math.round((threat.credits || 0) * this._creditScale(run) * bountyMult * roomMult));
+    const bossPart = bossKill ? SWARM_BOSS_SCRAP_MULT : 1;
+    const credits = Math.max(0, Math.round((threat.credits || 0) * this._creditScale(run) * bountyMult * payMult * bossPart));
     if (credits <= 0) { this._payStipend(); return; }
     if (bountyMult > 1) this._emit('swarm:perkTrigger', { perkId: 'bounty_hunter', wave: run.wave });
     r.baseCash += credits;
