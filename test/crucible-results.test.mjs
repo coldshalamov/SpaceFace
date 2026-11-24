@@ -57,6 +57,13 @@ import {
   saveCrucibleMeta,
 } from '../src/systems/survivalRecords.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+import {
+  clearKillcamTape,
+  isKillcamTape,
+  killcamRecorder,
+  killcamStageRequestFor,
+  takeKillcamTape,
+} from '../src/sim/killcamTape.js';
 
 const SEED = 7;
 
@@ -704,6 +711,14 @@ function fakeDom() {
       appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
       setAttribute(name, value) { this.attributes[name] = String(value); },
       addEventListener(name, fn) { (this.listeners[name] = this.listeners[name] || []).push(fn); },
+      removeEventListener(name, fn) {
+        const list = this.listeners[name];
+        if (!list) return;
+        this.listeners[name] = list.filter((entry) => entry !== fn);
+      },
+      click() {
+        for (const fn of this.listeners.click || []) fn({ type: 'click', target: this });
+      },
       focus() {},
     };
     node.classList = {
@@ -715,9 +730,16 @@ function fakeDom() {
   const head = make('head');
   head.id = 'head';
   const roots = [head];
+  const listeners = {};
   return {
     head,
+    listeners,
     createElement: make,
+    addEventListener(name, fn) { (listeners[name] = listeners[name] || []).push(fn); },
+    removeEventListener(name, fn) {
+      if (!listeners[name]) return;
+      listeners[name] = listeners[name].filter((entry) => entry !== fn);
+    },
     getElementById(id) {
       const visit = (node) => {
         if (node.id === id) return node;
@@ -1339,4 +1361,122 @@ test('End run from pause reads on the Run Over plate: Run ended, no killer, Agai
   const actions = buttons.map((b) => b.dataset.action).filter(Boolean);
   assert.equal(actions[0], 'again', 'Again leads');
   assert.ok(actions.includes('hangar') && actions.includes('menu'), actions.join(','));
+});
+
+function recordKillcamFight() {
+  clearKillcamTape();
+  const bus = createBus();
+  const ctx = { state: null, bus };
+  killcamRecorder.init(ctx);
+  for (let t = 0; t <= 40; t++) {
+    killcamRecorder.update(1 / 60, {
+      tick: t,
+      playerId: 'player',
+      run: { kind: 'survival', phase: 'wave', seed: 4242 },
+      entityList: [
+        { id: 'player', type: 'ship', alive: true, team: 0, pos: { x: t, z: 0 }, rot: 0, radius: 14, data: { defId: 'kestrel' } },
+        { id: 'wasp-0', type: 'ship', alive: true, team: 1, pos: { x: t + 30, z: 40 }, rot: 1.2, radius: 10, data: { defId: 'wasp' } },
+      ],
+    });
+  }
+}
+
+function firePlateConfirm(doc, key = 'Enter', target = null) {
+  const event = {
+    key,
+    code: key === ' ' ? 'Space' : 'Enter',
+    repeat: false,
+    target: target || {},
+    preventDefault() { this.defaultPrevented = true; },
+    stopPropagation() { this.propagationStopped = true; },
+  };
+  const fns = (doc.listeners && doc.listeners.keydown) || [];
+  assert.ok(fns.length, 'the plate owns document Enter/Space while it is top');
+  for (const fn of fns) fn(event);
+  return event;
+}
+
+test('one Again press on a Run Over plate with a running replay starts the next run', () => {
+  // DEMO-RUNOVER-1: the demo's first Enter was swallowed while the death film was still the
+  // picture. One press — Enter, Space, pad A (the declared primary), or a click — must both
+  // end the film and emit the next run's game:new.
+  const previousMatch = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+  const fakeBus = { emit() {}, on() { return () => {}; }, off() {}, once() {} };
+  const setup = crucibleSetupFor({ seed: 4242 });
+  assert.ok(setup.ok, 'a remembered Swarm setup lets Again launch');
+  requestCrucibleRun(fakeBus, setup.value, 'swarm');
+  try {
+    recordKillcamFight();
+    const tape = takeKillcamTape({ seed: 4242 });
+    assert.ok(isKillcamTape(tape), 'the death film is a real tape');
+    const state = {
+      ui: { screenStack: ['crucibleResults'], stageRequest: { scene: 'crucible-killcam' } },
+      settings: { video: {} },
+      run: { kind: 'survival', phase: 'ended' },
+    };
+    assert.ok(killcamStageRequestFor(state), 'the film is still requested when the plate mounts');
+    const result = { ...WAVE_6_DEATH, ruleset: 'swarm' };
+    const previousDocument = globalThis.document;
+    const doc = fakeDom();
+    globalThis.document = doc;
+    const emitted = [];
+    const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+    const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => result } : null) };
+    const root = doc._make('div');
+    try {
+      crucibleResultsScreen.mount(root, { bus, registry, state });
+      const buttons = findButtons(root);
+      const again = buttons.find((button) => button.dataset.action === 'again');
+      assert.ok(again, 'Again is on the plate');
+      assert.equal(again.dataset.padPrimary, 'true', 'pad A has a declared primary when focus missed the plate');
+      assert.ok(buttons.some((button) => String(button.className || '').includes('sf-runover__skip')),
+        'Skip replay is offered because the film is running');
+
+      firePlateConfirm(doc, 'Enter', root);
+      const launches = named(emitted, 'game:new');
+      assert.equal(launches.length, 1, 'one Enter both ends the film and starts the next run');
+      assert.equal(launches[0].payload.crucibleLaunch, true);
+      assert.equal(killcamStageRequestFor(state), null, 'the first press ended the running replay');
+      assert.equal(state.ui.stageRequest, null);
+      assert.equal(root.dataset.kStage, 'plate');
+      assert.equal(again.disabled, true, 'Again does not queue a second launch from the same plate');
+    } finally {
+      try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+      globalThis.document = previousDocument;
+    }
+
+    // Space and a click are the same press on a fresh plate (the first one already disabled Again).
+    for (const surface of ['Space', 'click']) {
+      recordKillcamFight();
+      takeKillcamTape({ seed: 4242 });
+      state.ui.stageRequest = { scene: 'crucible-killcam' };
+      const nextDoc = fakeDom();
+      globalThis.document = nextDoc;
+      const nextEmitted = [];
+      const nextBus = { emit(event, payload) { nextEmitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+      const nextRoot = nextDoc._make('div');
+      try {
+        crucibleResultsScreen.mount(nextRoot, {
+          bus: nextBus,
+          registry: { get: (name) => (name === 'survivalResults' ? { lastResult: () => result } : null) },
+          state,
+        });
+        const again = findButtons(nextRoot).find((button) => button.dataset.action === 'again');
+        if (surface === 'click') again.click();
+        else firePlateConfirm(nextDoc, ' ', nextRoot);
+        assert.equal(named(nextEmitted, 'game:new').length, 1, `${surface} starts the next run`);
+        assert.equal(killcamStageRequestFor(state), null, `${surface} ended the running replay`);
+      } finally {
+        try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+        globalThis.document = previousDocument;
+      }
+    }
+  } finally {
+    clearKillcamTape();
+    try { killcamRecorder.destroy(); } catch { /* recorder may already be idle */ }
+    clearCrucibleSetup();
+    if (previousMatch === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previousMatch;
+  }
 });

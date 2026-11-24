@@ -4017,6 +4017,81 @@ function leaveCrucibleResults(ctx, openHangar = false) {
   if (openHangar) ctx.bus.emit('ui:pushScreen', { id: 'crucible' });
 }
 
+/**
+ * DEMO-RUNOVER-1 — one Again press, guaranteed. The plate's confirm key is owned at the document
+ * in capture so no focus state (an autofocus race, focus dropped to the body) and no root-path
+ * dependency can silently drop the first Enter or Space. A focused quiet word (Hangar, Menu,
+ * Same seed, Take the win) keeps its own native activation; anything else the key lands on is
+ * Again. A screen pushed above the plate re-owns the keys (the stack check). An empty or missing
+ * stack still counts as top — that is the first-frame race that swallowed the demo's first
+ * Enter. dispose/mount tear the listener down.
+ */
+function runOverPlateIsTop(ctx) {
+  const stack = ctx && ctx.state && ctx.state.ui && ctx.state.ui.screenStack;
+  if (!Array.isArray(stack) || stack.length === 0) return true;
+  return stack[stack.length - 1] === 'crucibleResults';
+}
+
+function mountRunOverKeys(screenDef, doc, isTop, confirm) {
+  removeRunOverKeys(screenDef, doc);
+  screenDef._runOverKey = (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ' && event.code !== 'Space') return;
+    if (event.repeat) return;
+    if (!isTop()) return; // a screen above the plate owns the keys
+    const target = event.target;
+    if (target && target.tagName) {
+      const tag = String(target.tagName).toUpperCase();
+      // A focused word on the plate answers its own key natively; a text field never happens
+      // on this plate, but the rule costs nothing and keeps the handler honest elsewhere.
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+      if (tag === 'BUTTON' && !confirm.owns(target)) return;
+    }
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    confirm.press();
+  };
+  // Store the handler even when this document cannot listen (the focused test stub): callers
+  // still invoke it. Capture on a live document beats any child that would stop the bubble.
+  if (doc && typeof doc.addEventListener === 'function') {
+    doc.addEventListener('keydown', screenDef._runOverKey, true);
+  }
+}
+
+function removeRunOverKeys(screenDef, doc) {
+  if (!screenDef._runOverKey) return;
+  if (doc && typeof doc.removeEventListener === 'function') {
+    doc.removeEventListener('keydown', screenDef._runOverKey, true);
+    doc.removeEventListener('keydown', screenDef._runOverKey);
+  }
+  const root = screenDef._root;
+  if (root && typeof root.removeEventListener === 'function') {
+    root.removeEventListener('keydown', screenDef._runOverKey);
+  }
+  screenDef._runOverKey = null;
+}
+
+/** Enter / Space / pad A all click the plate's declared primary. */
+function bindRunOverConfirm(screenDef, rootEl, ctx, button) {
+  if (button && button.dataset) button.dataset.padPrimary = 'true';
+  const doc = (rootEl && rootEl.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+  mountRunOverKeys(screenDef, doc, () => runOverPlateIsTop(ctx), {
+    owns: (target) => target === button,
+    press: () => { if (button && typeof button.click === 'function') button.click(); },
+  });
+}
+
+/** The Kill button's own film-end, shared by every launch word: the staged replay stops and the
+ *  authored still is the picture, exactly as the visible Skip leaves it. */
+function endRunOverFilm(rootEl, ctx) {
+  try { skipKillcamPlayback(); } catch { /* the replay is optional */ }
+  const ui = ctx && ctx.state && ctx.state.ui;
+  if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') ui.stageRequest = null;
+  if (rootEl && rootEl.dataset) rootEl.dataset.kStage = 'plate';
+  const skipWord = rootEl && typeof rootEl.querySelector === 'function'
+    ? rootEl.querySelector('.sf-runover__skip') : null;
+  if (skipWord) skipWord.hidden = true;
+}
+
 export const crucibleResultsScreen = {
   id: 'crucibleResults',
   data: { locked: true },
@@ -4034,8 +4109,7 @@ export const crucibleResultsScreen = {
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     if (typeof rootEl.classList?.remove === 'function') rootEl.classList.remove('sf-runover');
-    if (this._runOverKey && typeof rootEl.removeEventListener === 'function') rootEl.removeEventListener('keydown', this._runOverKey);
-    this._runOverKey = null;
+    removeRunOverKeys(this, rootEl.ownerDocument || (typeof document !== 'undefined' ? document : null));
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
     if (ORRERY) { injectOrreryScreens(); injectCrucibleResultsLayouts(); rootEl.classList.add('orr-crucible'); }
     // PQ-146 Phase 3: retry launches start here, so the callout layer re-ensures with the plate.
@@ -4453,6 +4527,9 @@ export const crucibleResultsScreen = {
       keep.setAttribute('aria-label', 'Keep going: round 31 and on, the win already counted');
       keep.addEventListener('click', () => {
         cue('confirm');
+        // The film behind the plate ends with the press — one press both ends the replay and
+        // hands the run back, whatever surface the press came from.
+        endRunOverFilm(rootEl, ctx);
         // Pop the plate first so whatever the resume lands on is never covered.
         ctx.bus.emit('ui:popScreen', {});
         ctx.bus.emit('run:swarmDeepRequested', {});
@@ -4484,14 +4561,7 @@ export const crucibleResultsScreen = {
       }
       plate.appendChild(foot);
       rootEl.appendChild(plate);
-      this._runOverKey = (event) => {
-        if (event.key !== 'Enter' || event.repeat) return;
-        const target = event.target;
-        if (target && target !== keep && String(target.tagName).toUpperCase() === 'BUTTON') return;
-        event.preventDefault(); event.stopPropagation();
-        keep.click();
-      };
-      if (typeof rootEl.addEventListener === 'function') rootEl.addEventListener('keydown', this._runOverKey);
+      bindRunOverConfirm(this, rootEl, ctx, keep);
       this._dial = null;
       injectRunOverLayouts(doc);
       this._regions = { title, story: plate, ledger: plate, foot, again: keep };
@@ -4511,6 +4581,11 @@ export const crucibleResultsScreen = {
     const launch = (retry, button) => {
       if (!retry) { leaveCrucibleResults(ctx, true); return; }
       if (button.disabled) return;
+      // The round boundary: the kill-cam stops and the last fight's tape goes now (the
+      // run:started listener clears it too — this is the same boundary, named early). The
+      // staged film ends with the press itself: one Again both ends the replay and starts
+      // the run, whatever surface the press came from.
+      endRunOverFilm(rootEl, ctx);
       try { clearKillcamTape(); } catch { /* the replay is optional */ }
       button.disabled = true;
       const setup = retry.setup;
@@ -4577,31 +4652,16 @@ export const crucibleResultsScreen = {
       else plate.appendChild(shareBand);
     }
     rootEl.appendChild(plate);
-    this._runOverKey = (event) => {
-      if (event.key !== 'Enter' || event.repeat) return;
-      const target = event.target;
-      if (target && target !== again && String(target.tagName).toUpperCase() === 'BUTTON') return;
-      event.preventDefault(); event.stopPropagation();
-      again.click();
-    };
-    if (typeof rootEl.addEventListener === 'function') rootEl.addEventListener('keydown', this._runOverKey);
+    bindRunOverConfirm(this, rootEl, ctx, again);
 
-    // The still of the blow: the ship, the bearing, the last hits (each one named).
+    // The still of the blow: ring-free ship diagram with ONE directional threat arc, flat vitals,
+    // and the plain last-hits strip (no concentric circles or dashed radial gauges around the ship).
     this._dial = null;
     if (ORRERY && result.defeat) {
-      // Its own class only: the full plate's dial seat (.sf-crres__dial under .has-deathdial)
-      // would pull this root into that composition.
-      const dialHost = el('div', 'sf-runover__dial');
-      dialHost.setAttribute('aria-hidden', 'true');
       const spec = deathDialSpec(result, ctx);
-      this._dial = createDeathDial({ host: dialHost, ...spec, caption: null });
-      if (this._dial.active()) {
-        rootEl.appendChild(dialHost);
-        // The initials under the hit strip, spelled out once.
-        const legend = abbreviatedHitLegend(result);
-        const capEl = legend && dialHost.querySelector ? dialHost.querySelector('.orr-deathdial__caption') : null;
-        if (capEl) capEl.appendChild(el('p', 'sf-runover__legend', legend));
-      }
+      const legend = abbreviatedHitLegend(result);
+      const impact = buildRunOverImpactCard(doc, spec, legend);
+      if (impact) rootEl.appendChild(impact);
     }
     injectRunOverLayouts(doc);
     this._regions = { title, story: plate, ledger: plate, foot, again };
@@ -4644,6 +4704,7 @@ export const crucibleResultsScreen = {
   },
 
   dispose() {
+    removeRunOverKeys(this, this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null));
     if (this._dialSeat) this._dialSeat.disconnect();
     this._dialSeat = null;
     if (this._dial) this._dial.dispose();
@@ -5065,4 +5126,168 @@ export function deathDialSpec(result, ctx) {
       warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',
     },
   };
+}
+
+const RUNOVER_BEARING_INFO = Object.freeze({
+  FRONT: { label: 'Hit head-on', deg: 0 },
+  STARBOARD: { label: 'Hit from starboard', deg: 90 },
+  AFT: { label: 'Hit from behind', deg: 180 },
+  PORT: { label: 'Hit from port', deg: 270 },
+  CONTACT: { label: 'Point-blank impact', deg: null, contact: true },
+});
+
+/**
+ * Ring-free fatal blow readout for Swarm Run Over: the ship picture with ONE directional threat
+ * arc on the side the blow came from (never concentric circles), three flat horizontal vital bars,
+ * and a plain hit strip showing the final hits and weapon legend.
+ */
+function buildRunOverImpactCard(doc, spec, legend) {
+  if (!doc || typeof doc.createElement !== 'function' || !spec) return null;
+  const hits = Array.isArray(spec.hitAmounts) ? spec.hitAmounts.filter((n) => Number.isFinite(n) && n > 0) : [];
+  const hitWeapons = Array.isArray(spec.hitWeapons) ? spec.hitWeapons : [];
+  const vitals = Array.isArray(spec.vitals) ? spec.vitals : [];
+  const dirKey = String(spec.direction || '').toUpperCase();
+  const bearingInfo = RUNOVER_BEARING_INFO[dirKey] || null;
+  const hullUrl = spec.hullId ? (hullPosterUrl(spec.hullId, 'top') || hullPosterUrl(spec.hullId, 'jig')) : null;
+  if (!hullUrl && !hits.length && !vitals.length) return null;
+
+  const card = el('aside', 'sf-runover__impact');
+  card.setAttribute('aria-hidden', 'true');
+
+  // Header: Fatal blow + plain bearing callout
+  const head = el('div', 'sf-runover__impact-head');
+  head.appendChild(el('span', 'sf-runover__impact-kicker', 'Fatal blow'));
+  const dirLabel = bearingInfo ? bearingInfo.label : (spec.engraving || '');
+  if (dirLabel) head.appendChild(el('span', 'sf-runover__impact-dir', dirLabel));
+  card.appendChild(head);
+
+  // Ship stage with ONE directional threat arc (no concentric rings around the ship)
+  if (hullUrl) {
+    const stage = el('div', 'sf-runover__impact-stage');
+    const img = el('img', 'sf-runover__impact-hull');
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    img.src = hullUrl;
+    img.addEventListener('error', () => {
+      const alt = spec.hullId ? hullPosterUrl(spec.hullId, 'jig') : null;
+      if (alt && img.src !== alt && img.dataset.fallback !== '1') {
+        img.dataset.fallback = '1';
+        img.src = alt;
+      } else {
+        img.hidden = true;
+      }
+    });
+    stage.appendChild(img);
+
+    if (typeof doc.createElementNS === 'function' && bearingInfo) {
+      const NS = 'http://www.w3.org/2000/svg';
+      const sNode = (tag, attrs) => {
+        const n = doc.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+        return n;
+      };
+      const svgEl = sNode('svg', { class: 'sf-runover__arc-svg', viewBox: '0 0 240 190' });
+      const cx = 120; const cy = 95; const R = 74;
+      const pt = (r, deg) => {
+        const rad = ((deg - 90) * Math.PI) / 180;
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+      };
+      if (bearingInfo.deg != null) {
+        const d0 = bearingInfo.deg - 34;
+        const d1 = bearingInfo.deg + 34;
+        const [ax, ay] = pt(R, d0);
+        const [bx, by] = pt(R, d1);
+        const [ix, iy] = pt(40, d1);
+        const [jx, jy] = pt(40, d0);
+        // Subtle directional wash between arc and hull edge
+        svgEl.appendChild(sNode('path', {
+          d: `M ${ax.toFixed(1)} ${ay.toFixed(1)} A ${R} ${R} 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)} L ${ix.toFixed(1)} ${iy.toFixed(1)} A 40 40 0 0 0 ${jx.toFixed(1)} ${jy.toFixed(1)} Z`,
+          fill: 'rgb(255 80 56 / .12)',
+        }));
+        // Single crisp threat arc on the side the fatal blow came from
+        svgEl.appendChild(sNode('path', {
+          d: `M ${ax.toFixed(1)} ${ay.toFixed(1)} A ${R} ${R} 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)}`,
+          fill: 'none', stroke: '#ff5038', 'stroke-width': 3.5, 'stroke-linecap': 'round',
+        }));
+        // Incoming vector shaft + arrowhead pointing at the hull
+        const [s0x, s0y] = pt(R + 12, bearingInfo.deg);
+        const [tipX, tipY] = pt(50, bearingInfo.deg);
+        const [w0x, w0y] = pt(60, bearingInfo.deg - 9);
+        const [w1x, w1y] = pt(60, bearingInfo.deg + 9);
+        svgEl.appendChild(sNode('path', {
+          d: `M ${s0x.toFixed(1)} ${s0y.toFixed(1)} L ${tipX.toFixed(1)} ${tipY.toFixed(1)}`,
+          fill: 'none', stroke: '#ff5038', 'stroke-width': 2.5, 'stroke-linecap': 'round',
+        }));
+        svgEl.appendChild(sNode('path', {
+          d: `M ${w0x.toFixed(1)} ${w0y.toFixed(1)} L ${tipX.toFixed(1)} ${tipY.toFixed(1)} L ${w1x.toFixed(1)} ${w1y.toFixed(1)}`,
+          fill: 'none', stroke: '#ff7a5c', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        }));
+      } else if (bearingInfo.contact) {
+        // Four short inward collision chevrons — zero circles or rings.
+        for (const deg of [45, 135, 225, 315]) {
+          const [p0x, p0y] = pt(46, deg);
+          const [p1x, p1y] = pt(30, deg);
+          svgEl.appendChild(sNode('path', {
+            d: `M ${p0x.toFixed(1)} ${p0y.toFixed(1)} L ${p1x.toFixed(1)} ${p1y.toFixed(1)}`,
+            fill: 'none', stroke: '#ff5038', 'stroke-width': 3, 'stroke-linecap': 'round',
+          }));
+        }
+      }
+      stage.appendChild(svgEl);
+    }
+    card.appendChild(stage);
+  }
+
+  // Flat horizontal vitals strip (Shield / Armor / Hull)
+  if (vitals.length) {
+    const vRow = el('div', 'sf-runover__vitals');
+    for (const v of vitals.slice(0, 3)) {
+      const pct = Math.round(Math.max(0, Math.min(100, Number(v.value) || 0)));
+      const cell = el('div', `sf-runover__vital${pct === 0 ? ' is-empty' : ''}`);
+      const top = el('div', 'sf-runover__vital-top');
+      top.appendChild(el('span', 'sf-runover__vital-word', v.word));
+      top.appendChild(el('span', 'sf-runover__vital-pct', `${pct}%`));
+      const track = el('div', 'sf-runover__vital-track');
+      const fill = el('div', 'sf-runover__vital-fill');
+      fill.style.width = `${pct}%`;
+      track.appendChild(fill);
+      cell.appendChild(top);
+      cell.appendChild(track);
+      vRow.appendChild(cell);
+    }
+    card.appendChild(vRow);
+  }
+
+  // Plain hit strip: damage bars oldest -> fatal blow + weapon legend
+  if (hits.length) {
+    const hitsBox = el('div', 'sf-runover__hits');
+    const hHead = el('div', 'sf-runover__hits-head');
+    const totalDmg = Math.round(hits.reduce((sum, n) => sum + n, 0));
+    hHead.appendChild(el('span', 'sf-runover__hits-title', hits.length === 1 ? 'Last hit' : `Last ${hits.length} hits`));
+    hHead.appendChild(el('span', 'sf-runover__hits-total', `${totalDmg} damage`));
+    hitsBox.appendChild(hHead);
+
+    const strip = el('div', 'sf-runover__hit-strip');
+    const max = Math.max(...hits, 1);
+    hits.forEach((amount, i) => {
+      const last = i === hits.length - 1;
+      const col = el('div', `sf-runover__hit-col${last ? ' is-fatal' : ''}`);
+      col.appendChild(el('span', 'sf-runover__hit-val', String(Math.round(amount))));
+      const well = el('div', 'sf-runover__hit-well');
+      const bar = el('div', 'sf-runover__hit-bar');
+      bar.style.height = `${Math.max(16, Math.round((amount / max) * 100))}%`;
+      well.appendChild(bar);
+      col.appendChild(well);
+      const code = hitWeapons[i] ? deathDialInitials(hitWeapons[i]) : '';
+      col.appendChild(el('span', 'sf-runover__hit-who', code));
+      strip.appendChild(col);
+    });
+    hitsBox.appendChild(strip);
+
+    if (legend) hitsBox.appendChild(el('p', 'sf-runover__legend', legend));
+    card.appendChild(hitsBox);
+  }
+
+  return card;
 }
