@@ -104,6 +104,15 @@ const DEFAULTS = Object.freeze({
    */
   aiContactKeyCache: true,
   /**
+   * Each hostile hull thinks on its own deterministic phase (AI lane, 2026-11-24): the tactical
+   * stack runs every fixed tick, and a hull's full think (sensor frame, doctrine, action pick,
+   * maneuver plan) lands only on its stagger slot — the same ~20 Hz cadence per hull, ~1/3 of
+   * the hulls per step, instead of all of them on one step. Steering and firing stay 60 Hz
+   * (cached decisions replay); doctrine/director pacing is unchanged. DEFAULT ON. Off restores
+   * the all-hulls-on-one-tick 20 Hz think for matched A/B runs.
+   */
+  aiPhasedThink: true,
+  /**
    * Live entities stay fast V8 objects through a fight (sim performance, 2026-11-23). Two things
    * were putting the bodies the physics reads into dictionary mode, where every property read is a
    * hash probe: bouncing and piercing rounds replaced `alive` with a per-body accessor, and the

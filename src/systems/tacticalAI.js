@@ -45,6 +45,7 @@ import {
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 import { indexedShipLikeScan, indexedShipLikeOrEntitiesScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeaponId,
@@ -805,7 +806,12 @@ export function createTacticalAISystem({
       stepSquadFrames(liveStack, state, tick, dt, shipLikeList);
       stepFodderCohorts(liveStack, state, tick, dt, shipLikeList);
       if (phOn) { ph.record('tacticalAI.squads', nowNs() - phT); phT = nowNs(); }
-      if (tick - lastDecisionTick < decisionIntervalTicks) {
+      // aiPhasedThink (default on): the stack runs every fixed tick and each hull's full think
+      // lands on its own stagger slot, so the ~10 ms all-hulls think spreads across the interval.
+      // The inter-think lane below still serves the legacy schedule (flag off) verbatim; a
+      // one-tick interval never skips either way.
+      const phasedThink = decisionIntervalTicks > 1 && simCoreFlag('aiPhasedThink');
+      if (!phasedThink && tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
         driveChoreographyMembers(liveStack, state, tick, null, shipLikeList);
@@ -832,6 +838,11 @@ export function createTacticalAISystem({
       const result = liveStack.update(tick, authoredForStack);
       if (phOn) { ph.record('tacticalAI.think', nowNs() - phT); phT = nowNs(); }
       lastDecisionEntityRefs.clear();
+      // Under the phased schedule only the members in the stack's due set actually thought this
+      // tick — the rest replay their last decision — so the one-shot think verbs below (counter-
+      // play, mines, field deploys, fresh choreography plans) run for the due set only, keeping
+      // the same per-hull cadence the single think tick gave them.
+      const dueMembers = phasedThink ? liveStack.lastDueMembers : null;
       if (tick - lastOwnershipRefreshTick >= OWNERSHIP_REFRESH_TICKS) {
         refreshFirstSessionAttackerOwnership(state, result.decisions || []);
         lastOwnershipRefreshTick = tick;
@@ -842,6 +853,7 @@ export function createTacticalAISystem({
       lastManeuverRequests.length = 0;
       for (const sourceDecision of result.decisions || []) {
         const decision = kilnbackDecision(sourceDecision, state);
+        const due = dueMembers == null || dueMembers.has(decision.entityId);
         if (decision !== sourceDecision && decision.maneuver) liveStack.ports.maneuver.request(decision.maneuver);
         const entity = state && state.entities && decision && decision.entityId != null
           && typeof state.entities.get === 'function'
@@ -849,6 +861,20 @@ export function createTacticalAISystem({
           : null;
         if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
+        if (!due) {
+          // Off-slot members take the same light lane the inter-think ticks ran through
+          // revalidateCachedAIFiringIntents: the firing intent is revalidated against the live
+          // entity — a dead target's volley still revokes at 60 Hz — and nothing else runs,
+          // because everything below is a think-tick effect for this member.
+          if (entity && entityNeedsAiThink(entity, state) === false) continue;
+          if (isCounterplayOwned(entity, state)) continue;
+          const intentDecision = palletJackDecision(decision, state);
+          applyMindAwareFiringIntent(intentDecision, state);
+          applyNemesisFireGate(entity, state);
+          applyShovePanicFireGate(entity, state);
+          applyEliteChargeTell(entity, intentDecision, state, tick, ctxRef && ctxRef.bus);
+          continue;
+        }
         const doctrine = decision && decision.combatDoctrine;
         announcePressureBreak(ctxRef, entity, doctrine, pressureBreakAnnounced, tick);
         const priorLane = entity && committedLaneCues.get(entity);
@@ -977,7 +1003,7 @@ export function createTacticalAISystem({
         }
         if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
-      driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList);
+      driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList, dueMembers);
       driveCohortMembers(liveStack, state, tick, shipLikeList);
       applySquadTokenFireGate(liveStack, state, shipLikeList);
       // Runs after the mind veto and the Nemesis denial gate: those vetoes still close fire, and a
@@ -1719,12 +1745,17 @@ export function gatherRecipeSquads(state, shipLikeList = indexedShipLikeScan(sta
 
 const choreographyPlannedScratch = new Set();
 
-function driveChoreographyMembers(liveStack, state, tick, decisions, shipLikeList = indexedShipLikeScan(state)) {
+function driveChoreographyMembers(liveStack, state, tick, decisions, shipLikeList = indexedShipLikeScan(state), dueMembers = null) {
   const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
   if (!director || director.activeSquadCount() === 0) return;
   const planned = choreographyPlannedScratch;
   planned.clear();
-  if (Array.isArray(decisions)) {
+  if (dueMembers) {
+    // Phased think: only the members that actually thought this tick count as stack-planned —
+    // everyone else gets the fresh choreography plan, the same authority split the old
+    // inter-think ticks had.
+    for (const id of dueMembers) planned.add(id);
+  } else if (Array.isArray(decisions)) {
     for (const decision of decisions) {
       if (decision && decision.entityId != null) planned.add(decision.entityId);
     }

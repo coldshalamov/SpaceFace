@@ -4,6 +4,7 @@ import test from 'node:test';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
 import { COHORT_RECIPE_RIVER } from '../src/ai/fodderCohort.js';
 import { shouldRunOnTick } from '../src/core/activityScheduler.js';
+import { setSimCoreFlags } from '../src/core/simCoreFlags.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 
 test('production Tactical AI decisions run at 20 Hz while physical requests remain 60 Hz', () => {
@@ -148,6 +149,9 @@ test('skipped decision ticks revoke cached fire immediately when the live target
 });
 
 test('one cohort reuses its same-tick inspection while every member keeps its maneuver lookup', () => {
+  // Measures a legacy inter-think tick (the stack update this fixture skips between decisions),
+  // so pin the pre-phasing schedule — under aiPhasedThink tick 1 thinks instead.
+  setSimCoreFlags({ aiPhasedThink: false });
   const player = ship(100, 0, 0);
   const members = [
     cohortShip(1, 1, 80, 'swarm_fixture'),
@@ -204,6 +208,7 @@ test('one cohort reuses its same-tick inspection while every member keeps its ma
     assert.equal(member.data.ai.fodderCohort.shape, 'river');
     assert.equal(typeof member.data.ai.fodderCohort.usedSpatialHash, 'boolean');
   }
+  setSimCoreFlags({});
 });
 
 function sensorFrame(attacker, target, entityId, tick) {

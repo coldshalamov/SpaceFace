@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { setSimCoreFlags } from '../src/core/simCoreFlags.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { PALLET_JACK } from '../src/data/palletJack.js';
 
 function fixture({ specialist = true, interval = 2 } = {}) {
+  // This fixture pins the legacy cached lane: under aiPhasedThink the off-slot path is a plain
+  // retick, so pin the pre-phasing schedule to keep asserting the live waypoint re-plan.
+  setSimCoreFlags({ aiPhasedThink: false });
   const actor = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 }, rot: 0, radius: 20, data: { ai: { passive: false },
       intent: { fire: false }, combat: {}, weapons: [],
@@ -52,13 +56,13 @@ test('Pallet waypoints reach the real planner before forces, including cached de
     h.step(); h.step();
     assert.ok(h.requests.at(-1).forceLocal.forward < 0, 'cached behavior re-plans the updated load waypoint');
     assert.ok(h.requests.at(-1).torqueYaw > 0, 'the authored facing reaches actual yaw torque');
-  } finally { h.tactical.destroy(); }
+  } finally { h.tactical.destroy(); setSimCoreFlags({}); }
 });
 
 test('ordinary pilots keep their normal idle squad maneuver', () => {
   const h = fixture({ specialist: false });
   try { assert.equal(h.step().forceLocal.forward, 0); }
-  finally { h.tactical.destroy(); }
+  finally { h.tactical.destroy(); setSimCoreFlags({}); }
 });
 
 test('ordinary cargo payloads are sensed as objectives; unrelated payloads, empty cargo, and out-of-range loads are not', async () => {

@@ -95,8 +95,10 @@ test('every doctrine hull refreshes its perception on each 20 Hz think', () => {
 });
 
 test('the legacy aliased schedule starves every doctrine hull outside the think phase', () => {
-  // Pins the bug the flag fixes, so the A/B switch keeps meaning what it says.
-  const refreshed = run({ flags: { aiRefreshCadence: false }, doctrine: true });
+  // Pins the bug the flag fixes, so the A/B switch keeps meaning what it says. The starvation
+  // needs the legacy one-call-per-interval schedule — under aiPhasedThink the window is a single
+  // tick and the bucket test is exact, so pin the flag off to reproduce.
+  const refreshed = run({ flags: { aiRefreshCadence: false, aiPhasedThink: false }, doctrine: true });
   const starved = [...refreshed.values()].filter((ticks) => ticks.length <= 1).length;
   assert.ok(starved >= 2, `expected the aliased schedule to starve hulls, starved ${starved}`);
 });
