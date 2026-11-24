@@ -760,7 +760,10 @@ function vector3Into(out, source) {
 }
 
 function authoredPhysicsBody(entity) {
-  return entity && entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  // One read of entity.physicsBody: entities span many hidden classes, so each read is a
+  // megamorphic lookup, and this runs several times per body per fixed step.
+  const body = entity && entity.physicsBody;
+  return body && typeof body === 'object' ? body : null;
 }
 
 function vector3(source) {

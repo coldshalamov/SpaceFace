@@ -68,6 +68,14 @@ const DEFAULTS = Object.freeze({
    */
   physicsBookkeeping: true,
   /**
+   * Fewer per-body property reads in the physics owner's entity sync and fixed step (sim
+   * performance, 2026-11-23, pass 2). Entity, data and body objects span dozens of hidden classes,
+   * so every read of one is a megamorphic lookup; pure predicates now test their cheapest decisive
+   * input first and the step reads a field it needs several times once per body. DEFAULT ON.
+   * Result-identical (check:sim and the bench hash hold); off restores the legacy read order.
+   */
+  physicsLeanStep: true,
+  /**
    * Every tactical hull refreshes what it sees on its own beat (AI lane, 2026-11-23). The stack
    * thinks every third tick (20 Hz), and its per-hull refresh stagger (id % 3, and the 3-per-window
    * member batch) assumed it ran every tick, so the two cadences aliased: only hulls whose id bucket

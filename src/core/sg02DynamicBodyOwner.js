@@ -11,6 +11,7 @@ import { claimsOrchardFrame, claimsOrchardPod, prepareOrchardFrameConstruction, 
 // steps real Rapier dynamic bodies, and mirrors the post-solve state back to entities.
 
 import { stepLatchNative } from './latchNineNative.js';
+import { LATCH_BODY_ID } from '../data/latchNineBody.js';
 import { stepCeresWorkfleetSlides, syncCeresWorkfleetColliders } from './ceresWorkfleetArticulation.js';
 import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
 import {
@@ -87,8 +88,44 @@ export function isNativeSolidContact(value, source = null, target = null) {
     && (!source || source===issued.source) && (!target || target===issued.target);
 }
 
+// simCoreFlags.physicsLeanStep, read once per sync pass and per fixed step (never per body).
+// Entity, data and body objects span dozens of hidden classes, so each property read on one is a
+// megamorphic lookup (~0.1-0.2 us in a busy Swarm round); the lean step only reorders or
+// de-duplicates reads that have no side effects, so its answers are the legacy answers.
+let LEAN_STEP = true;
+function refreshLeanStep() {
+  LEAN_STEP = simCoreFlag('physicsLeanStep');
+  return LEAN_STEP;
+}
+
+// isLatchBody(entity) requires this exact manifest id, so a body without it can never bind a
+// latch motor: stepLatchNative would return false without touching anything.
+function mayBeLatchBody(entity) {
+  const body = entity && entity.physicsBody;
+  const manifest = body && body.collisionProxyManifest;
+  return !!manifest && manifest.id === LATCH_BODY_ID;
+}
+
+// ceresWorkfleetSlideRole answers null for a body with no collision manifest (no recipe matches
+// an absent manifest id), so the role and identity reads are only needed when one exists.
+function ceresSlideRoleFor(entity) {
+  if (!LEAN_STEP) return ceresWorkfleetSlideRole(entity);
+  const body = entity && entity.physicsBody;
+  const manifest = body && body.collisionProxyManifest;
+  return manifest ? ceresWorkfleetSlideRole(entity, manifest) : null;
+}
+
 export function mayRapierIslandSleep(entity, spec) {
   if (!entity || !spec || spec.dynamic !== true) return false;
+  if (LEAN_STEP) {
+    // The same verdict with the cheapest decisive input first. A projectile never sleeps, and
+    // outside the abstract, dormant and aggregate tiers nothing sleeps while s0BodySleep is off,
+    // so the common Swarm body (S0/S1, switch off) needs none of the identity or data reads below.
+    if (spec.material === 'projectile') return false;
+    const tier = entity.activity && entity.activity.simTier;
+    if (tier !== SIM_TIER.S2_ABSTRACT && tier !== SIM_TIER.S3_DORMANT && tier !== SIM_TIER.S4_AGGREGATE
+      && !simCoreFlag('s0BodySleep')) return false;
+  }
   if (entity.isPlayer === true) return false;
   if (entity.type === 'projectile' || spec.material === 'projectile') return false;
   if (entity.flags && entity.flags.noInterp) return false;
@@ -375,6 +412,8 @@ export class Sg02DynamicBodyOwner {
     this._suspendedAttachments = new Map();
     this._pendingNativeRebuilds = new Map();
     this._syncSerial = 0;
+    this._stepSerial = 0;
+    this._stepTelemetryDemand = false;
     this.captureContactImpacts = options.captureContactImpacts !== false;
     this._colliderOwners = new Map();
     // Retired-body pool keyed by collider contract (shape + bucketed geometry + collision
@@ -1281,6 +1320,7 @@ export class Sg02DynamicBodyOwner {
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
     if(!orchardNativeMutationReady(this))return false;
     this._syncSerial++;
+    const lean = refreshLeanStep();
     // Burst cap: at most SG02_SYNC_NATIVE_* real WASM mint/remove calls this pass. Pooled
     // retire/reuse does not consume either budget. Deferred work retries next pass; a
     // deferred STATIC-layer item also invalidates the layer version so the next pass runs
@@ -1330,18 +1370,25 @@ export class Sg02DynamicBodyOwner {
     let dynamicCount = 0;
     for (const entity of dynamicEntities) {
       if (!entity || entity.alive === false || entity.physicsBody === false) continue;
+      // Lean: one read of the id for every use below (nothing in this pass writes entity.id).
+      const id = lean ? entity.id : undefined;
       // `orderedEntities` preserves canonical cross-layer body creation order when a static
       // version changes. An existing dynamic encountered there has already consumed this tick's
       // authoritative entity object, so visiting it again here only repeats pose/WASM reads.
-      if (dynamicLive.has(entity.id) && this.records.get(entity.id)?.entity === entity) {
+      if (lean) {
+        if (dynamicLive.has(id) && this.records.get(id)?.entity === entity) {
+          dynamicCount++;
+          continue;
+        }
+      } else if (dynamicLive.has(entity.id) && this.records.get(entity.id)?.entity === entity) {
         dynamicCount++;
         continue;
       }
       const spec = resolvePhysicsBodySpec(entity);
       if (!spec || !(spec.radius > 0) || !spec.dynamic) continue;
-      dynamicLive.add(entity.id);
+      dynamicLive.add(lean ? id : entity.id);
       dynamicCount++;
-      this._syncRecord(entity, spec);
+      this._syncRecord(entity, spec, id);
     }
     for (const [id, rec] of this.records) {
       if (rec.spec.dynamic && !dynamicLive.has(id)) {
@@ -1854,6 +1901,11 @@ export class Sg02DynamicBodyOwner {
     let sphT = sphOn ? nowNs() : 0;
     try {
       const tumbleFling = combatFlag('tumbleFling');
+      const lean = refreshLeanStep();
+      // One switch read per step for the per-body telemetry gate (it was read once per body).
+      this._stepTelemetryDemand = simCoreFlag('telemetryDemand');
+      // Stamp for the once-per-step player read below (see _stepPlayerFlag).
+      const stepSerial = this._stepSerial = (this._stepSerial | 0) + 1;
       this._refreshSleepPolicy();
     // Ceres includes a fixed cradle, so its bounded registration set is independent of
     // dynamicRecords. No additional full records scan merely to discover moving rigs.
@@ -1868,7 +1920,18 @@ export class Sg02DynamicBodyOwner {
       rec._preStepAngularValid = false;
       openPreStepYaw(rec);
       preStepRecords.push(rec);
-      stepLatchNative(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
+      if (lean) {
+        // The step asks "is this the player" four times per body; nothing inside the fixed step
+        // writes isPlayer, so it is read here once and served from the record.
+        const entity = rec.entity;
+        rec._stepIsPlayer = entity ? entity.isPlayer : undefined;
+        rec._stepIsPlayerSerial = stepSerial;
+        if (mayBeLatchBody(entity)) {
+          stepLatchNative(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
+        }
+      } else {
+        stepLatchNative(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
+      }
       setZero3(rec.appliedForce);
       setZero3(rec.appliedTorque);
       setZero3(rec.controlForce);
@@ -1927,7 +1990,7 @@ export class Sg02DynamicBodyOwner {
     // mutated linvel/angvel; only the continuous control force/torque still integrates inside
     // world.step(). Predicting that lets the post-step pass isolate pure contact response.
     for (const rec of this.dynamicRecords) {
-      const command = rec.entity.isPlayer ? consumeSaucerVelocity(rec.entity, this._simTick) : null;
+      const command = this._stepPlayerFlag(rec) ? consumeSaucerVelocity(rec.entity, this._simTick) : null;
       if (command) {
         rec.body.setLinvel({ x: command.x, y: 0, z: command.z }, true);
         if (command.haltYaw) {
@@ -2045,6 +2108,9 @@ export class Sg02DynamicBodyOwner {
       }
       preStepRecords.length = 0;
       throw error;
+    } finally {
+      // The once-per-step player reads expire with the step; any later caller reads live.
+      this._stepSerial++;
     }
   }
 
@@ -2099,6 +2165,19 @@ export class Sg02DynamicBodyOwner {
         && (attachment.owner === rec || attachment.target === rec)) return true;
     }
     return false;
+  }
+
+  // The raw entity.isPlayer value as the fixed step reads it. The lean step reads it once per
+  // body per step (nothing inside the step writes it) and stamps the record with the step serial;
+  // any other caller, or a record the step did not stamp, reads the entity live.
+  _stepPlayerFlag(rec) {
+    if (LEAN_STEP && rec._stepIsPlayerSerial === this._stepSerial) return rec._stepIsPlayer;
+    return rec.entity.isPlayer;
+  }
+
+  _stepIsPlayer(rec) {
+    if (LEAN_STEP && rec._stepIsPlayerSerial === this._stepSerial) return rec._stepIsPlayer === true;
+    return !!(rec.entity && rec.entity.isPlayer === true);
   }
 
   _wakeSleepingBody(rec) {
@@ -2259,7 +2338,7 @@ export class Sg02DynamicBodyOwner {
     // now. Applied HERE, before the pose is integrated, so the restored rotation and the restored
     // rate are the same motion. The player's own commanded yaw peaks near 3 rad/s, so this ceiling
     // never touches steering; it only catches something that spun the hull.
-    if (rec.entity && rec.entity.isPlayer === true) {
+    if (this._stepIsPlayer(rec)) {
       rec._playerYawCeilingApplied = yawClampedByWrite
         || Math.abs(wyPredicted) > SANE_MAX_YAW_RATE;
       if (Math.abs(wyPredicted) > SANE_MAX_YAW_RATE) wyPredicted = clamp(wyPredicted, -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
@@ -2328,7 +2407,7 @@ export class Sg02DynamicBodyOwner {
     post.wDirty = false;
     post.qDirty = false;
     post.qRead = false;
-    if (rec.entity && rec.entity.isPlayer === true) {
+    if (this._stepIsPlayer(rec)) {
       const q = rec.body.rotation();
       post.q.x = q.x;
       post.q.y = q.y;
@@ -2905,7 +2984,7 @@ export class Sg02DynamicBodyOwner {
     const e = rec.expected;
     if (!e) return;
     this._repairSolverPoseJump(rec, e);
-    if (rec.entity && rec.entity.isPlayer === true) {
+    if (this._stepIsPlayer(rec)) {
       this._applyPlayerStructuralGive(rec);
       return;
     }
@@ -3569,7 +3648,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   _syncCeresWorkfleetRecord(rec) {
-    if (!ceresWorkfleetSlideRole(rec.entity)) {
+    if (!ceresSlideRoleFor(rec.entity)) {
       this.ceresWorkfleetRecords.delete(rec);
       return;
     }
@@ -3583,14 +3662,15 @@ export class Sg02DynamicBodyOwner {
     rec.poolGeo = null;
   }
 
-  _syncRecord(entity, spec) {
-    const pending=this._pendingNativeRebuilds.get(entity.id);
+  // `id` is the caller's single read of entity.id (the lean sync pass); other callers omit it.
+  _syncRecord(entity, spec, id = entity.id) {
+    const pending=this._pendingNativeRebuilds.get(id);
     if (pending) {
       if (pending.entity===entity && pending.life===entity.occupantGeneration) return null;
       clearPhysicsBodyNativeFailure(pending.entity,this,pending.failureReceipt);
       this._pendingNativeRebuilds.delete(entity.id);
     }
-    let rec = this.records.get(entity.id);
+    let rec = this.records.get(id);
     if (recordBelongsToPriorLife(rec, entity)) {
       // A recycled ID does not carry its predecessor's native pose, velocities or joints.
       // Explicit save adoption/rebind has already claimed the replacement when it is allowed.
@@ -3599,7 +3679,7 @@ export class Sg02DynamicBodyOwner {
       rec = null;
     }
     const preserveRebound = !!(rec && rec.spec && rec.spec.dynamic
-      && rec.entity === entity && this._reboundEntityIds.has(entity.id));
+      && rec.entity === entity && this._reboundEntityIds.has(id));
     // Compound-proxy membership is part of the collider identity: a station gaining/losing its
     // manifest (or switching manifests) rebuilds the static body, same as any other spec change.
     const proxyId = proxyIdForEntity(entity, spec);
@@ -3685,8 +3765,15 @@ export class Sg02DynamicBodyOwner {
     }
     rec.entity = entity;
     this._syncCeresWorkfleetRecord(rec);
-    if (preserveRebound) this._reboundEntityIds.delete(entity.id);
+    if (preserveRebound) this._reboundEntityIds.delete(id);
     else this._maybeResyncBodyPose(rec, entity);
+    if (LEAN_STEP) {
+      // Both passes below branch on the type; neither writes it, so one read serves both.
+      const type = entity.type;
+      if (type === 'projectile') this._syncGuidedVelocity(rec, entity);
+      this._applyCcdGate(rec, entity, type);
+      return rec;
+    }
     this._syncGuidedVelocity(rec, entity);
     this._applyCcdGate(rec, entity);
     return rec;
@@ -3711,10 +3798,10 @@ export class Sg02DynamicBodyOwner {
 
   // Rank-1 CCD gate: reevaluate CCD on every sync from live speed/boost state, body-level only.
   // spec.ccd authoring stays intact (no record rebuilds); authored ccd:false is never overridden.
-  _applyCcdGate(rec, entity) {
+  _applyCcdGate(rec, entity, knownType = undefined) {
     if (!rec || !rec.spec.dynamic || !rec.spec.ccd) return;
     if (entity && entity.physicsSleeping === true) return;
-    const type = entity.type;
+    const type = knownType === undefined ? entity.type : knownType;
     let desired = rec.ccdEnabled;
     if (type === 'projectile') {
       desired = true;
@@ -4295,6 +4382,37 @@ export class Sg02DynamicBodyOwner {
   }
 
   _syncEntityFromKinematics(rec, kinematics) {
+    if (LEAN_STEP) {
+      // Same writes as below with each entity field touched once: the snapshot takes the values
+      // just written instead of reading them back off the entity.
+      const entity = rec.entity;
+      const pos = entity.pos || (entity.pos = { x: 0, z: 0 });
+      const vel = entity.vel || (entity.vel = { x: 0, z: 0 });
+      const global = frameToGlobal(kinematics, this._frameOrigin, this._globalScratch);
+      const gx = global.x;
+      const gz = global.z;
+      const vx = kinematics.vx;
+      const vz = kinematics.vz;
+      const yaw = kinematics.yaw;
+      const wy = kinematics.wy;
+      pos.x = gx;
+      pos.z = gz;
+      vel.x = vx;
+      vel.z = vz;
+      entity.rot = yaw;
+      entity.angVel = wy;
+      const snapshotRecord = rec.snapshot;
+      snapshotRecord.id = entity.id;
+      const snapshot = snapshotRecord[SNAPSHOT_SCALARS];
+      snapshot.x = gx;
+      snapshot.z = gz;
+      snapshot.yaw = yaw;
+      snapshot.vx = vx;
+      snapshot.vz = vz;
+      snapshot.wy = wy;
+      snapshotRecord.revision = rec.revision;
+      return;
+    }
     const pos = rec.entity.pos || (rec.entity.pos = { x: 0, z: 0 });
     const vel = rec.entity.vel || (rec.entity.vel = { x: 0, z: 0 });
     const global = frameToGlobal(kinematics, this._frameOrigin, this._globalScratch);
@@ -4321,7 +4439,8 @@ export class Sg02DynamicBodyOwner {
     // E2: only bodies a gameplay owner declared it inspects. Two readers exist (Crucible room
     // shutters, Kilnback capital completion); publishing for every dynamic body was ~one frozen
     // object + one thruster-authority read per body per tick that nothing read.
-    if (simCoreFlag('telemetryDemand') && rec.entity && rec.entity.physicsTelemetryRequested !== true) return;
+    const demand = LEAN_STEP ? this._stepTelemetryDemand : simCoreFlag('telemetryDemand');
+    if (demand && rec.entity && rec.entity.physicsTelemetryRequested !== true) return;
     // Capture reads every value synchronously, so this scratch can serve every body.
     const input = this._telemetryInput || (this._telemetryInput = {
       linearAcceleration: { x: 0, y: 0, z: 0 },
@@ -4728,6 +4847,8 @@ function declareSteppedRecordFields(record) {
   record._preStepAngvelZ = undefined;
   record._playerYawCeilingApplied = undefined;
   record.postStep = undefined;
+  record._stepIsPlayer = undefined;
+  record._stepIsPlayerSerial = -1;
 }
 
 function resetBodyForces(body) {

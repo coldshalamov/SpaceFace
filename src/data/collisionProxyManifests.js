@@ -401,24 +401,28 @@ export function advanceCollisionProxyResolveEpoch() {
 
 function proxyFingerprintMatches(entity, fp, allDataUndef = false, nullBody = false) {
   if (!fp || fp.length !== PROXY_FP_LENGTH) return false;
+  // The body and data shells are each read once: every read off an entity is a megamorphic
+  // lookup (entities span many hidden classes) and this check runs for every body every step.
+  const rawData = entity.data;
+  const rawBody = entity.physicsBody;
   if (fp[PROXY_FP_ID] !== entity.id
     || fp[PROXY_FP_TYPE] !== entity.type
-    || fp[PROXY_FP_DATA] !== entity.data
-    || fp[PROXY_FP_BODY] !== entity.physicsBody
+    || fp[PROXY_FP_DATA] !== rawData
+    || fp[PROXY_FP_BODY] !== rawBody
     || fp[PROXY_FP_RADIUS] !== entity.radius
     || fp[PROXY_FP_COLLIDES] !== entity.collides
     || fp[PROXY_FP_KIND] !== entity.kind) return false;
-  const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  const body = rawBody && typeof rawBody === 'object' ? rawBody : null;
   if (nullBody) {
     if (body !== null) return false;
-  } else if (fp[PROXY_FP_BODY_REVISION] !== (body ? body.revision : entity.physicsBody)
+  } else if (fp[PROXY_FP_BODY_REVISION] !== (body ? body.revision : rawBody)
     || fp[PROXY_FP_BODY_RADIUS] !== (body ? body.radius : undefined)
     || fp[PROXY_FP_BODY_MANIFEST] !== (body ? body.collisionProxyManifest : undefined)
     || fp[PROXY_FP_BODY_MATERIAL] !== (body ? body.material : undefined)
     || fp[PROXY_FP_BODY_MEASURED_SKIN] !== (body ? body.useMeasuredSkin : undefined)
     || fp[PROXY_FP_BODY_SHAPE] !== (body ? body.shape : undefined)
     || fp[PROXY_FP_BODY_DYNAMIC] !== (body ? body.dynamic : undefined)) return false;
-  const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
+  const data = rawData && typeof rawData === 'object' ? rawData : null;
   if (!data) return true;
   if (allDataUndef) {
     return data.collisionProxy === undefined
@@ -475,14 +479,17 @@ export function resolveCollisionProxyManifest(entity) {
       // at once; an in-place edit of a data field is seen from the next step.
       if (proxyResolveEpoch > 0 && slot.epoch === proxyResolveEpoch) {
         const fp = slot.fp;
-        const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
-        const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
+        // Body and data shells read once each (megamorphic reads; see proxyFingerprintMatches).
+        const rawBody = entity.physicsBody;
+        const rawData = entity.data;
+        const body = rawBody && typeof rawBody === 'object' ? rawBody : null;
+        const data = rawData && typeof rawData === 'object' ? rawData : null;
         // The in-place edits that really happen mid-step (hull swap rewrites data.defId, a stamped
         // proxy, a collides toggle, a resize, a body reshape) are still seen at once.
-        if (fp[PROXY_FP_BODY] === entity.physicsBody && fp[PROXY_FP_DATA] === entity.data
+        if (fp[PROXY_FP_BODY] === rawBody && fp[PROXY_FP_DATA] === rawData
           && fp[PROXY_FP_TYPE] === entity.type && fp[PROXY_FP_COLLIDES] === entity.collides
           && fp[PROXY_FP_RADIUS] === entity.radius
-          && fp[PROXY_FP_BODY_REVISION] === (body ? body.revision : entity.physicsBody)
+          && fp[PROXY_FP_BODY_REVISION] === (body ? body.revision : rawBody)
           && fp[PROXY_FP_BODY_SHAPE] === (body ? body.shape : undefined)
           && fp[PROXY_FP_BODY_MANIFEST] === (body ? body.collisionProxyManifest : undefined)
           && fp[PROXY_FP_DATA_DEF_ID] === (data ? data.defId : undefined)
