@@ -30,9 +30,12 @@ import { REBINDABLE, GAMEPAD_REBINDABLE } from '../src/ui/screens/settings.js';
 import { contextWheelSlices } from '../src/ui/contextWheel.js';
 import { createGameState } from '../src/core/gameState.js';
 
+// The R17 wheel: rarely-used verbs are wheel slices, capped at eight seats with contextual
+// slices (site beam, scoop, call-in) always fitting first. Verbs a dogfight needs kept real
+// keys instead — full stop X, scanner C, cloak V, mining beam G, strafe A/D, reel on the
+// Line's own hold.
 const WHEEL_ACTIONS = [
-  'brake', 'aimedMine', 'siteBeam', 'reelIn', 'reelOut', 'strafeLeft', 'strafeRight',
-  'bulletTime', 'gyreSnare', 'cloak', 'countermeasure', 'scanPulse', 'cycleBomb',
+  'siteBeam', 'scoop', 'bulletTime', 'cloak', 'countermeasure', 'cycleBomb',
   'autoFire', 'travelBurn', 'cruise', 'jettisonLot', 'deployBeacon', 'deployShieldPylon',
 ];
 
@@ -59,8 +62,12 @@ test('G18-02: the six-input table is the Adventure default', () => {
   const st = flightState();
   assert.deepEqual(resolveActionCodes(st, 'forward'), ['KeyW', 'ArrowUp']);
   assert.deepEqual(resolveActionCodes(st, 'reverse'), ['KeyS', 'ArrowDown']);
-  assert.deepEqual(resolveActionCodes(st, 'yawLeft'), ['KeyA', 'ArrowLeft']);
-  assert.deepEqual(resolveActionCodes(st, 'yawRight'), ['KeyD', 'ArrowRight']);
+  // R17 helm-assist is the shipping scheme — the cursor owns the nose so the yaw keys are
+  // retired and A/D strafe instead (pilot keeps them as an opt-in).
+  assert.deepEqual(resolveActionCodes(st, 'yawLeft'), []);
+  assert.deepEqual(resolveActionCodes(st, 'yawRight'), []);
+  assert.deepEqual(resolveActionCodes(st, 'strafeLeft'), ['KeyA', 'ArrowLeft']);
+  assert.deepEqual(resolveActionCodes(st, 'strafeRight'), ['KeyD', 'ArrowRight']);
   assert.deepEqual(resolveActionCodes(st, 'boost'), ['ShiftLeft', 'ShiftRight']);
   assert.deepEqual(resolveActionCodes(st, 'contextWheel'), ['KeyQ']);
   assert.deepEqual(resolveActionCodes(st, 'pull'), ['Digit1']);
@@ -76,11 +83,16 @@ test('G18-02: LMB fires and F also operates the Line', () => {
   assert.deepEqual(resolveActionCodes(st, 'tether'), ['KeyF']);
   assert.equal(resolveActionLabel(st, 'fire'), 'LMB');
   assert.equal(resolveActionLabel(st, 'tether'), 'F');
-  // Every overflow verb ships unbound — it lives on the wheel, not a key.
+  // Every overflow verb ships unbound — it lives on the wheel, not a key. The cloak keeps a
+  // real seat (V) beside its slice; the wheel-only verbs hold none.
   for (const action of WHEEL_ACTIONS) {
-    if (action === 'aimedMine') continue; // no keyboard seat; wheel/pad/touch only
+    if (action === 'cloak') continue;
     assert.deepEqual(resolveActionCodes(st, action), [], `${action} unbound by default`);
   }
+  assert.deepEqual(resolveActionCodes(st, 'brake'), ['KeyX']);
+  assert.deepEqual(resolveActionCodes(st, 'scanPulse'), ['KeyC']);
+  assert.deepEqual(resolveActionCodes(st, 'cloak'), ['KeyV']);
+  assert.deepEqual(resolveActionCodes(st, 'mine'), ['KeyG']);
 });
 
 test('G18-02: a rebound key on the Line overrides the stock label', () => {
@@ -107,18 +119,26 @@ test('G18-02: contextWheel is admitted in flight, combat and swarm — refused d
 test('G18-02: every wheel slice is a context-legal action — nothing is unreachable', () => {
   const st = flightState();
   const slices = contextWheelSlices(st);
-  // In free flight the full ring is present except the site-gated SITE BEAM (no site selected).
+  // R17: eight seats, contextual slices first. Free flight seats the non-contextual verbs
+  // in authored order — the beacon keeps its seat because open space is its only context.
   const actions = slices.map((s) => s.action);
-  for (const action of WHEEL_ACTIONS) {
-    if (action === 'siteBeam') continue;
-    assert.ok(actions.includes(action), `${action} reachable on the flight wheel`);
-  }
+  assert.deepEqual(actions,
+    ['bulletTime', 'cloak', 'countermeasure', 'cycleBomb', 'autoFire', 'travelBurn', 'cruise', 'deployBeacon'],
+    'free-flight ring: first eight non-contextual slices');
   for (const s of slices) {
-    if (s.action === 'aimedMine') continue;
     assert.equal(contextActionAllowed(st, s.action), true, `${s.action} allowed in its context`);
   }
-  // A selected World Site admits the beam slice; without one it is hidden, not dead.
+  // The site beam and the scoop are contextual — hidden until their context, not dead.
   assert.ok(!actions.includes('siteBeam'));
+  assert.ok(!actions.includes('scoop'));
+  // The cap defers the combat-context verbs — they surface in a fight where they are legal.
+  const combat = flightState();
+  combat.playerId = 1;
+  combat.player = { targetId: 2 };
+  combat.entities = { get: (id) => (id === 1 ? { id: 1, team: 0 } : { id: 2, team: 1, alive: true }) };
+  const combatActions = contextWheelSlices(combat).map((s) => s.action);
+  assert.ok(combatActions.includes('deployShieldPylon'), 'pylon surfaces in combat');
+  assert.ok(combatActions.includes('jettisonLot'), 'jettison surfaces in combat');
 });
 
 test('G18-02: the flight help card teaches the wheel', () => {
@@ -231,13 +251,9 @@ test('G18-02b: holding Q through the real DOM key path opens the wheel in a live
 test('G18-02b: the Swarm wheel seats its legal slices and Call-in only while a charge waits', () => {
   const st = swarmState();
   const base = contextWheelSlices(st, 0).map((s) => s.action);
-  for (const action of ['brake', 'reelIn', 'reelOut', 'strafeLeft', 'strafeRight']) {
-    assert.ok(base.includes(action), `swarm wheel seat: ${action}`);
-  }
-  assert.ok(!base.includes('callIn'), 'no Call-in slice while the queue is empty');
-  assert.ok(!base.includes('aimedMine'), 'no mine slice in the Swarm door');
+  assert.deepEqual(base, [], 'R17: every Adventure slice is Swarm-illegal — an empty queue shows an empty ring');
   const charged = contextWheelSlices(st, 1).map((s) => s.action);
-  assert.ok(charged.includes('callIn'), 'a stocked call surfaces the Call-in slice');
+  assert.deepEqual(charged, ['callIn'], 'a stocked call surfaces the Call-in slice');
 });
 
 test('G18-02b: a wheel Call-in tap fires the real Swarm edge — and stays Swarm-only', () => {
@@ -254,16 +270,32 @@ test('G18-02b: a wheel Call-in tap fires the real Swarm edge — and stays Swarm
 
 // ── the pad ───────────────────────────────────────────────────────────────────
 
-test('G18-02: the pad speaks the same table — hold-Y is the wheel', () => {
+test('G18-02/CONTROLLER-1: the pad speaks the same table — hold D-pad down is the wheel', () => {
   const m = GAMEPAD_DEFAULT_BINDINGS;
   assert.deepEqual([...m.massline], ['l2']);        // LT the Line
   assert.deepEqual([...m.fire], ['r2']);
-  assert.deepEqual([...m.boost], ['accept']);       // A boost
+  assert.deepEqual([...m.boost], ['r1']);           // RB boost (held)
+  assert.deepEqual([...m.brake], ['l3']);           // click the drive stick for a full stop
   assert.deepEqual([...m.dock], ['action']);        // X interact
-  assert.deepEqual([...m.contextWheel], ['alt']);   // hold-Y the wheel
+  assert.deepEqual([...m.contextWheel], ['dDown']); // hold D-pad down: the wheel
   assert.deepEqual([...m.map], ['view']);
+  // The five powers: the fight three under the right thumb, anchor and plow on the LB layer.
+  assert.deepEqual([...m.shove], ['accept']);
+  assert.deepEqual([...m.pull], ['alt']);
+  assert.deepEqual([...m.bomb], ['cancel']);
+  assert.deepEqual([...m.pin], ['l1+action']);
+  assert.deepEqual([...m.rig], ['l1+alt']);
+  // The LB shift layer's spare combat seats.
+  assert.deepEqual([...m.countermeasure], ['l1+accept']);
+  assert.deepEqual([...m.scanPulse], ['l1+cancel']);
+  // The beam and the lash keep real seats — a held verb needs a button's two edges.
+  assert.deepEqual([...m.mine], ['dLeft']);
+  assert.deepEqual([...m.gyreSnare], ['r1+alt']);
+  // The bag gets the last free D-pad seat — tap right to open, tap again (or B) to close.
+  assert.deepEqual([...m.cargo], ['dRight']);
   // Overflow verbs hold no pad seat — they live on the wheel.
-  for (const a of ['brake', 'mine', 'travelBurn', 'bulletTime', 'gyreSnare']) {
+  for (const a of ['travelBurn', 'bulletTime', 'cycleBomb', 'siteBeam',
+    'cloak', 'cruise', 'deployBeacon', 'deployShieldPylon', 'jettisonLot']) {
     assert.deepEqual([...m[a]], [], `pad ${a} unbound — wheel`);
   }
 });

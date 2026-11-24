@@ -87,14 +87,15 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'bomb'), []);
   assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV'],
     'R17: Shove no longer inherits the Detonate key');
-  // Pad: defaults and an old remap. G18-02: bumpers pull/shove, d-pad pin/bomb, B rigs,
-  // hold-Y owns the wheel the old power chords used to ride.
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['r1']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['dRight']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pull], ['l1']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['dDown']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['cancel']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.contextWheel], ['alt']);
+  // Pad: defaults and an old remap. CONTROLLER-1: the fight three sit under the right
+  // thumb (A shove, Y pull, B bomb), the anchor and the plow ride the hold-LB layer,
+  // and hold-D-pad-down owns the wheel the old power chords used to ride.
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['accept']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pull], ['alt']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['cancel']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['l1+action']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['l1+alt']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.contextWheel], ['dDown']);
   for (const legacy of Object.keys(POWER_VERB_ALIASES)) assert.equal(GAMEPAD_DEFAULT_BINDINGS[legacy], undefined, `${legacy} has no pad seat of its own`);
   // An older remap can already own the new pylon default; introducing equipment cannot steal it.
   const pad = resolveGamepadBindings({ controls: { gamepad: { bindings: { deployWell: ['r1+dLeft'] } } } });
@@ -312,7 +313,7 @@ test('resetting or rebinding a power row clears the keys saved under its old nam
   assert.deepEqual(resolveActionCodes(state, 'bomb'), ['KeyB']);
   host._commitPadBind(ctx, 'pull', null);
   assert.equal(state.settings.controls.gamepad.bindings, null, 'the pad reset clears the old Well remap');
-  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['l1']);
+  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['alt']);
 });
 
 test('the field power roster points each verb at the rail socket of the power that fires it', async () => {

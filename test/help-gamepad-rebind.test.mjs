@@ -23,27 +23,29 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
   assert.deepEqual(stock.find(([label]) => label === 'Chase / overhead camera'),
     ['Chase / overhead camera', null, 'LB / L1 + View / Select']);
   assert.deepEqual(stock[2], ['Fire', null, 'RT / R2']);
-  // G18-02 "one set of keys": the pad speaks the same table — RT fire, LT the Line, A boost,
-  // X dock, View map, hold-Y the one context wheel. Overflow verbs are wheel slices.
-  assert.deepEqual(stock[3], ['Mine beam', null, 'hold Y / △ — context wheel']);
-  assert.deepEqual(stock[4], ['Boost', null, 'A / Cross']);
-  assert.deepEqual(stock[5], ['Context wheel (hold: aim a slice, release to choose)', null, 'hold Y / △']);
-  assert.deepEqual(stock[6], ['Brake / full stop', null, 'hold Y / △ — context wheel']);
-  assert.deepEqual(stock[7], ['Shove (repulsor; sets off armed ordnance)', null, 'RB / R1']);
+  // CONTROLLER-1: RT fire, LT the Line, RB boost, L3 brake, the fight three under the right
+  // thumb (A shove, Y pull, B bomb), X dock, View map, hold-D-pad-down the one context wheel,
+  // hold-LB the chord layer. Overflow verbs are wheel slices.
+  assert.deepEqual(stock[3], ['Mine beam', null, 'D-Pad Left']);
+  assert.deepEqual(stock[4], ['Boost', null, 'RB / R1']);
+  assert.deepEqual(stock[5], ['Context wheel (hold: aim a slice, release to choose)', null, 'hold D-Pad Down']);
+  assert.deepEqual(stock[6], ['Brake / full stop', null, 'L3']);
+  assert.deepEqual(stock[7], ['Shove (repulsor; sets off armed ordnance)', null, 'A / Cross']);
   assert.deepEqual(stock[8], ['Accept / confirm', null, 'A / Cross']);
   assert.deepEqual(stock[9], ['Line', null, 'LT / L2']);
-  assert.deepEqual(stock[11], ['Bomb (selected ordnance)', null, 'D-Pad Right']);
+  assert.deepEqual(stock[11], ['Bomb (selected ordnance)', null, 'B / ○']);
   assert.deepEqual(stock[13], ['Cycle target', null, 'R3']);
   assert.deepEqual(stock[14], ['Open star-map', null, 'View / Select']);
   assert.deepEqual(stock[18], ['Dock / activate', null, 'X / □ (when prompted)']);
   assert.deepEqual(stock[19], ['Cancel / back', null, 'B / ○']);
   assert.deepEqual(stock[20], ['Station tab: previous', null, 'LB / L1']);
   assert.deepEqual(stock[21], ['Station tab: next', null, 'RB / R1']);
-  assert.deepEqual(stock[22], ['Travel burn', null, 'hold Y / △ — context wheel']);
+  assert.deepEqual(stock[22], ['Travel burn', null, 'hold D-Pad Down — context wheel']);
   assert.deepEqual(stock[23], ['Auto-target', null, 'D-Pad Up']);
-  assert.deepEqual(stock[28], ['Pin (anchor)', null, 'D-Pad Down']);
-  assert.deepEqual(stock[29], ['Pull (gravity well)', null, 'LB / L1']);
-  assert.deepEqual(stock[30], ['Plow (clearing wedge / skim scoop)', null, 'B / ○']);
+  assert.deepEqual(stock[28], ['Pin (anchor)', null, 'LB / L1 + X / □']);
+  assert.deepEqual(stock[29], ['Pull (gravity well)', null, 'Y / △']);
+  assert.deepEqual(stock[30], ['Plow (clearing wedge)', null, 'LB / L1 + Y / △']);
+  assert.deepEqual(stock[34], ['Cargo bag (open / close)', null, 'D-Pad Right']);
   const taught = [
     ['fire', 'Fire'], ['mine', 'Mine beam'], ['boost', 'Boost'], ['contextWheel', 'Context wheel (hold: aim a slice, release to choose)'],
     ['brake', 'Brake / full stop'],
@@ -54,11 +56,11 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
     ['tabPrev', 'Station tab: previous'], ['tabNext', 'Station tab: next'], ['travelBurn', 'Travel burn'],
     ['autoTarget', 'Auto-target'],
     ['scanPulse', 'Scanner pulse'], ['pin', 'Pin (anchor)'],
-    ['pull', 'Pull (gravity well)'], ['rig', 'Plow (clearing wedge / skim scoop)'],
+    ['pull', 'Pull (gravity well)'], ['rig', 'Plow (clearing wedge)'],
     ['siteBeam', 'World Site beam'],
     ['bulletTime', 'Bullet time'], ['cloak', 'Cloak'],
     ['cruise', 'Cruise drive'], ['deployBeacon', 'Deploy nav beacon'],
-    ['jettisonLot', 'Jettison cargo lot'],
+    ['jettisonLot', 'Jettison cargo lot'], ['cargo', 'Cargo bag (open / close)'],
     ['gyreSnare', 'Gather (hold: gather; release: throw)'],
     ['deployShieldPylon', 'Shield pylons (place / link / recall)'],
     ['steeringView', 'Chase / overhead camera'],
@@ -85,8 +87,8 @@ test('a deliberately unbound action names itself instead of printing a phantom b
   const rows = gamepadControlRows(map);
   assert.equal(rows[2][2], 'Not set — Settings → Controls');
   // A wheel slice keeps naming the wheel — unbinding its (empty) seat changes nothing.
-  assert.deepEqual(map.countermeasure, []);
-  assert.match(rows[10][2], /context wheel/);
+  assert.deepEqual(map.cycleBomb, []);
+  assert.match(rows[12][2], /context wheel/);
 });
 
 test('a chord names every button it holds', () => {

@@ -138,6 +138,27 @@ export function flightReticlePosition(state, width, height, visualPointer) {
     || pointer.x < 0 || pointer.y < 0 || pointer.x > width || pointer.y > height) return null;
   return { x: pointer.x, y: pointer.y };
 }
+
+// CONTROLLER-1: stick aim has no mouse pointer — the reticle is the projected aimWorld the
+// input system already places at the stick's deflection distance (and eases onto a hostile
+// under the soft assist). Clamped at the screen edge so the crosshair never vanishes when
+// the aim point drifts off-frame. Exported so tests can pin the projection directly.
+export function padAimReticlePosition(host, state, width, height) {
+  const input = state && state.input;
+  if (!input || input.aimFromStick !== true) return null;
+  const aim = input.aimWorld;
+  if (!aim || !Number.isFinite(aim.x) || !Number.isFinite(aim.z)) return null;
+  if (!host.helpers || typeof host.helpers.worldToScreen !== 'function') return null;
+  const inV = host._padAimProjIn || (host._padAimProjIn = { x: 0, y: 0, z: 0 });
+  const outV = host._padAimProjOut || (host._padAimProjOut = { x: 0, y: 0, onScreen: false });
+  inV.x = aim.x; inV.y = 0; inV.z = aim.z;
+  const projected = host.helpers.worldToScreen(inV, outV);
+  if (!projected || !Number.isFinite(projected.x) || !Number.isFinite(projected.y)) return null;
+  return {
+    x: Math.min(Math.max(0, projected.x), Math.max(0, width)),
+    y: Math.min(Math.max(0, projected.y), Math.max(0, height)),
+  };
+}
 // (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
 //  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
 import { createHud } from './hud.js';
@@ -1088,9 +1109,13 @@ export const ui = {
     const syncFlightCursor = (visible, reticleAlive = visible) => {
       const st = this.state;
       const autoTarget = !!(visible && st && st.input && st.input.autoFire);
-      const position = flightReticlePosition(st,
-        typeof innerWidth === 'number' ? innerWidth : 0,
-        typeof innerHeight === 'number' ? innerHeight : 0, flightPointer.pointer);
+      const viewW = typeof innerWidth === 'number' ? innerWidth : 0;
+      const viewH = typeof innerHeight === 'number' ? innerHeight : 0;
+      // CONTROLLER-1: a live pad-aim stick outranks any parked mouse pointer — the reticle
+      // tracks the projected aimWorld the sim already authored.
+      const padPosition = autoTarget ? null : padAimReticlePosition(this, st, viewW, viewH);
+      const position = padPosition
+        || flightReticlePosition(st, viewW, viewH, flightPointer.pointer);
       const flightPath = st && st.input && st.input.autoTargetPath;
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
@@ -1112,9 +1137,12 @@ export const ui = {
       // Only combat-stick mode hides the native pointer for a centered sight. Ordinary
       // flight always selects the native target image, even before the first mouse event
       // or after a transient focus/input reset. Windows/browser owns its actual position.
-      const targetCursorVisible = !!(reticleAlive && position && flightPointer.pointer.focused
-        && reticleEl.isConnected);
-      const cursorMode = flightCursorMode(st, visible, targetCursorVisible);
+      // Pad aim keeps the reticle alive without a focused mouse pointer; the DOM marker is
+      // the crosshair, so the OS cursor hides (stick mode) while the stick is steering it.
+      const targetCursorVisible = !!(reticleAlive && position
+        && (flightPointer.pointer.focused || padPosition) && reticleEl.isConnected);
+      const cursorMode = padPosition && visible ? 'stick'
+        : flightCursorMode(st, visible, targetCursorVisible);
       document.body.classList.toggle('sf-flight-pointer', cursorMode === 'mouse');
       document.body.classList.toggle('sf-flight-cursor', cursorMode === 'stick');
       const nextReticleDisplay = targetCursorVisible ? 'block' : 'none';
@@ -1122,10 +1150,17 @@ export const ui = {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
       }
-      const nextReticleMode = st && st.input && st.input.autoFire ? 'auto' : 'manual';
+      const nextReticleMode = st && st.input && st.input.autoFire ? 'auto'
+        : (padPosition ? 'pad' : 'manual');
       if (lastReticleMode !== nextReticleMode) {
         lastReticleMode = nextReticleMode;
         reticleEl.dataset.mode = nextReticleMode;
+      }
+      // Soft-assist cue: the reticle eases onto a hostile — tint it hot so the pull reads.
+      const assistOn = !!(padPosition && st && st.input && st.input.aimAssistTargetId != null);
+      if (assistOn !== (reticleEl.dataset.assist === '1')) {
+        if (assistOn) reticleEl.dataset.assist = '1';
+        else delete reticleEl.dataset.assist;
       }
       const nextStickDisplay = autoTarget ? 'block' : 'none';
       if (lastStickDisplay !== nextStickDisplay) {
@@ -1503,7 +1538,7 @@ export const ui = {
     // current target. Reachable via the target panel component chip (DOM); a keyboard binding is a
     // pending input.js shared-change request (see REPORT). Selection is transient on state.ui.
     this.bus.on('ui:cycleComponent', ({ dir } = {}) => cycleTargetComponent(this.state, dir || 1, this.bus));
-    this.bus.on('ui:targetNearestHostileToPlayer', ({ quiet } = {}) => targetNearestHostileToPlayer(this.state, this.bus, { quiet }));
+    this.bus.on('ui:targetNearestHostileToPlayer', (opts) => targetNearestHostileToPlayer(this.state, this.bus, opts || {}));
 
     // Dock transition overlay
     const dockFade = document.createElement('div');

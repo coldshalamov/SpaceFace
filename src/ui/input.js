@@ -9,7 +9,7 @@
 // (ESC always = back). Otherwise translate UI-owned keys into intent events / screen pushes.
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
-import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
+import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel, confirmGamepadNav } from './confirm.js';
 import { getPromptDeck } from './promptDeck.js';
 import {
   BINDINGS,
@@ -1023,16 +1023,20 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         bus.emit('game:load', { slot: 'quick' });
         return;
       default:
-        // '+'/'-' zoom shortcuts (camera passthrough). Once emitted the key is consumed like any
-        // other UI verb — a flight binding on it would otherwise keep double-firing.
+        // '+'/'-' zoom shortcuts (camera passthrough). Multiplicative like the wheel
+        // (~12% per press) so hold-to-repeat glides exponentially instead of stepping
+        // linearly. Once emitted the key is consumed like any other UI verb — a flight
+        // binding on it would otherwise keep double-firing.
         if (code === 'Equal' || code === 'NumpadAdd') {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-          bus.emit('camera:zoom', { delta: -8 });
+          const keyZoomIn = (state.camera && state.camera.zoom) || 144;
+          bus.emit('camera:zoom', { delta: keyZoomIn * (1 / 1.12 - 1) });
         } else if (code === 'Minus' || code === 'NumpadSubtract') {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-          bus.emit('camera:zoom', { delta: 8 });
+          const keyZoomOut = (state.camera && state.camera.zoom) || 144;
+          bus.emit('camera:zoom', { delta: keyZoomOut * (1.12 - 1) });
         }
         return;
     }
@@ -1282,13 +1286,21 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
 
     let delta = 0;
     if (isPinch) {
-      // Proportional smooth zoom for trackpad pinch/expand gestures
-      delta = (Number(ev.deltaY) || 0) * 0.8;
+      // Proportional smooth zoom for trackpad pinch/expand gestures. Exponential in the
+      // wheel delta so the feel matches the per-notch multiplicative step below: equal
+      // finger travel always buys the same zoom ratio, and small deltas stay precise.
+      const rawY = Number(ev.deltaY) || 0;
+      const clampedY = Math.max(-100, Math.min(100, rawY));
+      const currentPinchZoom = (state.camera && state.camera.zoom) || 144;
+      delta = currentPinchZoom * (Math.exp(clampedY * 0.002) - 1);
     } else {
-      // Step zoom for mouse wheel notch / 2-finger scroll
+      // Multiplicative step zoom for mouse wheel notch / 2-finger scroll: each notch is
+      // the same zoom RATIO (~15%) anywhere in the band, the StarCraft contract. The old
+      // linear max(16, 8%) step felt stiff far out and jumpy close in, then spent ~1s
+      // easing through ZOOM_LERP — that double lag was the molasses.
       const currentZoom = (state.camera && state.camera.zoom) || 144;
-      const step = Math.max(16, Math.round(currentZoom * 0.08));
-      delta = Math.sign(ev.deltaY) * step;
+      const factor = ev.deltaY > 0 ? 1.15 : 1 / 1.15;
+      delta = currentZoom * (factor - 1);
     }
     if (delta !== 0) {
       bus.emit('camera:zoom', { delta });
@@ -1533,12 +1545,6 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       return;
     }
 
-    if (isConfirmOpen()) {
-      if (gp.actions.accept && gp.actions.accept.pressed) confirmGamepadAccept();
-      if (gp.actions.cancel && gp.actions.cancel.pressed) confirmGamepadCancel();
-      return;
-    }
-
     const modalOpen = screenManager.isOpen();
     const top = modalOpen && screenManager.top ? screenManager.top() : null;
 
@@ -1563,6 +1569,19 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       if (rawPad.buttons[15] && rawPad.buttons[15].pressed) navNow.right = true;
     }
 
+    // A shared confirm owns the whole pad grammar while it is up: A clicks the focused
+    // key, B cancels, and D-pad/stick moves focus between Cancel and the verb — a danger
+    // dialog defaults to Cancel, so without nav a pad could never accept one.
+    if (isConfirmOpen()) {
+      if (gp.actions.accept && gp.actions.accept.pressed) confirmGamepadAccept();
+      if (gp.actions.cancel && gp.actions.cancel.pressed) confirmGamepadCancel();
+      for (const d of ['up', 'down', 'left', 'right']) {
+        if (navNow[d] && !_nav[d]) confirmGamepadNav(d);
+        _nav[d] = navNow[d];
+      }
+      return;
+    }
+
     // Flight decision deck (promptDeck) owns the pad while a decision is live — ONE gamepad
     // grammar consumed here, replacing the per-card polls that double-fired one press across two
     // cards and hijacked cycleTarget as a card verb. A/B choose; d-pad/stick up-down moves the
@@ -1570,10 +1589,14 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // A modal screen above the deck keeps input (the decision is hidden under it anyway).
     const promptDeck = getPromptDeck();
     const cargoPanel = !modalOpen && state.ui?.cargoPanelOpen
-      ? document.querySelector('#hud .sf-cargo-panel.open') : null;
+      ? document.querySelector('#hud .sf-bag.is-open, #hud .sf-cargo-panel.open') : null;
     if (cargoPanel) {
       if (gp.actions.cancel?.pressed) {
         bus.emit('ui:closeCargo');
+        return;
+      }
+      if (gp.actions.cargo?.pressed) {
+        bus.emit('ui:toggleCargo');
         return;
       }
       const deck = promptDeck?.el && !promptDeck.el.hidden ? promptDeck.el : null;
@@ -1709,6 +1732,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       if (gp.actions.map && gp.actions.map.pressed && contextUiAllowed(state, 'map')) {
         openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'gamepad' });
         bus.emit('audio:cue', { id: 'ui_open' });
+      }
+      if (gp.actions.cargo && gp.actions.cargo.pressed && contextUiAllowed(state, 'cargo')) {
+        bus.emit('ui:toggleCargo');
       }
       if (gp.actions.codex && gp.actions.codex.pressed && contextUiAllowed(state, 'codex')) {
         screenManager.pushScreen('codex');

@@ -26,6 +26,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'physicsVenues', screen: 'physicsVenues', backdrop: 'space' },
   { id: 'raceBoard', screen: 'raceBoard', backdrop: 'space' },
   { id: 'settings', screen: 'settings', backdrop: 'title' },
+  // CONTROLLER-1: the ACCESS tab at the handheld Large-text preset (130%) — the
+  // Steam-Deck-class readability claim has to be a photograph, not an assertion.
+  { id: 'settings-access', screen: 'settings', backdrop: 'title', focus: 'Access' },
+  { id: 'settings-large-text', screen: 'settings', backdrop: 'title', focus: 'Access', textScale: 1.3 },
+  { id: 'flight-large-text', screen: 'flight', backdrop: 'world', textScale: 1.3 },
   // `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js); -empty is a fresh machine.
   { id: 'save-load', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
   { id: 'saveLoad', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },

@@ -44,6 +44,7 @@ import { seedReceiptsShot, unseedReceiptsShot } from './ui-bench-receipts.js';
 import { seedImpoundShot } from './ui-bench-impound.js';
 import { MOBILE_CSS_PATH } from '../src/systems/mobile/styles.js';
 import { loadCssSidecar } from '../src/ui/orrery/cssSidecar.js';
+import { applyTextScaleFromSettings } from '../src/ui/accessibility.js';
 
 window.__BENCH_READY = false;
 // This tool bypasses main.boot(), so it owns the same data-ready boundary before fixture mounts.
@@ -1322,6 +1323,13 @@ async function goto(rawId) {
   // A shot with `research` mounts that career's researched nodes and a research-point balance.
   state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
   state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
+  // A shot can ask for the accessibility text scale (`textScale:` in the catalog) so the
+  // handheld Large-text frame is photographed, not described.
+  if (Number.isFinite(shot.textScale)) {
+    state.settings.accessibility = state.settings.accessibility || {};
+    state.settings.accessibility.textScale = shot.textScale;
+    applyTextScaleFromSettings(state.settings);
+  }
   // A shot with `pilotTree` mounts a pilot: 'adventure' (some hours in, two points to spend),
   // 'swarm' (a run in progress) or 'run-over' (the run's path, lit). Cleared on every other shot.
   seedPilotTreeShot(shot);
