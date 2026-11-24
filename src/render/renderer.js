@@ -22575,12 +22575,18 @@ export const render = {
       sector: arenaSectorForEntry(state, payload.sectorId),
     }, 'swarm:arenaEntered'));
     onBus('mode:changed', ({ mode } = {}) => {
-      if (mode === 'menu') this._syncFoundrySet();
+      if (mode === 'menu') {
+        this._syncFoundrySet();
+        this._foundryRunArenaId = undefined;
+      }
       // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
       // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches
       // flight without either (real-GPU readiness, Continue) still bakes before the first frame.
       if (mode === 'flight') {
         this._drainFoundryEnvPending?.();
+        // The run's arena may have arrived before flight did; judge the deck again now.
+        this._foundryRunArenaId = undefined;
+        tryPresentedCall(this, 'foundry-run-reconcile', () => this._reconcileFoundrySetWithRun());
         // Debug hook: the env the revealed flight lights with. firstPlayable paint (below)
         // re-stamps foundryEnvAtReveal on routes that present a playable frame.
         state.render.foundryEnvAtFlight = {
@@ -31688,6 +31694,24 @@ export const render = {
     return true;
   },
 
+  // Backstop for _syncFoundrySet's one-shot decisions. The deck's existence rested on two notices
+  // that travel different roads — the arena-entered event from the worker, and the mode notices
+  // from this thread — and nothing looked again, so a round could open over black space when they
+  // landed in the wrong order (seen on one capture of 2026-11-23 and not on another, same build).
+  // The run's own arena is the truth: whenever this thread sees it change in flight, the deck is
+  // made to match it. One property read a frame; the sync itself runs only on a change.
+  _reconcileFoundrySetWithRun() {
+    const state = this.state;
+    const run = state && state.run;
+    const arenaId = run && run.kind === 'survival' ? (run.arenaId ?? null) : null;
+    if (arenaId === this._foundryRunArenaId) return false;
+    // Not in flight yet (the mirrored mode can lag the mode notice): remember nothing, so the
+    // next frame asks again.
+    if (state.mode !== 'flight') return false;
+    this._foundryRunArenaId = arenaId;
+    return this._syncFoundrySet('swarm:arenaEntered', run);
+  },
+
   _advanceFoundrySet(dt) {
     const set = this._foundrySet;
     if (!set) return;
@@ -32594,6 +32618,7 @@ export const render = {
       () => liveShadowCastRadius(state),
       Number.isFinite(this._frameShadowCastRadius) ? this._frameShadowCastRadius : SHADOW_ORTHO_EXTENT);
     this._frameShadowCastRadius = openingShadowRadius;
+    tryPresentedCall(this, 'foundry-run-reconcile', () => this._reconcileFoundrySetWithRun());
     this._advanceFoundrySet(0);
     tryPresentedCall(this, 'authored-instances', () => {
       this._syncAuthoredInstanceSubmission(openingShadowRadius);
@@ -33806,6 +33831,7 @@ export const render = {
     // live decor over a frozen frame.
     const worldDt = frameDt * presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
     this._bgTime = (this._bgTime || 0) + worldDt * presentationTs;
+    tryPresentedCall(this, 'foundry-run-reconcile', () => this._reconcileFoundrySetWithRun());
     this._advanceFoundrySet(worldDt * presentationTs);
     if (!holdOpeningPicture && !holdLoadingGpu) {
       tryPresentedCall(this, 'backdrop', () => {
