@@ -163,13 +163,19 @@ export function measureControlReachability(doc, surface) {
 }
 
 function coveringPresentation(doc) {
-  // Continue's veil stays in the tree for the fade-out even after `.open` is removed (a bounced
-  // bench load lifts immediately). Hit-testing still lands on the node, so the class token is
-  // enough — requiring `.open` re-flags every title key during that second.
+  // Continue's veil is the cover only while it is the picture: `.open`, or still fading
+  // (opacity > 0). A lifted node that lingers 1100 ms for the CSS fade must not silence
+  // every title key — the screen itself sets pointer-events:none unless `.open`.
   const fade = queryFirst(doc, '.sf-continue-fade');
-  if (fade) return 'continue-veil';
+  if (fade && continueVeilCovers(fade, doc)) return 'continue-veil';
   if (doc.body?.classList?.contains('k-photo')) return 'photo';
   return null;
+}
+
+function continueVeilCovers(fade, doc) {
+  if (fade.classList?.contains?.('open')) return true;
+  const opacity = Number(doc.defaultView?.getComputedStyle?.(fade)?.opacity);
+  return Number.isFinite(opacity) && opacity > 0;
 }
 
 function queryFirst(doc, selector) {
