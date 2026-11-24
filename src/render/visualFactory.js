@@ -1342,17 +1342,9 @@ function miningProp(pal, R, tier) {
   return g;
 }
 
-// ---- shield emitter ring ---------------------------------------------------------------------
-// A faint torus around the hull's perimeter, present only when a shield module is fitted.
-function shieldRingProp(pal, R, halfWidth, height, tier) {
-  const g = new THREE.Group();
-  const rad = R * Math.max(halfWidth, 0.4) * 2.0;
-  const ring = new THREE.Mesh(
-    getGeometry(`shield:ring:${q(rad)}`, () => new THREE.TorusGeometry(rad, R * 0.025 * (1 + (tier || 1) * 0.05), 8, 28)),
-    additiveGlowMaterial(pal.accent, 0.28),
-  );
-  ring.rotation.x = Math.PI / 2; ring.scale.y = 1 + height; g.add(ring);
-  return g;
+// ---- shield emitter mount (no perimeter halo ring — owner 2026-11-23) ------------------------
+function shieldRingProp() {
+  return new THREE.Group();
 }
 
 // ---- nav blinkers (port green / starboard red aerospace cueing) ------------------------------
@@ -4113,33 +4105,21 @@ function buildSwarmRepairCell(e) {
   body.scale.setScalar(R);
   g.add(body);
 
-  // The takeable ring every scoopable drop carries — mint here, not a commodity tint.
-  const halo = new THREE.Mesh(
-    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
-    getMaterial(`pickuphalo:${SWARM_REPAIR_GLOW}`, () => new THREE.MeshBasicMaterial({
-      color: new THREE.Color(SWARM_REPAIR_GLOW), transparent: true, opacity: 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    })),
-  );
-  halo.material = halo.material.clone();
-  halo.scale.setScalar(R);
-  halo.userData.baseScale = R;
-  g.add(halo);
-
+  // No orbiting halo torus around repair cells (owner 2026-11-23): the upright banded canister,
+  // white-hot weld seam, and pulsing bright mint crown cross carry the read on the body itself.
   g.userData.kind = 'pickup';
   g.userData.interactionKind = 'pickup';
   g.userData.gem = body;
-  g.userData.pickupHalo = halo;
+  g.userData.pickupHalo = null;
   g.userData.pickupShape = 'repair_cell';
   g.userData.pickupVisual = 'swarm_repair';
   g.userData.visualLanguage = 'swarm-repair-cell';
   g.userData.pickupRole = null;
-  // Heal pulse: the cross breathes on the gem's own glint beat, phased per drop so two cells
-  // on one field never pulse in lockstep. Cosmetic wall-clock is fine — this only paints.
+  // Heal pulse: the cross breathes bright on the glint beat, phased per drop.
   const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
   for (const bar of [barA, barB]) {
     bar.onBeforeRender = () => {
-      cross.emissiveIntensity = 1.8 * (1 + 0.55 * Math.sin(nowSec() * 2.6 + ph));
+      cross.emissiveIntensity = 2.4 * (1 + 0.55 * Math.sin(nowSec() * 2.6 + ph));
     };
   }
   return g;
@@ -4148,8 +4128,7 @@ function buildSwarmRepairCell(e) {
 // ---------------------------------------------------------------------------------------------
 // Swarm drops (src/systems/swarmDrops.js): eight rare pickups that fall out of enemies. Each has
 // its own hue and none of them is the chip's gold, the repair cell's mint or an ore tint: a
-// faceted crystal in a double ring, the hue keyed by drop id, so the pickup reads as "a drop"
-// across the room before the toast names it.
+// bright pulsing faceted crystal (no orbiting rings — owner 2026-11-23), the hue keyed by drop id.
 // ---------------------------------------------------------------------------------------------
 const SWARM_DROP_HUES = Object.freeze({
   full_rack: '#ffd24a', heavy_hands: '#ff5a3d', dead_weight: '#a98bff', magnet: '#4fc3ff',
@@ -4167,45 +4146,34 @@ function buildSwarmDrop(e) {
   const g = new THREE.Group();
   g.name = 'SF_SwarmDrop';
   const crystal = getMaterial(`swarmdrop:crystal:${hue}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(hue).multiplyScalar(0.35), emissive: new THREE.Color(hue), emissiveIntensity: 1.9,
-    metalness: 0.2, roughness: 0.3, flatShading: true,
-  }), SHARED_MATERIAL_ROLE.HULL));
+    color: new THREE.Color(hue).multiplyScalar(0.35), emissive: new THREE.Color(hue), emissiveIntensity: 2.6,
+    metalness: 0.2, roughness: 0.25, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
   const body = new THREE.Mesh(getGeometry('swarmdrop:crystal', () => new THREE.OctahedronGeometry(0.85, 0).scale(0.8, 1.35, 0.8)), crystal);
   body.name = 'SwarmDropCrystal';
   body.scale.setScalar(R);
   g.add(body);
-  const ringMat = (opacity) => getMaterial(`swarmdrop:ring:${hue}:${opacity}`, () => new THREE.MeshBasicMaterial({
-    color: new THREE.Color(hue), transparent: true, opacity,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  }));
-  const halo = new THREE.Mesh(getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)), ringMat(0.7));
-  halo.material = halo.material.clone();
-  halo.scale.setScalar(R * 1.15);
-  halo.userData.baseScale = R * 1.15;
-  g.add(halo);
-  const outer = new THREE.Mesh(getGeometry('swarmdrop:outer', () => new THREE.TorusGeometry(2.1, 0.035, 6, 36)), ringMat(0.38));
-  outer.scale.setScalar(R * 1.15);
-  g.add(outer);
   g.userData.kind = 'pickup';
   g.userData.interactionKind = 'pickup';
   g.userData.gem = body;
-  g.userData.pickupHalo = halo;
+  g.userData.pickupHalo = null;
   g.userData.pickupShape = 'swarm_drop';
   g.userData.pickupVisual = 'swarm_drop';
   g.userData.visualLanguage = 'swarm-drop';
   g.userData.pickupRole = null;
   const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
   body.onBeforeRender = () => {
+    const t = nowSec();
+    crystal.emissiveIntensity = g.userData.pickupFlashReduced === true ? 2.4 : 2.6 * (1 + 0.45 * Math.sin(t * 3.1 + ph));
     // The pickup tracker owns the frozen pose under reduced motion; do not overwrite it at draw.
     if (g.userData.swarmDropMotionReduced === true) return;
-    body.rotation.y = nowSec() * 1.6 + ph;
-  };
-  outer.onBeforeRender = () => {
-    if (g.userData.swarmDropMotionReduced === true) return;
-    outer.rotation.x = Math.PI / 2 + 0.35 * Math.sin(nowSec() * 2.1 + ph);
+    body.rotation.y = t * 1.6 + ph;
   };
   return g;
 }
+
+// Pod green: the loot-magnet family colour the custody canister's beacon used to wear as a ring.
+const CUSTODY_POD_BEACON = '#4fbf8f';
 
 function buildPickup(e) {
   // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
@@ -4216,23 +4184,26 @@ function buildPickup(e) {
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
     canister.userData.pickupRole = PICKUP_ROLE.POD;
-    // The custody canister is a takeable drop that reads as solid cargo — exactly the
-    // look-alike the beacon ring exists to resolve. Pod green, same loot-magnet family color.
-    const podColor = '#4fbf8f';
-    const halo = new THREE.Mesh(
-      getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
-      getMaterial(`pickuphalo:${podColor}`, () => new THREE.MeshBasicMaterial({
-        color: new THREE.Color(podColor), transparent: true, opacity: 0.55,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })),
-    );
-    halo.material = halo.material.clone();
-    const podR = e.radius || 2.2;
-    halo.scale.setScalar(podR);
-    halo.userData.baseScale = podR;
-    halo.frustumCulled = false;
-    canister.add(halo);
-    canister.userData.pickupHalo = halo;
+    canister.userData.pickupHalo = null;
+    // The custody canister reads as solid cargo, so it needs its own "takeable" light now the
+    // beacon ring is gone (no rings around things, owner 2026-11-23): its transponder burns pod
+    // green and breathes, a light no tow crate carries. A per-pod clone; the shared transponder
+    // material every ordinary payload uses is never touched.
+    const lamp = canister.getObjectByName('PayloadTransponder');
+    if (lamp && lamp.material && typeof lamp.material.clone === 'function') {
+      const beacon = lamp.material.clone();
+      if (beacon.color) beacon.color.set(CUSTODY_POD_BEACON);
+      if (beacon.emissive) beacon.emissive.set(CUSTODY_POD_BEACON);
+      beacon.emissiveIntensity = 2.2;
+      lamp.material = beacon;
+      lamp.scale.setScalar(1.6);
+      const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
+      lamp.onBeforeRender = () => {
+        beacon.emissiveIntensity = canister.userData.pickupFlashReduced === true
+          ? 2.2 : 2.2 * (1 + 0.5 * Math.sin(nowSec() * 3 + ph));
+      };
+      canister.userData.custodyBeacon = 'transponder';
+    }
     return canister;
   }
   if (isCreditChipEntity(e)) {
@@ -4251,8 +4222,8 @@ function buildPickup(e) {
   // that is not a known commodity keep the original octahedron.
   const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
   // inf-pod-worth: the drop's light answers what the lot is worth (pickupWorthRead.js reads
-  // commodityId + amount off the sim's own data). Junk rests dimmer, plain keeps today's read,
-  // rich burns hotter and builds the double band below.
+  // commodityId + amount off the sim's own data). Junk rests dimmer, rich burns hotter (no
+  // orbiting torus halos — owner 2026-11-23).
   const worthTier = worthTierFor(e && e.data);
   const worth = worthReadFor(worthTier);
   const gem = new THREE.Mesh(
@@ -4260,62 +4231,25 @@ function buildPickup(e) {
       ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
       : getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
     getMaterial(`gemmat:${color}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
+      color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.9, metalness: 0.9, roughness: 0.15,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
   gem.scale.setScalar(R);
   gem.material = gem.material.clone();
   g.add(gem);
-  // Collectible beacon ring: the takeable drop answers light no rock, wreck or tow crate does —
-  // a thin commodity-colored band that precesses and kicks on the transponder's double-flash
-  // (posed by pickupMotionPresentation). Authored geometry, not a camera-facing sprite.
-  const halo = new THREE.Mesh(
-    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
-    getMaterial(`pickuphalo:${color}`, () => new THREE.MeshBasicMaterial({
-      color: new THREE.Color(color), transparent: true, opacity: 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    })),
-  );
-  halo.material = halo.material.clone();
-  halo.scale.setScalar(R);
-  halo.userData.baseScale = R;
-  g.add(halo);
-  g.userData.pickupHalo = halo;
+  g.userData.pickupHalo = null;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
-  // The worth tier rides userData so the pose pass (pickupMotionPresentation) can grade the
-  // ring's floor/kick without re-reading the price table every frame.
   g.userData.worthTier = worthTier;
-  // Rich lots build the double band: a second, tighter ring the eye reads as "that one"
-  // across the field. Posed by pickupMotionPresentation against the outer ring's clock.
-  if (worth.doubleBand) {
-    const band = new THREE.Mesh(
-      getGeometry('pickup:worthband', () => new THREE.TorusGeometry(0.95, 0.03, 6, 24)),
-      getMaterial(`pickupworthband:${color}`, () => new THREE.MeshBasicMaterial({
-        color: new THREE.Color(color), transparent: true, opacity: 0.4,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })),
-    );
-    band.material = band.material.clone();
-    band.scale.setScalar(R);
-    band.userData.baseScale = R;
-    g.add(band);
-    g.userData.worthBand = band;
-  }
   // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
   // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
   g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
     : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
-  // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
-  // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
-  // The breathe carries farther than it used to: at flight-camera range the old ±28% never
-  // separated a live drop from dark scenery. The worth read scales the heat: junk rests dim,
-  // rich burns hotter than any plain drop ever did.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    const glint = g.userData.pickupFlashReduced === true ? 1 : 1 + 0.45 * Math.sin(t * 3 + ph);
-    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * glint;
+    const glint = g.userData.pickupFlashReduced === true ? 1 : 1 + 0.5 * Math.sin(t * 3 + ph);
+    gem.material.emissiveIntensity = (worth.doubleBand ? 2.4 : 1.9) * worth.glintHeat * glint;
   };
   return g;
 }
@@ -7167,22 +7101,18 @@ function buildCircuitNode(e) {
   return g;
 }
 
-// The commander wears the same hull, with a ring so the one ship is obvious.
+// The commander wears a dorsal gold crown diamond above the hull instead of a floor ring
+// (no rings around things, owner 2026-11-23).
 function markCircuitCommander(mesh, e) {
   const R = Math.max(4, (e && e.radius) || 12);
-  const ring = new THREE.Mesh(
-    getGeometry('circuit-commander:ring', () => new THREE.RingGeometry(1.15, 1.32, 48)),
-    (() => {
-      const mat = emissiveMaterial('#ffd27a', 1.8).clone();
-      mat.side = THREE.DoubleSide;
-      return mat;
-    })(),
+  const crown = new THREE.Mesh(
+    getGeometry('circuit-commander:crown', () => new THREE.OctahedronGeometry(0.32, 0).scale(1, 1.5, 1)),
+    emissiveMaterial('#ffd27a', 2.2).clone(),
   );
-  ring.name = 'circuit-commander';
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.4;
-  ring.scale.setScalar(R);
-  mesh.add(ring);
+  crown.name = 'circuit-commander';
+  crown.position.y = R * 0.75;
+  crown.scale.setScalar(R);
+  mesh.add(crown);
   return mesh;
 }
 
@@ -7852,6 +7782,7 @@ function buildPayload(e) {
       color: 0x8eeaff, emissive: 0x2abbd8, emissiveIntensity: 0.8, roughness: 0.38, metalness: 0.16,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
+  transponder.name = 'PayloadTransponder';
   transponder.position.y = 0.47;
   g.add(transponder);
   // inf-jettison-claim: a pod YOU jettisoned holds a brief claim window on its transponder —

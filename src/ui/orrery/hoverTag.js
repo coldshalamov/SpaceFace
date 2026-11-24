@@ -1,27 +1,19 @@
 // The world-object hover tag (nameplate over hovered ships/rocks/stations), mounted by
-// src/ui/worldObjectInteraction.js. ORRERY register: the vitals are compact Arc Gauges (§3.2 a
-// quantity is an arc; the Cluster's shield/armor/hull tone convention — phos, hi, phos), every
-// colour is a Deckplate token (warm bone at rest, threat red only for hostiles, the Hand for the
-// selected), and the tag carries a kit tag-leader: a light drop from the tag's foot to the point
-// it names (assets/ui/kit/assets/svg/tapes/tag-leader.svg, read pointing down — the tag tracks
-// its object through the cursor, so the geometry is static).
+// src/ui/worldObjectInteraction.js. Straight horizontal micro-bars carry shield/armor/hull
+// vitals (no rings around things, owner 2026-11-23), every colour is a Deckplate token
+// (warm bone at rest, threat red only for hostiles, the Hand for the selected), and the tag
+// carries a straight drop leader to the point it names.
 //
 // DOM contract (pinned by test/world-object-gesture.test.mjs): root class is exactly `sf-woi`,
 // children[1] is the meta line, a `.sf-woi__hint` child exists, and paintHoverTagVitals /
-// placeHoverTag keep their shapes. The old `.sf-woi__bar` slots stay mounted as the gauge slots
-// (the hud.js mountVitalArc idiom); the `i` scalar inside each stays as the fallback painter for
-// environments without SVG construction (headless harnesses).
-import { arcGauge } from './instruments.js';
+// placeHoverTag keep their shapes. The `.sf-woi__bar` slots and their `i` scaleX fills drive
+// the straight horizontal micro-bars directly (zero circular arc gauges floating over world bodies).
 import { injectOrrery } from './tokens.js';
 
 const STYLE_ID = 'sf-orrery-hover-tag';
 const SVGNS = 'http://www.w3.org/2000/svg';
 
 const HALO = 'text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 4px rgb(3 4 7 / .85), 0 0 10px rgb(3 4 7 / .6);';
-
-// The Cluster's own tone mapping (orrery/flightCluster.js): shield and hull read in phosphor,
-// armour is the thin hi bone line between them.
-const VITAL_TONE = { shield: 'phos', armor: 'hi', hull: 'phos' };
 
 const CSS = `
 .sf-woi{position:fixed;left:0;top:0;z-index:12;pointer-events:none;transform:translate(-50%,calc(-100% - 14px));
@@ -42,14 +34,16 @@ const CSS = `
 /* relations: threat red is the only alarm; allies read in the rest light — the meta line names them */
 .sf-woi[data-relation="hostile"] .sf-woi__name{color:var(--dp-danger-hot, #ff8a70)}
 .sf-woi[data-relation="hostile"] .sf-woi__meta{color:var(--dp-danger-hot, #ff8a70)}
-/* vitals: a row of compact Arc Gauges (the mining-HUD / Cluster convention), one per layer the
-   body carries. No bordered bars, no raw hexes — the gauge strokes carry the orrery tones. */
-.sf-woi__bars{display:flex;justify-content:center;gap:5px;margin:7px auto 0}
+/* vitals: stacked crisp horizontal micro-bars (no rings around things, owner 2026-11-23). */
+.sf-woi__bars{display:flex;flex-direction:column;align-items:center;gap:2px;margin:5px auto 0}
 .sf-woi__bars[hidden]{display:none}
-.sf-woi__bar{position:relative;width:24px;height:24px}
+.sf-woi__bar{position:relative;width:40px;height:2.5px;background:rgb(232 226 212 / .18);overflow:hidden}
 .sf-woi__bar[hidden]{display:none}
-.sf-woi__dial{display:block;width:100%;height:100%;overflow:visible}
-.sf-woi__bar>i{display:none}
+.sf-woi__bar>i{display:block;width:100%;height:100%;transform-origin:left center;background:var(--dp-ink, #e8e2d4)}
+.sf-woi__bar--shield>i{background:var(--dp-phos, #72d4ff)}
+.sf-woi__bar--armor>i{background:var(--dp-hand, #f2b950)}
+.sf-woi__bar--hull>i{background:var(--dp-ink, #e8e2d4)}
+.sf-woi[data-relation="hostile"] .sf-woi__bar--hull>i{background:var(--dp-danger-hot, #ff8a70)}
 /* the tag leader: a static light drop from the tag's foot to the named point — core + bloom
    strokes, geometry only (no filters in flight). Rest is bone; the selection hands it amber;
    a hostile marks the drop in threat red. */
@@ -105,23 +99,11 @@ export function createHoverTag(doc = globalThis.document) {
   for (const layer of ['shield', 'armor', 'hull']) {
     const bar = doc.createElement('div');
     bar.className = 'sf-woi__bar sf-woi__bar--' + layer;
-    // Compact Arc Gauge mounted INTO the bar slot (the hud.js mountVitalArc idiom); the `i`
-    // fill stays as the hidden scalar of the old scaleX contract and the stub-environment painter.
-    const dial = svgEl(doc, 'svg', 'orr-svg sf-woi__dial');
-    let gauge = null;
-    if (dial) {
-      dial.setAttribute('viewBox', '0 0 30 30');
-      dial.setAttribute('aria-hidden', 'true');
-      try {
-        gauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: VITAL_TONE[layer], ghost: false, head: true });
-        dial.appendChild(gauge.el);
-        bar.appendChild(dial);
-      } catch (_) { gauge = null; }
-    }
+    // Straight horizontal micro-bar fill (no circular arc dials over world bodies — owner 2026-11-23).
     const fill = doc.createElement('i');
     bar.appendChild(fill);
     barsEl.appendChild(bar);
-    fills[layer] = { bar, fill, gauge };
+    fills[layer] = { bar, fill, gauge: null };
   }
   // The tag leader (kit geometry, read pointing down): a static drop from the tag's foot to the
   // point it names — the tag floats exactly 14px above its anchor, so the drop fills that gap.
@@ -135,13 +117,11 @@ export function createHoverTag(doc = globalThis.document) {
       leaderEl.setAttribute('aria-hidden', 'true');
       const bloom = svgEl(doc, 'path', 'sf-woi__leader-bloom');
       const core = svgEl(doc, 'path', 'sf-woi__leader-core');
-      const anchor = svgEl(doc, 'circle', 'sf-woi__leader-anchor');
+      const anchor = svgEl(doc, 'polygon', 'sf-woi__leader-anchor');
       if (bloom && core && anchor) {
         bloom.setAttribute('d', 'M6 0 L6 9.6');
         core.setAttribute('d', 'M6 0 L6 9.6');
-        anchor.setAttribute('cx', '6');
-        anchor.setAttribute('cy', '12');
-        anchor.setAttribute('r', '1.8');
+        anchor.setAttribute('points', '6,10 8,12 6,14 4,12');
         leaderEl.appendChild(bloom);
         leaderEl.appendChild(core);
         leaderEl.appendChild(anchor);

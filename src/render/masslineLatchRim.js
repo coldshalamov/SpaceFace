@@ -29,19 +29,12 @@ export function createMasslineLatchRimPlan() {
  * `target` the resolved latch body; `load`/`whip` the already-published presentation reads.
  */
 export function resolveMasslineLatchRimPlan(tether, target, load = 0, whip = 0, out = {}) {
-  const live = !!(tether && tether.active && tether.targetId != null
-    && target && target.alive !== false && target.pos
-    && Number.isFinite(target.pos.x) && Number.isFinite(target.pos.z));
-  if (!live) { out.visible = false; return out; }
-  const radius = Math.max(2, Number(target.radius) || 6);
-  const l = Math.max(0, Math.min(1, Number(load) || 0));
-  const w = Math.max(0, Math.min(1, Number(whip) || 0));
-  out.visible = true;
-  out.x = target.pos.x;
-  out.z = target.pos.z;
-  out.radius = radius * MASSLINE_LATCH_RIM_RADIUS_PAD;
-  out.opacity = Math.min(1, 0.42 + l * 0.34 + w * 0.24);
-  out.bandScale = 1 + l * 0.5 + w * 0.3;
+  // No rings around things (owner 2026-11-23): the strained glowing tether cable, hitch core
+  // glint, and HUD tag already show which body is on the Line without circling it.
+  out.visible = false;
+  out.opacity = 0;
+  out.radius = 0;
+  out.bandScale = 1;
   return out;
 }
 

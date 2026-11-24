@@ -316,10 +316,13 @@ test('selected-target projections retain exact per-HUD center and radius records
       assert.equal(targetArcs.style.width, '62px');
       assert.equal(targetArcs.style.height, '62px');
       assert.equal(svg.getAttribute('viewBox'), '0 0 62 62');
+      // Three horizontal micro-bars under the target instead of concentric circles
+      // (no rings around things, owner 2026-11-23).
+      assert.equal(targetArcs.querySelector('circle'), null, 'no rings around things, owner 2026-11-23');
       assert.deepEqual(
         ['.sf-arc-shield', '.sf-arc-armor', '.sf-arc-hull']
-          .map((selector) => targetArcs.querySelector(selector).getAttribute('r')),
-        ['26', '23', '20'],
+          .map((selector) => targetArcs.querySelector(selector).getAttribute('y1')),
+        ['59', '63', '67'],
       );
     } finally {
       fixture.restore();

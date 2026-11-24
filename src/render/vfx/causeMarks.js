@@ -240,15 +240,18 @@ export class CauseMarkLayer {
         continue;
       }
       const radius = edge.radius;
-      for (let s = 0; s < RING && cursor < SEGMENTS; s++) {
-        const a0 = (s / RING) * Math.PI * 2;
-        const a1 = ((s + 1) / RING) * Math.PI * 2;
+      // Four short radial corner ticks at the well edge instead of a 28-segment closed circle
+      // (no rings around things, owner 2026-11-23).
+      const tick = Math.min(radius * 0.22, 16);
+      for (let s = 0; s < 4 && cursor < SEGMENTS; s++) {
+        const a = (s / 4) * Math.PI * 2 + Math.PI / 4;
+        const ca = Math.cos(a), sa = Math.sin(a);
         cursor = this._seg(
           cursor,
-          ent.pos.x + Math.cos(a0) * radius,
-          ent.pos.z + Math.sin(a0) * radius,
-          ent.pos.x + Math.cos(a1) * radius,
-          ent.pos.z + Math.sin(a1) * radius,
+          ent.pos.x + ca * radius,
+          ent.pos.z + sa * radius,
+          ent.pos.x + ca * Math.max(2, radius - tick),
+          ent.pos.z + sa * Math.max(2, radius - tick),
           0.45 * ringGain,
           0.72 * ringGain,
           1 * ringGain,

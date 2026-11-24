@@ -3,13 +3,12 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
 import { PowerFx } from '../src/render/vfx/kit/powerFx.js';
-import { SHELL_MODE } from '../src/render/vfx/kit/shockShell.js';
 
 // INF-043 — pull and push distinguishable without reading. Since the 2026-11-20 VFX rebuild the
-// powers are drawn by the VFX kit, and the verb is carried by MOTION and GEOMETRY, never tint:
-// Pull's fronts start at the field's true reach and CONTRACT (accelerating inward) while its motes
-// carry an inward field term; Shove's fronts start at the hull and EXPAND to the true reach. The
-// legacy folded-cloth strips for both are gone (they were the "blurry blanket").
+// powers are drawn by the VFX kit, and the verb is carried by MOTION, never tint: Pull's motes are
+// born at the field's true reach and fall inward on an inward field term; Shove's sparks leave the
+// hull and run out to the true reach. Neither draws a ring (no rings around things, owner
+// 2026-11-23). The legacy folded-cloth strips for both are gone (they were the "blurry blanket").
 
 const RADIUS = 190;
 const host = () => ({ toLocal: (x, z, out) => { out.x = x; out.z = z; return out; } });
@@ -19,41 +18,38 @@ const cast = (kind) => {
   fx.onFieldDeployed({ fieldId: kind, kind, center: { x: 30, z: -25 }, radius: RADIUS }, { settings: { video: {} } });
   return fx;
 };
-const shells = (fx) => {
+const CX = 30, CZ = -25;
+const sparks = (fx) => {
+  const [A, V, , , , F] = fx.sparks.arrays;
   const out = [];
-  for (let i = 0; i < fx.shells.highWater; i++) {
-    out.push({ from: fx.shells.arrays[1][i * 4], to: fx.shells.arrays[1][i * 4 + 1], mode: fx.shells.arrays[3][i * 4] });
+  for (let i = 0; i < fx.sparks.highWater; i++) {
+    const o = i * 4;
+    out.push({ x: A[o], z: A[o + 2], vx: V[o], vz: V[o + 2], accel: F[o + 2] });
   }
   return out;
 };
 
-test('INF-043: Pull fronts fall inward from the true reach; its motes carry an inward field term', () => {
+test('INF-043: Pull drains from the true reach with inward motes and draws no ring (no rings around things, owner 2026-11-23)', () => {
   const fx = cast('well');
   try {
-    const s = shells(fx);
-    assert.ok(s.length >= 1);
-    assert.equal(s[0].from, RADIUS, 'the first ring starts exactly at the field radius');
-    for (const shell of s) {
-      assert.equal(shell.mode, SHELL_MODE.CONTRACT, 'every Pull front contracts');
-      assert.ok(shell.from > shell.to, `inward span (${shell.from} -> ${shell.to})`);
-      assert.ok(shell.from <= RADIUS && shell.from >= RADIUS * 0.85, 'it starts at the field radius (chasing rings just inside it)');
-    }
-    let inward = 0;
-    for (let i = 0; i < fx.sparks.highWater; i++) if (fx.sparks.arrays[5][i * 4 + 2] > 0) inward++;
-    assert.ok(inward > 40, 'motes are drawn inward');
+    assert.equal(fx.shells.highWater, 0, 'no contracting rings (no rings around things, owner 2026-11-23)');
+    const inward = sparks(fx).filter((p) => p.accel > 0);
+    assert.ok(inward.length > 40, 'motes are drawn inward');
+    const rim = inward.filter((p) => Math.hypot(p.x - CX, p.z - CZ) >= RADIUS * 0.8);
+    assert.ok(rim.length > 40, 'the motes are born out at the true reach, so the reach still reads');
+    assert.ok(inward.every((p) => Math.hypot(p.x - CX, p.z - CZ) <= RADIUS + 1e-6), 'and never past it');
   } finally { fx.dispose(); }
 });
 
-test('INF-043: Shove fronts expand from the hull to the true reach', () => {
+test('INF-043: Shove sparks leave the hull and run out to the true reach, with no ring (no rings around things, owner 2026-11-23)', () => {
   const fx = cast('repulsor');
   try {
-    const s = shells(fx);
-    assert.ok(s.length >= 2);
-    for (const shell of s) {
-      assert.equal(shell.mode, SHELL_MODE.EXPAND, 'every Shove front expands');
-      assert.ok(shell.to > shell.from, `outward span (${shell.from} -> ${shell.to})`);
-      assert.ok(shell.to >= RADIUS * 0.9 && shell.to <= RADIUS, 'it reaches the field edge, no further');
-    }
+    assert.equal(fx.shells.highWater, 0, 'no expanding rings (no rings around things, owner 2026-11-23)');
+    const moving = sparks(fx).filter((p) => Math.hypot(p.vx, p.vz) > 1);
+    const outward = moving.filter((p) => (p.x - CX) * p.vx + (p.z - CZ) * p.vz > 0);
+    assert.ok(outward.length > 40, `the front reads as matter running outward (${outward.length})`);
+    assert.ok(outward.length > moving.length * 0.8, 'almost everything that moves, moves out');
+    assert.equal(sparks(fx).filter((p) => p.accel > 0).length, 0, 'nothing is drawn inward');
   } finally { fx.dispose(); }
 });
 

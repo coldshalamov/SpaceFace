@@ -57,14 +57,14 @@ const WEDGE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"
   + '<path fill="currentColor" fill-opacity="0.85" d="M60,60 L60,6 A54,54 0 0,1 98,22 Z"/></svg>';
 
 // One shared layer plate per marker; CSS reveals exactly the shape the cue names, so a pooled
-// marker swaps meaning by class alone (no per-hit DOM mutation). Shapes: ring=shield,
-// diamond=armor, solid square=hull, dash=near miss — meaning survives without the letter.
+// marker swaps meaning by class alone (no per-hit DOM mutation). Shapes: shield crest=shield,
+// diamond=armor, solid square=hull, dash=near miss — no rings around marks (owner 2026-11-23).
 const LAYER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">'
-  + '<circle class="sf-dmgind-shape sf-dmgind-shape-shield" cx="12" cy="12" r="6.4" stroke="currentColor" stroke-width="2.6"/>'
+  + '<path class="sf-dmgind-shape sf-dmgind-shape-shield" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" d="M12 3.8 L19.2 6.8 V12.4 C19.2 16.2 16.0 19.0 12 20.4 C8.0 19.0 4.8 16.2 4.8 12.4 V6.8 Z"/>'
   + '<path class="sf-dmgind-shape sf-dmgind-shape-armor" stroke="currentColor" stroke-width="2.6" d="M12 3.9 L20.1 12 L12 20.1 L3.9 12 Z"/>'
   + '<rect class="sf-dmgind-shape sf-dmgind-shape-hull" x="4.9" y="4.9" width="14.2" height="14.2" fill="currentColor"/>'
   + '<rect class="sf-dmgind-shape sf-dmgind-shape-nearmiss" x="4" y="10.8" width="16" height="2.4" rx="1.2" fill="currentColor"/>'
-  + '<circle class="sf-dmgind-ring" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="1.5"/></svg>';
+  + '<path class="sf-dmgind-ring" stroke="currentColor" stroke-width="1.8" d="M2.5 7.5 V2.5 H7.5 M16.5 2.5 H21.5 V7.5 M21.5 16.5 V21.5 H16.5 M7.5 21.5 H2.5 V16.5"/></svg>';
 
 function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;

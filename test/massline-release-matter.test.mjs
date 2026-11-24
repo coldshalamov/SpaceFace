@@ -11,21 +11,20 @@ function plan(b,extra={}){return resolveMasslineReleaseArcPlan(createMasslineRel
   active:true,releaseTarget:{kind:'entity',targetId:b.id},liveTarget:b,radiusPadding:4,
   predictor:{valid:true,onSolution:true,errorRad:0,tolRad:.1,timeToSolution:.1},...extra});}
 
-test('receiver uses open unequal shoulders at the actual target with transported current, no tiled ring',()=>{
+test('receiver uses twin straight flanking ticks on active aim and stays hidden while held (no rings around things, owner 2026-11-23)',()=>{
   const scene=new THREE.Scene(),b=body(),o=new MasslineReleaseMatter(scene);
   try{
     o.receiver(plan(b),b,3);o.receiver(plan(b),b,3.3);
-    assert.equal(o.mesh.count,6);const path=o.batch.attributes[1],shape=o.batch.attributes[2];
-    let totalAngle=0;
-    for(let i=0;i<6;i+=2){
-      assert.equal(path.getX(i),4);totalAngle+=path.getZ(i)-path.getY(i);
-      assert.ok(shape.getX(i)>=.8&&shape.getY(i)>.5,'cross-sections retain visible depth');
-      assert.ok(Math.abs(shape.getZ(i)-11)<.3,'shoulders remain at the real receiver edge');
+    assert.equal(o.mesh.count,2,'two straight flanking ticks, never circular bands');
+    const path=o.batch.attributes[1],shape=o.batch.attributes[2];
+    for(let i=0;i<2;i++){
+      assert.equal(path.getX(i),2,'linear shoulder primitive, not circular arc');
+      assert.ok(shape.getX(i)>=.5&&shape.getY(i)>.3,'ticks retain visible depth');
     }
-    assert.ok(totalAngle<Math.PI,'negative space exceeds luminous rim coverage');
-    const before=snapshot(o);o.receiver(plan(b),b,3.7);assert.notDeepEqual(snapshot(o),before);
     b.pos.x+=20;b.rot+=.3;o.receiver(plan(b),b,3.7);
-    assert.equal(o.batch.attributes[0].getX(0),140);assert.ok(o.batch.attributes[0].getW(0)>.69);
+    assert.ok(Math.abs(o.batch.attributes[0].getX(0)-140)<16,'ticks follow target position');
+    o.receiver(resolveMasslineReleaseArcPlan(createMasslineReleaseArcPlan(),{active:true,held:true,liveTarget:b,radiusPadding:4}),b,3.75);
+    assert.equal(o.mesh.count,0,'held body draws no ring around itself');
     o.receiver({...plan(b),visible:false},b,3.8);assert.equal(o.mesh.count,0);
   }finally{o.dispose();}
 });

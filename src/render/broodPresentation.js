@@ -247,10 +247,26 @@ export function createBroodPresentation(scene, capacity = 400) {
   mesh.renderOrder = 2;
   scene.add(mesh);
 
-  // The attack language: spitter windup markers (rings), acid pools (dark discs), charger
-  // committed-pass lines, and the acid lobs in flight.
-  const ringGeo = new THREE.RingGeometry(0.82, 1.0, 28);
-  ringGeo.rotateX(-Math.PI / 2);
+  // The attack language: spitter windup markers (four inward corner ticks, not a circle —
+  // owner 2026-11-23), acid pools (dark discs), charger committed-pass lines, and acid lobs.
+  const tickVerts = [];
+  const tickIdx = [];
+  for (let i = 0; i < 4; i++) {
+    const a = i * (Math.PI / 2) + Math.PI / 4;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const nx = -sa * 0.08, nz = ca * 0.08;
+    const b = tickVerts.length / 3;
+    tickVerts.push(
+      ca * 0.62 + nx, 0, sa * 0.62 + nz,
+      ca * 0.62 - nx, 0, sa * 0.62 - nz,
+      ca * 1.0 + nx, 0, sa * 1.0 + nz,
+      ca * 1.0 - nx, 0, sa * 1.0 - nz,
+    );
+    tickIdx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  const ringGeo = new THREE.BufferGeometry();
+  ringGeo.setAttribute('position', new THREE.Float32BufferAttribute(tickVerts, 3));
+  ringGeo.setIndex(tickIdx);
   const ringMat = flatMarkerMaterial(0x6cff9a, 0.85);
   const rings = new THREE.InstancedMesh(ringGeo, ringMat, RING_CAP);
   rings.name = 'sf-swarm-brood-marks';

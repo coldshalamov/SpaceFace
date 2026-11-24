@@ -232,16 +232,24 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
   ctx.clearRect(0,0,canvas.width,canvas.height);blank=false;
   for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});
   if(mouth) {
-   ctx.save();ctx.beginPath();
-   for(let i=0;i<=24;i++) {
-    const angle=TAU*i/24;
-    _platePt.x=mouth.x+Math.cos(angle)*mouth.radius;_platePt.z=mouth.z+Math.sin(angle)*mouth.radius;
-    const pixel=worldToScreen(_platePt);
-    if(i===0)ctx.moveTo(pixel.x,pixel.y);else ctx.lineTo(pixel.x,pixel.y);
+   // Twin open intake caliper brackets instead of a closed circle around the boss mouth
+   // (no rings around things, owner 2026-11-23). Keeps the exact spatial throw target.
+   _platePt.x=mouth.x;_platePt.z=mouth.z;
+   const c=worldToScreen(_platePt);
+   _platePt.x=mouth.x+mouth.radius;_platePt.z=mouth.z;
+   const edge=worldToScreen(_platePt);
+   if(c&&edge) {
+    const rPx=Math.max(10,Math.hypot(edge.x-c.x,edge.y-c.y));
+    const arm=Math.max(6,rPx*0.42);
+    ctx.save();
+    ctx.strokeStyle='#9df1dd';ctx.lineWidth=2.2;
+    ctx.beginPath();
+    ctx.moveTo(c.x-rPx+arm,c.y-rPx*0.72);ctx.lineTo(c.x-rPx,c.y-rPx*0.72);ctx.lineTo(c.x-rPx,c.y+rPx*0.72);ctx.lineTo(c.x-rPx+arm,c.y+rPx*0.72);
+    ctx.moveTo(c.x+rPx-arm,c.y-rPx*0.72);ctx.lineTo(c.x+rPx,c.y-rPx*0.72);ctx.lineTo(c.x+rPx,c.y+rPx*0.72);ctx.lineTo(c.x+rPx-arm,c.y+rPx*0.72);
+    ctx.moveTo(c.x-5,c.y);ctx.lineTo(c.x+5,c.y);ctx.moveTo(c.x,c.y-5);ctx.lineTo(c.x,c.y+5);
+    ctx.stroke();
+    ctx.restore();
    }
-   ctx.closePath();ctx.fillStyle='rgba(157,241,221,0.15)';ctx.fill();
-   ctx.strokeStyle='#9df1dd';ctx.lineWidth=2;ctx.stroke();
-   ctx.restore();
   }
   for(let i=0;i<anchors.length;i++)drawPlateAnchor(anchors[i]);
   const hold=anchors.hold;

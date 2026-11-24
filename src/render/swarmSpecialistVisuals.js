@@ -107,10 +107,34 @@ function writeWake(wake, root, live, view, strength, emitter) {
   wake.mesh.material.opacity = .15 + .3 * strength;
   wake.mesh.visible = count > 0;
 }
+function buildAnchorTicksGeometry() {
+  // Four crisp radial anchor corner spokes at radius 1.0 instead of a closed RingGeometry
+  // (no rings around things, owner 2026-11-23).
+  const verts = [];
+  const indices = [];
+  const inner = 0.84, outer = 1.0, halfW = 0.022;
+  for (let i = 0; i < 4; i++) {
+    const a = i * (Math.PI / 2) + Math.PI / 4;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const nx = -sa * halfW, nz = ca * halfW;
+    const base = verts.length / 3;
+    verts.push(
+      ca * inner + nx, 0, sa * inner + nz,
+      ca * inner - nx, 0, sa * inner - nz,
+      ca * outer + nx, 0, sa * outer + nz,
+      ca * outer - nx, 0, sa * outer - nz,
+    );
+    indices.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geometry.setIndex(indices);
+  return geometry;
+}
 function buildRing(root) {
-  const geometry = new THREE.RingGeometry(.955, 1, 72); geometry.rotateX(Math.PI / 2);
+  const geometry = buildAnchorTicksGeometry();
   const ring = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0x71bea8,
-    side: THREE.DoubleSide, transparent: true, opacity: .25, depthWrite: false }));
+    side: THREE.DoubleSide, transparent: true, opacity: .35, depthWrite: false }));
   ring.name = 'SF_SWARM_ANCHOR_FIELD_EDGE'; ring.position.y = .28; ring.visible = false;
   ring.frustumCulled = false; root.add(ring); return ring;
 }

@@ -35,16 +35,14 @@ test('kit energy adds light: sparks are premultiplied (ONE, ONE_MINUS_SRC_ALPHA)
   sparks.dispose(); shells.dispose();
 });
 
-test('Shove casts a light front to the TRUE field edge with a frame-0 peak, sparks, kicked dust and one light', () => {
+test('Shove casts a ring-free front to the TRUE field edge with a frame-0 peak, sparks, kicked dust and one light (no rings around things, owner 2026-11-23)', () => {
   const h = host();
   const fx = new PowerFx(new THREE.Scene(), h);
   const s = state();
   fx.update(0, s);
   fx.onFieldDeployed({ fieldId: 'f1', kind: 'repulsor', center: { x: 50, z: -20 }, radius: 170 }, s);
   assert.equal(fx.stats.casts, 1);
-  assert.equal(fx.stats.shells, 2, 'a hot lip and a trailing shock');
-  const B = fx.shells.arrays[1];
-  assert.equal(B[1], 170, 'the front travels to the field radius, not a 48 WU stand-in');
+  assert.equal(fx.stats.shells, 0, 'no rings around things, owner 2026-11-23');
   assert.ok(fx.stats.particles > 120 && fx.stats.particles < 420, `particles within the per-cast budget (${fx.stats.particles})`);
   assert.equal(h.calls.light.length, 1, 'one HeroLight per cast');
   assert.ok(h.calls.light[0].peak >= 8, 'the cast spike is a real flash, not a glow');
@@ -71,18 +69,18 @@ test('a body in the field gets its contact burst exactly when the front reaches 
   fx.dispose();
 });
 
-test('arena machinery repulsors are not casts; every live repulsor keeps a truthful boundary line that retires', () => {
+test('arena machinery repulsors are not casts and draw no floor circles (no rings around things, owner 2026-11-23)', () => {
   const fx = new PowerFx(new THREE.Scene(), host());
   const s = state();
   fx.onFieldDeployed({ fieldId: 'arena', kind: 'repulsor', center: { x: 0, z: 0 }, radius: POWER_FIELD_MAX_RADIUS + 140, planted: true }, s);
   assert.equal(fx.stats.casts, 0);
   s.fields.active = [{ id: 'arena', kind: 'repulsor', center: { x: 0, z: 0 }, radius: 360 }];
   fx.update(0.016, s);
-  assert.equal(fx.shells.held.size, 1);
-  assert.equal(fx.shells.arrays[1][1], 360, 'the line sits at the true reach');
+  assert.equal(fx.shells.held.size, 0, 'no rings around things, owner 2026-11-23');
+  assert.ok(fx.stats.particles > 0, 'planted repulsor emits directional flow sparks instead of a ring');
   s.fields.active = [];
   s.simTime += 0.016; fx.update(0.016, s);
-  assert.equal(fx.shells.held.size, 0, 'removal releases the line');
+  assert.equal(fx.shells.held.size, 0);
   fx.dispose();
 });
 
@@ -96,15 +94,13 @@ test('Shove no longer draws cloth: the field presenter emits no ribbons for a re
   owner.dispose();
 });
 
-test('origin rebase moves live particles, fronts and echoes together', () => {
+test('origin rebase moves live particles and echoes together', () => {
   const fx = new PowerFx(new THREE.Scene(), host());
   const s = state();
   fx.onFieldDeployed({ fieldId: 'f3', kind: 'repulsor', center: { x: 10, z: 10 }, radius: 120 }, s);
   const x0 = fx.sparks.arrays[0][0];
-  const sx0 = fx.shells.arrays[0][0];
   fx.reproject(-500, 250);
   assert.equal(fx.sparks.arrays[0][0], x0 - 500);
-  assert.equal(fx.shells.arrays[0][0], sx0 - 500);
   assert.equal(fx.echoes.get('f3').x, 10 - 500);
   fx.dispose();
 });
@@ -121,14 +117,13 @@ test('reduced motion halves the matter and drops the refraction punch', () => {
   full.dispose(); calm.dispose();
 });
 
-test('Pull drains toward a point: a ring falls from the TRUE reach, rim motes carry an inward field term, and the end implodes', () => {
+test('Pull drains toward a point with inward spiral motes and no contracting rings (no rings around things, owner 2026-11-23)', () => {
   const h = host();
   const fx = new PowerFx(new THREE.Scene(), h);
   const s = state();
   fx.update(0, s);
   fx.onFieldDeployed({ fieldId: 'w1', kind: 'well', center: { x: 0, z: 0 }, radius: 190 }, s);
-  assert.equal(fx.shells.arrays[1][0], 190, 'the first ring starts at the field radius');
-  assert.equal(fx.shells.arrays[3][0], 1, 'and contracts (ease-in fall), it does not expand');
+  assert.equal(fx.stats.shells, 0, 'no rings around things, owner 2026-11-23');
   let inward = 0;
   const F = fx.sparks.arrays[5];
   for (let i = 0; i < fx.sparks.highWater; i++) if (F[i * 4 + 2] > 0) inward++;
@@ -200,7 +195,7 @@ test('Pin on a body: a bolt travels the real path, and a taut cable is redrawn f
   fx.dispose();
 });
 
-test('Plow: true wedge contours, an arc and a hot rim on every captured rock, a bang on launch', () => {
+test('Plow: straight flank rails, bow-to-rock crackling arcs, and no rings (no rings around things, owner 2026-11-23)', () => {
   const h = host();
   const fx = new PowerFx(new THREE.Scene(), h);
   const me = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10, rot: 0 };
@@ -209,11 +204,11 @@ test('Plow: true wedge contours, an arc and a hot rim on every captured rock, a 
   s.fields.active = [{ id: 'cone', kind: 'cone', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 }, radius: 260, halfAngleRad: 0.56 }];
   s.fields.plow = { held: [{ id: 5, f: 60, l: 10 }] };
   fx.update(0.016, s);
-  assert.ok(fx.shells.held.has('plow:c'), 'the wedge tip contour sits at the true reach');
-  assert.ok(fx.shells.held.has('plow:rim:5'), 'the captured rock wears a hot rim');
+  assert.equal(fx.shells.held.size, 0, 'no concentric arcs or per-rock rings, owner 2026-11-23');
+  assert.ok(fx.stats.particles > 10, 'flank rails and crackling bow-to-rock arcs emit sparks');
   s.fields.plow.held = []; s.fields.active = [];
   s.simTime += 0.016; fx.update(0.016, s);
-  assert.equal(fx.shells.held.size, 0, 'closing the Plow retires contours and rims');
+  assert.equal(fx.shells.held.size, 0);
   fx.plowLaunched({ count: 1, ids: [5], dir: { x: 1, z: 0 } }, s);
   assert.equal(h.calls.light.length, 1, 'the launch is a bang with light');
   fx.dispose();
@@ -248,5 +243,15 @@ test('split guns hit with their own grammar, not the autocannon look', () => {
   const before = fx.stats.particles;
   for (let i = 0; i < 6; i++) { s.simTime += 0.1; fx.update(0.1, s); }
   assert.ok(fx.stats.particles > before, 'the mortar pull ends in a pop');
+  // No rings around things (owner 2026-11-23): tells, level-up, node pick, pin, and thump emit zero ShockShell rings.
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10, rot: 0 };
+  const s2 = state({ entities: new Map([[1, player]]), entityList: [player] });
+  fx.telegraph({ entityId: 1, targetId: 1, phase: 'incoming_mass', durationTicks: 30 }, s2);
+  fx.levelUp({ entityId: 1 }, s2);
+  fx.nodeTaken({ entityId: 1, branch: 'gunner', kind: 'capstone' }, s2);
+  fx.pinLanding({ seedId: 1, pos: { x: 40, z: 0 } }, false);
+  fx.pinLanding({ seedId: 1, pos: { x: 40, z: 0 } }, true);
+  fx.gunImpact('thump', 20, 0, 1, 0, false, true);
+  assert.equal(fx.shells.highWater, 0, 'no rings around things, owner 2026-11-23');
   fx.dispose();
 });

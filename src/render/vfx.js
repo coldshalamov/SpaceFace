@@ -4532,31 +4532,29 @@ export const vfx = {
     };
   },
 
-  // A body the field does not catch still touches the face. The read is the
-  // ring growing and a small puff at the slip. Bloom and hue are not consulted:
-  // both sprites write opacity into the color buffer, and no event light is lit.
+  // A body the field does not catch still touches the face. No ring around the body
+  // (owner 2026-11-23): a compact cool glint + slip puff carry the read.
   _drawInertFieldPass(p) {
     const pos = (p && (p.position || p.pos)) || null;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
     const radius = Math.max(1.5, Math.min(24, Number(p.radius) || 4));
     const ink = '#c5ccd4';
-    const ring = this._spawnSprite(
-      SPR_RING, pos.x, 0.16, pos.z, 0.42, radius * 0.28, radius * 1.45, 0.86, 0.0, ink, 0, 0, 1, 0,
+    const glint = this._spawnSprite(
+      SPR_FLASH, pos.x, 0.16, pos.z, 0.24, radius * 0.24, radius * 0.85, 0.72, 0.0, ink, 0, 0, 2.2, 0,
     );
     const puff = this._spawnSprite(
       SPR_PUFF, pos.x, 0.08, pos.z, 0.32, radius * 0.18, radius * 0.62, 0.5, 0.0, ink, 0, 0, 1, 0,
     );
     this._lastInertFieldPass = {
-      shape: ring ? 'ring' : null,
+      shape: glint ? 'glint' : null,
       puff: !!puff,
       bloomIndependent: true,
       lights: 0,
-      opacity: ring ? ring.op0 : 0,
+      opacity: glint ? glint.op0 : 0,
     };
   },
 
-  // A burn or a coolant patch is a ring in that patch's colour. No particles, no light,
-  // and the ring does not outlive the field (the field itself never lasts past four seconds).
+  // A burn or coolant patch reads as a soft combustion/vapor patch in its hue (no ring).
   _drawThermalMark(p) {
     const pos = (p && (p.position || p.pos)) || null;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
@@ -4565,14 +4563,14 @@ export const vfx = {
     const ink = typeof p.color === 'string' && p.color
       ? p.color
       : (p.thermalKind === 'coolant' ? '#7ec8e8' : '#e85a20');
-    const ring = this._spawnSprite(
-      SPR_RING, pos.x, 0.16, pos.z, life, radius * 0.35, radius, 0.72, 0.0, ink, 0, 0, 1, 0,
+    const patch = this._spawnSprite(
+      SPR_PUFF, pos.x, 0.16, pos.z, life, radius * 0.35, radius, 0.58, 0.0, ink, 0, 0, 1, 0,
     );
     this._lastThermalMark = {
       color: ink,
       life,
       radius,
-      shape: ring ? 'ring' : null,
+      shape: patch ? 'patch' : null,
       lights: 0,
     };
   },
@@ -4850,20 +4848,16 @@ export const vfx = {
 
   _spawnPresentationSprite(p, pos, style, radius, admissionPriority) {
     const reduced = !!(p && p.flashReduced);
-    const kind = reduced ? SPR_RING : style.spriteKind;
-    const opacity = reduced ? Math.min(style.spriteOpacity, 0.42) : style.spriteOpacity;
+    // No rings around things (owner 2026-11-23): downgrade any SPR_RING/SPR_FRESNEL presentation
+    // request to a compact flash or puff so impacts, shields, and breaks never paint circles.
+    const rawKind = reduced ? SPR_PUFF : style.spriteKind;
+    const kind = (rawKind === SPR_RING || rawKind === SPR_FRESNEL) ? SPR_FLASH : rawKind;
+    const opacity = reduced ? Math.min(style.spriteOpacity, 0.38) : style.spriteOpacity;
     this._spawnSprite(
-      kind, pos.x, 0, pos.z, style.spriteLife,
-      radius * style.spriteSize0, radius * style.spriteSize1,
-      opacity, 0.0, style.color0, 0, 0, 1, null, admissionPriority,
+      kind, pos.x, 0, pos.z, Math.min(style.spriteLife, kind === SPR_FLASH ? 0.24 : style.spriteLife),
+      radius * style.spriteSize0, radius * style.spriteSize1 * (kind === SPR_FLASH ? 0.75 : 1),
+      opacity, 0.0, style.color0, 0, 0, kind === SPR_FLASH ? 1.8 : 1, null, admissionPriority,
     );
-    if (!reduced && style.echoRing) {
-      this._spawnSprite(
-        SPR_RING, pos.x, 0, pos.z, style.spriteLife * 1.25,
-        radius * style.spriteSize0 * 0.7, radius * style.spriteSize1 * 1.35,
-        opacity * 0.55, 0.0, style.color1, 0, 0, 1, null, admissionPriority,
-      );
-    }
   },
 
   _spawnPresentationParticles(p, pos, style, requested, angle, radius, admissionPriority) {
@@ -9820,8 +9814,8 @@ export const vfx = {
     if (!player || !player.pos) return;
     const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
     if (!this._isReduced()) this._spawnTravelVectorWake(player.pos, dx, dz, 8, '#d7e6ff', '#39d0ff', 22, 0.48);
-    this._spawnSprite(SPR_RING, player.pos.x - dx * 4, 0, player.pos.z - dz * 4,
-      0.62, 12, 5, this._isReduced() ? 0.24 : 0.5, 0, '#39d0ff', dx * 3, dz * 3);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x - dx * 4, 0, player.pos.z - dz * 4,
+      0.52, 10, 4, this._isReduced() ? 0.24 : 0.45, 0, '#39d0ff', dx * 3, dz * 3, 0.36, Math.atan2(dz, dx));
   },
 
   _onCruiseEngaged(p) {
@@ -9831,8 +9825,8 @@ export const vfx = {
     if (!player || !player.pos) return;
     const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
     if (!this._isReduced()) this._spawnTravelVectorWake(player.pos, dx, dz, 20, '#d7e6ff', '#39d0ff', 62, 0.72);
-    this._spawnSprite(SPR_RING, player.pos.x + dx * 5, 0, player.pos.z + dz * 5,
-      0.72, 4, 22, this._isReduced() ? 0.28 : 0.62, 0, '#39d0ff', dx * 12, dz * 12);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x + dx * 5, 0, player.pos.z + dz * 5,
+      0.62, 4, 18, this._isReduced() ? 0.28 : 0.56, 0, '#39d0ff', dx * 12, dz * 12, 0.32, Math.atan2(dz, dx));
   },
 
   _onCruiseDropped(p) {
@@ -9846,8 +9840,8 @@ export const vfx = {
     if (!quiet && !this._isReduced()) {
       this._spawnTravelVectorWake(player.pos, -dx, -dz, 10, '#ffb35c', '#ff5c5c', 30, 0.48);
     }
-    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z,
-      quiet ? 0.35 : 0.55, quiet ? 8 : 18, quiet ? 12 : 5, this._isReduced() ? 0.24 : (quiet ? 0.34 : 0.62), 0, primary, 0, 0);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x, 0, player.pos.z,
+      quiet ? 0.35 : 0.55, quiet ? 8 : 16, quiet ? 11 : 4, this._isReduced() ? 0.24 : (quiet ? 0.34 : 0.56), 0, primary, 0, 0, 0.42, Math.atan2(dz, dx));
   },
 
   _onChargeDetonated(p) {
@@ -9910,8 +9904,9 @@ export const vfx = {
     const dirX = Number(p.dirX) || 0;
     const dirZ = Number(p.dirZ) || 0;
     const size = Math.max(2.4, (Number(body.radius) || 6) * 2.1);
-    this._spawnSprite(SPR_RING, pos.x, 0.12, pos.z,
-      reduced ? 0.16 : 0.26, size * 0.35, size, tumble ? 0.4 : 0.26, 0, '#b8d8ff', dirX * 10, dirZ * 10, 1, null, 0.72);
+    const angle = (dirX || dirZ) ? Math.atan2(dirZ, dirX) : 0;
+    this._spawnSprite(SPR_FLASH, pos.x, 0.12, pos.z,
+      reduced ? 0.14 : 0.20, size * 0.28, size * 0.7, tumble ? 0.42 : 0.28, 0, '#b8d8ff', dirX * 12, dirZ * 12, 2.4, angle, 0.72);
     if (!reduced && (dirX || dirZ)) {
       this._spawnSprite(SPR_PUFF, pos.x + dirX * (Number(body.radius) || 6) * 0.5, 0.1,
         pos.z + dirZ * (Number(body.radius) || 6) * 0.5,
@@ -10864,9 +10859,10 @@ export const vfx = {
     const bz = (socket ? socket.z : entity.pos.z - sf * (entity.radius + 2))
       + exhaustZ * BOOST_BURST_NOZZLE_CLEARANCE;
     const reduced = this._isReduced();
-    this._spawnSprite(SPR_RING, bx, 0, bz, 0.35, 2, 16,
-      reduced ? 0.3 : 0.55, 0.0, this._engineColor(entity),
-      exhaustX * 4, exhaustZ * 4);
+    // Aft-directed ignition flare along the exhaust axis instead of a boost ring (owner 2026-11-23).
+    this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 2.4, 12,
+      reduced ? 0.28 : 0.55, 0.0, this._engineColor(entity),
+      exhaustX * 12, exhaustZ * 12, 2.6, Math.atan2(exhaustZ, exhaustX));
     return presented;
   },
 
@@ -10916,11 +10912,9 @@ export const vfx = {
     const reduced = this._isReduced();
     const burst = this._burst || 1;
     const scale = Math.max(0.6, Math.min(2.0, r / 8)) * (reduced ? 0.7 : 1);
-    // Core detonation: collapsing white punch, expanding ring, hot debris fan, light.
+    // Core detonation: collapsing white punch, hot debris fan, light (no shock ring).
     this._spawnSprite(SPR_FLASH, p.x, 0.3, p.z, 0.14, 3.2 * scale, 0.9 * scale,
       reduced ? 0.75 : 1.0, 0, '#ffffff', 0, 0, 1.4, 0);
-    this._spawnSprite(SPR_RING, p.x, 0.28, p.z, 0.42, r * 0.1 * scale, r * 0.85 * scale,
-      reduced ? 0.3 : 0.55, 0, '#ffd9a8', 0, 0);
     this._c0.set('#ffe9c0'); this._c1.set('#4a1c08');
     const count = Math.max(6, Math.round(14 * burst * (reduced ? 0.5 : 1)));
     for (let k = 0; k < count; k++) {

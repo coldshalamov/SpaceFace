@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCapitalBossFight } from '../src/combat/capitalBossScore.js';
 import { requireCapitalBossEncounter } from '../src/data/encounters/capital-boss.js';
-import { capitalBossReadouts } from '../src/presentation/capitalBossPresentation.js';
+import { capitalBossReadouts, createCapitalBossOverlay } from '../src/presentation/capitalBossPresentation.js';
 
 test('plate readouts reuse live cells and trim torn or absent plates', () => {
   const fight = createCapitalBossFight({
@@ -81,4 +81,29 @@ test('a broken plate ledger falls back to the hull readout — a corrupted fight
   rd = readout();
   assert.equal(rd.partsLive, true);
   assert.equal(rd.partsAttached, authored.length);
+});
+
+test('mouthAperture draws open caliper brackets, never a closed circle (no rings around things, owner 2026-11-23)', () => {
+  const ops = [];
+  const ctx = {
+    clearRect() {}, save() {}, restore() {},
+    beginPath() { ops.push('begin'); },
+    moveTo() { ops.push('move'); },
+    lineTo() { ops.push('line'); },
+    closePath() { ops.push('close'); },
+    fill() { ops.push('fill'); },
+    stroke() { ops.push('stroke'); },
+    fillText() {},
+  };
+  const canvas = { width: 800, height: 600, getContext: () => ctx };
+  const bus = { on: () => () => {} };
+  const overlay = createCapitalBossOverlay({
+    canvas, bus, worldToScreen: (p) => ({ x: 400 + p.x, y: 300 + p.z }), clockForFight: () => 0,
+  });
+  overlay.mouthAperture({ x: 10, z: 20, radius: 18 });
+  overlay.draw();
+  assert.equal(ops.includes('close'), false, 'no closed circle around Iron Maw mouth (no rings around things, owner 2026-11-23)');
+  assert.equal(ops.includes('fill'), false, 'no filled disc around Iron Maw mouth');
+  assert.ok(ops.includes('stroke') && ops.filter((o) => o === 'move').length >= 4, 'open twin jaw calipers + center crosshair ticks drawn');
+  overlay.destroy();
 });

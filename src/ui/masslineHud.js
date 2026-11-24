@@ -695,15 +695,15 @@ export const MASSLINE_HUD_CSS = `
   color:var(--ml2-p,var(--dp-lamp-hot, #ffd98c)); }
 #sf-ml2 .ml2-preview-mark i { position:absolute; inset:0; border:2px solid currentColor;
   transform:rotate(45deg); box-shadow:0 0 9px currentColor; }
-#sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:50%; transform:none; }
+#sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:0; transform:none; border-style:double; }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable { color:var(--dp-ink-dim, #a9a696); }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable i { border-style:dashed; box-shadow:none; }
-/* Phase 4.2 — the latch state is the shape. CAN is an open diamond, range is a broken ring,
-   a denial is a diamond with a cross. The word itself is not painted beside the body. */
+/* Phase 4.2 — the latch state is the shape (no circles — owner 2026-11-23). CAN is an open
+   diamond, range is an open half-diamond chevron, a denial is a diamond with a cross. */
 #sf-ml2 .ml2-preview-mark.ml2-shape-can i { border-style:solid; border-radius:0; transform:rotate(45deg);
   box-shadow:0 0 9px currentColor; background:none; }
-#sf-ml2 .ml2-preview-mark.ml2-shape-range i { border-style:solid; border-radius:50%; transform:none;
-  border-right-color:transparent; box-shadow:none; background:none; }
+#sf-ml2 .ml2-preview-mark.ml2-shape-range i { border-style:dashed; border-radius:0; transform:rotate(45deg);
+  border-right-color:transparent; border-bottom-color:transparent; box-shadow:none; background:none; }
 #sf-ml2 .ml2-preview-mark.ml2-shape-denied i { border-style:solid; border-radius:0; transform:rotate(45deg);
   box-shadow:none;
   background:linear-gradient(currentColor, currentColor) center/2px 70% no-repeat,
@@ -790,13 +790,11 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-snag-mark i { position:absolute; inset:0; border:2px solid currentColor;
   border-right-style:dashed; box-shadow:0 0 8px currentColor; }
 #sf-ml2 svg.ml2-ring { position:absolute; left:0; top:0; overflow:visible; }
-#sf-ml2 .ml2-ring circle { fill:rgba(242,185,80,0.05); stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
-  stroke-dasharray:10 7; opacity:0.55; }
-/* VERB-29: the orbit-assist ring centers on the tether anchor — cool informational blue, finely
-   dashed, so it never reads as the amber cloak ring or a second rope. */
+#sf-ml2 .ml2-ring path, #sf-ml2 .ml2-ring circle { fill:none; stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
+  opacity:0.62; }
+/* VERB-29: the orbit-assist ticks center on the tether anchor (corner brackets, no circle). */
 #sf-ml2 svg.ml2-orbit-ring { position:absolute; left:0; top:0; overflow:visible; }
-#sf-ml2 .ml2-orbit-ring circle { fill:none; stroke:rgba(140,190,235,0.45); stroke-width:1.2;
-  stroke-dasharray:6 10; }
+#sf-ml2 .ml2-orbit-ring path, #sf-ml2 .ml2-orbit-ring circle { fill:none; stroke:rgba(140,190,235,0.52); stroke-width:1.2; }
 #sf-ml2 .ml2-meters { position:absolute; left:50%; bottom:118px; transform:translateX(-50%);
   display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center;
   gap:6px 8px; align-items:center; max-width:min(560px, 60vw); }
@@ -2379,9 +2377,15 @@ export const masslineHud = {
       return;
     }
     const r = Math.max(6, Math.abs(edge.x - center.x));
+    const k = Math.max(6, Math.min(18, r * 0.28));
     setStyle(dom.ringSvg, 'display', 'block');
     setStyle(dom.ringSvg, 'transform', `translate3d(${center.x}px, ${center.y}px, 0)`);
-    setAttr(dom.ringCircle, 'r', String(r));
+    // Four corner ticks at ±r instead of a closed circle around the player (owner 2026-11-23).
+    setAttr(dom.ringCircle, 'd',
+      `M${(-r).toFixed(1)} ${(-r + k).toFixed(1)}V${(-r).toFixed(1)}H${(-r + k).toFixed(1)}`
+      + `M${(r - k).toFixed(1)} ${(-r).toFixed(1)}H${r.toFixed(1)}V${(-r + k).toFixed(1)}`
+      + `M${r.toFixed(1)} ${(r - k).toFixed(1)}V${r.toFixed(1)}H${(r - k).toFixed(1)}`
+      + `M${(-r + k).toFixed(1)} ${r.toFixed(1)}H${(-r).toFixed(1)}V${(r - k).toFixed(1)}`);
   },
 
   // FB-007 — the drawn stroke on the glass: the model decides what is true (resolveDrawFlightInk),
@@ -2446,9 +2450,15 @@ export const masslineHud = {
       return;
     }
     const r = Math.max(6, Math.abs(edge.x - center.x));
+    const k = Math.max(6, Math.min(18, r * 0.28));
     setStyle(dom.orbitSvg, 'display', 'block');
     setStyle(dom.orbitSvg, 'transform', `translate3d(${center.x}px, ${center.y}px, 0)`);
-    setAttr(dom.orbitCircle, 'r', String(r));
+    // Four corner ticks at ±r instead of a closed orbit circle (owner 2026-11-23).
+    setAttr(dom.orbitCircle, 'd',
+      `M${(-r).toFixed(1)} ${(-r + k).toFixed(1)}V${(-r).toFixed(1)}H${(-r + k).toFixed(1)}`
+      + `M${(r - k).toFixed(1)} ${(-r).toFixed(1)}H${r.toFixed(1)}V${(-r + k).toFixed(1)}`
+      + `M${r.toFixed(1)} ${(r - k).toFixed(1)}V${r.toFixed(1)}H${(r - k).toFixed(1)}`
+      + `M${(-r + k).toFixed(1)} ${r.toFixed(1)}H${(-r).toFixed(1)}V${(r - k).toFixed(1)}`);
   },
 
   _updateMeters(dom, ml2, state) {
@@ -2723,10 +2733,8 @@ export const masslineHud = {
     ringSvg.setAttribute('width', '0');
     ringSvg.setAttribute('height', '0');
     ringSvg.style.display = 'none';
-    const ringCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ringCircle.setAttribute('cx', '0');
-    ringCircle.setAttribute('cy', '0');
-    ringCircle.setAttribute('r', '60');
+    const ringCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    ringCircle.setAttribute('d', '');
     ringSvg.appendChild(ringCircle);
     root.appendChild(ringSvg);
 
@@ -2736,10 +2744,8 @@ export const masslineHud = {
     orbitSvg.setAttribute('height', '0');
     orbitSvg.setAttribute('aria-hidden', 'true');
     orbitSvg.style.display = 'none';
-    const orbitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    orbitCircle.setAttribute('cx', '0');
-    orbitCircle.setAttribute('cy', '0');
-    orbitCircle.setAttribute('r', '60');
+    const orbitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    orbitCircle.setAttribute('d', '');
     orbitSvg.appendChild(orbitCircle);
     root.appendChild(orbitSvg);
 

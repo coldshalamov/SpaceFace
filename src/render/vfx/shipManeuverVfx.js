@@ -18,9 +18,10 @@ export function presentShipBoost(owner, payload, on, helpers) {
     const bz = rawBz + exhaustZ * helpers.boostNozzleClearance;
     const svx = (entity.vel && entity.vel.x) || 0;
     const svz = (entity.vel && entity.vel.z) || 0;
+    // Aft-directed exhaust flare instead of an expanding boost ring (no rings around things, owner 2026-11-23).
+    const exhaustAngle = Math.atan2(exhaustZ, exhaustX);
     helpers.spawnSprite(owner, helpers.sprites.flash, bx, 0, bz, 0.14, 3.5, 7.5, 0.78, 0.0, '#ffffff', 0, 0);
-    helpers.spawnSprite(owner, helpers.sprites.flash, bx, 0, bz, 0.22, 4.5, 10, 0.46, 0.0, color, 0, 0);
-    helpers.spawnSprite(owner, helpers.sprites.ring, bx, 0, bz, 0.18, 2, 8, 0.45, 0.0, color, exhaustX * 5, exhaustZ * 5);
+    helpers.spawnSprite(owner, helpers.sprites.flash, bx, 0, bz, 0.22, 4.5, 10, 0.46, 0.0, color, exhaustX * 5, exhaustZ * 5, 2.4, exhaustAngle);
     helpers.eventLight(owner, { x: bx, z: bz }, 'thrust', { severity: 'boost', color });
     owner._c0.set('#ffffff'); owner._c1.set(color);
     const baseA = socket ? socket.angle : Math.atan2(-sf, -cf);
@@ -52,10 +53,10 @@ export function presentShipDash(owner, payload, helpers) {
   const HOT = '#f0e8ff', VIOLET = '#c98cff', PLASMA = '#9b4dff', DEEP = '#5a1fb8';
   const svx = (entity.vel && entity.vel.x) || 0;
   const svz = (entity.vel && entity.vel.z) || 0;
-  // Nozzle ignition — hot flash + expanding energy ring at thrusters (not the nose)
+  // Nozzle ignition — hot flash + stretched violet exhaust kick (no rings — owner 2026-11-23).
+  const exhaustAngle = Math.atan2(exhaustZ, exhaustX);
   helpers.spawnSprite(owner, helpers.sprites.flash, bx, 0, bz, 0.18, 5.5, 11, 0.95, 0.0, HOT, 0, 0);
-  helpers.spawnSprite(owner, helpers.sprites.flash, bx, 0, bz, 0.28, 4.0, 12, 0.7, 0.0, VIOLET, 0, 0);
-  helpers.spawnSprite(owner, helpers.sprites.ring, bx, 0, bz, 0.26, 2.5, 10, 0.75, 0.0, VIOLET, exhaustX * 7, exhaustZ * 7);
+  helpers.spawnSprite(owner, helpers.sprites.flash, bx, 0, bz, 0.28, 4.0, 12, 0.7, 0.0, VIOLET, exhaustX * 7, exhaustZ * 7, 2.6, exhaustAngle);
   helpers.eventLight(owner, { x: bx, z: bz }, 'thrust', { severity: 'afterburner', color: VIOLET });
   // Afterburner streak: fast rear particles (hot core → purple exhaust)
   owner._c0.set(HOT); owner._c1.set(DEEP);

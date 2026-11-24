@@ -154,10 +154,9 @@
   border-width: 0 0 2px 2px;
 }
 
-/* Stage 1: Acquiring (slow search pulse, the lamp at idle heat) */
+/* Stage 1: Acquiring (slow search pulse, the lamp at idle heat; no spinning circle) */
 .sf-lockring[data-stage="acquiring"] .sf-lockring__track {
-  stroke-dasharray: 6 6;
-  animation: sf-lockring-spin 3s linear infinite;
+  stroke-dasharray: 4 4;
 }
 
 .sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {

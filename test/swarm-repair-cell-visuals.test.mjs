@@ -77,8 +77,7 @@ test('a swarm repair cell builds the patch-kit canister, not the fallback octahe
   assert.equal(cell.userData.interactionKind, 'pickup');
   assert.ok(cell.userData.gem, 'userData.gem still names the pose target');
   assert.equal(cell.userData.gem.scale.x, 5, 'scale = radius — hit and magnet radii unchanged');
-  assert.ok(cell.userData.pickupHalo && cell.userData.pickupHalo.isMesh, 'the takeable ring stays');
-  assert.equal(cell.userData.pickupHalo.userData.baseScale, 5);
+  assert.equal(cell.userData.pickupHalo, null, 'no rings around things, owner 2026-11-23');
   // A composed body, not a recolored primitive — and no octahedron anywhere in it.
   const parts = meshes(cell.userData.gem);
   assert.ok(parts.length >= 6, `the patch kit is a composed body (got ${parts.length} parts)`);
@@ -111,9 +110,8 @@ test('the cell reads as medicine: crown cross in mint, weld seam hot, the ring m
   const weld = parts.find((m) => m.name === 'SwarmRepairWeldSeam');
   assert.ok(weld, 'the lid-seat weld seam exists');
   assert.ok(weld.material.emissiveIntensity > 2, 'the weld seam reads white-hot');
-  // The mint ring: same takeable halo, keyed to the cell's own color.
-  const halo = cell.userData.pickupHalo;
-  assert.equal(halo.material.color.getHexString(), REPAIR_MINT.slice(1), 'the ring is mint');
+  // No orbiting ring around repair cells (no rings around things, owner 2026-11-23).
+  assert.equal(cell.userData.pickupHalo, null, 'no rings around things, owner 2026-11-23');
   // Upright stance: the body stands on Y — the only pickup silhouette that does.
   const box = new THREE.Box3().setFromObject(cell.userData.gem);
   const size = new THREE.Vector3(); box.getSize(size);
@@ -261,7 +259,7 @@ test('other pickups keep their own look — the new dispatch swallowed nothing',
   assert.equal(chip.userData.pickupRole, 'chip');
   const crate = factory.build({ id: 'cust', type: 'pickup', radius: 2.2, pos: { x: 0, z: 0 }, data: { freightCustodyPod: true } });
   assert.equal(crate.userData.visualLanguage, 'sealed-cargo-canister');
-  assert.ok(crate.userData.pickupHalo, 'custody canister keeps the collectible ring');
+  assert.equal(crate.userData.pickupHalo, null, 'no rings around things, owner 2026-11-23');
   const bottle = factory.build({ id: 'vol', type: 'pickup', radius: 2.2, pos: { x: 0, z: 0 }, data: { volatileClass: 'explosive' } });
   assert.equal(bottle.userData.visualLanguage, 'volatile-pressure-bottle');
   // A repair mark on a non-pickup body is not the pickup recipe — payloads stay canisters.

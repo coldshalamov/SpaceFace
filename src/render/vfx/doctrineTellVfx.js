@@ -234,23 +234,30 @@ export function createDoctrineTellMethods({
 
     _spawnDoctrineTellEnemyMark(slot, style, x, z, r, isStart) {
       const reduced = slot.reduced;
-      const life = reduced ? 0.38 : (isStart ? 0.48 : 0.28);
-      const s0 = Math.max(4, r * 0.9);
-      const s1 = Math.max(10, r * (slot.kind === DOCTRINE_TELL_KIND.CHARGE ? 3.2 : 2.6));
-      // Rings carry the tell under reduced flash; full mode adds a core flash on start only.
-      this._spawnSprite(SPR_RING, x, 0, z, life, s0, s1, style.ringOp, 0.0, style.color0, 0, 0);
-      if (isStart && !reduced) {
-        this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, s0 * 0.55, s1 * 0.75, style.coreOp, 0.0, style.color1, 0, 0);
-      } else if (isStart && reduced) {
-        this._spawnSprite(SPR_RING, x, 0, z, 0.42, s0 * 0.7, s1 * 0.95, style.coreOp * 0.9, 0.0, style.color1, 0, 0);
-      }
-      if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
-        // Engine-flare twin rings trailing the intercept read.
-        this._spawnSprite(SPR_RING, x, 0, z, life * 1.15, s0 * 0.55, s1 * 1.35, style.ringOp * 0.7, 0.0, style.color1, 0, 0);
-      } else if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
-        this._spawnSprite(SPR_FRESNEL, x, 0, z, life * 1.1, s0 * 0.8, s1 * 1.1, style.ringOp * 0.85, 0.0, style.color0, 0, 0);
-      } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
-        this._spawnSprite(SPR_FLASH, x, 0, z, reduced ? 0.28 : 0.22, s0 * 0.4, s0 * 1.1, style.coreOp, 0.0, style.color1, 0, 0);
+      const life = reduced ? 0.34 : (isStart ? 0.32 : 0.22);
+      const s0 = Math.max(3.5, r * 0.7);
+      const s1 = Math.max(8, r * (slot.kind === DOCTRINE_TELL_KIND.CHARGE ? 2.2 : 1.7));
+      // No rings around enemies (owner 2026-11-23): core glint flash + sizzling sparks carry the tell.
+      this._spawnSprite(
+        SPR_FLASH, x, 0.2, z, life, s0 * 0.6, s1 * 0.85,
+        reduced ? style.ringOp * 0.65 : (isStart ? style.coreOp : style.ringOp * 0.8),
+        0.0, isStart ? style.color1 : style.color0, 0, 0,
+        slot.kind === DOCTRINE_TELL_KIND.FLYBY ? 2.2 : 1.35, null,
+      );
+      if (!reduced) {
+        this._c0.set(style.color1 || style.color0);
+        this._c1.set(style.color0);
+        const sparks = slot.kind === DOCTRINE_TELL_KIND.DETONATOR ? 5 : 3;
+        for (let i = 0; i < sparks; i++) {
+          const a = random() * Math.PI * 2;
+          const sp = 14 + random() * 24;
+          this._spawnParticle(
+            x + Math.cos(a) * r * 0.4, z + Math.sin(a) * r * 0.4,
+            Math.cos(a) * sp, Math.sin(a) * sp,
+            0.22 + random() * 0.14, 1.7, 0.2,
+            this._c0, this._c1, 2.8, 0, 0,
+          );
+        }
       }
       if (style.useLight && isStart) {
         this._eventLight({ x, z }, 'tell', {
@@ -306,25 +313,26 @@ export function createDoctrineTellMethods({
         );
       }
 
-      // Midpoint accent so the link reads at a glance even when ships are small on screen.
+      // Midpoint accent so the link reads at a glance even when ships are small on screen (no rings).
       const mx = ax + dx * 0.5;
       const mz = az + dz * 0.5;
-      const midLife = reduced ? 0.36 : 0.24;
+      const midLife = reduced ? 0.32 : 0.22;
+      const linkAngle = Math.atan2(uz, ux);
       if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
-        this._spawnSprite(SPR_RING, mx, 0, mz, midLife, 3.5, 9.0, style.linkOp, 0.0, style.color0, 0, 0);
+        this._spawnSprite(SPR_FLASH, mx, 0, mz, midLife, 2.8, 7.0, style.linkOp, 0.0, style.color0, 0, 0, 2.4, linkAngle);
       } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
-        this._spawnSprite(SPR_FLASH, mx, 0, mz, midLife * 0.85, 2.5, 6.5, style.linkOp, 0.0, style.color1, 0, 0);
+        this._spawnSprite(SPR_FLASH, mx, 0, mz, midLife * 0.85, 2.5, 6.5, style.linkOp, 0.0, style.color1, 0, 0, 2.0, linkAngle);
       } else if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
         this._spawnSprite(SPR_PUFF, mx, 0, mz, midLife, 3.0, 8.0, style.linkOp * 0.85, 0.0, style.color1, ux * 6, uz * 6);
       }
 
-      // Target end tick — confirms who is under threat without HUD text.
+      // Target end tick — confirms who is under threat without HUD text or rings.
       this._spawnSprite(
-        reduced ? SPR_RING : SPR_FLASH,
+        SPR_FLASH,
         bx, 0, bz,
-        reduced ? 0.32 : 0.16,
-        3.0, reduced ? 8.0 : 6.0,
-        style.linkOp * 0.9, 0.0, style.color0, 0, 0,
+        reduced ? 0.24 : 0.16,
+        2.6, reduced ? 5.6 : 6.0,
+        style.linkOp * (reduced ? 0.65 : 0.9), 0.0, style.color0, 0, 0, 1.8, linkAngle,
       );
     },
 
@@ -368,13 +376,14 @@ export function createDoctrineTellMethods({
 
     _spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart) {
       const reduced = slot.reduced;
-      const life = reduced ? 0.42 : 0.32;
-      // Directional chevron of rings/particles pointing at the real bearing (not a random edge).
-      this._spawnSprite(SPR_RING, cx, 0, cz, life, 5.0, 14.0, style.ringOp, 0.0, style.color0, 0, 0);
+      const life = reduced ? 0.36 : 0.28;
+      const bear = Math.atan2(uz, ux);
+      // Directional bearing streaks pointing at the real enemy bearing (no rings — owner 2026-11-23).
+      this._spawnSprite(SPR_FLASH, cx, 0, cz, life, 3.6, 10.5, style.ringOp * (reduced ? 0.7 : 0.9), 0.0, style.color0, ux * 6, uz * 6, 2.4, bear);
       if (isStart) {
         this._spawnSprite(
-          reduced ? SPR_RING : SPR_FLASH,
-          cx, 0, cz, life * 0.9, 3.5, 9.0, style.coreOp, 0.0, style.color1, 0, 0,
+          SPR_FLASH,
+          cx, 0, cz, life * 0.8, 3.0, 8.0, style.coreOp * (reduced ? 0.65 : 1), 0.0, style.color1, ux * 8, uz * 8, 2.0, bear,
         );
       }
       this._c0.set(style.color0);
@@ -392,12 +401,7 @@ export function createDoctrineTellMethods({
           this._c0, this._c1, 2.4, 0, 0,
         );
       }
-      // Kind glyph so FLYBY / TETHER / CHARGE remain distinct off-screen.
-      if (slot.kind === DOCTRINE_TELL_KIND.TETHER) {
-        this._spawnSprite(SPR_FRESNEL, cx, 0, cz, life * 1.1, 4.0, 11.0, style.ringOp * 0.8, 0.0, style.color0, 0, 0);
-      } else if (slot.kind === DOCTRINE_TELL_KIND.CHARGE) {
-        this._spawnSprite(SPR_FLASH, cx, 0, cz, life * 0.85, 3.0, 7.5, style.coreOp, 0.0, style.color1, 0, 0);
-      } else if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
+      if (slot.kind === DOCTRINE_TELL_KIND.FLYBY) {
         this._spawnSprite(SPR_PUFF, cx + ux * 8, 0, cz + uz * 8, life, 4.0, 10.0, style.linkOp, 0.0, style.color1, ux * 12, uz * 12);
       }
       if (style.useLight && isStart) {

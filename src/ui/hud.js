@@ -1611,11 +1611,9 @@ const TELL_OBSTACLE_OWNERS = new Set([
   'vitals', 'hud-rail', 'orrery', 'radar', 'caption', 'flight-caption',
   'receipt', 'alert', 'swarm-callout', 'touch-control', 'responsive-overlay',
 ]);
-const LEAD_PIP_RADIUS = 8.5;
-const LEAD_PIP_CIRCUMFERENCE = Math.PI * 2 * LEAD_PIP_RADIUS;
-const LEAD_PIP_ARC_FRACTION = 0.72;
-const LEAD_PIP_ARC_LENGTH = LEAD_PIP_CIRCUMFERENCE * LEAD_PIP_ARC_FRACTION;
-const LEAD_PIP_GAP_CENTER_OFFSET = (LEAD_PIP_ARC_FRACTION + (1 - LEAD_PIP_ARC_FRACTION) * 0.5) * (Math.PI * 2);
+// The lead pip's open chevron (.sf-leadpip__arc) opens to the left of its 22-unit box, at 180°.
+// The pose pass rotates that open side to face the aim reticle, as the old arc's gap did.
+const LEAD_PIP_GAP_CENTER_OFFSET = Math.PI;
 
 export function doctrineTellKind(payload) {
   if (!payload) return null;
@@ -2980,17 +2978,16 @@ export function createHud(ctx, alerts) {
   // states ride warm bone → paper readings → the Hand amber (hudStyles owns the state tones).
   const lockRing = document.createElement('div');
   lockRing.className = 'sf-lockring';
-  const LOCK_R = 30, LOCK_C = Math.PI * 2 * LOCK_R;
-  // Brackets quote the kit reticle-lock arms, rescaled from its 56 grid to this 72 grid
-  // (inset 10→13, arm 8→11): four L-strokes on one path family, never border divs.
+  // Linear lock progress bar inside the converging corner brackets (no concentric circles —
+  // owner 2026-11-23). LOCK_C is the horizontal bar span (x=15..57) so stroke-dashoffset works identically.
+  const LOCK_C = 42;
   lockRing.innerHTML =
     `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
-    `<circle cx="36" cy="36" r="34" class="sf-lockring__scale"/>` +
-    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__track"/>` +
-    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
-    `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
-    `transform="rotate(-90 36 36)"/>` +
-    `<circle cx="36" cy="36" r="5" class="sf-lockring__pip"/>` +
+    `<line x1="15" y1="64" x2="57" y2="64" class="sf-lockring__scale"/>` +
+    `<line x1="15" y1="64" x2="57" y2="64" class="sf-lockring__track"/>` +
+    `<line x1="15" y1="64" x2="57" y2="64" class="sf-lockring__fill" ` +
+    `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}"/>` +
+    `<polygon points="36,31 41,36 36,41 31,36" class="sf-lockring__pip"/>` +
     `</svg>` +
     `<div class="sf-lockring__brackets" aria-hidden="true">` +
     `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
@@ -3158,10 +3155,10 @@ export function createHud(ctx, alerts) {
   lockDiamond.innerHTML =
     '<div class="sf-lockdiamond__inner">' +
     '<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    // hostile: two interlocking triangles (the hexagram) inside a twelve-point tick burst
+    // hostile: two interlocking triangles (the hexagram) framed by four corner ticks (no circle)
     '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--hostile">' +
     '<path d="M14 4 5.34 19 22.66 19Z M14 24 22.66 9 5.34 9Z"/>' +
-    '<circle cx="14" cy="14" r="11.5" stroke-dasharray="1.5 1.51"/>' +
+    '<path d="M3.5 8.5V3.5H8.5 M19.5 3.5H24.5V8.5 M24.5 19.5V24.5H19.5 M8.5 24.5H3.5V19.5"/>' +
     '</g>' +
     // friendly: the hexagon rosette — outer hexagon, six spokes, closed counter-phase hub
     '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--friendly">' +
@@ -3342,9 +3339,9 @@ export function createHud(ctx, alerts) {
   leadPip.className = 'sf-leadpip';
   leadPip.innerHTML =
     `<svg class="sf-leadpip__svg" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">` +
-      `<circle class="sf-leadpip__full" cx="11" cy="11" r="${LEAD_PIP_RADIUS}"/>` +
-      `<circle class="sf-leadpip__arc" cx="11" cy="11" r="${LEAD_PIP_RADIUS}" ` +
-        `stroke-dasharray="${LEAD_PIP_ARC_LENGTH.toFixed(2)} ${LEAD_PIP_CIRCUMFERENCE.toFixed(2)}"/>` +
+      // Diamond + open aiming chevron instead of a circle reticle (owner 2026-11-23).
+      `<polygon class="sf-leadpip__full" points="11,3 19,11 11,19 3,11"/>` +
+      `<path class="sf-leadpip__arc" d="M6.5 4.5 L11 3 L17.5 9.5 M17.5 12.5 L11 19 L6.5 17.5"/>` +
       `<line class="sf-leadpip__tick" x1="11" y1="2.2" x2="11" y2="5.4"/>` +
       `<line class="sf-leadpip__tick" x1="2.2" y1="11" x2="5.4" y2="11"/>` +
       // Packet 02: drawn only while the shot line is BLOCKED (shape, not colour: a struck-through pip)
@@ -6757,16 +6754,23 @@ export function createHud(ctx, alerts) {
     setSvgAttr(targetArcsSvg, 'height', size);
     setSvgAttr(targetArcsSvg, 'viewBox', `0 0 ${size} ${size}`);
 
+    // Three crisp horizontal micro-bars tucked under the target hull instead of three concentric
+    // circles around the ship/rock (owner 2026-11-23).
     const cx = size / 2;
     const cy = size / 2;
-
-    setSvgAttr(targetArcShield, 'cx', cx); setSvgAttr(targetArcShield, 'cy', cy); setSvgAttr(targetArcShield, 'r', rShield);
-    setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
-    setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
-
-    setTargetArcDash(targetArcShield, rShield, shieldFrac, cx, cy);
-    setTargetArcDash(targetArcArmor, rArmor, armorFrac, cx, cy);
-    setTargetArcDash(targetArcHull, rHull, hullFrac, cx, cy);
+    const barW = Math.max(24, Math.min(84, Math.round(rHull * 1.45)));
+    const x0 = cx - barW * 0.5;
+    const baseY = cy + rHull + 8;
+    const paintBar = (el, frac, rowY) => {
+      setSvgAttr(el, 'x1', x0);
+      setSvgAttr(el, 'y1', rowY);
+      setSvgAttr(el, 'x2', x0 + barW * frac);
+      setSvgAttr(el, 'y2', rowY);
+      setStyle(el, 'display', frac > 0.001 ? '' : 'none');
+    };
+    paintBar(targetArcShield, shieldFrac, baseY);
+    paintBar(targetArcArmor, armorFrac, baseY + 4);
+    paintBar(targetArcHull, hullFrac, baseY + 8);
   }
 
   // Travel Burn instrument update (D5 / W1-6 / W1-9).

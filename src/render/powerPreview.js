@@ -95,17 +95,20 @@ export function createPowerPreview({ THREE, scene }) {
     arr[v * 3] = p0.x; arr[v * 3 + 1] = Y; arr[v * 3 + 2] = p0.z;
   }
 
-  // A circle as a closed ribbon of constant stroke `half` either side of radius r.
+  // Four corner ticks around radius r instead of a closed circle (no rings around things,
+  // owner 2026-11-23). Reuses the existing ribbon pool by collapsing vertices between the 4 ticks.
   function placeRing(mesh, x, z, r, half, hex, opacity, broken = false) {
     const arr = mesh.geometry.attributes.position.array;
     const segments = arr.length / 6 - 1;
     const inner = Math.max(0, r - half), outer = r + half;
+    const quarter = segments / 4;
+    const span = broken ? Math.max(2, Math.floor(quarter * 0.22)) : Math.max(2, Math.floor(quarter * 0.30));
     for (let i = 0; i <= segments; i++) {
-      const a = (i / segments) * Math.PI * 2;
+      const a = (i / segments) * Math.PI * 2 + Math.PI / 4;
       const c = Math.cos(a), s = Math.sin(a);
-      // Collapse the paired vertices at each gap so the same ring pool can draw dashes.
-      const dash = !broken || (i % 16 > 1 && i % 16 < 10);
-      const near = dash ? inner : r, far = dash ? outer : r;
+      const local = i % Math.max(1, Math.round(quarter));
+      const draw = local >= 1 && local <= span;
+      const near = draw ? inner : r, far = draw ? outer : r;
       vertex(arr, i * 2, x + c * near, z + s * near);
       vertex(arr, i * 2 + 1, x + c * far, z + s * far);
     }

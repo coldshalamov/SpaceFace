@@ -109,9 +109,7 @@ export function createExplosionPresentationMethods({
     } else if (phase === 'rupture') {
       this._spawnSprite(SPR_COMBUSTION, x, 0.24, z, 1.0, s * 0.55, s * 1.0, 0.92, 0,
         '#ffd09a', vx * 0.12, vz * 0.12, 1, dirAngle + 2.1);
-      // Fast shock ring, then the screen-space ripple that travels with it.
-      this._spawnSprite(SPR_RING, x, 0.28, z, 0.5, s * 0.35, s * 1.55, reduced ? 0.45 : 0.85, 0,
-        '#ffffff', 0, 0, 1, dirAngle);
+      // Screen-space ripple carries the blast pressure without drawing a circle around the fireball.
       const dist = this._weaponPresenter && this._weaponPresenter.distortion;
       if (dist && !reduced) {
         const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
@@ -275,10 +273,11 @@ export function createExplosionPresentationMethods({
             1.34, lobeAngle);
         }
       } else {
-        this._spawnSprite(SPR_RING, x, 0.28, z,
-          entry.classId === 'capital' ? 0.30 : 0.20,
-          r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
-          reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
+        // Anisotropic heat shear instead of a concentric blast ring (owner 2026-11-23).
+        this._spawnSprite(SPR_FLASH, x, 0.28, z,
+          entry.classId === 'capital' ? 0.22 : 0.16,
+          r * 0.08 * scale, r * (entry.classId === 'capital' ? 0.42 : 0.30) * scale,
+          reduced ? 0.26 : 0.48, 0.0, '#fff0c0', 0, 0, 2.2, dirAngle);
       }
       // FB-074 — the capital kill is bound to the authored `explosionCapital` identity so the
       // audio's five-part beat has a matching light plan in the record.

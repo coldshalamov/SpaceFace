@@ -190,28 +190,22 @@ test('row 492: the release arc draws whenever the Line is held, and only then', 
   assert.equal(released.stage, 'released');
 });
 
-test('row 492: the latch rim wears the Line colour and reads as light', () => {
-  // One colour for the whole Line family: rim, swing trace, release annulus (0.49, 0.89, 1).
+test('no latch rim ring around bound bodies (no rings around things, owner 2026-11-23)', () => {
+  // The Line's colour constant remains exported; the flat ring around latched bodies stays hidden.
   assert.equal(MASSLINE_LATCH_RIM_COLOR.r, MASSLINE_LINE_COLOR.r);
   assert.equal(MASSLINE_LATCH_RIM_COLOR.g, MASSLINE_LINE_COLOR.g);
   assert.equal(MASSLINE_LATCH_RIM_COLOR.b, MASSLINE_LINE_COLOR.b);
 
   const rim = createMasslineLatchRim();
-  // Light, not paint: additive and untone-mapped, so the rim survives bright sector fills.
-  assert.equal(rim.mesh.material.blending, 2 /* THREE.AdditiveBlending */);
-  assert.equal(rim.mesh.material.toneMapped, false);
+  assert.equal(rim.mesh.visible, false);
 
-  // The plan still breathes with the published strain reads: load and whip each raise it.
   const tether = { active: true, targetId: 3 };
   const target = { alive: true, pos: { x: 1, z: 2 }, radius: 6 };
   const quietRim = resolveMasslineLatchRimPlan(tether, target, 0, 0, {});
   const loadedRim = resolveMasslineLatchRimPlan(tether, target, 0.8, 0.5, {});
-  assert.equal(quietRim.visible, true);
-  assert.ok(loadedRim.opacity > quietRim.opacity);
-  assert.ok(loadedRim.bandScale > quietRim.bandScale);
-  assert.ok(quietRim.opacity >= 0.42 && quietRim.opacity <= 1);
+  assert.equal(quietRim.visible, false, 'no rings around things, owner 2026-11-23');
+  assert.equal(loadedRim.visible, false, 'no rings around things, owner 2026-11-23');
 
-  // Not latched: the rim hides (no clutter when nothing is bound).
   const idle = resolveMasslineLatchRimPlan({ active: false }, target, 1, 1, {});
   assert.equal(idle.visible, false);
 });
