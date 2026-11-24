@@ -735,6 +735,25 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   const offNewGame = bus.on('game:new', onNewGame);
 
   return {
+    // Live while a non-terminal fight record exists in flight — the draw may have telegraph
+    // cues or readouts to paint. Otherwise the surface only needs one more draw() to retire
+    // what it still shows: a seated readout, the warning canvas, an armed telegraph, or an
+    // announcement queued for the live region.
+    wantsFrame(currentState) {
+      const st = currentState || state;
+      if (st && st.mode === 'flight') {
+        const fights = st.capitalBossEncounters && st.capitalBossEncounters.fights;
+        if (fights && typeof fights === 'object') {
+          for (const key in fights) {
+            const r = fights[key];
+            if (r && r.terminal == null && r.suspended !== true && r.bossKilled !== true) return true;
+          }
+        }
+      }
+      return anyShown() || !canvas.hidden
+        || !!(overlay && typeof overlay.hasActiveCues === 'function' && overlay.hasActiveCues())
+        || !!pendingCasts || !!pendingOther;
+    },
     draw(currentState) {
       const st = currentState || state;
       // Accessibility: a flipped reduced-motion setting rebuilds the adapter's motion treatment.

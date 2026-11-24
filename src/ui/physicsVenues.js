@@ -79,7 +79,12 @@ export function mountPhysicsVenueHud({ root, state, bus, screens }) {
   button('Leave event', () => intent('leave'));
   readings.append(title, result, hint); panel.append(readings, controls); root.append(panel);
   let last = '';
-  return { frame(st = state) {
+  return { wantsFrame(st = state) {
+    // Live while a venue can paint. When the panel is still shown one more frame owes it the
+    // hide pass — the venue closed, the mode left flight, or a screen opened over it.
+    return (st && st.mode === 'flight' && !!(st.physicsVenuePublic && st.physicsVenuePublic.active)
+      && !screens?.isOpen?.()) || !panel.hidden;
+  }, frame(st = state) {
     const view = st.physicsVenuePublic;
     const hide = st.mode !== 'flight' || !view?.active || !!screens?.isOpen?.();
     if (panel.hidden !== hide) panel.hidden = hide; // a same-value write still invalidates style

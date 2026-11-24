@@ -992,7 +992,10 @@ export function createCommsRadial(ctx) {
     if (state.ui) state.ui.commsRadialOpen = false;
   }
 
-  return { tick, destroy, openDeck };
+  return { tick, destroy, openDeck,
+    // tick() only works while the fan or the deck is open — the same condition its own
+    // early-outs check — so an idle radial costs a flag read instead of a call.
+    get isActive() { return !destroyed && (open || deckOpen); } };
 }
 
 export default createCommsRadial;

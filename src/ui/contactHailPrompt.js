@@ -391,7 +391,10 @@ export function createContactHailPrompt(ctx) {
   ];
   for (const [event, handler] of busBindings) bus.on(event, handler);
 
-  return { el: root, tick, request, choose, hide: hidePanel, destroy };
+  return { el: root, tick, request, choose, hide: hidePanel, destroy,
+    // tick() only works while an offer lives or the panel still shows (ribbon refresh);
+    // hidePanel() clears both together, so a false flag cannot strand a visible panel.
+    get isActive() { return !destroyed && (active != null || !panel.hidden); } };
 }
 
 

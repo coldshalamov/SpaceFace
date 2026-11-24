@@ -547,16 +547,26 @@ export function mountTowjawPresentation({ root, state, bus, helpers, runtime, do
   };
   const presentation = createTowjawPresentation({ state, bus, canvas, worldToScreen: project,
     getSnapshot: () => runtime.getView(), onCaption: (text) => { live.textContent = text; } });
+  // The surface may still hold painted warning geometry or a live caption until draw() runs
+  // its hide pass once — true while flight conditions last ran or before the first draw.
+  let surfaceOwes = true;
+  const flightConditions = (st) => !!(st && st.mode === 'flight' && !st.ui?.docked
+    && st.ui?.dockedStationId == null);
   return {
     onEvents: presentation.onEvents,
     getFrame: presentation.getFrame,
     inspect: presentation.inspect,
+    // Live while the encounter's danger geometry can paint (in-flight draw conditions — the
+    // same test presentation.draw() gates on). Otherwise the surface is owed at most one
+    // clear pass; after that the mount costs a flag read a frame.
+    wantsFrame(st = state) { return flightConditions(st) || surfaceOwes; },
     draw(options) {
       if (disposed) return;
       if (resizeDirty) {
         updateBounds(); const rect = root.getBoundingClientRect(); left = rect.left; top = rect.top;
       }
       presentation.draw(options);
+      surfaceOwes = flightConditions(state);
     },
     destroy() {
       if (disposed) return;

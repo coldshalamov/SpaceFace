@@ -127,6 +127,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
     } else parent.insertBefore(panel, parent.firstChild);
   };
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
+  let tapeFrames = 0, lastTapeFrame = -2;
   // The simulation registers temporary corridor sessions in a realm-local WeakMap. In the
   // worker lane that registry is not visible to this main-thread HUD, so retain the public
   // launch option for the result-screen presentation decision.
@@ -152,14 +153,15 @@ export function mountRacingHud({ root, bus, state, screens }) {
   for (const event of ['game:load', 'save:restoring', 'game:exitToMenu']) {
     listen(event, () => { pendingResult = null; temporaryCircuitRun = false; });
   }
-  listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
-  listen('settings:changed',()=>{lastTick=-Infinity;});
+  listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;lastTapeFrame=-2;});
+  listen('settings:changed',()=>{lastTick=-Infinity;lastTapeFrame=-2;});
   listen('race:restarted', p => {
     const race = activeAuthoredRace(state);
     if (!race || p?.racingContractId !== race.params.racingContractId) return;
     pulse = '';
     pulseUntil = -Infinity;
     lastTick = -Infinity;
+    lastTapeFrame = -2;
     live.textContent = 'Time trial restarted';
   });
   listen('mission:gateCleared',p=>{
@@ -209,8 +211,8 @@ export function mountRacingHud({ root, bus, state, screens }) {
   } });
   listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult(p);});
   listen('race:launchFailed',()=>releaseRacingCupHeat());
-  listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
-  listen('mission:updated',()=>{lastTick=-Infinity;tryShowResult();});
+  listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; lastTapeFrame=-2; });
+  listen('mission:updated',()=>{lastTick=-Infinity;lastTapeFrame=-2;tryShowResult();});
   // A player-attributed takedown is a fact/result — the shared receipt floor voices it.
   listen('race:takedown',p=>{
     const raceId = missionId ?? activeAuthoredRace(state)?.id;
@@ -238,9 +240,13 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if (!inFlight || crucibleLive || authored) { if (optionsOpen) setOptionsOpen(false); }
       if (!inFlight || crucibleLive) return;
       setRowLocked(combatLock.hot(st));
+      tapeFrames += 1;
       const now=st.simTime||0;
       if(now>=lastTick&&now-lastTick<0.1)return;
-      lastTick=now;
+      // The 0.1 s sim-time gate collapses to every presented frame once frames run slower
+      // than the interval; never repaint the tape on two consecutive frames in that regime.
+      if(tapeFrames-lastTapeFrame<2)return;
+      lastTick=now;lastTapeFrame=tapeFrames;
       const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
       // The sheet lays the tape out by view: a full card under the overhead eye, one line on
@@ -278,7 +284,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       setProperty(mapHost, 'hidden', !authored);setProperty(readings, 'hidden', !authored);
       if(!authored){if(missionId!==null){missionId=null;map=null;mapHost.replaceChildren();}return;}
       if(missionId!==race.id){
-        missionId=race.id;lastTick=-Infinity;pulse='';lastHolding=false;lastPhase=null;
+        missionId=race.id;lastTick=-Infinity;lastTapeFrame=-2;pulse='';lastHolding=false;lastPhase=null;
         map=createRacingMap(raceGateGlobals(race.params),'Circuit, next gate and ship');
         mapHost.replaceChildren(...(map?[map.element]:[]));
       }

@@ -459,7 +459,10 @@ export function createSectorLawPresenter(ctx) {
   subscribe('game:new', hide);
   subscribe('game:load', hide);
 
-  return { el: root, tick, hide, destroy, showSector, renderIncident, showDirectReceipt };
+  return { el: root, tick, hide, destroy, showSector, renderIncident, showDirectReceipt,
+    // tick() early-returns on the same condition — hide() clears `active` together with
+    // root.hidden, so a false flag can never strand a visible card.
+    get isActive() { return !destroyed && active != null; } };
 }
 
 function injectStyle() {

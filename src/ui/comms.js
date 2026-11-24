@@ -401,6 +401,47 @@ export function createComms(ctx) {
     pushComms(q.payload, true);
   }
 
+  // Feed rows are pooled like floatingText/swarmJuiceHud/damageIndicators nodes: a line's five
+  // elements are created once and recycled by class/text swap. The drip is capped (~17 a minute)
+  // but each used to pay five createElement + insert + remove per line inside the fight's DOM
+  // churn. The free list is bounded at the live cap plus the 220 ms exit-beat margin.
+  const commNodeFree = [];
+  const COMM_NODE_POOL_MAX = MAX_LIVE + 4;
+  function acquireCommNode() {
+    const node = commNodeFree.pop();
+    if (node) return node;
+    const entry = document.createElement('div');
+    const head = document.createElement('div');
+    head.className = 'sf-comm__head';
+    const tag = document.createElement('span');
+    tag.className = 'sf-comm__tag mono';
+    const sender = document.createElement('span');
+    sender.className = 'sf-comm__sender mono';
+    head.append(tag, sender);
+    const body = document.createElement('div');
+    body.className = 'sf-comm__body';
+    entry.append(head, body);
+    // dismiss on click (the player learns to clear the migraine). A player dismissal is the
+    // attention stat SP2-188's channel reads — TTL sweeps and feed overflow are not attention.
+    // One listener per pooled node: the live record is re-bound through _sfRec on each fill.
+    entry.addEventListener('click', () => {
+      const rec = entry._sfRec;
+      if (rec && dismissLive(rec)) {
+        if (!state.ui) state.ui = {};
+        state.ui.commsDismissed = (state.ui.commsDismissed | 0) + 1;
+      }
+    });
+    return { entry, tag, sender, body };
+  }
+  function releaseCommNode(node) {
+    if (!node) return;
+    node.entry._sfRec = null;
+    node.entry.className = 'sf-comm';
+    // The sweep's fade ramp owns inline opacity near end-of-life; a recycled row starts clear.
+    node.entry.style.opacity = '';
+    if (commNodeFree.length < COMM_NODE_POOL_MAX) commNodeFree.push(node);
+  }
+
   function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
     // OPENING-3: a named cast member speaks from a face card, not the plain feed line. The card is
@@ -451,42 +492,25 @@ export function createComms(ctx) {
       return;
     }
     const cat = CATEGORY_STYLE[p.category] || CATEGORY_STYLE.ambient;
-    const entry = document.createElement('div');
+    const node = acquireCommNode();
+    const entry = node.entry;
     entry.className = `sf-comm sf-comm--${p.category || 'ambient'}`;
     entry.style.setProperty('--comm-color', cat.color);
+    node.tag.textContent = cat.tag || '';
+    node.tag.hidden = !cat.tag;
+    node.sender.textContent = p.sender || 'UNKNOWN';
+    node.body.textContent = p.text;
 
-    const head = document.createElement('div');
-    head.className = 'sf-comm__head';
-    const tag = document.createElement('span');
-    tag.className = 'sf-comm__tag mono';
-    tag.textContent = cat.tag || '';
-    tag.hidden = !cat.tag;
-    const sender = document.createElement('span');
-    sender.className = 'sf-comm__sender mono';
-    sender.textContent = p.sender || 'UNKNOWN';
-    head.append(tag, sender);
-
-    const body = document.createElement('div');
-    body.className = 'sf-comm__body';
-    body.textContent = p.text;
-
-    entry.append(head, body);
-    // dismiss on click (the player learns to clear the migraine). A player dismissal is the
-    // attention stat SP2-188's channel reads — TTL sweeps and feed overflow are not attention.
-    entry.addEventListener('click', () => {
-      if (dismissLive(rec)) {
-        if (!state.ui) state.ui = {};
-        state.ui.commsDismissed = (state.ui.commsDismissed | 0) + 1;
-      }
-    });
     feed.prepend(entry);
 
     const rec = {
       el: entry,
+      _node: node,
       sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'ambient',
       note: p.note || null, born: performance.now(),
       ttl: p.persist ? Infinity : normalizeTtlMs(p.ttl), persist: !!p.persist,
     };
+    entry._sfRec = rec;
     live.unshift(rec);
     // The channel's own counter of what it actually surfaced: SP2-188's run-end read needs a
     // seen-count as well as the dismissal count, so "zero dismissed" cannot mean "nothing said".
@@ -514,12 +538,17 @@ export function createComms(ctx) {
   }
 
   function dismissLive(rec) {
-    if (!rec) return false;
+    if (!rec || rec._released) return false;
     const i = live.indexOf(rec);
     if (i >= 0) live.splice(i, 1);
     rec.el.classList.remove('sf-comm--in');
     rec.el.classList.add('sf-comm--out');
-    setTimeout(() => { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 220);
+    setTimeout(() => {
+      rec._released = true; // a recycled node must never re-enter the pool a second time
+      if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      releaseCommNode(rec._node);
+      rec._node = null;
+    }, 220);
     recomputeNextSweep();
     return i >= 0;
   }
@@ -860,13 +889,27 @@ export function createComms(ctx) {
   });
 
   // ── tick: fade sweep (called by uiRoot.frame via the returned api) ────────────────────────
+  let lastBacklogSwarmHidden = null;
+  function syncBacklogSwarmVisibility() {
+    const hideBacklog = isSwarmGlass(state);
+    if (hideBacklog === lastBacklogSwarmHidden) return;
+    lastBacklogSwarmHidden = hideBacklog;
+    backlogBtn.hidden = hideBacklog;
+    if (hideBacklog && backlogOpen) closeBacklog();
+  }
+  syncBacklogSwarmVisibility();
+
   function tick() {
-    if (pirateParleyPrompt && pirateParleyPrompt.tick) pirateParleyPrompt.tick();
-    if (sectorLawPresenter && sectorLawPresenter.tick) sectorLawPresenter.tick();
-    if (signalInvestigationPrompt && signalInvestigationPrompt.tick) signalInvestigationPrompt.tick();
-    if (recoveryEncounterPrompt && recoveryEncounterPrompt.tick) recoveryEncounterPrompt.tick();
-    if (contactHailPrompt && contactHailPrompt.tick) contactHailPrompt.tick();
-    if (commsRadial && commsRadial.tick) commsRadial.tick();
+    syncBacklogSwarmVisibility();
+    // Dormant children don't get a call: each live presenter exposes isActive — the same
+    // condition its own tick() early-return checks — so an idle surface costs a flag read.
+    // The choice adapters (pirateParleyPrompt, signalInvestigationPrompt,
+    // recoveryEncounterPrompt) return inert `() => {}` ticks today; rewire them here with an
+    // isActive getter if one gains real frame work.
+    if (sectorLawPresenter && sectorLawPresenter.isActive) sectorLawPresenter.tick();
+    if (contactHailPrompt && contactHailPrompt.isActive) contactHailPrompt.tick();
+    if (commsRadial && commsRadial.isActive) commsRadial.tick();
+    // The wheel must keep watching the held flag: the hold itself is the open edge.
     if (contextWheel && contextWheel.tick) contextWheel.tick();
     updateCommsTrace();
     tickHeldComms();
@@ -875,6 +918,7 @@ export function createComms(ctx) {
 
   // Hide the flight feed on the menu. A dock keeps the place line up.
   function setFlightVisibility(visible) {
+    syncBacklogSwarmVisibility();
     feed.style.display = visible ? 'flex' : 'none';
     const docked = !!(state.ui && state.ui.docked);
     const graffitiDisplay = placeGraffitiDisplay(visible, docked);
