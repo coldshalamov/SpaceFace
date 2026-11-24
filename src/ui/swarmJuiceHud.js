@@ -39,7 +39,7 @@ const TIER_TTL_S = 1.4;
 const SLAM_LINGER_S = 0.75;
 const SLAM_MAX_S = 1.9;
 export const TALLY_ROW_STAGGER_S = 0.16;
-const TALLY_HOLD_S = 1.4;
+const TALLY_HOLD_S = 1.7;
 const CARD_TTL_S = 1.55;
 const BOSSDOWN_TTL_S = 1.5;
 const SHATTER_TTL_S = 1.25;
@@ -379,7 +379,7 @@ export const swarmJuiceHud = {
     if (beat === 'clear') {
       if (this._clear.shownAt == null) this._clear.shownAt = simNow;
       const age = simNow - this._clear.shownAt;
-      const hold = Math.min(1.8, this._clear.rows.length * TALLY_ROW_STAGGER_S + TALLY_HOLD_S);
+      const hold = Math.min(2.0, this._clear.rows.length * TALLY_ROW_STAGGER_S + TALLY_HOLD_S);
       if (age > hold) {
         this._clear = null;
         setHidden(dom.tally, true);
