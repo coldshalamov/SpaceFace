@@ -25,10 +25,14 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { BEATS, onboarding } from '../src/systems/onboarding.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { runSession as runSessionProto } from '../src/systems/runSession.js';
+import { installAchievements, resetAchievementsForTests } from '../src/systems/achievements.js';
+import { audio } from '../src/audio/audioSystem.js';
 import { createToasts } from '../src/ui/toasts.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { RESCUE_PROOF_SEED } from '../src/onboarding/rescueOpening.js';
-import { openingQuiet, openingThrowLessonCurrent } from '../src/onboarding/openingQuiet.js';
+import { openingQuiet, openingThrowLessonCurrent, openingThrowPayoffWait } from '../src/onboarding/openingQuiet.js';
+import { resolveFlightObjectiveCommand } from '../src/ui/hud.js';
 
 // ── A minimal DOM, enough for the toast lane and the onboarding panel ─────────────────
 function stubElement() {
@@ -48,7 +52,7 @@ function stubElement() {
   };
 }
 
-function installDom() {
+function installDom({ splashUp = false } = {}) {
   const byId = new Map();
   for (const id of ['toasts', 'toast-live', 'hud']) {
     const el = stubElement();
@@ -59,7 +63,9 @@ function installDom() {
   const previous = globalThis.document;
   globalThis.document = {
     getElementById: (id) => byId.get(id) || null,
-    querySelector: () => null,
+    // `_tryAdvanceBeat` reads this node to decide whether B0 may fire; a real first-run New Game
+    // has it mounted for ~3.1 s.
+    querySelector: (sel) => (splashUp && sel === '.sf-firstrun-splash' ? stubElement() : null),
     createElement: () => stubElement(),
     head: stubElement(),
     body,
@@ -70,6 +76,16 @@ function installDom() {
 }
 
 // ── The production-shaped rail harness (same route test/fix-03 uses) ──────────────────
+function mapStorage() {
+  const map = new Map();
+  return {
+    map,
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(String(key), String(value)),
+    removeItem: (key) => map.delete(String(key)),
+  };
+}
+
 function makeRailState() {
   const state = createGameState(RESCUE_PROOF_SEED);
   const player = makeEntity({
@@ -131,7 +147,7 @@ function bootRail() {
     pos: { x: 620, z: 140 }, radius: 42,
     data: { stationId: 'station_helios', name: 'Helios Station', dockRadius: 80, factionId: 'faction_scn' },
   });
-  return { bus, state, sys, helpers, missions, navEmits: emitted };
+  return { bus, state, sys, helpers, missions, registry, navEmits: emitted };
 }
 
 function tickRail(h, dt = 0.25) {
@@ -175,11 +191,72 @@ test('DEMO-ADV-2: the rope is the tracked instruction on the frame the opening b
   assert.deepEqual(after.pos, before.pos, 'the tick is a no-op on the seated objective');
 });
 
+test('DEMO-ADV-2: the seat survives the splash-gated ticks that have no beat to own it', () => {
+  const dom = installDom({ splashUp: true });
+  try {
+    const h = bootRail();
+    h.bus.emit('game:started', {});
+    // A real New Game puts the first-run splash up before the rail's first tick, and B0 waits for it
+    // to come down. The reviewer caught that the seat was undone here: with no beat current the
+    // objective write fell through to "no target" and nulled the mark, so the tracker showed the
+    // tracked 47-A contract for the splash's whole life — the flicker this packet exists to remove.
+    h.bus.emit('ui:firstRunSplash:active', { line: 'Helios System · Third Shift Arrival' });
+    assert.equal(h.sys._firstRunSplashPending, true, 'the splash gates B0');
+    for (let i = 0; i < 12; i++) tickRail(h); // 3 s of splash
+    const wp = h.state.nav.waypoint;
+    assert.ok(wp, 'the rope keeps the objective slot while the splash holds B0 back');
+    assert.equal(wp.markerId, 'onboarding:tether');
+    assert.equal(wp.reason, 'Latch the loose rock. (F / RMB)');
+    assert.equal(h.state.onboarding.currentBeat, -1, 'and the rail still has not started');
+  } finally {
+    dom.restore();
+  }
+});
+
+test('DEMO-ADV-2: the opening speaks first over the 47-A contract in the splash window', () => {
+  const dom = installDom({ splashUp: true });
+  try {
+    const h = bootRail();
+    h.bus.emit('game:started', {});
+    h.bus.emit('ui:firstRunSplash:active', { line: 'Helios System · Third Shift Arrival' });
+    tickRail(h);
+    // What the HUD does every frame: no nav waypoint means the tracked contract gets the slot.
+    const command = resolveFlightObjectiveCommand(h.state);
+    assert.notEqual(command?.owner, 'tracked-mission',
+      'the splash cannot fall back to the contract while the rope is the instruction');
+    assert.equal(command?.waypoint?.markerId, 'onboarding:tether',
+      'the resolver reads the rail\'s own mark');
+  } finally {
+    dom.restore();
+  }
+});
+
 test('DEMO-ADV-2: a boot that names a scenario slice seats nothing', () => {
   const h = bootRail();
   h.bus.emit('game:started', { scenario: '47a' });
   assert.equal(h.state.nav.waypoint, undefined,
     'harness boots own their own cast and their own objective');
+});
+
+test('DEMO-ADV-2: the 47-A contract document being loaded is not a scenario-slice signal', () => {
+  // Every production boot loads `47a.scenario.json` into helpers.scenarioContract (main.js) and
+  // scenarioRuntime writes `state.scenario.active` as an OBJECT (id/hash/beat window) on its first
+  // flight tick. The seat's first version read both as "this run is a slice" and so never ran in the
+  // real game at all — the objective only appeared on the rail's first tick, 1.5 s in, after the
+  // splash had already shown the contract. Pin the ordinary boot: both facts present, seat still on.
+  const h = bootRail();
+  // What main.js always sets, and what the slice harnesses would additionally carry.
+  h.sys.helpers.scenarioContract = { id: 'scenario_47a_mass_variance', schema: 'spaceface.scenarioContract.v1' };
+  h.state.scenario = {
+    active: { id: 'scenario_47a_mass_variance', activeBeatId: null, contractHash: 'abc' },
+    facts: {}, actorBindings: {}, unresolvedActorIds: [], enteredBeatIds: [], evidence: {},
+  };
+  h.bus.emit('game:started', {});
+  const wp = h.state.nav.waypoint;
+  assert.ok(wp, 'the ordinary route seats the rope even with the contract document loaded');
+  assert.equal(wp.markerId, 'onboarding:tether');
+  assert.equal(wp.reason, 'Latch the loose rock. (F / RMB)');
+  assert.equal(h.state.onboarding.currentBeat, -1, 'and no beat has started yet');
 });
 
 // ══ 2 — the throw lesson keeps one voice ════════════════════════════════════════════
@@ -189,11 +266,19 @@ test('DEMO-ADV-2: the throw lesson is one voice — no swing-threat words, no ea
   driveToSwing(h);
   assert.equal(openingThrowLessonCurrent(h.state), true, 'the swing beat is current');
   assert.equal(openingQuiet(h.state), true, 'the opening still holds the glass');
+  assert.equal(openingThrowPayoffWait(h.state), true, 'and its payoffs are waiting');
   // The lesson ends the beat, and the opening stops holding once the throw lands.
   h.bus.emit('massline:throw', { payloadId: h.state.onboarding.rescue.ids.rock });
   assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done');
   assert.equal(openingThrowLessonCurrent(h.state), false, 'the throw closes the lesson');
   assert.equal(openingQuiet(h.state), true, 'the rest of the opening still owns the glass');
+  // But the instruction is still on the tracker until the rail's next tick writes the berth, so the
+  // payoff keeps waiting for exactly that beat (the review's item 2b hole).
+  assert.equal(openingThrowPayoffWait(h.state), true,
+    'the instruction that earned the payoff is still up: the wait outlasts the beat flag');
+  tickRail(h);
+  assert.equal(h.state.nav.waypoint?.markerId, 'onboarding:berth', 'the next instruction takes the slot');
+  assert.equal(openingThrowPayoffWait(h.state), false, 'and the payoff is free to speak');
 });
 
 test('DEMO-ADV-2: the generic swing threat drops its words but keeps its world feedback', () => {
@@ -244,36 +329,85 @@ test('DEMO-ADV-2: a level-up earned by the throw waits for the throw', () => {
     const toasts = createToasts({ bus: h.bus, state: h.state });
     const lane = dom.byId.get('toasts');
     const texts = () => lane.children.map((el) => String(el._sfRec ? el._sfRec.text : ''));
-    // The two receipts the probe caught inside the throw's six seconds.
-    toasts.push({ text: 'Level 2: a point to spend in the Pilot Tree (T)', kind: 'good', ttl: 4 });
-    toasts.push({ text: 'Achievement: Light Ships Are Ammunition.', kind: 'good', ttl: 4 });
-    assert.deepEqual(texts(), [], 'nothing drew over the sentence asking for the throw');
-    // The throw lands; the held payoff speaks on the next frame.
-    h.bus.emit('massline:throw', { payloadId: h.state.onboarding.rescue.ids.rock });
-    toasts.tick();
-    const drawn = texts().filter((t) => t !== 'Line strain');
-    assert.equal(drawn.length, 2, 'every payoff the throw earned speaks once it has landed');
-    for (const line of drawn) {
-      assert.ok(/Level 2|Light Ships Are Ammunition/.test(line),
-        `only the throw's own payoffs speak: ${JSON.stringify(drawn)}`);
+    // The receipts the probe caught inside the throw's six seconds, raised by their real emitters:
+    // runSession's awardAdventureXp ('pilot:xpEarned' -> the level toast) and the achievements
+    // ledger ('achievement:unlocked'). Both are installed on this bus the way main.js installs them.
+    const runSession = Object.create(runSessionProto);
+    runSession.init({ state: h.state, bus: h.bus, helpers: h.helpers, registry: h.registry });
+    const ledger = installAchievements({
+      bus: h.bus, state: h.state, storage: mapStorage(), shell: null, voice: false,
+    });
+    try {
+      h.bus.emit('pilot:xpEarned', { xp: 260, source: 'mine', label: 'Mined 40 units of ore' });
+      assert.equal(h.state.player.pilot.level, 3, 'the award is a real Adventure level — the 22 s beat the probe caught');
+      assert.equal(h.state.onboarding.rescue.current, 'swing', 'and it lands inside the throw lesson');
+      assert.deepEqual(texts(), [], 'nothing drew over the sentence asking for the throw');
+
+      // The throw itself earns the deed (achievements counts a thrown body) and closes the beat.
+      h.bus.emit('massline:throw', {
+        payloadId: h.state.onboarding.rescue.ids.rock, payloadSpeed: 38, payloadGeneration: 0,
+        tick: h.state.tick, time: h.state.simTime,
+      });
+      assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done', 'the throw lands the lesson');
+      // The throw closes the beat flag in this dispatch — but the sentence asking for the throw is
+      // still the tracked objective until the rail writes the next beat. The receipt must not
+      // speak into that gap: a toast frame here is the exact leak the review found.
+      toasts.tick();
+      assert.deepEqual(texts(), [], 'the receipt does not speak between the throw and the next instruction');
+      // The rail writes the next instruction on its following tick; the held payoff speaks after it.
+      tickRail(h);
+      toasts.tick();
+      const drawn = texts().filter((t) => t !== 'Line strain');
+      assert.ok(drawn.some((t) => /^Level \d+: \d+ points? to spend \(T\)$/.test(t)),
+        `the level paid by the throw speaks once the instruction has left: ${JSON.stringify(drawn)}`);
+      // A warning is not a payoff and never waited.
+      toasts.push({ text: 'Line strain', kind: 'warn', ttl: 2 });
+      assert.ok(texts().some((t) => t === 'Line strain'), 'a warning is never held');
+    } finally {
+      ledger.dispose({ flush: false });
+      resetAchievementsForTests();
+      toasts.destroy();
     }
-    // A warning is not a payoff and never waited.
-    toasts.push({ text: 'Line strain', kind: 'warn', ttl: 2 });
-    assert.ok(texts().some((t) => t === 'Line strain'), 'a warning is never held');
-    toasts.destroy();
   } finally {
     globalThis.requestAnimationFrame = previousRaf;
     dom.restore();
   }
 });
 
-test('DEMO-ADV-2: the achievement payoff holds its caption and fanfare for the throw', () => {
-  const source = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
-  assert.match(source, /_holdForOpeningThrow/, 'the payoff hold exists');
-  assert.match(source, /bus\.on\('achievement:unlocked',[\s\S]{0,600}_holdForOpeningThrow\(play\)/,
-    'the achievement listener routes through the hold');
-  assert.match(source, /_drainOpeningPayoffs\(\)/, 'the held payoff replays on the audio frame');
-  assert.match(source, /openingThrowLessonCurrent/, 'the hold reads the rail beat');
+test('DEMO-ADV-2: the deed and its fanfare wait for the instruction that earned them', () => {
+  // The real audio system's own subscriptions, with play() stubbed: what this proves is the
+  // dispatch — a deed unlocked by the throw does not reach play() or the caption lane while the
+  // sentence asking for the throw is still on the tracker, and does once that sentence is gone.
+  const h = bootRail();
+  driveToSwing(h);
+  const played = [];
+  const captions = [];
+  const host = Object.create(audio);
+  host.init({ state: h.state, bus: h.bus, helpers: {} });
+  try {
+    host.play = (recipeId) => { played.push(recipeId); return null; };
+    host._emitNamedCaption = (text) => { captions.push(String(text || '')); };
+    h.bus.on('presentation:caption', (p) => captions.push(String((p && p.text) || '')));
+
+    h.bus.emit('achievement:unlocked', { id: 'light_ships_are_ammunition', name: 'Light Ships Are Ammunition', category: 'massline' });
+    assert.deepEqual(played, [], 'no fanfare over the sentence asking for the throw');
+    assert.equal(captions.some((t) => /Light Ships Are Ammunition/.test(t)), false,
+      'and no caption speaking over it');
+
+    // The throw lands. It clears rescue.current in this dispatch — the very reason the old hold
+    // missed — so the payoff must still wait for the rail's next tick to take the sentence down.
+    h.bus.emit('massline:throw', { payloadId: h.state.onboarding.rescue.ids.rock, payloadSpeed: 38 });
+    host._drainOpeningPayoffs();
+    assert.deepEqual(played, [], 'the beat flag alone closing is not the moment the line leaves');
+
+    tickRail(h);
+    host._drainOpeningPayoffs();
+    assert.deepEqual(played, ['sfx_achievement_fanfare'], 'the fanfare plays once the instruction is gone');
+    assert.equal(captions.filter((t) => /Light Ships Are Ammunition/.test(t)).length, 1,
+      'and its caption speaks exactly once');
+  } finally {
+    host.destroy();
+  }
 });
 
 // ══ 3 — the berth-course retire matches only the opening's own run ══════════════════

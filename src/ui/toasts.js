@@ -29,7 +29,7 @@ import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
 import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
 import { isSwarmGlass } from './swarmGlass.js';
-import { openingThrowLessonCurrent } from '../onboarding/openingQuiet.js';
+import { openingThrowPayoffWait } from '../onboarding/openingQuiet.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -293,15 +293,18 @@ export function createToasts(ctx) {
   // the pilot's payoff receipts wait for it to land instead of landing on top of it: the level-up
   // point ("Level 2: a point to spend in the Pilot Tree (T)") and a deed ("Light Ships Are
   // Ammunition") fire on the very throw the lesson is asking for, so they used to speak over the
-  // instruction that earned them. Held receipts replay through this same admission path once the
-  // beat closes, so every ordinary gate still applies at speak time. Nothing the player must act on
-  // is held: an error, a danger/warning line or a tutorial line goes straight through.
+  // instruction that earned them. The wait (openingThrowPayoffWait) lasts past the throw itself,
+  // because the throw closes the beat flag in the same dispatch that earns the deed — the receipt
+  // would otherwise land in the same tick the instruction is still up. Held receipts replay through
+  // this same admission path once the instruction has left the tracker, so every ordinary gate
+  // still applies at speak time. Nothing the player must act on is held: an error, a danger/warning
+  // line or a tutorial line goes straight through.
   const OPENING_HELD_KINDS = new Set(['good', 'info', 'success', 'credits', 'rep', 'discovery']);
   const OPENING_HELD_HOLD_MS = 25000;
   let openingHeld = null;
   function holdForOpeningThrow(text, kind) {
     if (!OPENING_HELD_KINDS.has(String(kind || 'info'))) return false;
-    if (!openingThrowLessonCurrent(ctx.state)) {
+    if (!openingThrowPayoffWait(ctx.state)) {
       if (openingHeld && openingHeld.length) drainOpeningHeld();
       return false;
     }
@@ -318,8 +321,9 @@ export function createToasts(ctx) {
     for (const rec of held) {
       // A payoff held past its moment is history, not a receipt: the beat it belonged to is gone.
       if (now - rec.queuedAtMs > OPENING_HELD_HOLD_MS) continue;
-      if (openingThrowLessonCurrent(ctx.state)) {
-        // The next beat reopened the lesson (a retry restaged the swing): keep waiting.
+      if (openingThrowPayoffWait(ctx.state)) {
+        // The next beat reopened the lesson (a retry restaged the swing), or the instruction that
+        // earned this receipt is still on the tracker: keep waiting.
         if (!openingHeld) openingHeld = [];
         openingHeld.push(rec);
         continue;
@@ -558,9 +562,9 @@ export function createToasts(ctx) {
 
   // Called from hud's frame(), but sleeps until a toast can fade or expire.
   function tick() {
-    // DEMO-ADV-2: the throw lesson's held payoffs replay the moment it lands. Checked before the
-    // idle return so the lane wakes even when no card is live.
-    if (openingHeld && openingHeld.length && !openingThrowLessonCurrent(ctx.state)) drainOpeningHeld();
+    // DEMO-ADV-2: the throw lesson's held payoffs replay once its instruction has left the glass.
+    // Checked before the idle return so the lane wakes even when no card is live.
+    if (openingHeld && openingHeld.length && !openingThrowPayoffWait(ctx.state)) drainOpeningHeld();
     if (swarmWait.length && !live.length) {
       if (isSwarmGlass(ctx.state)) pushNow(swarmWait.shift());
       else swarmWait.length = 0;
