@@ -7081,15 +7081,20 @@ _stepAnimation(now) {
     const markerEntries = this._overviewMarkersForState(state);
     this._overviewTargets = markerEntries.map((entry) => entry.target);
     const markersHtml = markerEntries.length
-      ? `<div class="gm-ov-markers">${markerEntries.map((m, idx) => `
-          <button ${mapControlAttrs('frame')} class="gm-site-row gm-ov-marker-row" type="button" data-overview-target="${idx}" aria-label="Inspect ${escapeMapHtml(m.name)} (${escapeMapHtml(m.tag)}, ${escapeMapHtml(m.meta)})">
-            <span class="gm-ov-marker-main">
-              <span class="gm-ov-marker-glyph" style="color:${m.color}" aria-hidden="true">${m.glyph}</span>
-              <span class="gm-ov-marker-name">${escapeMapHtml(m.name)}</span>
-              <span class="gm-ov-marker-tag">${escapeMapHtml(m.tag)}</span>
-            </span>
-            <span class="gm-ins-row-val gm-ov-marker-dist">${escapeMapHtml(m.meta)}</span>
-          </button>`).join('')}</div>`
+      ? `<div class="gm-ov-markers">${markerEntries.map((m, idx) => {
+        const tone = m.tag === 'GOAL' || m.tag === 'WAYPOINT'
+          ? ' data-marker-tone="goal"'
+          : m.tag === 'HOSTILE'
+            ? ' data-marker-tone="hostile"'
+            : '';
+        return `
+          <button ${mapControlAttrs('frame')} class="gm-site-row gm-ov-marker-row" type="button" data-overview-target="${idx}"${tone} aria-label="Inspect ${escapeMapHtml(m.name)} (${escapeMapHtml(m.tag)}, ${escapeMapHtml(m.meta)})">
+            <span class="gm-ov-marker-g" style="color:${m.color}" aria-hidden="true">${m.glyph}</span>
+            <span class="gm-ov-marker-n">${escapeMapHtml(m.name)}</span>
+            <span class="gm-ov-marker-k">${escapeMapHtml(m.tag)}</span>
+            <span class="gm-ov-marker-d">${escapeMapHtml(m.meta)}</span>
+          </button>`;
+      }).join('')}</div>`
       : '<div class="gm-ins-note">No contacts or stations in immediate range.</div>';
 
     const out = `
@@ -10276,6 +10281,7 @@ _draw() {
     const shipAt = model.player && model.player.drawPos
       ? { x: sx(model.player.drawPos.x), y: sy(model.player.drawPos.z) } : null;
     const crestRects = [];
+    const deferredBadges = [];
     const opTag = mapOperatorLabel(state);
     let tagOnToken = false;
     const chartedCount = model.nodes.filter((nn) => nn.charted).length;
@@ -10446,7 +10452,9 @@ _draw() {
         const cand = makeMapLabelCandidate(g, {
           id: `sector:${n.id}`,
           kind: n.current ? 'gate' : 'station',
-          maxLeader: 104,
+          priority: n.current ? 960 : undefined,
+          force: !!n.current,
+          maxLeader: n.current ? 44 : 104,
           selected: selectedSector === n.id,
           text: n.name,
           lines: nodeLines,
@@ -10456,6 +10464,7 @@ _draw() {
           color: n.current ? CHART_INK.lit(1) : (stale ? CHART_INK.bone(0.62) : CHART_INK.lit(0.92)),
           secondaryColor: null,
         });
+        cand.isCurrent = !!n.current;
         // On a crowded chart a two-word name may set on two lines to keep its seat by the token.
         const words = String(n.name || '').split(/\s+/).filter(Boolean);
         if (words.length >= 2) {
@@ -10472,26 +10481,38 @@ _draw() {
         const marketData = bestKnownSectorMarket(state, record, this._selectedCommodity);
         if (marketData) {
           const tint = memoryTint(marketData.ageS);
-          g.save();
-          g.globalAlpha *= tint.alpha;
-          g.font = chartFont(650, 12, { stretch: 'normal' });
-          g.textAlign = 'left'; g.textBaseline = 'middle';
-          g.lineJoin = 'round';
-          g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-          // MAPS-2: the price reads under the token (below a jobs badge), never where the name sits.
           const text = `Sells ${marketData.sell} cr`;
           const hasJobs = !!(this._layers.mission && galaxyJobs && galaxyJobs.get(n.id) && galaxyJobs.get(n.id).count > 0)
             || galaxyTrackedSector === n.id;
           const py = y + drawnR + (hasJobs ? 46 : 26);
-          g.textAlign = 'center';
-          g.strokeText(text, x, py);
-          g.fillStyle = tint.key === 'fresh' ? CHART_INK.phos(1) : CHART_INK.bone(0.72);
-          g.fillText(text, x, py);
-          // a fixed line under the token: the solver keeps sector names off it ("Helios Prime" over
-          // Tethys Junction's "Sells 44 cr")
+          g.save();
+          g.font = chartFont(650, 12, { stretch: 'normal' });
           const sw = g.measureText(text).width;
-          crestRects.push({ x: x - sw / 2 - 4, y: py - 9, width: sw + 8, height: 18 });
           g.restore();
+          const rect = { x: x - sw / 2 - 4, y: py - 9, width: sw + 8, height: 18 };
+          // Other sectors' fixed price lines enter crestRects before solving; the player's own
+          // sector label solves first so its own badge never pushes "YOU" beside another sector.
+          if (!n.current) crestRects.push(rect);
+          deferredBadges.push({
+            isCurrent: !!n.current,
+            kind: 'price',
+            x,
+            y,
+            drawnR,
+            rect,
+            draw(dy = 0) {
+              g.save();
+              g.globalAlpha *= tint.alpha;
+              g.font = chartFont(650, 12, { stretch: 'normal' });
+              g.textAlign = 'center'; g.textBaseline = 'middle';
+              g.lineJoin = 'round';
+              g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
+              g.strokeText(text, x, py + dy);
+              g.fillStyle = tint.key === 'fresh' ? CHART_INK.phos(1) : CHART_INK.bone(0.72);
+              g.fillText(text, x, py + dy);
+              g.restore();
+            },
+          });
         }
       }
 
@@ -10520,21 +10541,33 @@ _draw() {
           const text = jobs && jobs.count > 0 ? `${counted(jobs.count, 'job')} · ${jobs.best.toLocaleString('en-US')} cr` : 'Tracked job';
           g.save();
           g.font = chartFont(650, 12, { stretch: 'normal' });
-          g.textAlign = 'center'; g.textBaseline = 'top';
           const tw = g.measureText(text).width;
+          g.restore();
           const bx = x - tw / 2 - 6;
           const by = y + drawnR + 20;
-          g.fillStyle = tracked ? 'rgba(52, 36, 10, 0.92)' : 'rgba(8, 12, 16, 0.86)';
-          g.fillRect(bx, by, tw + 12, 18);
-          g.strokeStyle = tracked ? '#f2b950' : CHART_INK.bone(0.35);
-          g.lineWidth = 1;
-          g.strokeRect(bx + 0.5, by + 0.5, tw + 11, 17);
-          g.fillStyle = tracked ? '#ffd890' : CHART_INK.bone(0.9);
-          g.fillText(text, x, by + 3);
-          g.restore();
-          // The badge is a fixed plate: the label solver and the goal plate must stand clear of it
-          // ("GOAL · BEACON" printed over Ceres Belt's "2 jobs · 2,200 cr").
-          crestRects.push({ x: bx - 2, y: by - 2, width: tw + 16, height: 22 });
+          const rect = { x: bx - 2, y: by - 2, width: tw + 16, height: 22 };
+          if (!n.current) crestRects.push(rect);
+          deferredBadges.push({
+            isCurrent: !!n.current,
+            kind: 'jobs',
+            x,
+            y,
+            drawnR,
+            rect,
+            draw(dy = 0) {
+              g.save();
+              g.font = chartFont(650, 12, { stretch: 'normal' });
+              g.textAlign = 'center'; g.textBaseline = 'top';
+              g.fillStyle = tracked ? 'rgba(52, 36, 10, 0.92)' : 'rgba(8, 12, 16, 0.86)';
+              g.fillRect(bx, by + dy, tw + 12, 18);
+              g.strokeStyle = tracked ? '#f2b950' : CHART_INK.bone(0.35);
+              g.lineWidth = 1;
+              g.strokeRect(bx + 0.5, by + dy + 0.5, tw + 11, 17);
+              g.fillStyle = tracked ? '#ffd890' : CHART_INK.bone(0.9);
+              g.fillText(text, x, by + dy + 3);
+              g.restore();
+            },
+          });
         }
       }
 
@@ -10673,6 +10706,58 @@ _draw() {
     }
     if (goalNode) wellDiscs.push({ x: sx(goalNode.x), y: sy(goalNode.y), r: goalRingR + 4 });
     this._edgeScalePxPerWU = graphScale / SECTOR_ORIGIN_LATTICE_WU;
+    // Seat the player's own sector label first (exempt from its own fixed job/price badges) so
+    // "YOU" stays anchored right beside the player's token instead of drifting next to another node.
+    const currentCandidates = labelCandidates.filter((c) => c.isCurrent);
+    const otherCandidates = labelCandidates.filter((c) => !c.isCurrent);
+    const currentLayout = currentCandidates.length
+      ? this._placeLabels(currentCandidates, w, h, {
+        reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
+      })
+      : [];
+    const currentPlacedRects = [];
+    for (const pl of currentLayout) {
+      if (pl && pl.visible) {
+        const rect = { x: pl.x, y: pl.y, width: pl.width, height: pl.height };
+        currentPlacedRects.push(rect);
+        galaxyReserved.push(rect);
+        crestRects.push(rect);
+      }
+    }
+    const badgeOverlaps = (a, b, pad = 4) => a.x < b.x + b.width + pad && a.x + a.width + pad > b.x
+      && a.y < b.y + b.height + pad && a.y + a.height + pad > b.y;
+    const currentBadges = deferredBadges.filter((b) => b.isCurrent);
+    if (currentBadges.length) {
+      let topY = Infinity;
+      let bottomY = -Infinity;
+      for (const b of currentBadges) {
+        topY = Math.min(topY, b.rect.y);
+        bottomY = Math.max(bottomY, b.rect.y + b.rect.height);
+      }
+      const stackH = bottomY - topY;
+      let dy = 0;
+      const hitsCurrentLabel = (shift) => currentBadges.some((b) => {
+        const shifted = { x: b.rect.x, y: b.rect.y + shift, width: b.rect.width, height: b.rect.height };
+        return currentPlacedRects.some((r) => badgeOverlaps(shifted, r, 4));
+      });
+      if (hitsCurrentLabel(0)) {
+        let maxLabelBottom = -Infinity;
+        for (const r of currentPlacedRects) maxLabelBottom = Math.max(maxLabelBottom, r.y + r.height);
+        const downShift = Math.max(0, maxLabelBottom + 6 - topY);
+        const upShift = (currentBadges[0].y - currentBadges[0].drawnR - 12 - stackH) - topY;
+        const downFits = topY + downShift + stackH <= field.y + field.height - 6;
+        const upFits = topY + upShift >= field.y + 6 && !hitsCurrentLabel(upShift);
+        if (downFits) dy = downShift;
+        else if (upFits) dy = upShift;
+        else dy = downShift;
+      }
+      for (const b of currentBadges) {
+        b.dy = dy;
+        const placedRect = { x: b.rect.x, y: b.rect.y + dy, width: b.rect.width, height: b.rect.height };
+        galaxyReserved.push(placedRect);
+        crestRects.push(placedRect);
+      }
+    }
     // MAPS-2 Trade lens: the buy→sell margin, drawn over the tokens so nothing hides it.
     if (tradeMarginLabel) {
       g.save();
@@ -10699,9 +10784,12 @@ _draw() {
       g.fillText(tradeMarginLabel.text, tradeMarginLabel.x, tradeMarginLabel.y);
       g.restore();
     }
-    const galaxyLabelLayout = this._placeLabels(labelCandidates, w, h, {
-      reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
-    });
+    const otherLayout = otherCandidates.length
+      ? this._placeLabels(otherCandidates, w, h, {
+        reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
+      })
+      : [];
+    const galaxyLabelLayout = [...currentLayout, ...otherLayout];
     this._lastLabelLayout = galaxyLabelLayout;
     // The ground goes down once the labels are solved (its holder names keep off them), behind
     // everything drawn so far: the field-edge fade above would otherwise erase it inside the clip and
@@ -10714,6 +10802,9 @@ _draw() {
       g.globalCompositeOperation = 'destination-over';
       try { ground.paint(g, { obstacles, requestRedraw: () => { galaxyMapScreen._drawPending = true; galaxyMapScreen._wake(); } }); } catch (_) { /* the chart reads without its ground */ }
       g.restore();
+    }
+    for (const badge of deferredBadges) {
+      if (inGalaxyField(badge.x, badge.y)) badge.draw(badge.dy || 0);
     }
     for (const placement of galaxyLabelLayout) {
       if (placement.visible) drawMapLabelBlock(g, placement);

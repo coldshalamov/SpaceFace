@@ -1643,8 +1643,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const nameInput = model.hullIndex != null
       ? `<input class="k-input sx-sw__nameEdit" type="text" data-ship-name maxlength="${SHIP_NAME_MAX}" ` +
           `value="${escapeHtml(model.ownedShip && typeof model.ownedShip.name === 'string' ? model.ownedShip.name : '')}" ` +
-          `placeholder="Name this hull" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
+          `placeholder="Rename ship" aria-label="Rename ship" spellcheck="false" autocomplete="off"/>`
       : '';
+    const hullRole = describeHullRole(model.def.id)?.roleLabel || roleLabelFor(model.def.role);
+    const modelSubtitle = model.hullIndex != null
+      ? `${model.def.name} hull \u00b7 ${hullRole}`
+      : hullRole;
     nameplateEl.innerHTML =
       `<div class="sx-sw__crestLine">` +
         `<h2 class="k-display k-t-title sx-sw__name">${entitySpanHtml('hull:' + model.def.id, escapeHtml(model.hullName || model.def.name))}</h2>` +
@@ -1652,6 +1656,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="sx-sw__conditionVerb">${escapeHtml(titleCaseWords(verb))}</span>${percent}` +
         `</span>` +
       `</div>` +
+      `<p class="sx-sw__model">${escapeHtml(modelSubtitle)}</p>` +
       nameInput;
     dressCrest();
   }
@@ -1846,6 +1851,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       (recordOpen ? '' : renderPresetRail(model, activePresetRailModel)) +
       renderPresetDrawer(activePresetRailModel);
     bindShipSheet(statsEl.querySelector('[data-sfs]'));
+    const sheetWordEl = statsEl.querySelector('.sfs__word');
+    if (sheetWordEl) {
+      sheetWordEl.textContent = describeHullRole(model.def.id)?.roleLabel || roleLabelFor(model.def.role);
+    }
     dressApron();
     paintPendingPresetRejection();
   }
@@ -2087,30 +2096,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   };
   // the ring the jig drew last, read off its own dial path, with the stage size it was drawn for
   let jigRing = null;
-  // the jig's ring stands on a luminous band (weight, not wire): drawn into the jig's host under its layers
-  let jigBand = null;
-  let jigBandKey = '';
-  function drawJigBand() {
-    const r = host === 'dock' && mode !== 'buy' ? readJigRing() : null;
-    if (!r || !jigHost) { if (jigBand) jigBand.style.display = 'none'; jigBandKey = ''; return; }
-    if (!jigBand) jigBand = orrSvg('svg', { class: 'orr-svg sx-sw__jigband', 'aria-hidden': 'true', focusable: 'false' });
-    if (jigBand.parentNode !== jigHost) {
-      const pool = jigHost.querySelector(':scope > .orr-hull__pool');
-      jigHost.insertBefore(jigBand, pool ? pool.nextSibling : jigHost.firstChild);
-      jigBandKey = '';
-    }
-    jigBand.style.display = '';
-    const key = `${r.hx}|${r.hy}|${r.R}|${r.W}|${r.H}`;
-    if (key === jigBandKey) return;
-    jigBandKey = key;
-    jigBand.setAttribute('viewBox', `0 0 ${r.W} ${r.H}`);
-    jigBand.textContent = '';
-    // the same bezel body the For Sale ring carries, static: a band from R - bw to R, edged inside (the jig's
-    // own ring is its outer edge)
-    const bw = bezelWidth(r);
-    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R - bw / 2, 0, 360), class: 'sx-sw__bezel-band', 'stroke-width': bw }));
-    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R - bw, 0, 360), class: 'sx-sw__bezel-edge' }));
-  }
+  // No ring around the schematic ship (owner ruling): retire drawJigBand and drawFleetCaption.
   function readJigRing() {
     if (!jigHost || !jigHost.classList.contains('orr-hull--on')) return null;
     for (const p of jigHost.querySelectorAll('path.orr-rest')) {
@@ -2158,26 +2144,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   // the caption's radius: the jig engraving's on a tall stage, tucked under the foot on a short one
   const captionRadius = (g) => g.R + (ringShort() ? 16 : 38);
-  // the Fleet dial's caption where the jig could not engrave one (its leaders cross both arcs on a short stage)
-  let jigCaption = null;
-  let fleetCap = null;
-  function drawFleetCaption(g) {
-    // No words are printed round the hull diagram (08_INTERFACE §7): the ship's name and length
-    // live on its nameplate, and the ring stays a clean frame for the hull and its parts.
-    const want = false && g && host === 'dock' && mode === 'fleet' && jigCaption && jigHost && jigHost.classList.contains('orr-hull--on')
-      && !jigHost.querySelector('.orr-micro');
-    if (!want) { if (fleetCap) { fleetCap.remove(); fleetCap = null; } return; }
-    // The caption paints above the jig host: the shared sheet seats this svg at z2 while the jig
-    // (whose dark pool wash spans the dial) sits at z3, so at every tall stage the caption was
-    // buried under the wash exactly where it crosses the pool's box. Inline z wins — the sheet's
-    // z2 is not !important — and the pool's own dark wash becomes the caption's ground, not its lid.
-    if (!fleetCap) { fleetCap = orrSvg('svg', { class: 'orr-svg sx-sw__fleetcap', style: 'z-index:5', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(fleetCap); }
-    fleetCap.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
-    fleetCap.textContent = '';
-    const len = hullLengthM(jigCaption.defId);
-    const text = [jigCaption.name, len ? `${len.toFixed(1)} m` : ''].filter(Boolean).join(' · ').toUpperCase();
-    if (text) captionArc(fleetCap, g, captionRadius(g), text, 'sx-sw-fleetcap');
-  }
   let saleRing = null;
   let saleZoomKey = '';
   const captionSpans = new Map();
@@ -3184,7 +3150,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     for (const stale of existing.values()) stale.remove();
     const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
     j.setHull(def ? def.id : null);
-    jigCaption = def ? { defId: def.id, name: shipName || def.name || '' } : null;
     // Nothing is printed on the hull diagram itself: the ship's name lives on its nameplate.
     void fittedCount;
     j.setNodes(nodes, { engraving: '' });
@@ -3670,8 +3635,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const verbsZone = verbsRack && verbsRack.isConnected && verbsRack.offsetWidth > 0
         ? stageLocalRect(verbsRack.getBoundingClientRect(), stageRect, 6) : null;
       if (verbsZone) obstacles.push(verbsZone); }
-    drawFleetCaption(ringNow);
-    drawJigBand();
     if (explodeSlot >= 0) placeExplode();
 
     const pointOf = (index) => {
@@ -3832,18 +3795,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       railListEl.innerHTML = o.length ? o.map((s, i) => {
         const def = SHIP_BY_ID.get(s.defId) || {};
         const roleLabel = describeHullRole(s.defId)?.roleLabel || roleLabelFor(def.role);
-        // The row is narrow: "STARTER SCOUT · T0" wrapped to an orphaned "· T0" line — a line
-        // opening on a middot. Every middot glues to the word BEFORE it, so a wrap can end a
-        // line on the separator but never open one with it.
-        // The role alone ("Starter scout"): the tier code ("\u00b7 T0") was a build number, not a word.
-        const subLabel = String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1');
+        const shipGivenName = hullNameForOwnedShip(s, i, ctx.state && ctx.state.meta && ctx.state.meta.seed) || shipworksHullName(s.defId);
+        const modelName = shipworksHullName(s.defId);
+        const subLabel = (shipGivenName && modelName && shipGivenName !== modelName)
+          ? `${modelName}\u00a0\u00b7 ${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}`
+          : String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1');
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         const hullThumb = itemThumbHtml({ hullId: s.defId, kind: 'hull' }, { size: 'sm', showCrest: false, showPips: false, className: 'sx-sw-row__thumb' });
         return (
-          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" data-why="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" data-why="${escapeHtml(shipGivenName)}" aria-label="Inspect ${escapeHtml(shipGivenName)}, ${escapeHtml(modelName)} ${escapeHtml(roleLabel)}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
             hullThumb +
-            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipworksHullName(s.defId))}</span>` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipGivenName)}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
           `</button>`
@@ -3959,16 +3922,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const mine = activeOwnedDef();
       const mineFacts = railCompare.current || (mine ? catalogHullFacts(mine.id) : null);
       const compare = !!(mine && mine.id !== def.id);
-      // One class + build word: the same sheet the stage already mounts. The authored role and the
-      // bare tier digit used to stand here beside the sheet's own words, naming the hull twice.
-      const sideSheet = shipStatSheet({
-        shipId: def.id,
-        fittings: [],
-        player: declaredLoadPlayer(ctx.state.player),
-      });
-      const sideClass = sideSheet
-        ? `${sideSheet.roleLabel} \u00b7 ${sideSheet.identity.label}`
-        : roleLabelFor(def.role);
+      const sideClass = describeHullRole(def.id)?.roleLabel || roleLabelFor(def.role);
       const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
         const v = Number(value) || 0; const o = Number(ownValue) || 0;
         let ghost = '';
@@ -4018,11 +3972,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const slots = buildSlotList(def);
     const fittings = s.fittings || [];
     const equippedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
-    // The side panel's identity is the SHIP SHEET's class + build word, never the authored role
-    // alone: the sheet beside it and the rail must not name the same hull two different things.
-    const sideSheet = shipStatSheet({ shipId: def.id, fittings, player: ctx.state.player });
-    const sideClass = sideSheet ? sideSheet.roleLabel : roleLabelFor(def.role);
-    const sideWord = sideSheet ? ` \u00b7 ${sideSheet.identity.label}` : '';
+    // One role label on every Shipyard plate: Fleet rail, left Ship Sheet, center crest, and right circuit.
+    const sideClass = describeHullRole(def.id)?.roleLabel || roleLabelFor(def.role);
+    const sideWord = '';
     const systemDraw = new Map();
     for (const t of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);
     for (const d of equippedDefs) {

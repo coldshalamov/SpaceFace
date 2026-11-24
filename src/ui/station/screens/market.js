@@ -1,7 +1,7 @@
 import { traderHasBestBuyer, traderHistorySpanS, traderTrendLine } from '../../../data/pilotWork.js';
 import { bestKnownSell } from '../../marketIntelligence.js';
 import { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
-import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml, rememberedSurveyFreshness } from '../../views/marketPresentation.js';
+import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml, rememberedSurveyFreshness, presentSupplyChain } from '../../views/marketPresentation.js';
 import { marketFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
 // Left half: the commodity table — name, buy, sell, stock, held — twelve rows visible with hairlines,
@@ -921,6 +921,70 @@ function bestBuyerLine(state, sid, commodityId, held) {
   return `Best price you know: ${Math.round(Number(best.sell)).toLocaleString()} cr at ${name}${here}, seen ${age}.`;
 }
 const STATION_NAME_BY_ID = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
+
+const STATION_TYPE_PLURAL = Object.freeze({
+  mining: 'Mining outposts',
+  refinery: 'Refineries',
+  trade_hub: 'Trade hubs',
+  fab: 'Fabricators',
+  military: 'Military bases',
+  research: 'Research stations',
+  blackmarket: 'Black markets',
+  orbital: 'Orbital docks',
+  station: 'Stations',
+});
+
+function plainStationTypes(roles) {
+  const list = (Array.isArray(roles) ? roles : [])
+    .map((r) => STATION_TYPE_PLURAL[String(r || '')] || String(r || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
+    .filter(Boolean);
+  if (!list.length) return '';
+  if (list.length === 1) return list[0];
+  if (list.length === 2) return `${list[0]} and ${list[1]}`;
+  return `${list.slice(0, -1).join(', ')}, and ${list[list.length - 1]}`;
+}
+
+function marketTradeBriefHtml({ state, sid, def, buy, sell, avg, demandWord: demandText, stationType }) {
+  const cr = (v) => (v != null && Number.isFinite(Number(v)) ? `${Math.round(Number(v)).toLocaleString('en-US')} cr` : '—');
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Normal');
+  const buyText = buy != null && Number.isFinite(Number(buy)) ? cr(buy) : 'Not sold';
+  const sellText = cr(sell);
+  const avgText = cr(avg);
+
+  const produced = plainStationTypes(def && def.producedBy);
+  const consumed = plainStationTypes(def && def.consumedBy);
+  const chain = presentSupplyChain({ producedBy: def && def.producedBy, consumedBy: def && def.consumedBy, stationType });
+
+  const memory = state && state.player && state.player.marketMemory;
+  const best = memory && def ? bestKnownSell(memory, def.id, state && state.simTime) : null;
+  let buyerText = '';
+  if (best && best.stationId && best.stationId !== sid && Number.isFinite(Number(best.sell))) {
+    const name = STATION_NAME_BY_ID.get(best.stationId) || String(best.stationId).replace(/^station_/, '').replace(/_/g, ' ');
+    const age = best.ageLabel === 'fresh' ? 'just seen' : `seen ${best.ageLabel} ago`;
+    const gain = buy != null && Number.isFinite(Number(buy)) ? Math.round(Number(best.sell) - Number(buy)) : null;
+    const gainBit = gain != null && gain > 0 ? ` (+${gain.toLocaleString('en-US')} cr/unit)` : '';
+    buyerText = `${cr(best.sell)} at ${name}${gainBit} · ${age}`;
+  } else {
+    buyerText = 'Only checked here so far — dock at other stations to record their prices.';
+  }
+
+  const lines = [];
+  if (produced) lines.push(['Produced at', produced]);
+  if (consumed) lines.push(['Sells best at', consumed]);
+  if (chain.dock && chain.dockRole !== 'neither') lines.push(['At this dock', chain.dock]);
+  lines.push(['Known buyers', buyerText]);
+
+  return `<section class="sx-mkt-brief" aria-label="Trade brief">`
+    + `<dl class="sx-mkt-brief__grid">`
+    + `<div class="sx-mkt-brief__cell"><dt>Buy here</dt><dd>${escapeHtml(buyText)}</dd></div>`
+    + `<div class="sx-mkt-brief__cell"><dt>Sell here</dt><dd>${escapeHtml(sellText)}</dd></div>`
+    + `<div class="sx-mkt-brief__cell"><dt>Typical</dt><dd>${escapeHtml(avgText)}</dd></div>`
+    + `<div class="sx-mkt-brief__cell"><dt>Demand</dt><dd>${escapeHtml(cap(demandText))}</dd></div>`
+    + `</dl>`
+    + `<dl class="sx-mkt-brief__lines">`
+    + lines.map(([k, v]) => `<div class="sx-mkt-brief__row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')
+    + `</dl></section>`;
+}
 
 // The docked chart says "fresh quote" from the live feed in renderStage.
 // Opening the market restamps seenAt, so a word computed only from that
@@ -1923,11 +1987,12 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     const dispositionText = [mode === 'sell' ? sellDispositionText(state, r.id, heldQty(state, r.id)) : '',
       bestBuyerLine(state, sid, r.id, heldQty(state, r.id))].filter(Boolean).join(' ');
+    const demandLabel = demandWord(demand);
     quoteEl.innerHTML = (dispositionText
       ? `<p class="k-sentence sx-mkt-disposition" data-disposition="sell">${escapeHtml(dispositionText)}</p>`
       : '') + marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
-      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
+      demandWord: demandLabel, driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       historyWord: historySpanS > TEN_MIN_S ? 'Last twenty minutes' : 'Last ten minutes',
@@ -1935,7 +2000,9 @@ export function createMarketScreen(ctx) {
       survey: rememberedSurveyFreshness(state, r.id),
       cause,
       saleQty: qty,
-      saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
+      saleQuote: contemplatedSaleQuote(sid, r.id, qty) })
+      + marketTradeBriefHtml({ state, sid, def, buy, sell, avg, demandWord: demandLabel, stationType: resolveDockStationType(state) })
+      + (decisionEl ? '' : marketDecisionHtml(state, sid));
     marketHistoryNotice(sid, r.id, entry);
     if (decisionEl) {
       const decisionHtml = marketDecisionHtml(state, sid);

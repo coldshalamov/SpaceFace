@@ -73,7 +73,7 @@ export const STATION_CONTROLS = Object.freeze({
   'buy-survey': { label: 'Buy' },
   'inspect-lead': { label: 'Inspect' },
   'open-board': { label: 'Open the board' },
-  'play-manifest': { label: 'Play Manifest' },
+  'play-manifest': { label: 'Play cards' },
   'review-load': { label: 'Review load' },
   'lot-desk-open': { label: 'Lot desk' },
   'lot-desk-close': { label: 'Close' },
