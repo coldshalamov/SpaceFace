@@ -56,7 +56,12 @@
 // normals when detached + cross-ship stand-in instancing, Foundry post-demotion material merge +
 // shared deck shader, hostile retro idle-throat/iris pooling, and repeated static PlaceProp +
 // BroodRemain debris instancing; ?rfx=-drawBatchOpt = off,
-// src/render/opaqueStateSort.js + visualOverrides.js + partsLibrary.js + arenaSets/foundrySet.js + renderer.js).
+// src/render/opaqueStateSort.js + visualOverrides.js + partsLibrary.js + arenaSets/foundrySet.js + renderer.js),
+// vfxBudget (integrated-GPU per-frame particle/overdraw budget: bounded gas raymarch steps and
+// overlapping boxes, SparkField active-tail compaction + puff/glow caps, WeaponRibbonPool wake
+// count/arc cap, instanced sprite bucket + screen-area overdraw cap, and Quarks burst ceilings;
+// ?rfx=-vfxBudget = off, src/render/vfx/vfxBudget.js + gasVolumeField.js + sparkField.js +
+// ribbonPool.js + instancedSpritePool.js + quarksSystem.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).

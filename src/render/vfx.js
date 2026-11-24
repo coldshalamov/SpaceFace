@@ -304,6 +304,7 @@ import {
 import { markKindForMaterial } from './weapons/contactMarks.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
 import { createGasSystem } from './combat/gas/gasVolumeField.js';
+import { isVfxBudgetActive } from './vfx/vfxBudget.js';
 import { GAS_VOLUME_PAYLOAD_READY } from './combat/gas/gasVolumeData.js';
 import { DENSITY_VOLUME_PAYLOAD_READY } from './combat/densityVolumeData.js';
 import { ExplosionRupture, explosionSourceMaterial } from './combat/explosionRupture.js';
@@ -11743,7 +11744,10 @@ export const vfx = {
     } else {
       sub.combatBeams = 0;
     }
+    const vfxBudgetOn = isVfxBudgetActive(this.state);
+    if (this._spriteBatches) this._spriteBatches.budgetActive = vfxBudgetOn;
     if (this._gas) {
+      this._gas.setBudgetActive(vfxBudgetOn);
       // Quiet settled flight: empty gas still paid a11y resolve + setAccessibility +
       // empty update every tick. Latch after first empty observe; wake on liveCount
       // (emit). Soft-GPU fps not claimed. Different angle from held profile-id retain.

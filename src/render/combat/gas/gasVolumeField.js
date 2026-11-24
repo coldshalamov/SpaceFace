@@ -21,6 +21,7 @@ import {
 } from '../../dynamicBufferRanges.js';
 import { impactOutwardNormal } from '../impactEventRecord.js';
 import { GAS_FAMILIES, GAS_FAMILY_BY_ID, gasFamilyForImpact, gasFilmFor } from './gasFamilies.js';
+import { VFX_BUDGET } from '../../vfx/vfxBudget.js';
 import {
   createGasVolumeMaterial,
   createGasVolumeTextures,
@@ -152,6 +153,7 @@ class GasVolumeField {
     this._emitSerial = 0;
     this._radiance = 1;
     this._motionScale = 1;
+    this._budgetActive = false;
 
     // Cell offsets and frame counts, resolved once.
     this._filmOffset = new Float32Array(FAMILY_COUNT);
@@ -198,6 +200,18 @@ class GasVolumeField {
     const flash = Number.isFinite(profile.flashOpacityScale) ? profile.flashOpacityScale : 1;
     this._radiance = Math.max(0.2, flash);
     this._motionScale = profile.id && String(profile.id).includes('motion') ? 0.62 : 1;
+  }
+
+  /** Live integrated-GPU raymarch + overdraw budget (?rfx=-vfxBudget restores full steps/count). */
+  setBudgetActive(active) {
+    const next = !!active;
+    if (this._budgetActive === next) return;
+    this._budgetActive = next;
+    const stepRange = this.material && this.material.uniforms && this.material.uniforms.uStepRange;
+    if (stepRange && stepRange.value && typeof stepRange.value.set === 'function') {
+      if (next) stepRange.value.set(VFX_BUDGET.gasMinSteps, VFX_BUDGET.gasMaxSteps);
+      else stepRange.value.set(VFX_BUDGET.gasDefaultMinSteps, VFX_BUDGET.gasDefaultMaxSteps);
+    }
   }
 
   _allocate(familyIndex) {
@@ -442,12 +456,17 @@ class GasVolumeField {
       this._order[b + 1] = slot;
     }
 
+    // Under the integrated-GPU budget, keep the nearest volumes (tail of the far-to-near list) so
+    // distant overlapping raymarch boxes do not stack 3D texture fetches over the whole viewport.
+    const drawLimit = this._budgetActive ? Math.min(ordered, VFX_BUDGET.gasMaxDrawn) : ordered;
+    const drawStart = ordered - drawLimit;
+
     // Instance data is written in SORTED order, not slot order: the batch draws 0..n-1, so the
     // far-to-near sequence has to be the attribute sequence for premultiplied over-blending to
     // composite correctly. The pool slot stays the CPU identity and never reaches the GPU.
     assertDynamicBufferOwnerWritable(this.dynamicBufferOwner);
-    for (let i = 0; i < ordered; i++) {
-      const slot = this._order[i];
+    for (let i = 0; i < drawLimit; i++) {
+      const slot = this._order[drawStart + i];
       const familyIndex = this._familyIndex[slot];
       const family = GAS_FAMILIES[familyIndex];
       const t = Math.min(1, this._age[slot] / this._life[slot]);
@@ -479,9 +498,9 @@ class GasVolumeField {
     }
 
     this.material.uniforms.uRadiance.value = this._radiance;
-    this._publish(ordered);
-    this._writtenCount = ordered;
-    return ordered;
+    this._publish(drawLimit);
+    this._writtenCount = drawLimit;
+    return drawLimit;
   }
 
   diagnostics() {

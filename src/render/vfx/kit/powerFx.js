@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { SparkField, sparkSpec, SPARK_SHAPE, SPARK_ADD, SPARK_MATTER } from './sparkField.js';
 import { ShockShell, shellSpec, SHELL_MODE } from './shockShell.js';
+import { isVfxBudgetActive } from '../vfxBudget.js';
 import { enemyJobFor } from '../../../data/enemyJobs.js';
 
 // Tell colours: the job palette (minimap CONTACT_JOB_PALETTE), lifted to HDR.
@@ -1324,6 +1325,8 @@ export class PowerFx {
     } else {
       this.sparks.setPlayer(0, 0, 0);
     }
+    const budgetActive = isVfxBudgetActive(state);
+    this.sparks.setBudgetActive(budgetActive);
     this.sparks.time = this.time;
     this.shells.time = this.time;
     this._sustain(state);
@@ -1340,7 +1343,7 @@ export class PowerFx {
     this._sustainStakes(state);
     this._sustainPlow(state);
     this._energisedTrails(state);
-    const a = this.sparks.update(this.time, { reducedFlash: this.reduced.flash });
+    const a = this.sparks.update(this.time, { reducedFlash: this.reduced.flash, budgetActive });
     const b = this.shells.update(this.time, { reducedFlash: this.reduced.flash });
     return a || b;
   }

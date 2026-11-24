@@ -13,6 +13,7 @@
 // Cost: one instanced draw, CAPACITY instances x 4 vertices; uploads only the slots written this
 // frame (two update ranges at most). Fragment cost is the live particles' area only.
 import * as THREE from 'three';
+import { VFX_BUDGET } from '../vfxBudget.js';
 
 export const SPARK_CAPACITY = 4096;
 // Shapes (fragment profiles).
@@ -224,38 +225,76 @@ export class SparkField {
     this.dirtyHi = -1;
     this.dirtyWrap = false;
     this.emitted = 0;
+    this.endTimes = new Float32Array(capacity);
+    this._budgetActive = false;
+    this._framePuffs = 0;
+    this._frameGlows = 0;
+    this.budgetDropped = 0;
     if (scene && typeof scene.add === 'function') scene.add(this.mesh);
   }
 
-  /** Write one particle. Returns the slot index. */
+  /** Live integrated-GPU particle/overdraw budget (?rfx=-vfxBudget restores full ring). */
+  setBudgetActive(active) {
+    this._budgetActive = !!active;
+  }
+
+  /** Write one particle. Returns the slot index, or -1 if dropped by the frame overdraw budget. */
   emit(p) {
-    const i = this.cursor;
-    this.cursor = (i + 1) % this.capacity;
+    let size0 = p.size0;
+    let size1 = p.size1;
+    let ringCap = this.capacity;
+    if (this._budgetActive) {
+      ringCap = Math.min(this.capacity, VFX_BUDGET.sparkMaxInstances);
+      if (p.shape === SPARK_SHAPE.PUFF) {
+        if (this._framePuffs >= VFX_BUDGET.sparkMaxPuffsPerFrame) {
+          this.budgetDropped++;
+          return -1;
+        }
+        this._framePuffs++;
+        if (size0 > VFX_BUDGET.sparkMaxPuffScale) size0 = VFX_BUDGET.sparkMaxPuffScale;
+        if (size1 > VFX_BUDGET.sparkMaxPuffScale) size1 = VFX_BUDGET.sparkMaxPuffScale;
+      } else if (p.shape === SPARK_SHAPE.GLOW) {
+        if (this._frameGlows >= VFX_BUDGET.sparkMaxGlowsPerFrame) {
+          this.budgetDropped++;
+          return -1;
+        }
+        this._frameGlows++;
+        if (size0 > VFX_BUDGET.sparkMaxGlowScale) size0 = VFX_BUDGET.sparkMaxGlowScale;
+        if (size1 > VFX_BUDGET.sparkMaxGlowScale) size1 = VFX_BUDGET.sparkMaxGlowScale;
+      }
+    }
+    const i = this.cursor % ringCap;
+    this.cursor = (i + 1) % ringCap;
     if (i + 1 > this.highWater) this.highWater = i + 1;
     const o = i * STRIDE;
     const [A, V, S, C0, C1, F] = this.arrays;
     A[o] = p.x; A[o + 1] = p.y; A[o + 2] = p.z; A[o + 3] = p.birth;
     V[o] = p.vx; V[o + 1] = p.vy; V[o + 2] = p.vz; V[o + 3] = p.life;
-    S[o] = p.size0; S[o + 1] = p.size1; S[o + 2] = p.drag; S[o + 3] = p.stretch;
+    S[o] = size0; S[o + 1] = size1; S[o + 2] = p.drag; S[o + 3] = p.stretch;
     C0[o] = p.r0; C0[o + 1] = p.g0; C0[o + 2] = p.b0; C0[o + 3] = p.shape;
     C1[o] = p.r1; C1[o + 1] = p.g1; C1[o + 2] = p.b1; C1[o + 3] = p.blend;
     F[o] = p.cx; F[o + 1] = p.cz; F[o + 2] = p.accel; F[o + 3] = p.swirl;
     if (this.dirtyLo < 0) { this.dirtyLo = i; this.dirtyHi = i; } else if (i < this.dirtyLo) { this.dirtyWrap = true; this.dirtyHi = Math.max(this.dirtyHi, i); } else this.dirtyHi = Math.max(this.dirtyHi, i);
     const end = p.birth + p.life;
+    this.endTimes[i] = end;
     if (end > this.liveUntil) this.liveUntil = end;
     this.emitted++;
     return i;
   }
 
   /** Upload what was written this frame and advance the clock. */
-  update(time, { reducedFlash = false } = {}) {
+  update(time, { reducedFlash = false, budgetActive = null } = {}) {
     this.time = time;
+    this._framePuffs = 0;
+    this._frameGlows = 0;
+    if (typeof budgetActive === 'boolean') this._budgetActive = budgetActive;
     this.material.uniforms.uTime.value = time;
     this.material.uniforms.uFlash.value = reducedFlash ? 0.55 : 1;
     if (this.dirtyLo >= 0) {
+      const uploadCap = this._budgetActive ? Math.min(this.capacity, Math.max(this.highWater, VFX_BUDGET.sparkMaxInstances)) : this.capacity;
       for (const attr of this.attrs) {
         attr.clearUpdateRanges();
-        if (this.dirtyWrap) attr.addUpdateRange(0, this.capacity * STRIDE);
+        if (this.dirtyWrap) attr.addUpdateRange(0, uploadCap * STRIDE);
         else attr.addUpdateRange(this.dirtyLo * STRIDE, (this.dirtyHi - this.dirtyLo + 1) * STRIDE);
         attr.needsUpdate = true;
       }
@@ -263,9 +302,16 @@ export class SparkField {
       this.dirtyWrap = false;
     }
     const live = time < this.liveUntil;
-    this.geometry.instanceCount = live ? this.highWater : 0;
-    this.mesh.visible = live;
-    return live;
+    let drawCount = live ? this.highWater : 0;
+    if (live && this._budgetActive) {
+      // Trim trailing dead slots and stay within the iGPU active ring instead of submitting all
+      // 4096 instances (8192 triangles) every frame once highWater wraps.
+      if (drawCount > VFX_BUDGET.sparkMaxInstances) drawCount = VFX_BUDGET.sparkMaxInstances;
+      while (drawCount > 0 && this.endTimes[drawCount - 1] <= time) drawCount--;
+    }
+    this.geometry.instanceCount = drawCount;
+    this.mesh.visible = drawCount > 0;
+    return drawCount > 0;
   }
 
   /** Track the player hull in scene-local XZ so close blasts keep the ship silhouette clear. */
@@ -303,6 +349,9 @@ export class SparkField {
     this.dirtyLo = -1;
     this.dirtyHi = -1;
     this.dirtyWrap = false;
+    this.endTimes.fill(0);
+    this._framePuffs = 0;
+    this._frameGlows = 0;
     for (const arr of this.arrays[1].length ? [this.arrays[1]] : []) for (let i = 3; i < arr.length; i += STRIDE) arr[i] = 0;
     this.attrs[1].clearUpdateRanges();
     this.attrs[1].addUpdateRange(0, this.capacity * STRIDE);
