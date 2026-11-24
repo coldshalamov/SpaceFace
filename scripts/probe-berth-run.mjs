@@ -31,6 +31,12 @@ const STRIP = argv.strip === true;
 const { createSimHost } = await import('./lib/simWorkerHost.mjs');
 const { createSimCommandRing, pushLaneCommand } = await import('./lib/simCommandChannel.mjs');
 const { resolveAutopilotTarget } = await import('../src/core/flight/flightPresentationReads.js');
+const { resolveDockRange } = await import('../src/core/dockRange.js');
+// The dock prompt's sim truth. `state.ui.dockInRange` is written by the DOM UI input layer, which
+// this headless lane does not mount — reading it reported "range n" on a hull parked inside a
+// berthed corridor (review of DEMO-BERTH-1). resolveDockRange is what physics' dock:range gate is
+// published from, so it is the same answer the pilot's prompt gets.
+const inDockRange = () => resolveDockRange(state, {}).stationId === (station.data?.stationId || null);
 const { resolveBerthWorld, resolveCorridorAxisWorld, resolveCollisionProxyManifest,
   effectiveCorridorBearingDeg, resolveDockAnchor } = await import('../src/data/collisionProxyManifests.js');
 
@@ -129,19 +135,19 @@ async function runCase(spec) {
         + ` | ap ${ap ? (ap.active ? 'on ' : 'OFF') + '/' + ap.status : '-'}`
         + ` tel ${tel && typeof tel === 'object' ? `${tel.status || '-'}${tel.avoiding ? ' avoid' : ''}${tel.settled ? ' settle' : ''}${tel.braking ? ' brake' : ''}` : '-'}`
         + ` dock ${state.dockingCorridor ? state.dockingCorridor.phase : '-'}/${state.dockingCorridor ? fmt(state.dockingCorridor.distToBerth) : '-'}`
-        + ` range ${state.ui?.dockInRange ? 'Y' : 'n'}`);
+        + ` range ${inDockRange() ? 'Y' : 'n'}`);
     }
     if (state.ui && state.ui.docked) { docked = true; console.log('DOCKED'); break; }
     if (ap && ap.active !== true) break;
   }
   console.log(`RESULT ${spec} range ${minD.toFixed(0)}..${maxD.toFixed(0)} furthestAim ${maxShipAim.toFixed(0)}`
-    + ` dockInRange ${!!state.ui?.dockInRange} prompt ${promptAt == null ? 'never' : promptAt.toFixed(1) + 's'}`
+    + ` dockInRange ${inDockRange()} prompt ${promptAt == null ? 'never' : promptAt.toFixed(1) + 's'}`
     + ` docked ${docked}`);
   // The dock PROMPT is not a dock. A run that ends holding the prompt, parked at the gate, is a
   // good berth; it is still not "docked", and reporting the prompt as success is what let a run
   // that never reached the gate read as done (review of DEMO-BERTH-1).
   const heldGate = promptAt != null && Math.hypot(player.vel.x, player.vel.z) <= 12
-    && !!(state.ui?.dockInRange);
+    && inDockRange();
   if (heldGate && !docked) console.log(`AT GATE ${spec} — prompt is up at ${Math.hypot(player.vel.x, player.vel.z).toFixed(1)} wu/s, hull never docked`);
   lane.host.bus.off?.('dock:range', onRange);
   if (state.ui) state.ui.dockInRange = false;
