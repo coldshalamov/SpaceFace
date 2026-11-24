@@ -205,19 +205,73 @@ test('Item 2: top-centre Round Plate, between-round countdown, Boss Machine-Plat
     assert.equal(d.bossFill.style.width, '', 'boss bar fills by scaleX, never width');
     assert.equal(swarmJuiceHud._dom.boss.hidden, true, 'no duplicate boss bar in swarmJuiceHud');
 
-    // Round banner owns top lane <= 2 s and hides the round/boss plate so only one thing shows
+    // A round banner is an EVENT LINE below the header, never a replacement for it
+    // (Swarm stranger pass, owner demo 2026-11-23: the header always keeps round + hostiles left).
     bus.emit('swarm:roundSlam', { wave: 5, boss: { name: 'Iron Maw' } });
     swarmJuiceHud.update(DT, state);
     survivalHud.update(DT, state);
     assert.equal(swarmJuiceHud._dom.slam.hidden, false);
     assert.equal(swarmJuiceHud._dom.slamTitle.textContent, 'Iron Maw');
-    assert.equal(d.boss.hidden, true, 'boss plate yields to active banner');
-    assert.equal(d.round.hidden, true, 'round plate yields to active banner');
+    assert.equal(d.boss.hidden, false, 'the boss header keeps its seat under the banner');
+    assert.equal(d.round.hidden, true, 'the boss plate is the header for a boss round');
     state.simTime += 2.0;
     swarmJuiceHud.update(DT, state);
     survivalHud.update(DT, state);
     assert.equal(swarmJuiceHud._dom.slam.hidden, true, 'round banner clears within ~2 s');
-    assert.equal(d.boss.hidden, false, 'boss plate returns once banner clears');
+    assert.equal(d.boss.hidden, false, 'boss plate still stands after the banner');
+  });
+});
+
+test('Item 3: a round-clear summary owns the beat; the level-up card waits for it', () => {
+  withFakeDoc(() => {
+    const state = makeSwarmState({ wave: 6 });
+    const bus = createBus();
+    survivalHud.init({ state, bus });
+    swarmJuiceHud.init({ state, bus, helpers: {} });
+    survivalHud.update(DT, state);
+    const d = survivalHud._swarmLayer.dom;
+
+    bus.emit('swarm:roundClear', { wave: 6, tally: [{ label: 'Room kills', value: '40' }] });
+    swarmJuiceHud.update(DT, state);
+    survivalHud.update(DT, state);
+    assert.equal(swarmChainBridge.clearActive, true, 'the summary holds the sub-lane');
+
+    // The level lands in the same beat. It is remembered, not drawn through the summary.
+    state.run.level = 5;
+    bus.emit('run:levelUp', { level: 5, previousLevel: 4, banked: 1 });
+    survivalHud.update(DT, state);
+    assert.equal(d.lvRide.hidden, true, 'no LEVEL card over the round summary');
+
+    // The summary's own hold ends; then the card takes its 1.2 s. One frame expires the record,
+    // the next publishes the empty beat (the HUD updates in that order on the real route).
+    state.simTime += 2.5;
+    swarmJuiceHud.update(DT, state);
+    swarmJuiceHud.update(DT, state);
+    survivalHud.update(DT, state);
+    assert.equal(swarmChainBridge.clearActive, false);
+    assert.equal(d.lvRide.hidden, false, 'the card follows the summary');
+    assert.equal(d.lvRide.textContent, 'LEVEL 5');
+  });
+});
+
+test('Item 1: a round-start FIGHT word never takes the header or the hostiles-left count', () => {
+  withFakeDoc(() => {
+    const state = makeSwarmState({ wave: 6, threatBudget: 16, spawnedThreat: 16, resolvedThreat: 4 });
+    state.run.phase = 'wave_intro';
+    const bus = createBus();
+    survivalHud.init({ state, bus });
+    swarmJuiceHud.init({ state, bus, helpers: {} });
+    bus.emit('swarm:roundSlam', { wave: 6 });
+    bus.emit('run:waveStarted', {});
+    swarmJuiceHud.update(DT, state);
+    survivalHud.update(DT, state);
+    const d = survivalHud._swarmLayer.dom;
+    assert.equal(swarmJuiceHud._dom.slam.hidden, false, 'FIGHT/round start is the event word');
+    assert.equal(swarmJuiceHud._dom.slamTitle.textContent, 'FIGHT');
+    assert.equal(d.round.hidden, false, 'the round header stays seated');
+    assert.equal(d.roundKicker.textContent, 'ROUND 6');
+    assert.equal(d.roundNum.textContent, '12');
+    assert.equal(d.roundUnit.textContent, 'left');
   });
 });
 
@@ -235,10 +289,18 @@ test('Item 3: Chain under round plate shows multiplier + Kiln voice line only wh
     survivalHud.update(DT, state);
     assert.equal(d.chain.hidden, false);
     assert.equal(d.chainMult.textContent, '×3');
+    assert.equal(d.chainPay.hidden, false, 'a paying chain says it pays Scrap');
+    assert.equal(d.chainPay.textContent, '· Scrap');
+    assert.match(d.chain.getAttribute('aria-label'), /×3 · Scrap/);
     assert.equal(d.chainLine.textContent, 'Off the wall!');
     assert.match(d.chainFill.style.transform, /^scaleX\(/);
-    assert.doesNotMatch(`${d.chainMult.textContent} ${d.chainLine.textContent}`,
+    assert.doesNotMatch(`${d.chainMult.textContent} ${d.chainLine.textContent} ${d.chainPay.textContent}`,
       /\b(IGNITION|FLARE|NOVA|MIXED\s*\+\s*2)\b/i);
+
+    bus.emit('swarm:chain', { chain: 3, best: 28, cause: 'direct', step: 1, at: state.simTime });
+    survivalHud.update(DT, state);
+    assert.equal(d.chainMult.textContent, '×1');
+    assert.equal(d.chainPay.hidden, true, '×1 is no chain bonus, so it does not say Scrap');
 
     bus.emit('swarm:chainBroken', {});
     survivalHud.update(DT, state);

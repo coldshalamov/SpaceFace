@@ -149,6 +149,26 @@ test('a clear tally held behind BOSS DOWN is not spent while it waits', () => {
   swarmJuiceHud.destroy();
 });
 
+test('a shorter clear tally never leaves the last round’s rows on the glass', () => {
+  // Swarm stranger pass, owner demo 2026-11-23: 'BEST CHAIN ×44' printed twice because the tail
+  // rows of the previous, longer summary were never hidden.
+  const h = boot();
+  h.emit('swarm:roundClear', { wave: 5, tally: [
+    { label: 'Flawless', value: 'no hull lost' },
+    { label: 'Cleared in', value: '12 s' },
+    { label: 'Room kills', value: '31' },
+    { label: 'Best chain', value: '44' },
+  ] });
+  h.tick(0.1);
+  h.tick(1.0);
+  assert.equal(h.dom.tallyRows.filter((node) => !node.hidden).length, 4);
+  h.emit('swarm:roundClear', { wave: 6, tally: [{ label: 'Room kills', value: '9' }] });
+  h.tick(0.1);
+  const visible = h.dom.tallyRows.filter((node) => !node.hidden).map((node) => node.textContent);
+  assert.deepEqual(visible, ['Room kills  9']);
+  swarmJuiceHud.destroy();
+});
+
 test('the announcer speaks one line: higher priority replaces, lower is dropped, repeats update in place', () => {
   // HUD-2 item 9: a crossfire kill (the room's work, not the pilot's) is the lowest word; the
   // pilot's own pile-up outranks it.

@@ -137,6 +137,9 @@ test('scenario gate matches salvor-style golden exclusion', () => {
   assert.equal(causalSurvivorPodsGatedOut({ scenario: { scenarioId: 'contract_x' } }), true);
   // DEMO-SWARM-QUIET-1 review: a Swarm arena has no rescue economy, so no pod and no mayday.
   assert.equal(causalSurvivorPodsGatedOut({ world: { swarmArenaOnly: true } }), true);
+  // DEMO-SWARM-UX-2: the live run gates from the first tick, before the arena flag is written.
+  assert.equal(causalSurvivorPodsGatedOut({ run: { kind: 'survival', ruleset: 'swarm' } }), true);
+  assert.equal(causalSurvivorPodsGatedOut({ run: { kind: 'survival', ruleset: 'gauntlet' } }), false);
   assert.equal(causalSurvivorPodsGatedOut({ world: { currentSectorId: 'sector_tethys_junction' } }), false);
 });
 

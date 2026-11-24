@@ -530,6 +530,24 @@ test('Copy ghost puts the recorded ghost block on the clipboard; its own field i
     } finally { bare.restore(); }
   }));
 
+test('a Swarm death keeps the run code behind one Share word on the Run Over plate', withRememberedRun(async () => {
+  // Swarm stranger pass, owner demo 2026-11-23: the ordinary run-over route showed 'SFC1-…' and
+  // 'No flight record was kept' before the polished plate. The register now opens on demand.
+  const plate = mountPlateWithNavigator(RESULT_4242, null);
+  try {
+    const band = byClass(plate.root, 'sf-runover__share')[0];
+    assert.ok(band, 'the register is mounted on the plate');
+    assert.equal(band.hidden, true, 'but it is not on the ordinary run-over route');
+    const share = buttonNamed(plate.root, 'Share');
+    assert.ok(share, 'the plate offers one Share word');
+    click(share);
+    assert.equal(band.hidden, false, 'the register opens from Share');
+    assert.ok(buttonNamed(plate.root, 'Copy result'), 'the open register carries the code actions');
+    assert.ok(buttonNamed(plate.root, 'Close share'), 'and closes by the same word');
+    assert.match(textLines(band).join('\n'), /Run code/);
+  } finally { plate.restore(); }
+}));
+
 test('no remembered launch and no ghost: the plate grows no share band and no copy buttons', () => {
   clearCrucibleSetup();
   resetCrucibleMetaForTests();

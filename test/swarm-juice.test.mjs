@@ -146,7 +146,11 @@ test('multi-kill words and the pile-up rule', () => {
 test('the tally lists what was earned, in order, and skips what was not', () => {
   const rows = swarmRoundTally({ flawless: true, durationS: 12, kills: 31, bestChain: 44 });
   assert.deepEqual(rows.map((r) => r.id), ['flawless', 'speed', 'kills', 'chain']);
-  assert.equal(rows[2].value, '×31');
+  // Swarm stranger pass, owner demo 2026-11-23: a count reads as a count, plain words.
+  assert.equal(rows[2].value, '31');
+  assert.equal(rows[2].label, 'Room kills');
+  assert.equal(rows[1].label, 'Cleared in');
+  assert.equal(rows[3].label, 'Best chain');
   const flat = swarmRoundTally({ flawless: false, durationS: 80, kills: 3, bestChain: 0 });
   assert.deepEqual(flat.map((r) => r.id), ['kills'], 'a flat round is short, not shamed');
 });
@@ -201,14 +205,15 @@ test('multi-kill announcer: DOUBLE, TRIPLE inside the window — and silence out
   swarmJuice.destroy();
 });
 
-test('a pure physics burst is a PILE-UP ×N, not a generic word', () => {
+test('a pure physics burst is a Pile-up count, not a generic word', () => {
   const h = boot();
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'ship_collision', surface: 'craft' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   const calls = named(h, 'swarm:announce').filter((e) => e.payload.kind === 'pileup');
   assert.equal(calls.length, 2, 'each new body in the pile re-says the count');
-  assert.equal(calls[1].payload.text, 'PILE-UP ×3');
+  // Swarm stranger pass, owner demo 2026-11-23: '×3' is a multiplier; a count is 'Pile-up 3'.
+  assert.equal(calls[1].payload.text, 'Pile-up 3');
   assert.equal(named(h, 'swarm:announce').filter((e) => e.payload.kind === 'multikill').length, 0);
   swarmJuice.destroy();
 });
@@ -281,7 +286,7 @@ test('a debut round carries the new threat and its five-word counter', () => {
   swarmJuice.destroy();
 });
 
-test('the clear tally: FLAWLESS and ROOM KILLS land on the wave-cleared receipt', () => {
+test('the clear tally: Flawless and Room kills land on the wave-cleared receipt', () => {
   const h = boot();
   h.bus.emit('run:waveStarted', { wave: 3 });
   kill(h, { cause: 'direct' });

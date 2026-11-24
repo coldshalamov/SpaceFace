@@ -33,7 +33,8 @@ test('damage cue distinguishes shield, armor, and critical hull without damage n
     dominantLayer: 'hull',
     after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 21, hullMax: 140 },
   }), {
-    layer: 'hull', glyph: 'H', tone: 'danger', severity: 'critical', ttl: 1.1,
+    // Swarm stranger pass, owner demo 2026-11-23: a lone 'H' had no legend; the word is the legend.
+    layer: 'hull', glyph: 'Hull', tone: 'danger', severity: 'critical', ttl: 1.1,
     sourceKey: 'actor:9', remainingPct: 15,
   });
 

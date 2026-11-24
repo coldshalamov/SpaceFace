@@ -91,6 +91,24 @@ test.beforeEach(() => {
   useCrucibleMetaClock(() => '2026-09-14T12:00:00.000Z');
 });
 
+test('a live Swarm round records lifetime deeds but never speaks them over the fight', () => {
+  // Swarm stranger pass, owner demo 2026-11-23: 'Achievement: Six Figures.' fired at Scrap 0 on
+  // the first arena frame. Career/adventure deeds count the whole save; they unlock and save,
+  // but their notice waits off the fight glass.
+  const state = {
+    playerId: PLAYER, simTime: 100, mode: 'flight', onboarding: { active: false, finished: true },
+    run: { kind: 'survival', ruleset: 'swarm', phase: 'active' },
+  };
+  const h = harness({ state });
+  h.bus.emit('tether:latched', { targetId: 9, type: 'massline', context: 'selected', previewMatched: true });
+  h.bus.emit('credits:changed', { delta: 100000, reason: 'bounty', total: 100000 });
+  const byId = new Map(h.unlocks.map((u) => [u.id, u]));
+  assert.equal(byId.get('made_contact')?.announce, true, 'a deed this round can earn still speaks');
+  assert.equal(byId.get('six_figures')?.announce, false, 'a lifetime deed stays quiet mid-fight');
+  assert.ok(h.said.some((line) => /Made Contact/.test(line.text)));
+  assert.ok(!h.said.some((line) => /Six Figures/.test(line.text)));
+});
+
 test('a recorded event stream unlocks each achievement exactly once, and a replay unlocks nothing', () => {
   const h = harness();
   for (const [event, payload] of STREAM) h.bus.emit(event, payload);
