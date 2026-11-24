@@ -87,7 +87,10 @@ function longestGap(ticks, end) {
 }
 
 test('every doctrine hull refreshes its perception on each 20 Hz think', () => {
-  const refreshed = run({ flags: { aiRefreshCadence: true }, doctrine: true });
+  // Pins the legacy one-call-per-think schedule that 706ebc63ef repaired: under aiPhasedThink
+  // the same hulls pass because each own slot is exact, not because the 3-tick window covers all
+  // buckets. Keep this regression pinned to the schedule it describes.
+  const refreshed = run({ flags: { aiRefreshCadence: true, aiPhasedThink: false }, doctrine: true });
   for (const [id, ticks] of refreshed) {
     assert.ok(ticks.length >= 9, `hull ${id} refreshed ${ticks.length} times in 30 ticks`);
     assert.ok(longestGap(ticks, 29) <= 3, `hull ${id} went ${longestGap(ticks, 29)} ticks without a fresh picture`);

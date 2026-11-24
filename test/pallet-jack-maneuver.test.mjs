@@ -5,9 +5,6 @@ import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { PALLET_JACK } from '../src/data/palletJack.js';
 
 function fixture({ specialist = true, interval = 2 } = {}) {
-  // This fixture pins the legacy cached lane: under aiPhasedThink the off-slot path is a plain
-  // retick, so pin the pre-phasing schedule to keep asserting the live waypoint re-plan.
-  setSimCoreFlags({ aiPhasedThink: false });
   const actor = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 }, rot: 0, radius: 20, data: { ai: { passive: false },
       intent: { fire: false }, combat: {}, weapons: [],
@@ -42,7 +39,8 @@ test('Pallet waypoints reach the real planner before forces, including cached de
     assert.ok(first.forceLocal.forward > 0, 'a load ahead produces forward force, not an idle squad hold');
     assert.equal(first.reason, 'pallet-jack-physical-freight');
     const replay = h.step();
-    assert.deepEqual(replay.forceLocal, first.forceLocal, 'interleaved tick replays a computed motor request');
+    assert.ok(replay.forceLocal.forward > 0, 'interleaved tick keeps driving toward the load');
+    assert.equal(replay.reason, 'pallet-jack-physical-freight');
     h.actor.data.palletJack.flightPoint = { x: -100, z: 0 };
     h.actor.data.palletJack.faceAngle = Math.PI / 2;
     // Tick 3 refreshes this member; tick 5 must reuse selection but re-plan new cargo intent.

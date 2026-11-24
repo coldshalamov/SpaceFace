@@ -869,6 +869,9 @@ export function createTacticalAISystem({
           if (entity && entityNeedsAiThink(entity, state) === false) continue;
           if (isCounterplayOwned(entity, state)) continue;
           const intentDecision = palletJackDecision(decision, state);
+          if (intentDecision !== decision && intentDecision.maneuver) {
+            liveStack.ports.maneuver.request(intentDecision.maneuver);
+          }
           applyMindAwareFiringIntent(intentDecision, state);
           applyNemesisFireGate(entity, state);
           applyShovePanicFireGate(entity, state);

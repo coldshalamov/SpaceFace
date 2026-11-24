@@ -92,8 +92,9 @@ export class TacticalAIStack {
     // only on its stagger slot — the refresh window is then a single tick, which is exactly the
     // schedule the stagger was written for. The legacy schedule calls update() once per
     // thinkPeriodTicks and the window covers every slot, so both shapes share this code path.
+    // The flag is re-read inside update() rather than baked here, so a flag change between
+    // boots (the bench --ab lane) actually picks the schedule it names.
     this.thinkPeriodTicks = normalizePositiveInt(runtimeConfig.decisionIntervalTicks, 1);
-    this.phasedThink = simCoreFlag('aiPhasedThink') && this.thinkPeriodTicks > 1;
     // The director paces in calls (phaseTick++, cooldowns--), so it stays on the think interval
     // even when the stack is called every tick; between its updates the last result stands.
     this.lastDirectorTick = -Infinity;
@@ -103,6 +104,11 @@ export class TacticalAIStack {
     // phased schedule it updates on the same interval and its last plan map stands between calls.
     this.lastMindTick = -Infinity;
     this.lastMindPlans = null;
+    // The squad commander is the third call-paced thinker: formationHeading slews by
+    // formationTurnPerTick once per update(), so it holds the same think interval and each
+    // squad's last record stands on the ticks in between.
+    this.lastCommanderTick = -Infinity;
+    this.lastSquadResults = new Map();
     // The member set that ran the full think pipeline on the most recent update — the system
     // layer reads it to keep think-tick side effects on the same per-hull cadence.
     this.lastDueMembers = new Set();
@@ -137,6 +143,8 @@ export class TacticalAIStack {
     // or with the legacy schedule). A hull whose stagger slot fell inside it is due now.
     this.refreshFromTick = this.refreshCadenceWindow && this.lastTick >= 0 ? this.lastTick + 1 : tick;
     this.lastTick = tick;
+    // Read per call, not at construction: the schedule must follow the flag as it stands now.
+    const phasedThink = simCoreFlag('aiPhasedThink') && this.thinkPeriodTicks > 1;
 
     const rosterSource = !this.freezeResults && typeof this.ports.roster.liveListSquads === 'function'
       ? this.ports.roster.liveListSquads(tick)
@@ -192,6 +200,11 @@ export class TacticalAIStack {
     decisions.length = 0;
     this.lastDueMembers.clear();
 
+    // The commander paces in calls like the director and mind, so it advances on the think
+    // interval only; on the ticks between, each squad's last record stands — the same
+    // directives the legacy inter-think cadence replayed.
+    const commanderDue = tick - this.lastCommanderTick >= this.thinkPeriodTicks;
+    if (commanderDue) this.lastCommanderTick = tick;
     // Freeze the command/perception boundary before any pilot acts. Enemy Mind exchanges only
     // delayed self-reports; it never receives the director, action port or authoritative world.
     let preparedSquads = null;
@@ -200,7 +213,7 @@ export class TacticalAIStack {
       preparedSquads = new Map();
       const directivesByEntity = new Map();
       for (const squadDef of roster) {
-        const result = this.commander.update(squadDef.id, tick, perceptionsByEntity, director);
+        const result = this._squadResult(squadDef, tick, perceptionsByEntity, director, commanderDue);
         preparedSquads.set(squadDef.id, result);
         for (const member of squadDef.members) {
           const perception = perceptionsByEntity.get(member.id);
@@ -215,7 +228,7 @@ export class TacticalAIStack {
 
     for (const squadDef of roster) {
       const squadResult = preparedSquads ? preparedSquads.get(squadDef.id)
-        : this.commander.update(squadDef.id, tick, perceptionsByEntity, director);
+        : this._squadResult(squadDef, tick, perceptionsByEntity, director, commanderDue);
       squads.push(freeze({
         squadId: squadResult.squadId,
         tick: squadResult.tick,
@@ -228,13 +241,37 @@ export class TacticalAIStack {
         let due = this.memberBatchEnabled
           ? memberRefreshDue(member, tick, activeMembers, farOrigin, this.refreshFromTick)
           : true;
-        // Phased schedule: an off-slot member replays its last decision verbatim — steering
-        // re-plans on the member's own slot, the cadence the old inter-think ticks gave it, and
-        // the retreat/doctrine/mind escalations are checked on that slot too, just as they were
-        // checked only on the shared think tick before. A member with no decision to replay —
-        // a fresh spawn — falls through and thinks immediately, off-slot.
-        if (this.phasedThink && !due && priorDecision != null) {
+        // Phased schedule: an off-slot member keeps its last decision — selection, doctrine and
+        // squad orders wait for the member's own slot, the cadence the old shared think tick
+        // gave them. Steering does not wait: the enemy mind's own maneuver and the authored
+        // shaping (pallet-jack freight, kilnback burns) re-plan against the cached picture on
+        // every tick, the same live motor loop the legacy inter-think lane ran. A member with
+        // no decision to replay — a fresh spawn — falls through and thinks immediately, off-slot.
+        if (phasedThink && !due && priorDecision != null) {
           let cached = retickDecision(priorDecision, tick, priorDecision.combatDoctrine);
+          const mind = mindPlans && mindPlans.get(member.id) || null;
+          const mindAction = applyEnemyMindBehavior(cached.action, mind, freeze);
+          const authoredAction = this.shapeBehavior(mindAction, member.id);
+          const authoredManeuver = authoredAction !== mindAction;
+          if (mind || authoredManeuver) {
+            const perception = perceptionsByEntity.get(member.id);
+            const squadDirective = squadResult.directives.get(member.id);
+            if (perception && squadDirective) {
+              const combatDoctrine = priorDecision.combatDoctrine || null;
+              const directive = applyEnemyMindDirective(
+                overrideDirectiveForWingOrder(squadDirective, perception, freeze), mind, freeze);
+              const effectiveDirective = applyEnemyMindDirective(
+                combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive, mind, freeze);
+              // Keep tactical waypoints live without re-running action selection. This is motor
+              // control, not another utility think; the accepted action and its gates stay intact.
+              this._applyFriendlySeparationTier(perception && perception.self);
+              const request = mind?.ownManeuver || authoredManeuver ? this.maneuver.plan({
+                tick, entityId: member.id, perception, behavior: authoredAction, directive: effectiveDirective,
+              }) : cached.maneuver;
+              cached = freeze({ ...cached, directive: effectiveDirective, action: authoredAction, maneuver: request, enemyMind: mind });
+              this.lastDecisionByEntity.set(member.id, cached);
+            }
+          }
           this.ports.maneuver.request(cached.maneuver);
           decisions.push(cached);
           continue;
@@ -291,7 +328,7 @@ export class TacticalAIStack {
           && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)
           && !enemyMindDecisionChanged(priorDecision.enemyMind || null, mind)) {
           let cached = retickDecision(priorDecision, tick, combatDoctrine);
-          if (!this.phasedThink) {
+          if (!phasedThink) {
             const mindAction = applyEnemyMindBehavior(cached.action, mind, freeze);
             const authoredAction = this.shapeBehavior(mindAction, member.id);
             const authoredManeuver = authoredAction !== mindAction;
@@ -487,6 +524,16 @@ export class TacticalAIStack {
     return context;
   }
 
+  // Think-interval squad record. On a due tick every squad re-runs the commander; between those
+  // ticks the cached record stands. A squad with no record (registered mid-interval) still gets
+  // its first update now — without touching the shared cadence mark.
+  _squadResult(squadDef, tick, perceptionsByEntity, director, due) {
+    let result = due ? null : this.lastSquadResults.get(squadDef.id) || null;
+    if (!result) result = this.commander.update(squadDef.id, tick, perceptionsByEntity, director);
+    this.lastSquadResults.set(squadDef.id, result);
+    return result;
+  }
+
   _syncRoster(roster) {
     const liveSquads = this.liveSquadScratch;
     const liveEntities = this.liveEntityScratch;
@@ -526,7 +573,10 @@ export class TacticalAIStack {
       liveSquads.add(squad.id);
       const signature = rosterSignature(squad);
       if (this.squadSignatures.get(squad.id) !== signature) {
-        if (this.squadSignatures.has(squad.id)) this.commander.unregisterSquad(squad.id);
+        if (this.squadSignatures.has(squad.id)) {
+          this.commander.unregisterSquad(squad.id);
+          this.lastSquadResults.delete(squad.id);
+        }
         this.commander.registerSquad(squad);
         this.squadSignatures.set(squad.id, signature);
       }
@@ -540,6 +590,7 @@ export class TacticalAIStack {
       if (liveSquads.has(squadId)) continue;
       this.commander.unregisterSquad(squadId);
       this.squadSignatures.delete(squadId);
+      this.lastSquadResults.delete(squadId);
     }
     for (const entityId of [...this.entitySquad.keys()]) {
       if (!liveEntities.has(entityId)) this.forgetEntity(entityId);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
+import { TacticalAIStack } from '../src/ai/stack.js';
 import { setSimCoreFlags } from '../src/core/simCoreFlags.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 
@@ -218,3 +219,69 @@ function combatAI() {
     roe: RulesOfEngagement.WEAPONS_FREE,
   };
 }
+
+test('phased think gates commander.update to thinkPeriodTicks while off-slot authored steering keeps re-planning', () => {
+  setSimCoreFlags({ aiPhasedThink: true, aiRefreshCadence: true });
+  let shapedPoint = { x: 300, z: 0 };
+  try {
+    const player = ship(100, 0, 0);
+    const hull = ship(30, 1, 200, combatAI());
+    hull.data.ai.combatDoctrineId = null;
+    const actors = new Map([[player.id, player], [hull.id, hull]]);
+    const requests = [];
+    let selections = 0;
+    const stack = new TacticalAIStack({
+      seed: 47,
+      config: {
+        runtime: { decisionIntervalTicks: 3, memberBatchSize: 1, memberBatchSpreadTicks: 3 },
+        trace: { enabled: false },
+      },
+      shapeBehavior: (behavior) => ({
+        ...behavior,
+        targetId: null,
+        maneuver: { ...(behavior.maneuver || {}), kind: 'formation', flightPoint: { ...shapedPoint }, reason: 'authored-off-slot' },
+      }),
+      ports: {
+        sensors: { frameFor(entityId, tick) { return frame(actors.get(entityId), player, tick, false); } },
+        roster: {
+          listSquads(tick) {
+            return [{
+              id: 'phased_commander_fixture', doctrine: 'patrol', faction: 'fixture', tick,
+              members: [{
+                id: hull.id, capabilities: ['drive', 'sensor'], combatDoctrineId: null,
+                team: hull.team, alive: true, pos: hull.pos, passive: false,
+                playerId: player.id, playerTeam: player.team, authorityOrigin: player.pos, authorityRadius: 5000,
+              }],
+            }];
+          },
+        },
+        maneuver: { request(request) { if (request) requests.push(request); return true; } },
+        actions: {
+          list: () => { selections++; return []; },
+          canStart: () => ({ ok: false }),
+          start: () => null,
+          status: () => 'idle',
+          interrupt: () => true,
+        },
+      },
+    });
+    let commanderCalls = 0;
+    const origUpdate = stack.commander.update.bind(stack.commander);
+    stack.commander.update = (...args) => { commanderCalls++; return origUpdate(...args); };
+
+    for (let tick = 0; tick < 6; tick++) {
+      if (tick === 2) shapedPoint = { x: -300, z: 0 };
+      stack.update(tick, {});
+    }
+    assert.equal(commanderCalls, 2, 'commander.update advances on thinkPeriodTicks (0 and 3), not every fixed tick');
+    const offSlotReq = requests[2];
+    const offSlotDecision = stack.lastDecisionByEntity.get(hull.id);
+    assert.equal(offSlotDecision.action.maneuver.reason, 'authored-off-slot',
+      'off-slot authored shaping reaches the cached decision under aiPhasedThink');
+    assert.ok(offSlotReq.forceLocal.forward < 0,
+      'off-slot authored steering re-plans against the moved flightPoint before the next due tick');
+    assert.ok(selections <= 2, `action selection stays on the slow cadence (${selections})`);
+  } finally {
+    setSimCoreFlags({});
+  }
+});
