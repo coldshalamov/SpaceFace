@@ -106,7 +106,7 @@ export function rigWords(target, on) {
     sentence: on
       ? 'The clearing wedge stays on while you fly. Tap Plow again to turn it off.'
       : 'Tap Plow once to turn on the forward wedge. It pushes loose debris out of your path.',
-    limits: [`Reaches ${wu(cone.radius)} ahead in a ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge. In a planet band, Plow uses the ore scoop instead.`],
+    limits: [`Reaches ${wu(cone.radius)} ahead in a ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge.`],
     target: 'ahead of your nose',
     range: { shape: 'wedge', radiusWu: cone.radius, reachWu: cone.originGap },
     cost: null, cooldownS: 0,
@@ -217,8 +217,8 @@ export function cloakWords(read) {
 
 // Baselines for the verbs whose meaning depends on state (the live projection says which variant is
 // effective; a surface with no state says both).
-const BOMB_BASELINE = 'Throws a sticky charge that Shove sets off. With none aboard it uses a swarm call-in or the drift bomb the cycle chose.';
-const RIG_BASELINE = 'Opens the clearing wedge in open space and the skim scoop inside a planet band. The socket names which one before you press.';
+const BOMB_BASELINE = 'Throws a sticky charge that Shove sets off. With none aboard it drops the drift bomb the cycle chose.';
+const RIG_BASELINE = 'Opens the forward clearing wedge: it pushes loose debris out of your path. The socket names the state before you press.';
 
 /**
  * One sentence for a verb with no live state — the DOM rail's bank, the Help sheet, the phone deck.

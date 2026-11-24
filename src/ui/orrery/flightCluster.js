@@ -141,9 +141,9 @@ const CSS = `
 .orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
 /* Inactive sockets keep their authored mark and live binding; the shared tip still carries the
    effective verb and its state. The unfolded choice and armed sockets keep their full words. */
-.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]) .orr-cluster__keyword { display:none; }
+.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]):not([data-power="plow"]) .orr-cluster__keyword { display:none; }
 .orr-cluster__keyshort { display:none; }
-.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]) .orr-cluster__keytag b:not(.is-glyph) {
+.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]):not([data-power="plow"]) .orr-cluster__keytag b:not(.is-glyph) {
   margin-left:0; padding-left:0; border-left:0; }
 
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
@@ -164,7 +164,7 @@ const CSS = `
      frame; the full sentence stays on the socket's accessible name and tip. */
   .orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag .orr-cluster__keyword { display:none; }
   .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyword { display:none; }
-  .orr-cluster__key:is(.is-armed,:not(.is-node),[data-power="rig"]) .orr-cluster__keyshort {
+  .orr-cluster__key:is(.is-armed,:not(.is-node),[data-power="rig"],[data-power="plow"]) .orr-cluster__keyshort {
     display:inline; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   /* The next-decision line sits left of the key column on a phone — 250px of
      artboard width would run its tail under the keytags. Wrap it in the lane. */
@@ -221,7 +221,7 @@ const CSS = `
 .orr-cluster__key[data-power="shove"] { --orr-power-col: var(--dp-shove, #ffd470); }
 .orr-power-pin, .orr-cluster__key[data-power="pin"] { --orr-power-col: var(--dp-pin, #b29eff); }
 .orr-cluster__key[data-power="bomb"] { --orr-power-col: var(--dp-bomb, #ff7a6b); }
-.orr-cluster__key[data-power="rig"] { --orr-power-col: var(--dp-rig, #5beba0); }
+.orr-cluster__key[data-power="rig"], .orr-cluster__key[data-power="plow"] { --orr-power-col: var(--dp-rig, #5beba0); }
 .orr-cluster__key[data-power="line"] { --orr-power-col: var(--dp-line, #8be9fd); }
 .orr-cluster__key[data-power="gyre"] { --orr-power-col: var(--dp-gyre, #e0a3ff); }
 .orr-cluster__key[data-power="cloak"] { --orr-power-col: var(--dp-cloak, #a8c0ff); }
@@ -673,7 +673,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
   function syncRigMirror() {
     if (!rigMirrorDirty) return;
     rigMirrorDirty = false;
-    const on = visor && !!root.querySelector('[data-power="rig"].is-active');
+    const on = visor && !!root.querySelector('[data-power="rig"].is-active,[data-power="plow"].is-active');
     if (on === rigMirror) return;
     rigMirror = on;
     const body = typeof document !== 'undefined' ? document.body : null;
@@ -971,7 +971,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
         strain.setTone(st > 0.85 ? 'threat' : 'phos');
       }
     }
-    const decision = nextFlightDecision(d);
+    const decision = nextFlightDecision(d, { swarm: d.swarm === true });
     if (changed('decision', decision)) {
       nextEl.textContent = decision;
       nextEl.hidden = decision === '';
