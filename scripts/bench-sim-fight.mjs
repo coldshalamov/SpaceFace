@@ -209,7 +209,7 @@ async function runArm(label, flags) {
       out.profileStep = snap.step;
       out.systems = snap.systems.filter((s) => s.meanMsPerTick >= 0.004)
         .sort((a, b) => b.meanMsPerTick - a.meanMsPerTick)
-        .map((s) => ({ id: s.id, nested: s.nested, msPerTick: s.meanMsPerTick, p95: s.p95, calls: s.calls }));
+        .map((s) => ({ id: s.id, nested: s.nested, msPerTick: s.meanMsPerTick, p50: s.p50, p95: s.p95, max: s.max, calls: s.calls }));
       out.topLevelMsPerTick = r2(snap.topLevelMeasuredMs / Math.max(1, snap.ticksMeasured));
       out.systemsMeasured = snap.systemsMeasured;
     }
@@ -283,7 +283,7 @@ if (AB) {
   if (EMIT_RESULT) console.log(RESULT_SENTINEL + JSON.stringify(res));
   if (res.systems) {
     console.log(`per-system (ms per step, measured span; ${res.systemsMeasured} rows, top-level sum ${res.topLevelMsPerTick}):`);
-    for (const s of res.systems.slice(0, TOP)) console.log(`  ${(s.nested ? '. ' : '') + s.id}`.padEnd(40) + String(s.msPerTick).padStart(8) + '   p95 ' + String(s.p95).padStart(7));
+    for (const s of res.systems.slice(0, TOP)) console.log(`  ${(s.nested ? '. ' : '') + s.id}`.padEnd(40) + String(s.msPerTick).padStart(8) + '   p50 ' + String(s.p50).padStart(7) + '  p95 ' + String(s.p95).padStart(7) + '  max ' + String(s.max).padStart(7));
     const rest = res.systems.slice(TOP).filter((s) => !s.nested);
     console.log(`  (${rest.length} more top-level rows: ${r2(rest.reduce((a, s) => a + s.msPerTick, 0))} ms)`);
   }
