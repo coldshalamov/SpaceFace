@@ -133,6 +133,7 @@ const SHIPPED_WEAPONS = [
     dmg: 5.14, rof: 14, dps: 71.96, damageType: 'kinetic', energyCost: 0.6,
     projSpeed: 520, range: 280, tracking: 'fixed', spreadDeg: 0.8,
     heatPerShot: 4, heatMax: 100, heatDissip: 36, armorPierce: 0.35,
+    attackTraits: ['mod_bank_shot'],
     impulsePerHit: 12, tumbleTorque: 1.2, impulseProvenance: 'bank_stream',
   },
   {

@@ -107,11 +107,11 @@ export function swarmTapModById(id) {
  */
 export const SWARM_FORGE_HERO_FORMS = Object.freeze([
   Object.freeze({ match: 'concussion_cannon', form: 'Wrecking Ball', pierce: 2 }),
-  Object.freeze({ match: 'bank_stream', form: null }),        // Pinball — later packet
-  Object.freeze({ match: 'railgun', form: null }),            // Skewer — later packet
-  Object.freeze({ match: 'heavy_beam', form: null }),         // Lighthouse — later packet
-  Object.freeze({ match: 'disc_launcher', form: null }),      // Saw — later packet
-  Object.freeze({ match: 'singularity_mortar', form: null }), // Second Sun — later packet
+  Object.freeze({ match: 'bank_stream', form: null }),
+  Object.freeze({ match: 'railgun', form: null }),
+  Object.freeze({ match: 'heavy_beam', form: null }),
+  Object.freeze({ match: 'disc_launcher', form: null }),
+  Object.freeze({ match: 'singularity_mortar', form: null }),
 ]);
 
 export function swarmForgeHeroRow(defId) {

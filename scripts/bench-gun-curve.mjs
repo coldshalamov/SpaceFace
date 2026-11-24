@@ -48,7 +48,7 @@ import {
   GUN_FAMILY_BY_WEAPON_ID,
   SCREEN_DEPTH_WU,
 } from '../src/data/gunFamilies.js';
-import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
+import { buildWeaponDamagePacket, PLAYER_GUN_LOCK_S } from '../src/systems/weapons.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 
@@ -72,10 +72,10 @@ const PLAYER_ID = 1;
 const TARGET_ID = 2;
 const TARGET_ENEMY_ID = 'wasp_swarmer';
 const MID_RANGE_WU = 150;             // mid range: between the Wasp's preferred 180 WU stand-off and the 240+ WU gun ranges
-// Player-facing heat pacing, copied from src/systems/weapons.js (WEAPON_RECHARGE_MULT and the
-// vent it feeds): dissip runs 15 % hot, and a pegged gun force-vents for 2/1.15 s while dumping.
+// Player-facing heat pacing, aligned with src/systems/weapons.js (OVH-08b per-gun lock):
+// dissip runs 15 % hot, and a pegged mount locks for PLAYER_GUN_LOCK_S (1.2 s) while dumping.
 const PLAYER_HEAT_PACING = 1.15;
-const WEAPON_VENT_S = 2 / PLAYER_HEAT_PACING;
+const WEAPON_VENT_S = PLAYER_GUN_LOCK_S;
 const WEAPON_VENT_DUMP = 1.6 * PLAYER_HEAT_PACING;
 // Projectile contact radius for the bench hull: modelTruthBoltRadius falls back to
 // planar × (0.7/14) for an unmeasured body — 16 × 0.05 = 0.8 WU on the bench shooter.
