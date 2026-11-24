@@ -81,14 +81,14 @@ test('Cargo owns Pad Back and Pad Accept has to focus the timed decision deliber
   const f = fixture({ cargoOpen: true });
   try {
     const seen = [];
-    const button = (name, x) => ({
+    const button = (name, x, y = 20) => ({
       tagName: 'BUTTON', closest: () => null, getAttribute: () => null,
-      getBoundingClientRect: () => ({ left: x, right: x + 80, top: 20, bottom: 60, width: 80, height: 40 }),
+      getBoundingClientRect: () => ({ left: x, right: x + 80, top: y, bottom: y + 40, width: 80, height: 40 }),
       focus() { f.doc.activeElement = this; },
       click() { seen.push(name); },
     });
     const holdButton = button('Cargo row', 20);
-    const choice = button('Rell of the Moisture Column', 200);
+    const choice = button('Rell of the Moisture Column', 200, 120);
     const root = child => ({ contains: node => node === child, querySelectorAll: () => [child] });
     const cargo = root(holdButton);
     const deck = root(choice);
@@ -101,8 +101,9 @@ test('Cargo owns Pad Back and Pad Accept has to focus the timed decision deliber
     f.button(0, true); f.tick();
     f.button(0, false); f.tick();
     assert.deepEqual(seen, ['Cargo row']);
-    f.button(15, true); f.tick();
-    f.button(15, false); f.tick();
+    // G18-02: dRight is the cargo toggle now — the bag swallows it; dDown walks focus into the deck.
+    f.button(13, true); f.tick();
+    f.button(13, false); f.tick();
     assert.equal(f.doc.activeElement, choice);
     f.button(0, true); f.tick();
     f.button(0, false); f.tick();

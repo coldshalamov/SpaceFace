@@ -50,7 +50,7 @@ test('every figure is a read of its owner, and each entry records which owner su
   assert.equal(entries.pull.range.reachWu, well.deployRange);
   assert.equal(entries.pull.range.radiusWu, well.radius);
   assert.equal(entries.pull.cooldown.seconds, well.cooldownS);
-  assert.ok(entries.pull.sentence.includes(`${well.deployRange} units`), 'the placement reach is quoted from the field def');
+  assert.ok(entries.pull.sentence.includes(`${well.deployRange} m`), 'the placement reach is quoted from the field def');
   assert.ok(entries.pull.sentence.includes(`${GRAVITY_MARK_FIELD_COUPLING}x`), 'the locked-target grip is the combat def');
   assert.equal(entries.shove.range.radiusWu, FIELD_DEFS.repulsor.radius);
   assert.equal(entries.shove.cooldown.seconds, FIELD_DEFS.repulsor.cooldownS);
@@ -102,26 +102,24 @@ test('the labels name what the NEXT press does: Pull well, Shove with a detonati
   assert.equal(entries.shove.ready.state, 'armed');
 });
 
-test('RIG shows the CURRENT function before use, and a context change swaps the label with the action', () => {
+test('RIG shows the Plow in every context — a planet band no longer repaints the key', () => {
   const state = makeState();
   let { entries } = read(state);
-  assert.equal(entries.rig.label, 'Rig · Cone OFF');
+  // R17 / 2e6c4a3626: slot 5 is the Plow in every context (resolveRigTarget → 'cone', always).
+  // The skim scoop kept its own owner and no longer rides this key, so the label can never
+  // promise one function and fire another.
+  assert.equal(entries.rig.label, 'Plow · Wedge OFF');
   assert.equal(entries.rig.glyph, 'field_cone_standard');
-  assert.match(entries.rig.limits[0], /planet band, Rig uses the ore scoop/, 'the other function is stated before it surprises');
-  state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
+  assert.match(entries.rig.limits[0], /degree wedge/, 'the wedge\'s own reach is what the key offers');
+  state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim, collectorOn: true } };
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Scoop OFF', 'inside a planet band the same key harvests ore');
-  assert.equal(entries.rig.glyph, 'field_skim_standard', 'and its mark changes with it');
-  assert.match(entries.rig.limits[0], /clearing cone instead/);
-  state.planet.player.collectorOn = true;
-  ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Scoop ON');
-  assert.match(entries.rig.sentence, /Tap Rig again to turn it off/);
-  // An open cone folds first, even inside a band (resolveRigTarget): the label follows the press.
+  assert.equal(entries.rig.label, 'Plow · Wedge OFF', 'inside a planet band the same key stays the wedge');
+  assert.equal(entries.rig.glyph, 'field_cone_standard', 'and its mark does not change under it');
+  // An open wedge still reports its own live state.
   state.fields.coneActive = true;
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Cone ON');
-  assert.match(entries.rig.sentence, /Tap Rig again to turn it off/);
+  assert.equal(entries.rig.label, 'Plow · Wedge ON');
+  assert.match(entries.rig.sentence, /Tap Plow again to turn it off/);
 });
 
 test('gesture hints follow current bindings and the aimed-power preference without turning Rig into a hold', () => {
@@ -179,7 +177,7 @@ test('a retired payload still in an old rack keeps its own name, never a power\'
     const bomb = read(state).entries.bomb;
     assert.equal(bomb.glyph, def.id, `${def.id} draws its own mark`);
     assert.match(bomb.label, /^Bomb · drop .+ ×2$/);
-    assert.doesNotMatch(bomb.label, /^Bomb · (Pull|Shove|Pin|Rig|Line|Gyre) ×/, `${def.id}: the payload is never named like a power`);
+    assert.doesNotMatch(bomb.label, /^Bomb · (Pull|Shove|Pin|Plow|Line|Gather) ×/, `${def.id}: the payload is never named like a power`);
     assert.ok(bomb.sentence.includes(def.name), `${def.id}: the sentence names the payload`);
   }
   // a fitted-but-dry socket keeps the family and says empty rather than inventing a payload
@@ -244,7 +242,8 @@ test('bindings come from the remappable owner: a remap moves the label, an unbou
   let { entries } = read(state);
   assert.equal(entries.pull.binding.label, '1');
   assert.equal(entries.gyre.binding.label, '');
-  assert.equal(entries.cloak.binding.label, '');
+  // G18-02 key-seat unification: the cloak sits on V by default now.
+  assert.equal(entries.cloak.binding.label, 'V');
   // remap Gyre and Pull
   state.settings = { controls: { bindings: { gyreSnare: ['KeyV'], pull: ['KeyZ', 'Digit1'] } } };
   ({ entries } = read(state));
@@ -261,8 +260,12 @@ test('bindings come from the remappable owner: a remap moves the label, an unbou
   assert.equal(out.entries.gyre.binding.bound, false);
   assert.equal(out.entries.gyre.binding.label, '');
   assert.equal(out.entries.pull.binding.bound, false, 'an explicitly unbound legacy alias stays unbound');
-  assert.match(out.combo.steps[1].text, /Gyre \(unbound\)/, 'the combination example never teaches a key the pilot removed');
-  assert.match(out.combo.steps[0].text, /Pull \(unbound\)/);
+  // The combination example drops an unbound verb's key hint entirely — never the word "unbound",
+  // never an empty parenthetical, and never a phantom key the pilot removed.
+  assert.match(out.combo.steps[1].text, /^Hold Gather over the pile/, 'the combination example never teaches a key the pilot removed');
+  assert.doesNotMatch(out.combo.steps[1].text, /\([^)]*\)/);
+  assert.match(out.combo.steps[0].text, /^Pull drops a well/);
+  assert.doesNotMatch(out.combo.steps[0].text, /\([^)]*\)/);
   // the table the HUD pre-resolves can be handed in
   const table = readArsenalBindings(makeState());
   assert.ok(Array.isArray(table.gyreSnare) && Array.isArray(table.cloak) && Array.isArray(table.cycleBomb));
@@ -320,19 +323,19 @@ test('the cloak "ready" threshold is the cloak system\'s own engage floor', () =
 
 test('the Gyre reads gather / release from the Gyre system\'s own phase', () => {
   const state = makeState();
-  assert.equal(read(state).entries.gyre.label, 'Gyre · Gathers rocks');
+  assert.equal(read(state).entries.gyre.label, 'Gather · Gathers rocks');
   state.gyreSnare = { phase: 'beaming', tooHeavyCount: 2 };
   let e = read(state).entries.gyre;
-  assert.equal(e.label, 'Gyre · Gathering');
+  assert.equal(e.label, 'Gather · Gathering');
   assert.match(e.sentence, /2 too big to take whole/);
   state.gyreSnare = { phase: 'holding' };
   e = read(state, { denial: { tool: 'gyre', code: 'protected', text: 'Cargo or quest wreck — towed, never swallowed', tick: 1 } }).entries.gyre;
-  assert.equal(e.label, 'Gyre · Release');
+  assert.equal(e.label, 'Gather · Release');
   assert.match(e.sentence, /Release to throw it/);
   assert.equal(e.denial.text, 'Cargo or quest wreck — towed, never swallowed', 'the refusal the owner published is carried verbatim');
   assert.equal(read(state).entries.gyre.denial, undefined, 'and only while the caller carries one');
   state.gyreSnare = { phase: 'off', liveBalls: 1 };
-  assert.equal(read(state).entries.gyre.label, 'Gyre · Thrown');
+  assert.equal(read(state).entries.gyre.label, 'Gather · Thrown');
   // too little charge to wake
   state.gyreSnare = { phase: 'off' };
   state.entities.get(1).cap = GYRE_SNARE.capActivateMin - 1;
@@ -347,7 +350,7 @@ test('fitted weapons describe the COMPILED result, and a chain module states its
   assert.equal(weapon.defId, 'wpn_pulse_laser_s');
   assert.equal(weapon.glyph, 'wpn_pulse_laser_s');
   assert.ok(weapon.changes.some((line) => /^Bounces off up to 1 surface\.$/.test(line)), weapon.changes.join(' | '));
-  const hop = weapon.changes.find((line) => /jumps to up to \d+ more hulls? within \d+ units, never the same one twice/.test(line));
+  const hop = weapon.changes.find((line) => /jumps to up to \d+ more hulls? within \d+ m, never the same one twice/.test(line));
   assert.ok(hop, `a chain module describes its hop rule: ${weapon.changes.join(' | ')}`);
   assert.doesNotMatch(weapon.changes.join(' '), /root sibling|lineage|generation|proc budget|compatibility emitter/i);
   // an unfitted modifier changes nothing
@@ -388,13 +391,14 @@ test('the combination example is the production sequence: Pull, then Gyre, then 
   assert.deepEqual(out.combo.order, ['pull', 'gyre', 'throw']);
   assert.equal(out.combo.steps.length, 3);
   assert.match(out.combo.steps[0].text, /^Pull \(1\) drops a well on a pile of loose rocks and they gather\./);
-  assert.match(out.combo.steps[1].text, /^Hold Gyre \(unbound\) over the pile/);
-  assert.match(out.combo.steps[2].text, /^Release Gyre to throw the ball/);
+  // 0f5a510731: Gyre is Gather now; an unbound verb prints no key hint at all.
+  assert.match(out.combo.steps[1].text, /^Hold Gather over the pile/);
+  assert.match(out.combo.steps[2].text, /^Release Gather to throw the ball/);
   assert.match(out.combo.note, /Solve it any way the room allows/, 'the player may solve the scene another way');
   assert.deepEqual(combinationExample(out.entries).order, out.combo.order);
   // it references the same capability definitions, not a bespoke description
   assert.ok(out.entries.pull.combos[0].startsWith('Pull piles loose rocks'));
-  assert.ok(out.entries.gyre.combos[0].includes('Gyre scoops the pile into a ball'));
+  assert.ok(out.entries.gyre.combos[0].includes('Gather scoops the pile into a ball'));
   // and the swarm catalogue's call-ins all exist as Bomb-key payloads
   assert.ok(SWARM_CALLIN_CATALOG.some((row) => row.id === 'smart_bomb'));
 });

@@ -59,7 +59,9 @@ test('bomb cycling changes the visible rail and live ORRERY icon, including a dr
   for (const id of Object.keys(BOMB_DEFS)) {
     state.bombs.selectedId = id;
     assert.equal(readBombBayModel(state, 1).glyph, id);
-    assert.equal(readOrdnanceModel(state, null, {})[String(BOMB_SLOT_INDEX)].arsenalId, id);
+    // R17/2e6c4a3626: slot 4 is the charge verb's own tile, not the payload's mark —
+    // the selected ordnance's identity lives in the bomb-bay rail model.
+    assert.equal(readOrdnanceModel(state, null, {})[String(BOMB_SLOT_INDEX)].arsenalId, 'power_charge');
     state.bombs.rack = { cells: [{ id, count: 0 }] };
     assert.equal(readBombBayModel(state, 1).glyph, id, 'dry socket retains the fitted identity');
     delete state.bombs.rack;

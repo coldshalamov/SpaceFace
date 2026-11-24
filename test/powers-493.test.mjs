@@ -91,7 +91,7 @@ test('every power has its own tint and a reach; powerHeld reads the input grip, 
     assert.ok(POWER_PREVIEW_RANGE[p] > 0, `reach for ${p}`);
   }
   assert.equal(new Set(Object.values(POWER_PREVIEW_TINT)).size, 5, 'one colour each');
-  const state = { input: { actions: {} } };
+  const state = { input: { actions: {} }, settings: { gameplay: { powerFire: 'aim' } } };
   assert.equal(powerHeld(state), null);
   setHeldPower(state, 'pin');
   assert.equal(powerHeld(state), 'pin', 'input.js publishes the newest grip');
@@ -409,7 +409,7 @@ test('Rig outlines what the cone will push; a cone that is on folds and moves no
   const fold = powerPreviewPlan(t.state, 'rig');
   assert.equal(fold.moves.length, 0);
   assert.equal(fold.areas[0].role, 'fold');
-  assert.match(fold.note, /Cone ON.*tap Rig to turn it off/i);
+  assert.match(fold.note, /Plow active.*press again to release/i);
 }));
 
 test('a Pull grips the locked target three times as hard, and a heavy hull reads as shrugging', () => withFields(() => {

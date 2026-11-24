@@ -54,7 +54,7 @@ function fixture(extra = {}) {
   return state;
 }
 
-const SLOT_OF = { Pull: '1', Shove: '2', Pin: '3', Bomb: '4', Rig: '5', Line: '6', Gyre: '7', Cloak: '8' };
+const SLOT_OF = { Pull: '1', Shove: '2', Pin: '3', Bomb: '4', Plow: '5', Line: '6', Gather: '7', Cloak: '8' };
 const socketOf = (root, name) => findAll(root, (n) => n.getAttribute && (n.getAttribute('data-group') === name || n.getAttribute('data-slot') === SLOT_OF[name]))[0];
 
 test('readOrdnanceModel detects active, held, and firing power inputs', () => {
@@ -86,13 +86,13 @@ test('an explicitly unbound Rig socket cannot dispatch a fallback number key or 
     mounted = mountOrreryCluster(root, state, {});
     const player = state.entities.get(state.playerId);
     mounted.update(state, player, true);
-    socketOf(root, 'Rig').click();
+    socketOf(root, 'Plow').click();
     assert.equal(t.win.winDispatched.length, 0, 'unbound means no synthetic Digit5 fallback');
     mounted.update(state, player, true);
-    const rig = socketOf(root, 'Rig');
+    const rig = socketOf(root, 'Plow');
     assert.doesNotMatch(rig.className, /is-active|is-firing/);
     assert.equal(rig.getAttribute('aria-pressed'), 'false');
-    assert.match(rig.getAttribute('data-why'), /Bind Rig in Settings/);
+    assert.match(rig.getAttribute('data-why'), /Bind Plow in Settings/);
     assert.equal(findAll(rig, n => n.tagName === 'b')[0]?.textContent, '');
   } finally { mounted?.dispose(); t.restore(); }
 });

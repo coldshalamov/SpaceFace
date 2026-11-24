@@ -99,13 +99,17 @@ fieldTest('Rig HUD reads the continuing cone state after release and the off sta
   t.key('Digit5', false); t.step();
   const released = readOrdnanceModel(t.state, null, undefined, { nowWall: 2 })['5'];
   assert.equal(released.active, true, 'ON feedback persists after the input edge');
+  assert.equal(released.running, true, 'the continuing cone reads as the running flag');
   assert.notEqual(released.held, true);
-  assert.match(released.label, /(?:cone|rig).*on/i, 'the continuing state is visible in the label');
+  // 2e6c4a3626/c7aef99cfe: slot 5 is the Plow — the continuing state is the active/running
+  // flag on the tile, not cone/rig words in the label.
+  assert.equal(released.label, 'Plow', 'the tile names the Plow while its flag carries the state');
   t.key('Digit5', true); t.step();
   t.key('Digit5', false); t.step();
   const off = readOrdnanceModel(t.state, null, undefined, { nowWall: 3 })['5'];
   assert.notEqual(off.active, true, 'OFF must not stay lit by the last activation');
-  assert.match(off.label, /(?:cone|rig).*off/i, 'off feedback names the actual state');
+  assert.notEqual(off.running, true, 'a folded cone drops the running flag');
+  assert.equal(off.label, 'Plow', 'off feedback keeps the power name and clears the state flag');
 });
 
 fieldTest('queued quick Rig taps preserve one domain toggle per tap across catch-up ticks', () => {
@@ -144,17 +148,19 @@ fieldTest('focus loss and modal resume do not synthesize a Rig toggle or replay 
   t.host.releaseHeldControls('blur'); t.step();
   assertCone(t, true, 'focus loss releases input without switching off a persistent tool');
   t.key('Digit5', true, { repeat: true }); t.key('Digit5', false); t.step();
-  assertCone(t, true, 'the eventual key-up does not fire');
+  // Ruling 2026-11-21: a repeat on a key the game holds up is the held-through-blur key re-arming
+  // as the press it is — the cone folds on that edge, and the key-up still fires nothing.
+  assertCone(t, false, 'a repeat after blur re-arms as a press and folds the cone');
   t.key('Digit5', true); t.step();
-  assertCone(t, false, 'a fresh press still works');
+  assertCone(t, true, 'a fresh press still works');
   t.state.ui = { screenStack: ['pause'] }; t.step();
   t.state.ui.screenStack = []; t.step();
-  assertCone(t, false, 'holding the same key across a modal is not a new press');
+  assertCone(t, true, 'a modal across a resting key does not fire it');
   t.key('Digit5', false); t.step();
   t.key('Digit5', true); t.host.releaseHeldControls('blur'); t.step();
-  assertCone(t, false, 'an uncommitted held press is cancelled on focus loss');
+  assertCone(t, true, 'an uncommitted held press is cancelled on focus loss');
   t.key('Digit5', false); t.step();
-  assert.deepEqual(t.coneEvents(), [true, false]);
+  assert.deepEqual(t.coneEvents(), [true, false, true]);
 });
 
 fieldTest('Shove deploys its real repulsor on press, never on repeat or release, and detonates nothing (R17)', () => {
@@ -174,24 +180,25 @@ fieldTest('Shove deploys its real repulsor on press, never on repeat or release,
   }
 });
 
-fieldTest('the real standard-pad B mapping toggles Rig and the lifecycle fence requires neutral before reuse', () => {
+fieldTest('the real standard-pad LB+Y chord toggles Rig and the lifecycle fence requires neutral before reuse', () => {
   const t = boot();
   const gp = createGamepad({ state: t.state, bus: t.sim.bus }, { connectionEvents: false });
   t.host.gamepad = gp;
   t.state.settings.controls.gamepad = { ...(t.state.settings.controls.gamepad || {}), enabled: true };
   let seq = 0;
+  // G18-02 (b931aac851): Rig rides the LB+Y chord — buttons 4 (l1) and 3 (alt) together.
   const frame = (pressed) => {
-    const buttons = Array.from({ length: 17 }, (_, i) => ({ pressed: i === 1 && pressed, touched: i === 1 && pressed, value: i === 1 && pressed ? 1 : 0 }));
+    const buttons = Array.from({ length: 17 }, (_, i) => ({ pressed: (i === 3 || i === 4) && pressed, touched: (i === 3 || i === 4) && pressed, value: (i === 3 || i === 4) && pressed ? 1 : 0 }));
     t.host.ingestLaneDomEvent({ type: 'gamepadFrame', frame: { pads: [{ id: 'Standard Test Pad', index: 0, connected: true,
       mapping: 'standard', axes: [0, 0, 0, 0], buttons, timestamp: ++seq }] } });
   };
   frame(false); t.step();
-  frame(true); t.step(); assertCone(t, true, 'B down');
-  frame(true); t.step(); assertCone(t, true, 'B still held');
+  frame(true); t.step(); assertCone(t, true, 'LB+Y down');
+  frame(true); t.step(); assertCone(t, true, 'LB+Y still held');
   t.host.releaseHeldControls('blur'); frame(true); t.step();
-  assertCone(t, true, 'resume cannot reinterpret a held B as another toggle');
+  assertCone(t, true, 'resume cannot reinterpret a held chord as another toggle');
   frame(false); t.step(); assertCone(t, true, 'neutral only clears the fence');
-  frame(true); t.step(); assertCone(t, false, 'a new B press folds the cone');
+  frame(true); t.step(); assertCone(t, false, 'a new LB+Y press folds the cone');
   assert.deepEqual(t.coneEvents(), [true, false]);
 });
 

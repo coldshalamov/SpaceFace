@@ -32,6 +32,9 @@ function boot({ bindings = null } = {}) {
   state.player.cargo = { items: { cmdty_impulse_charge: 2 } };
   state.bombs = { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 3 }] } };
   if (bindings) state.settings.controls = { ...(state.settings.controls || {}), bindings };
+  // 4f5884ea3f: every power fires on press by default; these grip cases exercise the opt-in
+  // "Aim first" release-preview policy (Settings → Gameplay → powerFire: 'aim').
+  state.settings.gameplay = { ...(state.settings.gameplay || {}), powerFire: 'aim' };
   const host = sim.registry.get('input');
   const key = (code, pressed, extra = {}) => applyFlightKeyEvent(host, { code, pressed, ...extra });
   const fired = () => POWER_FLAGS.filter((f) => state.input.actions[f] === true);
@@ -331,7 +334,7 @@ test('pylon taps honor remaps and deliberate unbinding alongside buffered touch 
     'the wheel slice needs no key seat — no action becomes unreachable');
 });
 
-test('the real controller holds Y for the wheel and a wheel choice deploys the pylon once', () => {
+test('the real controller holds D-pad down for the wheel and a wheel choice deploys the pylon once', () => {
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const pad = { id: 'input-pylon-standard', index: 0, connected: true, mapping: 'standard',
     axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
@@ -341,15 +344,15 @@ test('the real controller holds Y for the wheel and a wheel choice deploys the p
     t.state.settings.controls.gamepad.enabled = true;
     const button = (i, held) => { pad.buttons[i] = { pressed: held, value: held ? 1 : 0 }; };
     t.step();
-    button(3, true); t.step(); // hold Y: the context wheel is live.
-    assert.equal(t.state.input.actions.contextWheel, true, 'hold-Y owns the wheel');
+    button(13, true); t.step(); // hold D-pad down: the context wheel is live (CONTROLLER-1 seat).
+    assert.equal(t.state.input.actions.contextWheel, true, 'hold D-pad down owns the wheel');
     t.host.applyWheelVerb({ action: 'deployShieldPylon' });
     t.step();
     assert.equal(t.state.input.actions.deployShieldPylon, true);
     assert.equal(t.state.input.actions.cycleBomb, false);
     t.step(); assert.equal(t.state.input.actions.deployShieldPylon, false);
-    button(3, false); t.step();
-    assert.equal(t.state.input.actions.contextWheel, false, 'releasing Y closes the wheel');
+    button(13, false); t.step();
+    assert.equal(t.state.input.actions.contextWheel, false, 'releasing D-pad down closes the wheel');
   } finally {
     if (prior) Object.defineProperty(globalThis, 'navigator', prior); else delete globalThis.navigator;
   }
