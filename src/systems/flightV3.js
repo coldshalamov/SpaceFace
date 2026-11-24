@@ -80,6 +80,26 @@ const AUTOPILOT_MAX_LOOKAHEAD = 760;
 const AUTOPILOT_MIN_LOOKAHEAD = 180;
 const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
+// How far off the aim line one obstacle may ever bend the flight computer's steering. The dodge
+// is a sidestep around something in the road, never a new course: an unbounded sum of obstacle
+// terms could rotate the desired heading far enough that the hull flew away from the berth it
+// had been sent to (DEMO-BERTH-1: the station's own traffic bent the run 80 degrees off the
+// corridor mouth and the ship made a lap). Capped at a quarter turn it always still closes on the
+// aim, while a body dead ahead keeps the full sidestep it needs.
+const AUTOPILOT_MAX_DEFLECT = Math.PI / 4;
+// The band a passing body must be cleared by when the course would genuinely touch it. The wider
+// steering band is a comfort hint that fades with distance off the line; this one is the contact
+// question, and it is what sizes the sidestep angle.
+const AUTOPILOT_PASS_MARGIN = 12;
+// Stall escape: commanded motion with essentially none produced, for this long, means the hull is
+// leaning on something solid. The backout is long enough to clear a hull radius or two at
+// reverse thrust and short enough that a wrong guess costs a second, not the run.
+const AUTOPILOT_STALL_SPEED = 2;
+const AUTOPILOT_STALL_TICKS = 45;
+const AUTOPILOT_BACKOUT_TICKS = 45;
+// A hull that has closed this many wu since it last made progress is not stalled, whatever its
+// speed reads — the check must never fire on a slow creep that is actually arriving.
+const AUTOPILOT_STALL_PROGRESS = 12;
 
 // MASSLINE flight-lane handoff. A sling tag does not grant speed: it only tells the assisted
 // governor that the current overspeed came from an external physics verb, so the governor may
@@ -1665,13 +1685,43 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     && speed > brakeFloor - 3) {
     shouldBrake = true;
   }
+  // Stall escape: a hull pressing a solid body at full thrust reads a healthy cruise command
+  // (it is aimed at the aim, guidance is clear, the plan wants speed) and never moves. The
+  // autopilot then held throttle against a wreck for the whole run — the Forge stall in
+  // DEMO-BERTH-1's own fixture, and the same shape at Helios. Detect "commanded motion, none
+  // produced" and hand the hull a few seconds of reverse with a fresh sidestep, so it backs off
+  // the body and comes round it rather than grinding. The counters are latch-only and re-derived
+  // every tick, never persisted course state.
+  if (!Number.isFinite(autopilot._stallDist0) || autopilot._stallDist0 < dist) autopilot._stallDist0 = dist;
+  const stalled = speed < AUTOPILOT_STALL_SPEED
+    && dist > arrivalRadius * 2
+    && !shouldBrake
+    && dist > autopilot._stallDist0 - AUTOPILOT_STALL_PROGRESS;
+  autopilot._stallTicks = stalled ? (autopilot._stallTicks | 0) + 1 : 0;
+  if (!stalled) autopilot._stallDist0 = dist;
+  if (autopilot._stallTicks > AUTOPILOT_STALL_TICKS && !(autopilot._backoutTicks > 0)) {
+    autopilot._backoutTicks = AUTOPILOT_BACKOUT_TICKS;
+    autopilot._avoidanceSide = -(finite(autopilot._avoidanceSide, 1) || 1);
+    clearAutopilotAvoidance(autopilot, true);
+  }
+  if (autopilot._backoutTicks > 0) {
+    autopilot._backoutTicks -= 1;
+    autopilot._stallTicks = 0;
+    autopilot._stallDist0 = dist;
+  }
   autopilot.brakeHold = autopilot.brakeSettled === true && shouldBrake;
 
   let throttle = 0;
   let strafe = 0;
   let brake = false;
   let boost = false;
-  if (shouldBrake) {
+  if (autopilot._backoutTicks > 0) {
+    // Back straight off the body that is holding the hull, then let the fresh sidestep and the
+    // ordinary plan take over. Reverse is the one command a pressed-against-hull ship can act on.
+    throttle = -1;
+    strafe = 0;
+    brake = false;
+  } else if (shouldBrake) {
     const counter = counterVelocityInput(entity);
     throttle = counter.throttle;
     strafe = counter.strafe;
@@ -1847,6 +1897,9 @@ function stopAutopilot(host, state, reason) {
   autopilot.brakeSettled = false;
   autopilot.brakeHold = false;
   autopilot.arrivalHolding = false;
+  autopilot._stallTicks = 0;
+  autopilot._backoutTicks = 0;
+  autopilot._stallDist0 = null;
   if (autopilot.active !== true) return;
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
@@ -1894,8 +1947,16 @@ function autopilotObstacleStrength(projection, lateral, maxProjection, contactRe
   // The additional steering clearance applies within the course, where there is room to pass.
   const absLateral = Math.abs(lateral);
   if (absLateral >= clearance || (endGap !== 0 && endGap * endGap + lateral * lateral >= contactReach * contactReach)) return 0;
+  // Contact risk, not mere presence: the term is 1 on the course line and falls to 0 at the
+  // clearance edge, then squared so a body 60-100 wu off the line bends the course a little
+  // instead of as hard as a body dead ahead. The old linear ramp plus a 1.65 gain let one hull
+  // parked 3-7 wu off the line add ~0.7 to the steer vector, which is more than the aim itself:
+  // from the after-throw seat the berth run curved 80 degrees off the mouth aim for a whole lap
+  // of the station, and a 1480 wu start was flung to 2.5 km before it ever turned back
+  // (DEMO-BERTH-1). A real obstacle still saturates the term at full strength.
+  const room = 1 - absLateral / Math.max(1, clearance);
   const depth = 1 - courseProjection / Math.max(1, maxProjection);
-  return (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+  return room * room * (0.7 + depth * 0.8);
 }
 
 export function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {
@@ -1946,17 +2007,47 @@ export function computeAutopilotGuidance(state, player, target, distance, arriva
         if (autopilot) autopilot._avoidanceSide = side;
       }
 
+      // The sidestep is as large as the nearest body on the far side of the line actually needs,
+      // and no larger. A body 3 wu off the line 70 wu ahead demands a few degrees, not a hard
+      // turn: a fixed full-strength sum made the computer fly a permanent 45 degree offset that
+      // carried it past the corridor mouth and around the station again (DEMO-BERTH-1). Once the
+      // body passes, the demand falls to zero and the course closes on the aim by itself.
+      let deflect = 0;
       for (const obstacle of obstacles) {
         const ox = finite(obstacle.pos && obstacle.pos.x) - px;
         const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
         const projection = ox * baseX + oz * baseZ;
         const lateral = ox * perpX + oz * perpZ;
-        const contactReach = hullRadius + positive(obstacle.radius, 0);
-        const strength = autopilotObstacleStrength(projection, lateral, maxProjection, contactReach, contactReach + clearanceSlack);
-        steerX += perpX * side * strength * 1.65;
-        steerZ += perpZ * side * strength * 1.65;
+        const contactReach = hullRadius + positive(obstacle.radius, 0) + AUTOPILOT_PASS_MARGIN;
+        // Distance from the body's centre to the course ray. A centre astern still matters when
+        // its physical reach crosses the line ahead of the hull — a truss tip over the nose —
+        // so the aft case measures from the hull itself rather than discarding the body.
+        const distanceToLine = projection > 0 ? Math.abs(lateral) : Math.hypot(projection, lateral);
+        const needed = contactReach - distanceToLine;
+        if (needed <= 0) continue;
+        // Steering to `side` only clears a body on the far side of the line. A second body on
+        // the dodge side is what the side choice above already weighed; adding more angle here
+        // would drive the hull into it. "On the line" counts as far side — a body dead ahead is
+        // the one case that must always be dodged, and a few wu of float noise either way must
+        // not decide it.
+        if (projection > 0 && lateral * side > AUTOPILOT_PASS_MARGIN) continue;
+        // Turning the course by theta swings the line sideways by (distance to the body) x sin
+        // theta at that body. Solving that for the missing clearance is what keeps the sidestep
+        // proportionate: a body 285 wu ahead needs ~8 degrees, while one already against the
+        // hull needs most of a right angle because there is no room left to walk it off.
+        const radius = Math.max(Math.hypot(projection, lateral), contactReach, 1);
+        const angle = Math.asin(clamp(needed / radius, 0, 1));
+        if (angle > deflect) deflect = angle;
       }
-      avoiding = true;
+      deflect = Math.min(deflect, AUTOPILOT_MAX_DEFLECT);
+      if (deflect > 1e-4) {
+        const push = Math.tan(deflect);
+        steerX += perpX * side * push;
+        steerZ += perpZ * side * push;
+        avoiding = true;
+      } else {
+        clearAutopilotAvoidance(autopilot, false);
+      }
     } else {
       clearAutopilotAvoidance(autopilot, false);
     }
