@@ -432,6 +432,102 @@ function scheduleStopSub(sub, when) {
   for (const e of sub.extra) { if (e.stop) { try { e.stop(when); } catch (_) {} } }
 }
 
+// ---- PCM bake support -----------------------------------------------------------
+// The live-synth path mints 4-9 native nodes per play(); at the 12-voice cap under
+// sustained fire that is tens of create/dispose cycles a second in the loudest moments.
+// A transient recipe is a fixed graph whose only per-play variation — rate, detune,
+// peak, pan, start time — is exactly what a BufferSource + gain re-applies, so the
+// system renders each recipe once to a PCM buffer (offline render of the very same
+// graph, at unit gain and rate 1 with pitchRange locked) and replays that instead.
+// Continuous recipes never end and stay on the live-synth path.
+
+/**
+ * Upper-bound duration (seconds) and the release tail for a recipe's rendered voice,
+ * or null when the recipe never ends (continuous types / loops — not bakeable).
+ * Mirrors the stopAt math in applyEnvelope + the repeat scheduling in playRecipe.
+ */
+export function recipeBakeInfo(recipe, recipeById, _seen) {
+  if (!recipe) return { seconds: 0.1, releaseS: 0.05 };
+  const t = recipe.type;
+  if (t === 'continuous_oscillator' || t === 'continuous_noise' || recipe.loop === true) return null;
+  const seen = _seen || new Set();
+  let seconds = 0;
+  let releaseS = 0.05;
+  if (t === 'layered') {
+    for (const id of recipe.layers || []) {
+      const leaf = recipeById && recipeById[id];
+      if (!leaf || seen.has(id)) continue;
+      seen.add(id);
+      // mergeLayerRecipe: the parent's envelope wins over the leaf's.
+      const merged = { ...leaf, gainEnvelope: recipe.gainEnvelope || leaf.gainEnvelope };
+      const info = recipeBakeInfo(merged, recipeById, seen);
+      if (!info) return null;
+      if (info.seconds > seconds) seconds = info.seconds;
+      if (info.releaseS > releaseS) releaseS = info.releaseS;
+    }
+    if (seconds === 0) seconds = 0.145; // unresolved layers: the silent master still ends
+  } else {
+    const env = recipe.gainEnvelope || { attack: 0.005, sustain: 0, release: 0.08 };
+    const a = Math.max(0.001, env.attack || 0.005);
+    const d = Math.max(0.005, env.decay || 0.04);
+    const r = Math.max(0.01, env.release || 0.05);
+    seconds = a + d + r + 0.02;
+    releaseS = r;
+  }
+  const reps = Math.max(0, Number(recipe.repeatCount) || 0)
+    * Math.max(0, Number(recipe.repeatIntervalS) || 0);
+  return { seconds: seconds + reps, releaseS };
+}
+
+/** Widest effective pitchRange across a recipe and its (envelope-merged) leaves. */
+function widestPitchRange(recipe, recipeById, _seen) {
+  if (!recipe) return null;
+  let best = recipe.pitchRange || null;
+  if (recipe.type === 'layered' && recipeById) {
+    const seen = _seen || new Set();
+    for (const id of recipe.layers || []) {
+      if (seen.has(id)) continue;
+      const leaf = recipeById[id];
+      if (!leaf) continue;
+      seen.add(id);
+      // mergeLayerRecipe: leaf.pitchRange wins over the parent's.
+      const merged = { ...leaf, pitchRange: leaf.pitchRange || recipe.pitchRange };
+      const sub = widestPitchRange(merged, recipeById, seen);
+      if (sub && (!best || (sub[1] - sub[0]) > (best[1] - best[0]))) best = sub;
+    }
+  }
+  return best;
+}
+
+/**
+ * The playbackRate a baked buffer needs to land the same pitch the synth path would
+ * have produced this play. Identical to pickRate for non-layered recipes; layered
+ * composites draw once from the widest leaf range (the synth draws per-leaf — the
+ * difference is which partials wobble together, not the sounded pitch family).
+ */
+export function bakedVoiceRate(recipe, opts, recipeById) {
+  opts = opts || {};
+  if (opts.lockRate) return opts.rate == null ? 1 : opts.rate;
+  if (opts.rate != null && opts.rate !== 1) return opts.rate;
+  const range = widestPitchRange(recipe, recipeById);
+  if (range) return randomInRange(range);
+  return opts.rate || 1;
+}
+
+/**
+ * Render a transient recipe's full synth graph once into a PCM buffer on an
+ * OfflineAudioContext. rate is locked to 1 (playbackRate re-applies it per play),
+ * detune 0 (src.detune re-applies it), peakGain 1 (the layer gain scales it) so the
+ * buffer is the recipe's unit-gain, unit-rate waveform. Returns the
+ * startRendering() promise — an AudioBuffer whose duration covers the whole tail.
+ */
+export function renderRecipeToBuffer(offlineCtx, recipe, caches) {
+  playRecipe(offlineCtx, recipe, offlineCtx.destination, {
+    peakGain: 1, rate: 1, lockRate: true, detune: 0, startTime: 0, id: 0,
+  }, caches || {});
+  return offlineCtx.startRendering();
+}
+
 /** Immediately tear down + disconnect a voice's nodes (called after stopAt passes). */
 export function disposeVoice(voice) {
   try { voice.gain.disconnect(); } catch (_) {}

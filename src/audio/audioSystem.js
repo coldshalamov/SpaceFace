@@ -108,7 +108,15 @@ import {
   VISUAL_EVENT_BUS,
   ENVIRONMENT_CLASSES,
 } from './environmentMix.js';
-import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
+import {
+  playRecipe,
+  releaseVoice,
+  disposeVoice,
+  getNoiseBuffer,
+  recipeBakeInfo,
+  bakedVoiceRate,
+  renderRecipeToBuffer,
+} from './synth.js';
 import { cueVariantFor } from './cueVariants.js';
 import {
   admitLayerVoice,
@@ -289,6 +297,18 @@ export function isBossBody(entity) {
 }
 
 export const MAX_AUDIO_VOICES = 12;
+// PERF — voice creation rate, not just concurrency, used to hit the cap: every play() minted
+// 4-9 native nodes and _gcVoices disposed them a second later. Transient recipes now render
+// once to a PCM buffer through the same playRecipe graph (offline, unit gain/rate) and replay
+// through the resident-sample path — one BufferSource into a pooled thin shell. Continuous
+// recipes keep the live-synth path; steal ranking, distance culling, tick-collapse and the
+// limiter are untouched.
+export const BAKE_MAX_SECONDS = 12;          // longer transient recipes stay live-synth
+export const BAKE_PAD_SECONDS = 0.08;        // render margin after the computed tail
+export const BAKE_MAX_INFLIGHT = 2;          // concurrent offline renders
+export const BAKE_CACHE_CAP = 64;            // baked recipes kept resident
+export const BAKE_CACHE_MAX_BYTES = 24 * 1024 * 1024; // mono PCM, LRU-evicted
+export const BAKED_SHELL_POOL_CAP = 8;       // retired thin shells kept per shape signature
 // Sustained-beam voices (INST-34). _onFire routes these to a per-owner loop drone instead of a
 // one-shot per fire tick, and _startBeam/_frame resume honour the owner's own voice.
 const DEFAULT_BEAM_RECIPE_ID = 'sfx_wpn_beam_laser';
@@ -2710,6 +2730,22 @@ export const audio = {
     rt.masterGain = null; rt.limiter = null; rt.sfxBus = null; rt.musicBus = null;
     rt.voices = [];               // active SFX voices (pooled, cap MAX_AUDIO_VOICES)
     rt.loops = {};                // keyed sustained voices: beam/mining/per-owner weapon beams
+    // PCM bake cache + thin-shell pool: baked AudioBuffers survive an init/context swap
+    // (buffers are context-portable), but node shells belong to one AudioContext.
+    if (rt._bakeCache) {
+      rt._bakeBytes = 0;
+      for (const [id, e] of rt._bakeCache) {
+        if (!e || !e.buffer) rt._bakeCache.delete(id);
+        else rt._bakeBytes += e.bytes || 0;
+      }
+    } else {
+      rt._bakeCache = new Map();
+      rt._bakeBytes = 0;
+    }
+    rt._bakeQueue = [];
+    rt._bakeInflight = 0;
+    rt._bakeDisabled = false;
+    rt._shellPool = new Map();
     rt.stems = { A: null, B: null, C: null, D: null, E: null };
     rt.stemGains = { A: null, B: null, C: null, D: null, E: null };
     rt.musicState = 'calm';
@@ -3940,6 +3976,7 @@ export const audio = {
     let ctx;
     try { ctx = new AC(); } catch (_) { return null; }
     rt.ctx = ctx;
+    rt._shellPool = new Map(); // node shells belong to the context that minted them
 
     // master -> limiter -> destination
     // Start the graph silent: createGain() defaults to 1.0, and the first gesture often lands on
@@ -4636,9 +4673,16 @@ export const audio = {
     // Occluded positional voices ride the shared lowpass that feeds their bus.
     if (occluded) targetBus = rt._occlusionFilters[busName];
 
+    // A baked transient replays one BufferSource through a pooled thin shell instead of
+    // re-minting its whole synth graph — the buffer was rendered by the same playRecipe
+    // graph, so rate/detune/peak land identical by construction. synthPeak <= 0 means a
+    // resident/designed sample carries 100% of the body; the silent synth layer is skipped.
+    const isLoopRecipe = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
+    const bakedBuffer = (synthPeak > 0 && !isLoopRecipe) ? this._bakedBufferFor(recipeId, recipe) : null;
+
     let dest = targetBus;
     let panner = null;
-    if (pan !== 0 && ctx.createStereoPanner) {
+    if (pan !== 0 && ctx.createStereoPanner && !bakedBuffer) {
       panner = ctx.createStereoPanner();
       panner.pan.value = pan;
       panner.connect(targetBus);
@@ -4649,11 +4693,41 @@ export const audio = {
     if (!this._reserveVoiceSlot(mixCueStaysReadable(recipeId, opts) || this._isPriorityVoice(recipeId, opts))) {
       return null;
     }
-    const voice = playRecipe(ctx, recipe, dest, {
-      peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
-      id: rt._nextVoiceId++, trackId: opts.trackId || null,
-      startTime: opts.startTime,
-    }, rt._caches);
+    let voice;
+    const voiceT0 = opts.startTime !== undefined ? opts.startTime : ctx.currentTime;
+    if (bakedBuffer) {
+      voice = this._playBakedVoice(ctx, recipe, targetBus, {
+        buffer: bakedBuffer, t0: voiceT0, rate, lockRate,
+        detune: opts.detune || 0, peak: synthPeak, pan,
+        sendLevel: (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0)
+          ? Math.min(1, recipe.reverbMix) * 0.9 : 0,
+        trackId: opts.trackId || null,
+      });
+      // An exotic context without buffer sources falls back to the identical synth voice.
+      if (!voice) {
+        if (pan !== 0 && ctx.createStereoPanner) {
+          panner = ctx.createStereoPanner();
+          panner.pan.value = pan;
+          panner.connect(targetBus);
+          dest = panner;
+        }
+        voice = playRecipe(ctx, recipe, dest, {
+          peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
+          id: rt._nextVoiceId++, trackId: opts.trackId || null,
+          startTime: opts.startTime,
+        }, rt._caches);
+      }
+    } else if (synthPeak <= 0 && !isLoopRecipe) {
+      voice = this._thinSampleCarrier(ctx, recipe, dest, voiceT0, opts.trackId || null);
+    } else {
+      voice = playRecipe(ctx, recipe, dest, {
+        peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
+        id: rt._nextVoiceId++, trackId: opts.trackId || null,
+        startTime: opts.startTime,
+      }, rt._caches);
+    }
+    if (!voice) return null;
+    if (!voice.id) voice.id = rt._nextVoiceId++;
     voice.busName = busName;
     voice.recipeId = recipeId;
     voice.dist = heardDist;
@@ -4661,12 +4735,13 @@ export const audio = {
     voice.critical = !!opts.critical;
     voice.warning = !!opts.warning;
     voice.refusalSource = opts.refusalSource || null;
-    voice._panner = panner;
-    voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
+    voice._panner = panner || (voice._bakedShell && voice._bakedShell.panner) || null;
+    voice.loop = isLoopRecipe;
     voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
     // Authored reverb sends (recipe.reverbMix): an extra wet tap into the shared environment
-    // send so this voice's tail rides the active room beyond the bus-level mix.
-    if (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0) {
+    // send so this voice's tail rides the active room beyond the bus-level mix. A baked
+    // shell owns its send already; synth and thin voices mint it here as before.
+    if (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0 && !voice._bakedShell) {
       try {
         const wet = ctx.createGain();
         wet.gain.value = Math.min(1, recipe.reverbMix) * 0.9;
@@ -4698,7 +4773,8 @@ export const audio = {
     const v = rt.voices[idx];
     if (!v) return;
     try { releaseVoice(rt.ctx, v); } catch (_) {}
-    disposeVoice(v);
+    if (v._bakedShell) this._retireBakedShell(v);
+    else disposeVoice(v);
     if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
     rt.voices.splice(idx, 1);
     if (rt.loops) {
@@ -4755,6 +4831,257 @@ export const audio = {
 
   _evictIfFull() {
     this._reserveVoiceSlot(false);
+  },
+
+  // ---- baked transient voices ----------------------------------------------------
+  // A transient recipe's synth graph is deterministic modulo rate/detune/peak — exactly
+  // what a BufferSource + gain re-applies — so the graph is rendered once to a resident
+  // PCM buffer and replays through a pooled thin shell (one new native node per play).
+  // `_bakeCache` is LRU by lastUse; misses keep the ordinary synth path forever.
+
+  _bakedBufferFor(recipeId, recipe) {
+    const rt = this.rt;
+    if (!rt || rt._bakeDisabled || !recipe) return null;
+    const cache = rt._bakeCache || (rt._bakeCache = new Map());
+    const entry = cache.get(recipeId);
+    if (entry) {
+      if (entry.buffer) {
+        entry.lastUse = rt.ctx ? rt.ctx.currentTime : 0;
+        return entry.buffer;
+      }
+      return null; // queued / rendering / failed / ineligible — synth path meanwhile
+    }
+    const info = recipeBakeInfo(recipe, AUDIO_RECIPE_BY_ID);
+    if (!info || info.seconds > BAKE_MAX_SECONDS) {
+      cache.set(recipeId, { status: 'skip' });
+      return null;
+    }
+    cache.set(recipeId, { status: 'queued' });
+    (rt._bakeQueue || (rt._bakeQueue = [])).push(recipeId);
+    this._pumpBakeQueue();
+    return null;
+  },
+
+  _pumpBakeQueue() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!rt || !ctx || !rt._bakeQueue) return;
+    while ((rt._bakeInflight || 0) < BAKE_MAX_INFLIGHT && rt._bakeQueue.length) {
+      const recipeId = rt._bakeQueue.shift();
+      const entry = rt._bakeCache && rt._bakeCache.get(recipeId);
+      if (!entry || entry.status !== 'queued') continue;
+      this._startBake(recipeId, entry);
+    }
+  },
+
+  _startBake(recipeId, entry) {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    const recipe = AUDIO_RECIPE_BY_ID[recipeId];
+    const OAC = typeof globalThis !== 'undefined'
+      && (globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext);
+    if (!rt || !ctx || !recipe || !OAC) {
+      if (entry) entry.status = 'failed';
+      if (!OAC && rt) rt._bakeDisabled = true; // no offline renderer: synth path forever
+      return;
+    }
+    const info = recipeBakeInfo(recipe, AUDIO_RECIPE_BY_ID);
+    if (!info || info.seconds > BAKE_MAX_SECONDS) { entry.status = 'skip'; return; }
+    const sampleRate = ctx.sampleRate || 48000;
+    const frames = Math.max(128, Math.ceil((info.seconds + BAKE_PAD_SECONDS) * sampleRate));
+    let off;
+    try { off = new OAC(1, frames, sampleRate); } catch (_) { entry.status = 'failed'; return; }
+    entry.status = 'rendering';
+    rt._bakeInflight = (rt._bakeInflight || 0) + 1;
+    const done = (buffer) => {
+      rt._bakeInflight = Math.max(0, (rt._bakeInflight || 0) - 1);
+      if (this.rt !== rt) { this._pumpBakeQueue(); return; }
+      if (buffer && buffer.length > 0) {
+        entry.status = 'ready';
+        entry.buffer = buffer;
+        entry.bytes = (buffer.length || 0) * 4;
+        entry.lastUse = ctx.currentTime || 0;
+        rt._bakeBytes = (rt._bakeBytes || 0) + entry.bytes;
+        this._evictBakeCache();
+      } else {
+        entry.status = 'failed';
+      }
+      this._pumpBakeQueue();
+    };
+    const fail = () => {
+      rt._bakeInflight = Math.max(0, (rt._bakeInflight || 0) - 1);
+      if (entry) entry.status = 'failed';
+      this._pumpBakeQueue();
+    };
+    let rendered;
+    try {
+      // The offline context runs at the live context's sample rate, so the shared
+      // caches (noise buffer, distortion curves, recipeById) all hit — no duplicate
+      // noise buffer is minted for baking.
+      rendered = renderRecipeToBuffer(off, recipe, rt._caches || (rt._caches = {}));
+    } catch (_) { fail(); return; }
+    if (rendered && typeof rendered.then === 'function') rendered.then(done, fail);
+    else if (rendered) done(rendered);
+    else fail();
+  },
+
+  _evictBakeCache() {
+    const rt = this.rt;
+    const cache = rt && rt._bakeCache;
+    if (!cache) return;
+    while (cache.size > BAKE_CACHE_CAP || (rt._bakeBytes || 0) > BAKE_CACHE_MAX_BYTES) {
+      let oldestId = null;
+      let oldest = Infinity;
+      for (const [id, e] of cache) {
+        if (!e || !e.buffer) continue;
+        const last = Number.isFinite(e.lastUse) ? e.lastUse : 0;
+        if (last < oldest) { oldest = last; oldestId = id; }
+      }
+      if (oldestId == null) break;
+      const e = cache.get(oldestId);
+      rt._bakeBytes = Math.max(0, (rt._bakeBytes || 0) - (e.bytes || 0));
+      cache.delete(oldestId);
+    }
+  },
+
+  /**
+   * Play a baked PCM voice. The shell is the voice's persistent wiring — master gain,
+   * the layer gain the buffer feeds, and the optional panner/environment-send legs —
+   * retired to `rt._shellPool` by `_retireBakedShell` and reused on the next play of the
+   * same shape. Only the one-shot BufferSource is minted per play. Rate/detune map to
+   * the source; peak maps to the layer gain; envelope shape lives in the buffer, so the
+   * audible result is the same graph the synth path would have produced.
+   */
+  _playBakedVoice(ctx, recipe, targetBus, o) {
+    const rt = this.rt;
+    if (!ctx || typeof ctx.createBufferSource !== 'function'
+      || typeof ctx.createGain !== 'function' || !o.buffer) return null;
+    const needPanner = o.pan !== 0 && typeof ctx.createStereoPanner === 'function';
+    const needSend = o.sendLevel > 0 && rt._environmentMix && rt._environmentMix.send;
+    const key = (needPanner ? 'p' : '') + (needSend ? 's' : '');
+    const pool = rt._shellPool || (rt._shellPool = new Map());
+    let list = pool.get(key);
+    let shell = list && list.pop() || null;
+    if (!shell) {
+      shell = {
+        key,
+        vGain: ctx.createGain(),
+        layerGain: ctx.createGain(),
+        panner: needPanner ? ctx.createStereoPanner() : null,
+        send: needSend ? ctx.createGain() : null,
+      };
+    }
+    // Interior edges — a pooled shell may have had them severed by a generic disconnect;
+    // connect() to an existing input is a no-op, so re-arm unconditionally.
+    try { shell.layerGain.connect(shell.vGain); } catch (_) {}
+    if (shell.panner) { try { shell.vGain.connect(shell.panner); } catch (_) {} }
+    if (shell.send) { try { shell.vGain.connect(shell.send); } catch (_) {} }
+    // Params: a reused shell may carry a stale release ramp — cancel before the new values.
+    const now = ctx.currentTime;
+    try { shell.vGain.gain.cancelScheduledValues(now); } catch (_) {}
+    try { shell.vGain.gain.value = 1; } catch (_) {}
+    try { shell.layerGain.gain.cancelScheduledValues(now); } catch (_) {}
+    try { shell.layerGain.gain.value = Math.max(0.0001, o.peak == null ? 1 : o.peak); } catch (_) {}
+    // Transient out edges: into the bus (through the panner when panned) and the env send.
+    if (shell.panner) {
+      try { shell.panner.pan.value = Math.max(-1, Math.min(1, o.pan)); } catch (_) {}
+      try { shell.panner.connect(targetBus); } catch (_) {}
+    } else {
+      try { shell.vGain.connect(targetBus); } catch (_) {}
+    }
+    if (shell.send) {
+      try { shell.send.gain.value = o.sendLevel; } catch (_) {}
+      try { shell.send.connect(rt._environmentMix.send); } catch (_) {}
+    }
+
+    const info = recipeBakeInfo(recipe, AUDIO_RECIPE_BY_ID) || { releaseS: 0.05 };
+    const layerRate = Math.max(0.25, bakedVoiceRate(recipe, { rate: o.rate, lockRate: o.lockRate }, AUDIO_RECIPE_BY_ID) || 1);
+    let src;
+    try { src = ctx.createBufferSource(); } catch (_) { src = null; }
+    if (!src) {
+      // Shell popped but unusable — detach its transient edges and hand it back.
+      if (shell.panner) { try { shell.panner.disconnect(); } catch (_) {} }
+      else { try { shell.vGain.disconnect(); } catch (_) {} }
+      if (shell.send) { try { shell.send.disconnect(); } catch (_) {} }
+      let back = list;
+      if (!back) { back = []; pool.set(key, back); }
+      if (back.length < BAKED_SHELL_POOL_CAP) back.push(shell);
+      return null;
+    }
+    src.buffer = o.buffer;
+    try { src.playbackRate.value = layerRate; } catch (_) {}
+    if (o.detune && src.detune) { try { src.detune.value = o.detune; } catch (_) {} }
+    try { src.connect(shell.layerGain); } catch (_) {}
+    const end = o.t0 + o.buffer.duration / layerRate + 0.02;
+    try { src.start(o.t0); } catch (_) {}
+    try { src.stop(end); } catch (_) {}
+    const sub = {
+      gain: shell.layerGain,
+      tail: { stopAt: end, releaseDur: info.releaseS },
+      sources: [src], extra: [], nodes: [src],
+      sampleLayer: true, baked: true,
+    };
+    const voice = {
+      id: 0, recipe, loop: false,
+      gain: shell.vGain, sources: [src], extra: [],
+      nodes: [src], subVoices: [sub],
+      startedAt: o.t0, releaseDur: info.releaseS, stopAt: end,
+      _stopped: false, trackId: o.trackId || null,
+      callGain: Math.max(0.0001, Math.min(1, o.peak == null ? 1 : o.peak)) * (recipe.gainMult || 1),
+      filter: null, _bakedShell: shell,
+    };
+    if (shell.send) voice._reverbSend = shell.send;
+    return voice;
+  },
+
+  /**
+   * A resident/designed sample carrying 100% of a transient voice needs no synth graph
+   * at all — just the master gain the sample layer plugs into. Same slot/GC semantics
+   * as a synth voice (the sample layer extends stopAt on attach).
+   */
+  _thinSampleCarrier(ctx, recipe, dest, t0, trackId) {
+    const vGain = ctx.createGain();
+    try { vGain.gain.value = 1; } catch (_) {}
+    try { vGain.connect(dest); } catch (_) {}
+    return {
+      id: 0, recipe, loop: false,
+      gain: vGain, sources: [], extra: [],
+      nodes: [vGain], subVoices: [],
+      startedAt: t0, releaseDur: 0.12, stopAt: t0 + 0.25,
+      _stopped: false, trackId: trackId || null,
+      callGain: 0, filter: null,
+    };
+  },
+
+  /**
+   * Retire a baked voice's persistent graph to the shell pool instead of disposing it.
+   * Transient members (buffer sources, attached sample-layer gains) are disconnected
+   * like any voice teardown; the shell's interior edges and the pool shape survive.
+   * The shared `v._panner.disconnect()` line at the call sites owns the panner's out edge.
+   */
+  _retireBakedShell(voice) {
+    const rt = this.rt;
+    const shell = voice && voice._bakedShell;
+    if (!rt || !shell) return;
+    voice._bakedShell = null;
+    const keep = shell.keep || (shell.keep = new Set(
+      [shell.vGain, shell.layerGain, shell.panner, shell.send].filter(Boolean)));
+    for (const n of voice.nodes || []) {
+      if (n && !keep.has(n)) { try { n.disconnect(); } catch (_) {} }
+    }
+    for (const sub of voice.subVoices || []) {
+      if (!sub) continue;
+      for (const s of sub.sources || []) { try { s && s.disconnect(); } catch (_) {} }
+      if (sub.gain && !keep.has(sub.gain)) { try { sub.gain.disconnect(); } catch (_) {} }
+    }
+    // Transient out edges. With a panner the shared v._panner.disconnect() cuts it;
+    // without one the master itself carried the bus edge.
+    if (!shell.panner) { try { shell.vGain.disconnect(); } catch (_) {} }
+    if (shell.send) { try { shell.send.disconnect(); } catch (_) {} }
+    const pool = rt._shellPool || (rt._shellPool = new Map());
+    let list = pool.get(shell.key);
+    if (!list) { list = []; pool.set(shell.key, list); }
+    if (list.length < BAKED_SHELL_POOL_CAP) list.push(shell);
   },
 
   _playerPos() {
@@ -9403,7 +9730,8 @@ export const audio = {
       const v = rt.voices[i];
       if (v.loop && !v._stopped) continue; // sustaining
       if (v.stopAt !== Infinity && now >= v.stopAt) {
-        disposeVoice(v);
+        if (v._bakedShell) this._retireBakedShell(v);
+        else disposeVoice(v);
         if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
         rt.voices.splice(i, 1);
         // also clear from loops map if present
