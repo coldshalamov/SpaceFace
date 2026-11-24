@@ -930,9 +930,10 @@ input[type="radio"]:checked::before {
 .sf-target-arcs.visible {
   opacity: 1;
 }
-.sf-target-arcs circle {
+.sf-target-arcs circle,
+.sf-target-arcs line {
   fill: none;
-  stroke-linecap: round;
+  stroke-linecap: butt;
 }
 .sf-arc-shield {
   stroke: var(--dp-phos, #dfeeff);
