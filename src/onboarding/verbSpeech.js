@@ -11,7 +11,7 @@
 // Pure data + resolvers. No DOM, no Three.js, no wall clock — device and bindings are read
 // from the live state/binding maps so a rebind re-speaks nothing yet is never stale.
 
-import { resolveActionLabel } from '../systems/input.js';
+import { MOUSE_ACTION_LABELS, resolveActionLabel } from '../systems/input.js';
 import {
   GAMEPAD_VERB_ALIASES,
   gamepadButtonLabels,
@@ -149,6 +149,23 @@ export function verbBindingLabel(state, action, device, { keyboardFallback = tru
     if (!keyboardFallback) return '';
   }
   return resolveActionLabel(state, action);
+}
+
+/**
+ * The Line's taught key: keyboard and mouse together on kbm ('F / RMB', or a rebound
+ * 'Q / RMB'), the pad glyph on a gamepad, nothing on touch. Help, the loading card, the
+ * opening line and the tracker all name this same form so one verb never wears two labels.
+ */
+export function taughtLatchKey(state, device) {
+  const dev = device || state?.input?.promptDevice || getPromptDevice();
+  if (dev === 'touch') return '';
+  if (dev === 'gamepad') {
+    return verbBindingLabel(state, 'tether', 'gamepad', { keyboardFallback: false }) || '';
+  }
+  const kb = resolveActionLabel(state, 'tether') || '';
+  const mouse = MOUSE_ACTION_LABELS.tether;
+  if (kb && mouse && kb !== mouse) return `${kb} / ${mouse}`;
+  return kb || mouse || '';
 }
 
 /** settings.controls.gamepad.glyphSet — 'xb' | 'ds' | 'fh'; 'xb' when unset. */

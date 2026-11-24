@@ -178,6 +178,7 @@ import {
   shelfHostileChargeReady,
   shelfLongStraightActive,
   shelfVerbEnabled,
+  taughtLatchKey,
   verbBindingLabel,
 } from '../onboarding/verbSpeech.js';
 import { isHostileToPlayer, scannerProfileForState } from './scanner.js';
@@ -460,8 +461,8 @@ const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
     return key ? `${line} Press ${key} to fly to the berth.` : line;
   },
   thrust: 'forward',            // Thrust until speed passes forty.
-  tether: 'tether',             // Latch the loose rock.
-  'tether:target:acquired': 'tether', // Latch it. Massline.
+  tether: (state, line) => latchTaughtLine(state, line),
+  'tether:target:acquired': (state, line) => latchTaughtLine(state, line),
   // SEED-ST-05 — "Hold tether to reel" taught only the modifier, so a stranger holding just the
   // tether key reels nothing. The first-hold line names the whole chord: the hold that gives line
   // control and the two axis ends that reel, all live labels.
@@ -473,7 +474,7 @@ const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
     return `Winch in. Hold ${hold} — ${reelIn || 'forward'} reels in${reelOut ? `, ${reelOut} pays out` : ''}.`;
   },
   raid: (state) => {
-    const latch = verbBindingLabel(state, 'tether');
+    const latch = taughtLatchKey(state);
     return latch ? `Latch the raider (${latch}) or fly away.` : null;
   },
   'raid:raid:latched': (state, line) => {
@@ -500,6 +501,11 @@ function seamControlLine(state, line, mining) {
 
   const wheel = verbBindingLabel(state, 'contextWheel', device, options);
   return wheel ? `${line} Hold ${wheel} and choose ${mining ? 'Mine Beam' : 'Scan'}.` : line;
+}
+
+function latchTaughtLine(state, line) {
+  const key = taughtLatchKey(state);
+  return key ? `${line} (${key})` : line;
 }
 
 /** The beat line with its taught control's live key appended, or the line unchanged. */
@@ -3619,7 +3625,7 @@ export const onboarding = {
       if (line?.active && line.targetId != null && line.targetId !== rockId) {
         return 'Release the current line. Latch the marked rock.';
       }
-      const latch = device === 'touch' ? 'TETHER' : verbBindingLabel(st, 'tether', device);
+      const latch = device === 'touch' ? 'TETHER' : taughtLatchKey(st, device);
       return latch ? `Latch the loose rock with ${latch}.` : 'Latch the loose rock.';
     }
     if (device === 'gamepad' || !massline2Flag('throw')) return rescueBeatLine(key);
