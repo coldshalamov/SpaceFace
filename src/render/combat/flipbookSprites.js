@@ -7,11 +7,11 @@
 import * as THREE from 'three';
 
 export const FLIPBOOK_SHEETS = Object.freeze({
-  fire: Object.freeze({ file: 'fire_burst_sheet', blend: 'add', hdr: 4.2, cooling: 1 }),
+  fire: Object.freeze({ file: 'fire_burst_sheet', blend: 'add', hdr: 2.0, cooling: 1 }),
   smoke: Object.freeze({ file: 'smoke_billow_sheet', blend: 'normal', hdr: 1, cooling: 0 }),
-  ring: Object.freeze({ file: 'shock_ring_sheet', blend: 'add', hdr: 3.2, cooling: 0 }),
-  spark: Object.freeze({ file: 'spark_ember_sheet', blend: 'add', hdr: 4.6, cooling: 1 }),
-  wisp: Object.freeze({ file: 'energy_wisp_sheet', blend: 'add', hdr: 5, cooling: 0 }),
+  ring: Object.freeze({ file: 'shock_ring_sheet', blend: 'add', hdr: 1.9, cooling: 0 }),
+  spark: Object.freeze({ file: 'spark_ember_sheet', blend: 'add', hdr: 2.3, cooling: 1 }),
+  wisp: Object.freeze({ file: 'energy_wisp_sheet', blend: 'add', hdr: 2.6, cooling: 0 }),
 });
 
 export function flipbookSheetPath(id) {
@@ -53,6 +53,7 @@ const VERT = /* glsl */`
   attribute vec3 aSpriteColor;
   attribute float aSpriteOpacity;
   attribute vec2 aSpritePhase;
+  uniform float uAdditive;
   varying vec2 vUv;
   varying vec3 vTint;
   varying float vOpacity;
@@ -64,7 +65,14 @@ const VERT = /* glsl */`
     float c = cos(aSpriteRoll), s = sin(aSpriteRoll);
     vec2 p0 = position.xy * aSpriteScale;
     vec2 q = vec2(c * p0.x - s * p0.y, s * p0.x + c * p0.y);
-    vec3 world = aSpritePosition + right * q.x + up * q.y;
+    // Keep smoke and broad blast quads cleanly behind opaque ship hulls via depth test so
+    // the player silhouette remains legible through close-range explosions.
+    float maxScale = max(aSpriteScale.x, aSpriteScale.y);
+    vec3 toCam = normalize(cameraPosition - aSpritePosition);
+    float backOff = uAdditive < 0.5
+      ? 5.5
+      : smoothstep(10.0, 26.0, maxScale) * 3.8;
+    vec3 world = aSpritePosition - toCam * backOff + right * q.x + up * q.y;
     vUv = uv;
     vTint = aSpriteColor;
     vOpacity = aSpriteOpacity;
@@ -95,38 +103,45 @@ const FRAG = /* glsl */`
     float k = fract(film);
     vec4 tx = mix(a, b, k);
     // Straight-alpha sheets: weight colour by coverage so transparent texels add no fringe.
-    float cover = tx.a;
+    float rDist = length(vUv - vec2(0.5)) * 2.0;
+    float radial = 1.0 - smoothstep(0.45, 1.0, rDist);
+    float cover = tx.a * radial;
     if (cover * vOpacity < 0.004) discard;
     vec3 rgb = tx.rgb;
     float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
     if (uAdditive > 0.5) {
-      // Heat lives only in the brightest texels: the body keeps the painted lobes and dark
-      // channels (gain ~1), the white-hot core climbs well past 1.0 so the bloom throws its halo.
-      float cool = mix(1.0, 1.0 - 0.7 * vPhase.x, uCooling);
-      float core = smoothstep(0.55, 0.95, lum) * cool;
+      // Heat lives only in the brightest texels: keep punchy fire edges while capping peak
+      // HDR so stacked blasts never white out the center through bloom.
+      float cool = mix(1.0, 1.0 - 0.78 * vPhase.x, uCooling);
+      float lifeFade = 1.0 - smoothstep(0.42, 1.0, vPhase.x);
+      float core = smoothstep(0.58, 0.96, lum) * cool;
       // The fire sheet's late frames are grey smoke. Added to the frame that grey reads as a white
       // cloud, so desaturated texels are weighted down: lingering smoke is the smoke family's job.
       float sat = (max(rgb.r, max(rgb.g, rgb.b)) - min(rgb.r, min(rgb.g, rgb.b))) / (max(rgb.r, max(rgb.g, rgb.b)) + 1e-3);
-      float fireOnly = mix(0.15, 1.0, smoothstep(0.12, 0.42, sat) + (1.0 - uCooling) * 1.0 + core);
-      vec3 body = rgb * vTint * (0.85 + 0.5 * lum) * min(1.0, fireOnly);
-      vec3 hotCol = vec3(1.0, 0.93, 0.78) * max(vTint.r, max(vTint.g, vTint.b));
-      vec3 col = mix(body, hotCol, core * 0.55) * (1.0 + uHdr * core * core);
-      gl_FragColor = vec4(col * cover * vOpacity, 1.0);
+      float fireOnly = mix(0.12, 1.0, smoothstep(0.14, 0.44, sat) + (1.0 - uCooling) * 1.0 + core);
+      vec3 body = rgb * vTint * (0.78 + 0.45 * lum) * min(1.0, fireOnly);
+      vec3 hotCol = vec3(1.0, 0.90, 0.72) * max(vTint.r, max(vTint.g, vTint.b));
+      vec3 col = mix(body, hotCol, core * 0.30) * (1.0 + uHdr * core * core);
+      vec3 outCol = min(col * cover * vOpacity * lifeFade, vec3(2.4));
+      gl_FragColor = vec4(outCol, 1.0);
     } else {
-      // Smoke: lit-from-ink body tinted by the sprite colour, normal blend.
-      gl_FragColor = vec4(rgb * mix(vec3(1.0), min(vTint, vec3(0.8)), 0.6) * 0.5, cover * vOpacity);
+      // Smoke: lit-from-ink body tinted by the sprite colour, low capped alpha so ships stay clear.
+      float smokeFade = 1.0 - smoothstep(0.22, 1.0, vPhase.x);
+      float smokeAlpha = min(cover * vOpacity * smokeFade, 0.32);
+      if (smokeAlpha < 0.004) discard;
+      gl_FragColor = vec4(rgb * mix(vec3(1.0), min(vTint, vec3(0.75)), 0.65) * 0.46, smokeAlpha);
     }
     #include <colorspace_fragment>
   }
 `;
 
-export function createFlipbookMaterial(familyId) {
+export function createFlipbookMaterial(familyId, texture = null) {
   const spec = FLIPBOOK_SHEETS[familyId];
   const additive = spec.blend === 'add';
   const material = new THREE.ShaderMaterial({
     name: `SF_Flipbook_${familyId}`,
     uniforms: {
-      uSheet: { value: getFlipbookTexture(familyId) },
+      uSheet: { value: texture || getFlipbookTexture(familyId) },
       uHdr: { value: spec.hdr },
       uCooling: { value: spec.cooling },
       uAdditive: { value: additive ? 1 : 0 },

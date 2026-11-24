@@ -299,7 +299,7 @@ class GasVolumeField {
     // the whole affected body. Applying contact expansion to that full radius then multiplying
     // by the family's growth again made an 18 WU hull leave a 129 WU opaque gas blanket.
     const wholeBody = rec.eventClass === 'breakup' || rec.eventClass === 'detonation';
-    const scale = radius * (wholeBody ? 0.9 + 0.7 * severity : 2.1 + 3.4 * severity);
+    const scale = radius * (wholeBody ? 0.75 + 0.50 * severity : 1.35 + 2.0 * severity);
     const seed = Number.isFinite(rec.serial) ? (rec.serial % 997) / 997 : undefined;
     const outward = impactOutwardNormal(rec, this._normalScratch);
 
@@ -310,7 +310,7 @@ class GasVolumeField {
       const standoff = radius * 0.4 + scale * 0.16;
       return this.emit(family.id, {
         x: rec.x + outward.x * standoff,
-        y: rec.y + outward.y * standoff,
+        y: rec.y + outward.y * standoff - 0.5,
         z: rec.z + outward.z * standoff,
         heading: Math.atan2(outward.z, outward.x),
         severity,

@@ -13,9 +13,9 @@ const smooth=v=>{const t=clamp(v);return t*t*(3-2*t);};
 const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z);
 const recipe=(color,life)=>Object.freeze({color:new THREE.Color(color),life});
 const RECIPES=Object.freeze({
-  contact:recipe(0xc7b493,.62),consequence:recipe(0xafcbd8,1.05),
-  bank:recipe(0xd49c60,.72),mirror:recipe(0xa1c8ec,.85),
-  'subsystem.disabled':recipe(0xe79e52,1.35),'subsystem.restored':recipe(0x73c6bb,1.12),
+  contact:recipe(0xa88a62,.42),consequence:recipe(0x7ea6be,.68),
+  bank:recipe(0xd49c60,.58),mirror:recipe(0x88b8e2,.68),
+  'subsystem.disabled':recipe(0xe79e52,1.10),'subsystem.restored':recipe(0x73c6bb,.95),
 });
 function seedOf(value){let h=2166136261;for(let i=0;i<value.length;i++)h=Math.imul(h^value.charCodeAt(i),16777619);return(h>>>0)/4294967296;}
 
@@ -137,14 +137,14 @@ export class CombatContactVfx {
       // independently delayed torn crests.
       for(let side=-1;side<=1;side+=2){
         const h=a+(side<0?Math.PI:0),reach=r*(.16+(1-Math.exp(-motion*5.4))*.88);
-        p.piece(4,x,z,h,-.64,.69,r*.24,r*(hard?.34:.22),0,0,reach,phase+side,
-          alpha*(hard?.85:.68),clamp(age/.07),cut,heat*.70);
-        p.piece(3,x,z,a+Math.PI/2,-r*.68,r*.54,r*.13,r*.10,0,side*r*.15,0,
-          phase+side,alpha*.70,clamp(age/.10),cut*.82,heat*.40);
+        p.piece(4,x,z,h,-.64,.69,r*.22,r*(hard?.24:.18),0,0,reach,phase+side,
+          alpha*(hard?.56:.46),clamp(age/.07),cut,heat*.48);
+        p.piece(3,x,z,a+Math.PI/2,-r*.68,r*.54,r*.12,r*.09,0,side*r*.15,0,
+          phase+side,alpha*.46,clamp(age/.10),cut*.82,heat*.30);
         if(hard){
           const onset=smooth((age-.085)/.095),drift=(1-Math.exp(-motion*3.2))*r*.4;
-          p.piece(1,x,z,a+side*Math.PI/2,0,r*1.05,r*.19,r*.21,side*r*.25,drift*side,0,
-            phase+side*2.1,alpha*onset*.68,clamp((age-.06)/.12),cut+.09,heat*.60);
+          p.piece(1,x,z,a+side*Math.PI/2,0,r*.92,r*.16,r*.16,side*r*.22,drift*side,0,
+            phase+side*2.1,alpha*onset*.46,clamp((age-.06)/.12),cut+.09,heat*.42);
         }
       }
     }else if(s.kind==='bank'||s.kind==='mirror'){

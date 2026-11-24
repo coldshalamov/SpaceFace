@@ -37,6 +37,7 @@ varying vec4 vColor;
 varying float vShape;
 varying float vLife;
 varying float vSeed;
+varying vec3 vWorldPos;
 
 vec3 positionAt(float t){
   float k=aS.z;
@@ -66,6 +67,7 @@ void main(){
     gl_Position=vec4(2.0,2.0,2.0,1.0);
     vColor=vec4(0.0);
     vUv=vec2(0.0);
+    vWorldPos=vec3(0.0);
     return;
   }
   vec3 p=positionAt(age);
@@ -80,6 +82,7 @@ void main(){
   vec3 world=p+vec3(axis*corner.x*len*0.5+side*corner.y*size*0.5,0.0).xzy;
   world.y=p.y;
   vUv=corner;
+  vWorldPos=world;
   // Colour over life; intensity cools with the square of remaining life for light, holds for matter.
   float cool=mix((1.0-t)*(1.0-t),1.0-t*t,aC1.w);
   float fadeIn=smoothstep(0.0,0.06,t);
@@ -89,11 +92,13 @@ void main(){
 
 const FRAGMENT = /* glsl */`
 uniform float uFlash;
+uniform vec4 uPlayer; // scene-local player xz, y, protection radius (w <= 0 disables)
 varying vec2 vUv;
 varying vec4 vColor;
 varying float vShape;
 varying float vLife;
 varying float vSeed;
+varying vec3 vWorldPos;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
@@ -101,6 +106,8 @@ void main(){
   vec2 uv=vUv;
   float m=0.0;
   float core=0.0;
+  bool isGlow=false;
+  bool isPuff=false;
   if(vShape<0.5){
     // Streak: hot head at +x, tapering tail, gaussian across.
     float along=uv.x*0.5+0.5;
@@ -110,19 +117,22 @@ void main(){
     core=pow(across,6.0)*smoothstep(0.55,0.9,along);
   }else if(vShape<1.5){
     // Glow: tight hot core with a short falloff (never a broad halo).
+    isGlow=true;
     float r=length(uv);
-    m=exp(-r*r*9.0)*(1.0-smoothstep(0.7,1.0,r));
-    core=exp(-r*r*40.0);
+    m=exp(-r*r*9.5)*(1.0-smoothstep(0.65,1.0,r));
+    core=exp(-r*r*44.0);
   }else if(vShape<2.5){
     // Grain: a small hard-edged mote.
     float r=length(uv);
     m=1.0-smoothstep(0.55,1.0,r);
     core=0.0;
   }else if(vShape<3.5){
-    // Puff: a lumpy soot body that thins as it ages.
+    // Puff: a wispy soot/fire body that thins smoothly over life and never forms an opaque disc.
+    isPuff=true;
     float r=length(uv);
     float n=noise(uv*2.6+vSeed*17.0+vLife*0.9)*0.6+noise(uv*5.3-vSeed*9.0)*0.4;
-    m=smoothstep(1.0,0.25,r+(n-0.5)*0.55)*(1.0-vLife*0.35);
+    float ageFade=pow(max(0.0,1.0-vLife),1.35);
+    m=smoothstep(0.95,0.22,r+(n-0.5)*0.50)*ageFade;
   }else{
     // Chip: an angular fragment (diamond) with a bright edge.
     float d=abs(uv.x)*0.8+abs(uv.y);
@@ -131,9 +141,21 @@ void main(){
   }
   if(m<0.004)discard;
   float matter=vColor.a;
-  vec3 col=vColor.rgb*(m+core*1.5*(1.0-matter));
+  vec3 col=vColor.rgb*(m+core*1.15*(1.0-matter));
   float light=mix(uFlash,1.0,matter);
-  gl_FragColor=vec4(col*light,m*matter);
+  col*=light;
+  float alpha=isPuff?min(m*matter*0.44,0.34):m*matter;
+  // Cap cloud/glow bloom so big hits stay punchy without blowing out into a white/gold sun.
+  if(isPuff)col=min(col,vec3(2.3));
+  else if(isGlow)col=min(col,vec3(3.8));
+  // Keep the player ship's silhouette legible even inside a close-range blast.
+  if(uPlayer.w>0.0&&(isPuff||isGlow)){
+    float dPlayer=length(vWorldPos.xz-uPlayer.xz);
+    float keepClear=mix(0.18,1.0,smoothstep(uPlayer.w*0.85,uPlayer.w*2.4,dPlayer));
+    col*=keepClear;
+    alpha*=keepClear;
+  }
+  gl_FragColor=vec4(col,alpha);
 }`;
 
 function quad() {
@@ -148,7 +170,7 @@ export function createSparkMaterial() {
     name: 'SF_Kit_SparkField',
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    uniforms: { uTime: { value: 0 }, uFlash: { value: 1 } },
+    uniforms: { uTime: { value: 0 }, uFlash: { value: 1 }, uPlayer: { value: new THREE.Vector4(0, 0, 0, 0) } },
     transparent: true,
     depthWrite: false,
     depthTest: true,
@@ -246,6 +268,13 @@ export class SparkField {
     return live;
   }
 
+  /** Track the player hull in scene-local XZ so close blasts keep the ship silhouette clear. */
+  setPlayer(x, z, radius) {
+    const u = this.material.uniforms.uPlayer.value;
+    if (Number.isFinite(x) && Number.isFinite(z) && radius > 0) u.set(x, 0, z, radius);
+    else u.set(0, 0, 0, 0);
+  }
+
   /** Floating-origin rebase: shift every origin and field centre. */
   reproject(dx, dz) {
     if (!dx && !dz) return;
@@ -268,7 +297,12 @@ export class SparkField {
   }
 
   clear() {
+    this.cursor = 0;
+    this.highWater = 0;
     this.liveUntil = -1;
+    this.dirtyLo = -1;
+    this.dirtyHi = -1;
+    this.dirtyWrap = false;
     for (const arr of this.arrays[1].length ? [this.arrays[1]] : []) for (let i = 3; i < arr.length; i += STRIDE) arr[i] = 0;
     this.attrs[1].clearUpdateRanges();
     this.attrs[1].addUpdateRange(0, this.capacity * STRIDE);

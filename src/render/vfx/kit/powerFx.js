@@ -144,9 +144,8 @@ export class PowerFx {
     const s = this.s;
     this.stats.casts++;
 
-    // Core flash: tight and hot, gone in a tenth of a second.
-    this._spark(cx, 2, cz, 0, 0, 0, t0, 0.14, 22, 46, 0, 0, 9, 7.5, 5.2, 2.6, 1.2, 0.35, SPARK_SHAPE.GLOW, SPARK_ADD);
-    this._spark(cx, 2.2, cz, 0, 0, 0, t0, 0.22, 12, 20, 0, 0, 9.0, 8.5, 7.5, 3.0, 1.6, 0.6, SPARK_SHAPE.GLOW, SPARK_ADD);
+    // Core flash: tight and hot, gone in a beat without whiting out the ship.
+    this._spark(cx, -0.4, cz, 0, 0, 0, t0, 0.11, 16, 28, 0, 0, 6.0, 4.8, 3.0, 1.6, 0.7, 0.2, SPARK_SHAPE.GLOW, SPARK_ADD);
 
     // No ring around the cast (owner 2026-11-23): the pressure front reads through refraction
     // lenses, braking radial streaks, kicked deck dust, and timed contact bursts on every body.
@@ -161,7 +160,7 @@ export class PowerFx {
     }
 
     // Sparks that outrun the front and brake to its edge (terminal distance v/k).
-    const nSparks = Math.round(72 * scale);
+    const nSparks = Math.round(56 * scale);
     for (let i = 0; i < nSparks; i++) {
       const a = (i / nSparks) * TAU + (unit(seed, 10 + i) - 0.5) * 0.25;
       const k = 3.4;
@@ -175,7 +174,7 @@ export class PowerFx {
     }
 
     // Deck dust kicked outward the instant the front passes it (born in the future).
-    const nDust = Math.round(150 * scale);
+    const nDust = Math.round(96 * scale);
     for (let i = 0; i < nDust; i++) {
       const a = unit(seed, 600 + i) * TAU;
       const rho = 12 + (R * 0.95 - 12) * Math.sqrt(unit(seed, 800 + i));
@@ -186,12 +185,12 @@ export class PowerFx {
       const birth = t0 + shoveFrontDelay(rho, R);
       const ember = i % 4 === 0;
       if (ember) {
-        this._spark(cx + ca * rho, 1.2, cz + sa * rho, ca * v, 0, sa * v, birth, 0.55 + 0.4 * unit(seed, 1200 + i),
+        this._spark(cx + ca * rho, 1.0, cz + sa * rho, ca * v, 0, sa * v, birth, 0.55 + 0.4 * unit(seed, 1200 + i),
           1.6, 0.6, 2.6, 0.03, 3.4, 2.1, 0.9, 0.9, 0.3, 0.08, SPARK_SHAPE.STREAK, SPARK_ADD);
       } else {
         const g = 0.42 + 0.18 * unit(seed, 1400 + i);
-        this._spark(cx + ca * rho, 1.0, cz + sa * rho, ca * v * 0.8, 0, sa * v * 0.8, birth, 0.8 + 0.5 * unit(seed, 1600 + i),
-          2.2 + 1.6 * unit(seed, 1800 + i), 3.4, 2.4, 0.012, g * 1.1, g, g * 0.9, g * 0.75, g * 0.7, g * 0.65, SPARK_SHAPE.GRAIN, SPARK_MATTER * 0.85);
+        this._spark(cx + ca * rho, -0.9, cz + sa * rho, ca * v * 0.8, 0, sa * v * 0.8, birth, 0.65 + 0.4 * unit(seed, 1600 + i),
+          1.8 + 1.2 * unit(seed, 1800 + i), 2.8, 2.4, 0.012, g * 1.1, g, g * 0.9, g * 0.75, g * 0.7, g * 0.65, SPARK_SHAPE.GRAIN, SPARK_MATTER * 0.7);
       }
     }
 
@@ -338,55 +337,55 @@ export class PowerFx {
     // Kills reuse this grammar at a lighter cost (many die at once in a Swarm wave): half the
     // matter and a smaller fire, so a wipe never spends the fill-rate budget of eight Bombs.
     const kill = !!(opts && opts.cast === false);
-    const R = kill ? Math.max(40, Math.min(110, (Number(radius) || 12) * 2.2)) : Math.max(70, Math.min(180, (Number(radius) || 30) * 2.5));
+    const R = kill
+      ? Math.max(22, Math.min(64, (Number(radius) || 12) * 1.45))
+      : Math.max(44, Math.min(115, (Number(radius) || 30) * 1.75));
     const scale = (this.reduced.motion ? 0.5 : 1) * (kill ? 0.45 : 1);
     if (!opts || opts.cast !== false) this.stats.casts++;
-    // 0-60 ms: a white-hot core that collapses to orange.
-    this._spark(x, 3.2, z, 0, 0, 0, t0, 0.1, R * 0.42, R * 0.3, 0, 0, 16, 15, 14, 9, 6, 3, SPARK_SHAPE.GLOW, SPARK_ADD);
-    this._spark(x, 2.8, z, 0, 0, 0, t0, 0.28, R * 0.28, R * 0.14, 0, 0, 9, 6, 2.5, 3, 1, 0.2, SPARK_SHAPE.GLOW, SPARK_ADD);
-    // Scorch on the deck: a dark mark that lingers for seconds after the smoke has gone.
-    if (!opts || opts.cast !== false) this._spark(x, 0.6, z, 0, 0, 0, t0 + 0.05, 4.5, R * 0.55, R * 0.62, 0, 0, 0.02, 0.015, 0.012, 0.0, 0.0, 0.0, SPARK_SHAPE.PUFF, 1.0);
-    this._spark(x, 3, z, 0, 0, 0, t0, 0.1, R * 0.35, R * 0.5, 0, 0, 12, 11, 9.5, 6, 4, 2, SPARK_SHAPE.GLOW, SPARK_ADD);
-    // Fireball: hot lobes that roll outward and cool fast.
-    const nFire = Math.round(16 * scale);
-    for (let i = 0; i < nFire; i++) {
-      const a = unit(seed, 10 + i) * TAU;
-      const v = R * (0.5 + 0.9 * unit(seed, 40 + i));
-      const size = R * (0.22 + 0.14 * unit(seed, 70 + i));
-      this._spark(x, 2.6, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.45 + 0.3 * unit(seed, 100 + i), size, size * 2.4, 3.6, 0,
-        11, 7.5, 3.2, 1.0, 0.28, 0.06, SPARK_SHAPE.PUFF, 0.3);
-    }
-    // Soot: rolls out behind the fire and darkens the scene behind it.
-    const nSmoke = Math.round(12 * scale);
+    // Scorch and soot emit FIRST and below ship height so smoke never paints a dark grey disc
+    // on top of the fire core or hides the player ship.
+    if (!opts || opts.cast !== false) this._spark(x, -1.8, z, 0, 0, 0, t0 + 0.05, 3.2, R * 0.36, R * 0.44, 0, 0, 0.02, 0.015, 0.012, 0.0, 0.0, 0.0, SPARK_SHAPE.PUFF, 1.0);
+    const nSmoke = Math.round(8 * scale);
     for (let i = 0; i < nSmoke; i++) {
       const a = unit(seed, 200 + i) * TAU;
-      const v = R * (0.3 + 0.5 * unit(seed, 230 + i));
-      const size = R * (0.2 + 0.12 * unit(seed, 260 + i));
-      this._spark(x, 2.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0 + 0.1, 1.3 + 0.7 * unit(seed, 290 + i), size, size * 2.4, 1.6, 0,
-        0.16, 0.13, 0.11, 0.09, 0.085, 0.08, SPARK_SHAPE.PUFF, 0.85);
+      const v = R * (0.28 + 0.48 * unit(seed, 230 + i));
+      const size = R * (0.14 + 0.08 * unit(seed, 260 + i));
+      this._spark(x, -1.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0 + 0.08, 0.72 + 0.38 * unit(seed, 290 + i), size, size * 1.50, 1.8, 0,
+        0.15, 0.12, 0.10, 0.08, 0.075, 0.07, SPARK_SHAPE.PUFF, 0.82);
+    }
+    // 0-75 ms: one crisp hot flash core sized to the blast (no stacked bloom blowout).
+    this._spark(x, -0.3, z, 0, 0, 0, t0, 0.075, R * 0.24, R * 0.32, 0, 0, 13, 9.5, 5.5, 3.5, 1.4, 0.35, SPARK_SHAPE.GLOW, SPARK_ADD);
+    // Fireball: compact hot lobes rolling outward, cooling quickly without golden bloom white-out.
+    const nFire = Math.round(9 * scale);
+    for (let i = 0; i < nFire; i++) {
+      const a = unit(seed, 10 + i) * TAU;
+      const v = R * (0.45 + 0.85 * unit(seed, 40 + i));
+      const size = R * (0.14 + 0.08 * unit(seed, 70 + i));
+      this._spark(x, -0.5, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.24 + 0.16 * unit(seed, 100 + i), size, size * 1.50, 3.8, 0,
+        4.2, 2.5, 0.85, 0.7, 0.18, 0.04, SPARK_SHAPE.PUFF, 0.18);
     }
     // Sparks and hot chips flung radially.
-    const nSparks = Math.round(64 * scale);
+    const nSparks = Math.round(48 * scale);
     for (let i = 0; i < nSparks; i++) {
       const a = unit(seed, 400 + i) * TAU;
       const v = R * (3.0 + 4.0 * unit(seed, 500 + i));
-      this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.35 + 0.45 * unit(seed, 600 + i), 2.2, 0.7, 3.0, 0.04,
-        7, 5.5, 3.2, 2.2, 0.6, 0.1, SPARK_SHAPE.STREAK, SPARK_ADD);
+      this._spark(x, 1.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.30 + 0.38 * unit(seed, 600 + i), 2.0, 0.6, 3.0, 0.04,
+        6.5, 4.8, 2.6, 2.0, 0.55, 0.1, SPARK_SHAPE.STREAK, SPARK_ADD);
     }
     // Hard chunks thrown PAST the shock front (terminal distance v/k > R).
-    const nChips = Math.round(20 * scale);
+    const nChips = Math.round(14 * scale);
     for (let i = 0; i < nChips; i++) {
       const a = unit(seed, 700 + i) * TAU;
       const v = R * (2.4 + 2.4 * unit(seed, 720 + i));
-      this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 1.0 + 0.7 * unit(seed, 740 + i), 3.6, 2.8, 1.2, 0.006,
-        5, 2.6, 0.9, 0.4, 0.34, 0.3, SPARK_SHAPE.CHIP, 0.6);
+      this._spark(x, 1.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.85 + 0.55 * unit(seed, 740 + i), 3.2, 2.4, 1.2, 0.006,
+        4.5, 2.4, 0.8, 0.4, 0.34, 0.3, SPARK_SHAPE.CHIP, 0.55);
     }
-    const nEmbers = Math.round(30 * scale);
+    const nEmbers = Math.round(20 * scale);
     for (let i = 0; i < nEmbers; i++) {
       const a = unit(seed, 800 + i) * TAU;
       const v = R * (0.4 + 0.8 * unit(seed, 830 + i));
-      this._spark(x, 2.5, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0 + 0.08, 0.9 + 0.8 * unit(seed, 860 + i), 0.9, 0.5, 1.2, 0.01,
-        3.5, 1.6, 0.5, 1.2, 0.3, 0.05, SPARK_SHAPE.GRAIN, SPARK_ADD);
+      this._spark(x, 1.5, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0 + 0.08, 0.75 + 0.65 * unit(seed, 860 + i), 0.9, 0.45, 1.2, 0.01,
+        3.2, 1.5, 0.45, 1.0, 0.25, 0.05, SPARK_SHAPE.GRAIN, SPARK_ADD);
     }
     // Causal axes: every body the blast shoved gets a jet of sparks and chips along its own push.
     const shoves = opts && Array.isArray(opts.shoves) ? opts.shoves : null;
@@ -396,16 +395,16 @@ export class PowerFx {
         const len = Math.hypot(sh && sh.dx, sh && sh.dz);
         if (!(len > 1e-6)) continue;
         const base = Math.atan2(sh.dz / len, sh.dx / len);
-        for (let i = 0; i < 9; i++) {
+        for (let i = 0; i < 8; i++) {
           const a = base + (unit(seed, 900 + k * 16 + i) - 0.5) * 0.4;
           const v = R * (4 + 3 * unit(seed, 1000 + k * 16 + i));
-          this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.3 + 0.25 * unit(seed, 1100 + k * 16 + i), 1.8, 0.5, 3.2, 0.035,
-            8, 6, 3.5, 2.4, 0.7, 0.12, SPARK_SHAPE.STREAK, SPARK_ADD);
+          this._spark(x, 1.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.28 + 0.22 * unit(seed, 1100 + k * 16 + i), 1.8, 0.5, 3.2, 0.035,
+            7, 5.2, 3.0, 2.2, 0.65, 0.12, SPARK_SHAPE.STREAK, SPARK_ADD);
         }
       }
     }
-    if ((!opts || opts.light !== false) && this.host.flashLight && this.host.flashLight({ x: gx, z: gz }, '#ffc890', 22, 4.5, R * 3.2, 0.97)) this.stats.lights++;
-    if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: R * 0.8, strength: 1.2, life: 0.25 });
+    if ((!opts || opts.light !== false) && this.host.flashLight && this.host.flashLight({ x: gx, z: gz }, '#ffc890', 18, 5.2, Math.max(110, R * 2.6), 0.97)) this.stats.lights++;
+    if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: R * 0.75, strength: 1.0, life: 0.22 });
   }
 
   /**
@@ -715,29 +714,29 @@ export class PowerFx {
       return;
     }
     if (family === 'thump' || heavy) {
-      // The cannon's wallop: a white-hot punch, a big directional spark fan, hard chunks, smoke,
-      // refraction, and a burning launch trail on the struck body (no shock rings — owner 2026-11-23).
-      this._spark(x, 2.8, z, 0, 0, 0, t, 0.09, 24, 16, 0, 0, 16, 15, 14, 5, 3, 1.5, SPARK_SHAPE.GLOW, SPARK_ADD);
-      this._spark(x, 2.6, z, 0, 0, 0, t, 0.12, 16, 30, 0, 0, 10, 8.5, 6.5, 3, 1.6, 0.6, SPARK_SHAPE.GLOW, SPARK_ADD);
+      // The cannon's wallop: a tight punch flash, directional spark fan, hard chunks, and low smoke
+      // (no shock rings — owner 2026-11-23).
+      if (!shield) {
+        for (let i = 0; i < 2; i++) {
+          const a = base + (unit(seed, 170 + i) - 0.5) * 1.6;
+          this._spark(x, -0.9, z, Math.cos(a) * 32, 0, Math.sin(a) * 32, t + 0.04, 0.52, 4, 10, 1.8, 0, 0.28, 0.25, 0.23, 0.18, 0.17, 0.16, SPARK_SHAPE.PUFF, 0.65);
+        }
+      }
+      this._spark(x, 0.2, z, 0, 0, 0, t, 0.08, 12, 18, 0, 0, 8.5, 7.0, 4.8, 2.4, 1.0, 0.3, SPARK_SHAPE.GLOW, SPARK_ADD);
       if (targetId != null) this.trails.set(targetId, { from: t, until: t + 0.9, r: 5, g: 3.4, b: 1.6 });
-      if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: 46, strength: 1.2, life: 0.16 });
-      for (let i = 0; i < 40; i++) {
+      if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: 38, strength: 1.0, life: 0.15 });
+      for (let i = 0; i < 28; i++) {
         const a = base + (unit(seed, 40 + i) - 0.5) * 2.6;
         const v = 260 + 520 * unit(seed, 70 + i);
-        this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.25 + 0.25 * unit(seed, 100 + i), 2.0, 0.6, 4.5, 0.04, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
+        this._spark(x, 1.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.22 + 0.22 * unit(seed, 100 + i), 1.8, 0.55, 4.5, 0.04, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
       }
       if (!shield) {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 8; i++) {
           const a = base + (unit(seed, 140 + i) - 0.5) * 2.0;
           const v = 140 + 220 * unit(seed, 150 + i);
-          this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.7 + 0.4 * unit(seed, 160 + i), 2.2, 1.6, 1.6, 0.004, 3, 1.5, 0.6, 0.35, 0.3, 0.28, SPARK_SHAPE.CHIP, 0.55);
-        }
-        for (let i = 0; i < 3; i++) {
-          const a = base + (unit(seed, 170 + i) - 0.5) * 1.6;
-          this._spark(x, 2, z, Math.cos(a) * 35, 0, Math.sin(a) * 35, t + 0.04, 0.8, 6, 16, 1.8, 0, 0.3, 0.27, 0.25, 0.2, 0.19, 0.18, SPARK_SHAPE.PUFF, 0.7);
+          this._spark(x, 1.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.65 + 0.35 * unit(seed, 160 + i), 2.0, 1.4, 1.6, 0.004, 3, 1.5, 0.6, 0.35, 0.3, 0.28, SPARK_SHAPE.CHIP, 0.55);
         }
       }
-      if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: 26, strength: 0.9, life: 0.14 });
       return;
     }
     if (family === 'needle') {
@@ -1132,13 +1131,13 @@ export class PowerFx {
     const t = this.time;
     const rad = Number.isFinite(e.radius) ? e.radius : 10;
     const seed = hashString('lvlup:' + Math.round(t * 1000));
-    this._spark(x, 2.6, z, 0, 0, 0, t, 0.18, rad * 2.0, rad * 3.0, 0, 0, 9, 8.2, 5.5, 2.8, 2.0, 0.9, SPARK_SHAPE.GLOW, SPARK_ADD);
-    const count = this.reduced.motion ? 8 : 18;
+    this._spark(x, -0.8, z, 0, 0, 0, t, 0.14, rad * 1.2, rad * 1.9, 0, 0, 4.5, 3.8, 2.2, 1.4, 1.0, 0.4, SPARK_SHAPE.GLOW, SPARK_ADD);
+    const count = this.reduced.motion ? 8 : 16;
     for (let i = 0; i < count; i++) {
       const a = (i / count) * TAU + (unit(seed, i) - 0.5) * 0.25;
       const v = 130 + 180 * unit(seed, 30 + i);
-      this._spark(x + Math.cos(a) * rad * 0.6, 2.2, z + Math.sin(a) * rad * 0.6, Math.cos(a) * v, 0, Math.sin(a) * v,
-        t, 0.35 + 0.18 * unit(seed, 60 + i), 1.8, 0.4, 3.8, 0.045, 7.5, 6.2, 3.2, 2.0, 1.4, 0.4, SPARK_SHAPE.STREAK, SPARK_ADD);
+      this._spark(x + Math.cos(a) * rad * 0.6, 1.2, z + Math.sin(a) * rad * 0.6, Math.cos(a) * v, 0, Math.sin(a) * v,
+        t, 0.32 + 0.16 * unit(seed, 60 + i), 1.6, 0.4, 3.8, 0.045, 5.5, 4.4, 2.2, 1.6, 1.0, 0.3, SPARK_SHAPE.STREAK, SPARK_ADD);
     }
   }
 
@@ -1148,19 +1147,19 @@ export class PowerFx {
     if (!e || !e.pos) return;
     const hex = BRANCH_HEX[p.branch] || 0xf2b950;
     const big = p.kind === 'capstone' || p.kind === 'evolution';
-    const k = big ? 2.4 : 1.6;
-    const r = ((hex >> 16) & 255) / 255 * k * 2; const g = ((hex >> 8) & 255) / 255 * k * 2; const b = (hex & 255) / 255 * k * 2;
+    const k = big ? 1.8 : 1.3;
+    const r = ((hex >> 16) & 255) / 255 * k * 1.6; const g = ((hex >> 8) & 255) / 255 * k * 1.6; const b = (hex & 255) / 255 * k * 1.6;
     const { x, z } = this._toLocal(e.pos.x, e.pos.z);
     const t = this.time;
     const rad = Number.isFinite(e.radius) ? e.radius : 10;
     const seed = hashString('node:' + String(p.branch || '') + ':' + Math.round(t * 1000));
-    this._spark(x, 2.5, z, 0, 0, 0, t, big ? 0.16 : 0.12, rad * (big ? 2 : 1.3), rad * (big ? 2.8 : 1.8), 0, 0, r * 2, g * 2, b * 2, r, g, b, SPARK_SHAPE.GLOW, SPARK_ADD);
-    const count = this.reduced.motion ? 6 : (big ? 16 : 10);
+    this._spark(x, -0.8, z, 0, 0, 0, t, big ? 0.14 : 0.10, rad * (big ? 1.3 : 1.0), rad * (big ? 2.0 : 1.5), 0, 0, r * 1.2, g * 1.2, b * 1.2, r * 0.6, g * 0.6, b * 0.6, SPARK_SHAPE.GLOW, SPARK_ADD);
+    const count = this.reduced.motion ? 6 : (big ? 14 : 10);
     for (let i = 0; i < count; i++) {
       const a = (i / count) * TAU + (unit(seed, i) - 0.5) * 0.3;
       const v = (big ? 150 : 100) + 120 * unit(seed, 30 + i);
-      this._spark(x + Math.cos(a) * rad * 0.5, 2.2, z + Math.sin(a) * rad * 0.5, Math.cos(a) * v, 0, Math.sin(a) * v,
-        t, big ? 0.36 : 0.26, 1.5, 0.35, 4.0, 0.04, r * 1.5, g * 1.5, b * 1.5, r * 0.4, g * 0.4, b * 0.4, SPARK_SHAPE.STREAK, SPARK_ADD);
+      this._spark(x + Math.cos(a) * rad * 0.5, 1.2, z + Math.sin(a) * rad * 0.5, Math.cos(a) * v, 0, Math.sin(a) * v,
+        t, big ? 0.32 : 0.24, 1.4, 0.35, 4.0, 0.04, r * 1.3, g * 1.3, b * 1.3, r * 0.35, g * 0.35, b * 0.35, SPARK_SHAPE.STREAK, SPARK_ADD);
     }
   }
 
@@ -1200,11 +1199,11 @@ export class PowerFx {
         this._spark(ax, 2, az, Math.cos(a) * v, 0, Math.sin(a) * v, birth, 0.28 + 0.2 * unit(hs, 100 + i), 1.3, 0.4, 4.5, 0.03,
           6.5, 5.5, 4.0, 2.4, 0.8, 0.2, SPARK_SHAPE.STREAK, SPARK_ADD);
       }
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         const a = base + (unit(hs, 200 + i) - 0.5) * 1.2;
-        const v = 30 + 40 * unit(hs, 210 + i);
-        this._spark(ax, 1.5, az, Math.cos(a) * v, 0, Math.sin(a) * v, birth, 0.9 + 0.4 * unit(hs, 220 + i), 5 + hit.rad * 0.3, 12 + hit.rad * 0.6, 1.6, 0,
-          0.5, 0.46, 0.42, 0.32, 0.3, 0.28, SPARK_SHAPE.PUFF, SPARK_MATTER * 0.7);
+        const v = 28 + 36 * unit(hs, 210 + i);
+        this._spark(ax, -0.9, az, Math.cos(a) * v, 0, Math.sin(a) * v, birth, 0.55 + 0.28 * unit(hs, 220 + i), 3.5 + hit.rad * 0.2, 7.5 + hit.rad * 0.35, 1.8, 0,
+          0.42, 0.38, 0.35, 0.28, 0.26, 0.24, SPARK_SHAPE.PUFF, SPARK_MATTER * 0.65);
       }
     }
   }
@@ -1275,15 +1274,56 @@ export class PowerFx {
     }
   }
 
+  clear() {
+    this.sparks.clear();
+    if (this.shells) {
+      if (typeof this.shells.clear === 'function') this.shells.clear();
+      else {
+        this.shells.held?.clear();
+        this.shells.cursor = 0;
+        this.shells.highWater = 0;
+        this.shells.liveUntil = -1;
+        if (this.shells.geometry) this.shells.geometry.instanceCount = 0;
+        if (this.shells.mesh) this.shells.mesh.visible = false;
+      }
+    }
+    this.echoes.clear();
+    this.wells.clear();
+    this.tells?.clear();
+    this.trails.clear();
+    this.castFields.clear();
+    this._arenaFlow?.clear();
+    this.sched.length = 0;
+    if (this._mortarPops) this._mortarPops.length = 0;
+    this.pin = null;
+    this.plow = null;
+  }
+
   update(dt, state) {
     const sim = state && Number.isFinite(state.simTime) ? state.simTime : null;
     if (sim != null && this.lastSim != null) {
       const step = sim - this.lastSim;
-      // Follows pause and slow motion; a restore or rewind does not run time backwards.
-      this.time += step > 0 && step < 0.25 ? step : 0;
+      if (step < -1e-4) {
+        // New run / restore rewind: retire prior-run explosions so they never cover round 1's spawn.
+        this.clear();
+        this.time = Math.max(0, sim);
+      } else {
+        // Follows pause and slow motion; large forward jumps stay bounded.
+        this.time += step > 0 && step < 0.25 ? step : 0;
+      }
     } else if (sim == null) this.time += Math.max(0, Math.min(0.1, dt || 0));
     this.lastSim = sim;
     this.reduced = reducedFlags(state);
+    // Keep the player ship's silhouette legible even through close-range blasts and soot.
+    const player = state && state.playerId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (player && player.alive !== false && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) {
+      const pl = this._toLocal(player.pos.x, player.pos.z);
+      this.sparks.setPlayer(pl.x, pl.z, Math.max(8, Number(player.radius) || 10));
+    } else {
+      this.sparks.setPlayer(0, 0, 0);
+    }
     this.sparks.time = this.time;
     this.shells.time = this.time;
     this._sustain(state);

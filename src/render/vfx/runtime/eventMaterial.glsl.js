@@ -88,12 +88,14 @@ vec4 sfEventPressureSurface(vec2 uv,vec2 section,float seed,float t,vec3 world,
   float key=0.30+0.70*abs(dot(normal,normalize(vec3(-0.45,0.82,0.31))));
   float tubeCrest=sfEventBand(v-0.5,0.19);
   float broken=0.60+0.40*sin(u*7.0+seed+lobe*2.0);
-  float coolHeat=heat*(1.0-smoothstep(0.16,0.96,t));
-  float end=1.0-smoothstep(0.80,1.0,t);
-  vec3 color=pigment*(0.10+tubeCrest*(0.65+1.85*coolHeat))*mix(0.72,1.05,key);
-  color+=vec3(1.8,1.55,1.05)*pow(tubeCrest,4.0)*coolHeat*0.38;
-  color+=pigment*pow(1.0-facing,2.0)*0.10;
-  return vec4(color,clamp(alpha*(0.24+0.58*tubeCrest)*broken*end,0.0,1.0));
+  float coolHeat=heat*pow(1.0-smoothstep(0.05,0.72,t),1.35);
+  float end=pow(1.0-smoothstep(0.10,1.0,t),1.30);
+  float radialFade=(1.0-smoothstep(0.24,1.0,abs(u-0.5)*2.0))*mix(1.0,0.72,abs(lobe-1.0));
+  vec3 color=pigment*(0.06+tubeCrest*(0.48+1.15*coolHeat))*mix(0.72,1.05,key);
+  color+=vec3(1.25,1.08,0.75)*pow(tubeCrest,4.0)*coolHeat*0.24;
+  color+=pigment*pow(1.0-facing,2.0)*0.08;
+  color=min(color,vec3(2.4));
+  return vec4(color,min(0.50,clamp(alpha*(0.16+0.40*tubeCrest)*broken*end*radialFade,0.0,1.0)));
 }
 vec4 sfEventSurface(float kind,vec2 uv,vec2 section,float seed,float t,vec3 world,
     vec3 pigment,float alpha,float heat){
@@ -103,7 +105,6 @@ vec4 sfEventSurface(float kind,vec2 uv,vec2 section,float seed,float t,vec3 worl
   float armor=step(0.5,kind)*step(kind,1.5);
   float reactor=step(1.5,kind)*step(kind,2.5);
   float fuel=step(2.5,kind);
-  float hot=fuel+reactor;
   vec3 normal=normalize(cross(dFdx(world),dFdy(world)));
   vec3 viewDir=normalize(cameraPosition-world);
   float facing=abs(dot(normal,viewDir));
@@ -115,29 +116,33 @@ vec4 sfEventSurface(float kind,vec2 uv,vec2 section,float seed,float t,vec3 worl
   float ridge=max(ridgeA,ridgeB);
   float cavity=1.0-ridge;
   float fault=sfEventBand(u-(0.31+0.15*sin(v*6.0+seed+lobe)),mix(0.028,0.055,armor));
-  float coolHeat=heat*(1.0-smoothstep(0.16,0.96,t));
-  float end=1.0-smoothstep(0.80,1.0,t);
-  float tips=smoothstep(0.0,0.035,u)*(1.0-smoothstep(0.965,1.0,u));
-  vec3 stone=mix(vec3(0.10,0.085,0.065),pigment*0.62,0.55)*mix(0.42,1.05,key);
-  vec3 metal=pigment*vec3(0.15,0.20,0.26)*mix(0.42,1.05,key);
-  vec3 chroma=pigment/max(0.40,max(pigment.r,max(pigment.g,pigment.b)));
+  // Punchy hot beat on impact, then fast cooling and smooth dissolve (no long white/black slab).
+  float coolHeat=heat*pow(1.0-smoothstep(0.05,0.72,t),1.35);
+  float end=pow(1.0-smoothstep(0.10,1.0,t),1.30);
+  float tips=smoothstep(0.0,0.12,u)*(1.0-smoothstep(0.88,1.0,u));
+  float radialFade=(1.0-smoothstep(0.24,1.0,abs(u-0.5)*2.0))*mix(1.0,0.70,abs(lobe-1.0));
+  vec3 stone=mix(vec3(0.10,0.085,0.065),pigment*0.58,0.55)*mix(0.42,1.05,key);
+  vec3 metal=pigment*vec3(0.14,0.19,0.25)*mix(0.42,1.05,key);
+  vec3 chroma=pigment/max(0.45,max(pigment.r,max(pigment.g,pigment.b)));
   vec3 color=stone*(0.45+0.55*cavity)*mineral;
-  color+=metal*(0.50+0.50*cavity)*armor;
-  color+=pigment*(0.04+0.10*cavity)*reactor;
-  color+=vec3(0.045,0.018,0.009)*fuel;
-  color+=chroma*(ridge*2.60+cavity*0.07)*coolHeat*reactor;
-  color+=pigment*(0.18+0.72*ridge)*coolHeat*2.10*fuel;
-  color+=vec3(2.60,1.02,0.24)*(fault*1.05+ridge*0.14)*coolHeat*mineral;
-  color+=vec3(3.70,1.95,0.62)*(ridge*0.70+fault*0.40)*coolHeat*armor;
-  color+=vec3(2.30,1.10,0.30)*ridge*coolHeat*fuel;
-  color+=vec3(1.62,1.46,1.16)*pow(ridge,4.0)*coolHeat*(0.42*reactor+0.85*fuel+0.45*armor);
-  color+=vec3(1.05,1.05,1.05)*pow(ridge,5.0)*coolHeat*0.22;
-  color+=pigment*rim*0.10;
-  float opacityWeight=mineral*(0.94+0.06*cavity)
-    +armor*(0.66+0.30*ridge)
-    +reactor*(0.12+0.55*ridge+0.08*cavity)*tips
-    +fuel*(0.18+0.55*ridge+0.08*cavity)*tips;
-  return vec4(color,clamp(alpha*end*opacityWeight,0.0,1.0));
+  color+=metal*(0.48+0.52*cavity)*armor;
+  color+=pigment*(0.02+0.05*cavity)*reactor;
+  color+=vec3(0.04,0.016,0.008)*fuel;
+  color+=chroma*(ridge*1.42+cavity*0.03)*coolHeat*reactor;
+  color+=pigment*(0.14+0.52*ridge)*coolHeat*1.35*fuel;
+  color+=vec3(1.55,0.65,0.18)*(fault*0.85+ridge*0.12)*coolHeat*mineral;
+  color+=vec3(2.05,1.02,0.32)*(ridge*0.56+fault*0.34)*coolHeat*armor;
+  color+=vec3(1.45,0.68,0.20)*ridge*coolHeat*fuel;
+  color+=vec3(1.25,1.12,0.90)*pow(ridge,4.0)*coolHeat*(0.24*reactor+0.42*fuel+0.26*armor);
+  color+=vec3(0.55,0.55,0.55)*pow(ridge,5.0)*coolHeat*0.18;
+  color+=pigment*rim*0.08;
+  color=min(color,vec3(2.6));
+  float solidFade=mix(0.42,1.0,radialFade)*tips;
+  float opacityWeight=mineral*(0.52+0.12*cavity)*solidFade
+    +armor*(0.36+0.22*ridge)*solidFade
+    +reactor*(0.04+0.32*ridge+0.02*cavity)*tips*radialFade
+    +fuel*(0.08+0.34*ridge+0.03*cavity)*tips*radialFade;
+  return vec4(color,min(0.56,clamp(alpha*end*opacityWeight,0.0,1.0)));
 }
 #endif
 `;

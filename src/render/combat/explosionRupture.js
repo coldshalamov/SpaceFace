@@ -124,7 +124,7 @@ export class ExplosionRupture {
     this.dirty = false;
     this.disposed = false;
     this.records = Array.from({ length: this.capacity }, () => ({ alive: false }));
-    const geometry = createVfxEventGeometry({ instanced: true });
+    const geometry = createVfxEventGeometry({ instanced: true, rows: 8, columns: 5 });
     this.attributes = [3, 4, 4, 4, 2].map(size =>
       new THREE.InstancedBufferAttribute(new Float32Array(this.capacity * size), size).setUsage(THREE.DynamicDrawUsage));
     const names = ['aOrigin', 'aShape', 'aPhase', 'aMotion', 'aAppearance'];
@@ -155,21 +155,33 @@ export class ExplosionRupture {
     if (this.disposed || !entry || !HANDLED_PHASES.has(phase)) return false;
     const family = explosionRuptureFamily(entry), kind = RUPTURE_FAMILY[family];
     const sourceRadius = Math.max(2, finite(entry.radius, 8));
-    // Capital scale comes from separated source zones and secondary failures. A single flame
-    // tongue or piece of material must not become a hundred-unit sheet covering the camera.
-    const r = Math.min(sourceRadius, 8 + Math.sqrt(sourceRadius) * 2.4, kind === 2 ? 16 : Infinity);
+    // Scale tightly to what was hit and cap every family so a single rupture lobe never
+    // turns into an arena-covering cream shell or towers above ship hulls.
+    const maxFamilyR = kind === 1 ? 11 : 12;
+    const r = Math.min(sourceRadius, 7 + Math.sqrt(sourceRadius) * 1.8, maxFamilyR);
     if (settings) this.settings = settings;
-    const count = phase === 'rupture' ? (kind === 0 ? 7 : kind === 2 ? (entry.classId === 'capital' ? 10 : 6) : 5)
-      : phase === 'ignition' ? (kind === 2 ? 2 : 3)
-      : phase === 'residue' ? (kind === 0 ? 2 : 3)
-      : phase === 'pressure' ? (kind === 2 ? 2 : 0)
-      : phase === 'terrain-spall' || phase === 'kinetic-tear' ? 4 : 2;
+    const effSettings = settings || this.settings;
+    const video = effSettings && effSettings.video;
+    const lowBudget = !!video && (
+      video.qualityPreset === 'low'
+      || video.qualityPreset === 'integrated'
+      || video.qualityPreset === 'igpu60'
+      || video.particleQuality === 'low'
+    );
+    const rawCount = phase === 'rupture' ? (kind === 0 ? 4 : kind === 2 ? (entry.classId === 'capital' ? 7 : 4) : 3)
+      : phase === 'ignition' ? 2
+      : phase === 'residue' ? 2
+      : phase === 'pressure' ? (kind === 2 ? 1 : 0)
+      : phase === 'terrain-spall' || phase === 'kinetic-tear' ? 3 : 2;
+    const count = lowBudget && rawCount > 0 ? Math.max(1, Math.ceil(rawCount * 0.5)) : rawCount;
+    const maxActive = lowBudget ? Math.min(this.capacity, 24) : this.capacity;
     const radiusScale = entry.classId === 'capital' ? 1.12 : 1;
     const axis = ruptureAxis(entry);
     const residual = phase === 'residue';
     this.scratch.x = finite(entry.x); this.scratch.z = finite(entry.z);
     if (this.localize) this.localize(this.scratch.x, this.scratch.z, this.scratch);
     for (let i = 0; i < count; i++) {
+      if (this.activeCount >= maxActive) break;
       const seed = explosionPattern01(entry.serial, phase, i, 44);
       const pick = explosionPattern01(entry.serial, phase, i, 45);
       const side = i % 2 ? 1 : -1;
@@ -178,8 +190,8 @@ export class ExplosionRupture {
       // velocity differ, leaving an irregular cavity rather than tracing its entire rim.
       const compact = kind === 0 || kind === 2;
       const phaseReach = compact
-        ? (phase === 'ignition' ? 0.34 : primary ? 0.79 : residual ? 0.48 : 0.58)
-        : phase === 'ignition' ? 0.58 : primary ? (kind === 3 ? 1.35 : 1.8) : residual ? 1.3 : 1.0;
+        ? (phase === 'ignition' ? 0.28 : primary ? 0.62 : residual ? 0.38 : 0.46)
+        : phase === 'ignition' ? 0.40 : primary ? (kind === 3 ? 0.85 : 0.88) : residual ? 0.58 : 0.60;
       const spread = kind === 1 ? 0.44 : kind === 0 ? 1.75 : kind === 2 ? 5.8 : 2.3;
       let angle = axis + ((i + 0.5) / Math.max(1, count) - 0.5) * spread + (seed - 0.5) * (compact ? 0.82 : 0.34);
       if (phase === 'internal-secondary') angle += 1.4;
@@ -191,20 +203,20 @@ export class ExplosionRupture {
       if (!rec) break; // preserves admitted choreography rather than recycling live volumes
       Object.assign(rec, {
         alive: true, family, phase, serial: entry.serial,
-        born: this.time + i * (compact ? 0.023 + pick * 0.012 : residual ? 0.028 : 0.008),
-        life: (kind === 0 ? 0.72 : kind === 1 ? 0.58 : kind === 2 ? 0.92 : 1.05)
-          * (residual ? 1.7 : 1) * (0.84 + pick * 0.34),
+        born: this.time + i * (compact ? 0.036 + pick * 0.012 : residual ? 0.024 : 0.008),
+        life: (kind === 0 ? 0.44 : kind === 1 ? 0.38 : kind === 2 ? 0.48 : 0.54)
+          * (residual ? 1.25 : 1) * (0.84 + pick * 0.32),
         x: this.scratch.x + Math.cos(axis + Math.PI * 0.5) * seatSide * seat + Math.cos(axis) * seatAlong,
-        y: 0.22 + i * r * 0.018,
+        y: -0.90 - i * 0.04,
         z: this.scratch.z + Math.sin(axis + Math.PI * 0.5) * seatSide * seat + Math.sin(axis) * seatAlong,
-        kind, length: r * phaseReach * radiusScale * (0.72 + seed * 0.55),
-        width: r * (kind === 0 ? 0.29 : kind === 1 ? 0.24 : kind === 2 ? 0.34 : 0.46) * (0.8 + pick * 0.4),
-        height: r * (kind === 0 ? 0.16 : kind === 1 ? 0.27 : kind === 2 ? 0.45 : 0.38),
+        kind, length: r * phaseReach * radiusScale * (0.72 + seed * 0.48),
+        width: r * (kind === 0 ? 0.25 : kind === 1 ? 0.22 : kind === 2 ? 0.27 : 0.30) * (0.85 + pick * 0.30),
+        height: Math.min(2.0, r * (kind === 0 ? 0.12 : kind === 1 ? 0.15 : kind === 2 ? 0.18 : 0.16)),
         angle, speed: r * (primary ? (compact ? 2.2 : 1.7) : residual ? 0.6 : 0.45)
           * (compact ? 0.55 + pick * 1.05 : 0.7 + pick * 0.6),
         vx: finite(entry.targetVelocityX), vz: finite(entry.targetVelocityZ),
-        seed, motion: 1, alpha: residual ? 0.30 : 0.58,
-        heat: residual ? 0.10 : phase === 'ignition' ? 1.20 : 0.92,
+        seed, motion: 1, alpha: residual ? 0.18 : 0.38,
+        heat: residual ? 0.06 : phase === 'ignition' ? 0.85 : 0.68,
       });
       this.activeCount++;
     }

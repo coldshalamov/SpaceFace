@@ -556,27 +556,27 @@ export function createWeaponImpactVfxMethods({
           this.state && this.state.settings,
         ).flashOpacityScale < 1;
         // 1 — compressed impact flash: size0 > size1 so it collapses as the front expands.
-        this._spawnSprite(SPR_FLASH, surfaceX, 0.26, surfaceZ, 0.10,
-          3.4 * slamScale, 1.1 * slamScale, 0.95, 0, '#ffffff', 0, 0, 1, normalAngle);
+        this._spawnSprite(SPR_FLASH, surfaceX, 0.20, surfaceZ, 0.08,
+          2.2 * slamScale, 0.9 * slamScale, 0.65, 0, '#ffe8c8', 0, 0, 1, normalAngle);
         // 2 — leading shock front oriented across the force path and bowed forward along it (the
         // recipe's DOME): opposed bars elongated on the contact normal, centres pushed a touch
         // along the approach. SPR_FLASH carries aspect+roll, so the front is structure, not a card.
         for (const side of [-1, 1]) {
           this._spawnSprite(SPR_FLASH,
-            surfaceX + nx * side * 0.3 * slamScale + ax * 0.22 * slamScale, 0.24,
+            surfaceX + nx * side * 0.3 * slamScale + ax * 0.22 * slamScale, 0.18,
             surfaceZ + nz * side * 0.3 * slamScale + az * 0.22 * slamScale,
-            slamReduced ? 0.24 : 0.34, 0.6 * slamScale, (slamReduced ? 2.0 : 2.8) * slamScale,
-            slamReduced ? 0.55 : 0.72, 0,
-            '#fff4e0', 0, 0, 3.2, normalAngle);
+            slamReduced ? 0.18 : 0.22, 0.5 * slamScale, (slamReduced ? 1.4 : 1.8) * slamScale,
+            slamReduced ? 0.36 : 0.46, 0,
+            '#ffe8c8', 0, 0, 3.2, normalAngle);
         }
         // 3 — trailing pressure wash: genuinely slower and dimmer than the lead front. Two fronts
         // at different speeds is what turns "a ring" into "a shock".
         if (!slamReduced) {
           for (const side of [-1, 1]) {
             this._spawnSprite(SPR_FLASH,
-              surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.22,
+              surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.16,
               surfaceZ + nz * side * 0.24 * slamScale + az * 0.13 * slamScale,
-              0.5, 1.0 * slamScale, 2.2 * slamScale, 0.38, 0,
+              0.30, 0.75 * slamScale, 1.4 * slamScale, 0.24, 0,
               profile.accentColor, 0, 0, 3.0, normalAngle);
           }
         }
