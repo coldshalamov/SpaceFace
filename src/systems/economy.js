@@ -438,7 +438,7 @@ const STATION_STRIKE_REACH_WU = 3500;
 
 const CONDITION_LINES = Object.freeze({
   strike: 'Crews are off the floor over what you did to their shift.',
-  boom: 'The yard is flush — repair and fuel are running cheap today.',
+  boom: "Yard's flush today — repairs and fuel are cheap.",
 });
 
 /**

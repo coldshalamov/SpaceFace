@@ -7277,7 +7277,7 @@ export const npcJobsRuntime = {
       const where = entry.routeHold.label ? `at ${entry.routeHold.label}` : 'where I sit';
       if (this.bus && typeof this.bus.emit === 'function') {
         try {
-          this.bus.emit('toast', { text: `${kindLabel}: Lane's still hot — holding ${where} until it clears.`, kind: 'warn', ttl: 4 });
+          this.bus.emit('toast', { text: `${kindLabel}: Lane's still hot — holding ${where}.`, kind: 'warn', ttl: 4 });
           this.bus.emit('npcjobs:distress', {
             jobId: job.id, kind: job.kind, sectorId: entry.sectorId || null,
             threatId: threat.id,

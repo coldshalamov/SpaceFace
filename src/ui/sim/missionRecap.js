@@ -107,10 +107,10 @@ export function contract47aReadout(m) {
   const recovered = p.sampleRecovered === true;
   const where = recovered
     ? destination + (sector ? ` (${sector})` : '')
-    : `47-A Recovery Site${sector ? ` · ${sector}` : ''} → ${destination}`;
+    : `The marked rock${sector ? ` · ${sector}` : ''} → ${destination}`;
   const objective = recovered
-    ? `Deliver the recovered 47-A assay sample to ${destination}`
-    : `Recover the 47-A assay sample at the marked recovery site${sector ? ` in ${sector}` : ''}, then return it to ${destination}.`;
+    ? `Deliver the 47-A sample to ${destination}`
+    : `Recover the 47-A sample from the marked rock${sector ? ` in ${sector}` : ''}, then bring it back to ${destination}.`;
   return { objective, where };
 }
 

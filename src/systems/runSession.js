@@ -833,7 +833,7 @@ export const runSession = {
       });
       // The beat in words: it never opens anything over the fight; the point waits on the tree.
       this._emit('toast', {
-        text: `Level ${next.level}: ${next.banked === 1 ? 'a point' : next.banked + ' points'} to spend in the Pilot Tree (T)`,
+        text: `Level ${next.level}: ${next.banked === 1 ? 'a point' : next.banked + ' points'} to spend (T)`,
         kind: 'good',
         ttl: 4,
       });

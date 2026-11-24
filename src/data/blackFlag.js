@@ -32,7 +32,7 @@ export const BLACK_FLAG_ENCOUNTERS = Object.freeze([
     disabled: true, crew: 'evacuated', condition: 0.68, legalCategory: 'recovery', returnReward: 950,
     fitted: ['mod_engine_ion_m', 'mod_cargo_pod_m', 'mod_cargo_scanner_s'],
     objective: 'Scan Empty Seat; steady its drift with the Line. Bring it to Helios, or take custody and keep its claim.',
-    intro: 'Mara Venn: Empty Seat lost drive on the lane. Crew got clear. Tow her slowly; the frame is still sound.',
+    intro: 'Mara Venn: Empty Seat lost drive — crew safe, tow slow.',
     failure: 'The ship is gone. Its registry and last trajectory remain in the ledger.' }),
   Object.freeze({ id: 'black_flag_blackbird', act: 2, name: 'Blackbird',
     sectorId: 'sector_tethys_junction', stationId: 'station_tethys', anchorPoiId: 'poi_tethys_weigh', offset: { x: 110, z: -80 },

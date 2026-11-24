@@ -219,8 +219,8 @@ function missionCommodity(m) {
 function missionNextStep(m) {
   const dest = missionDestination(m);
   if (contract47aReadout(m)) return m.params.sampleRecovered === true
-    ? 'Next: deliver the recovered assay sample to Helios Station.'
-    : 'Next: recover the assay sample at the 47-A Recovery Site in Helios Prime.';
+    ? 'Next: take the 47-A sample to Helios Station.'
+    : 'Next: fetch the 47-A sample from the marked rock in Helios Prime.';
   switch (m && m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':

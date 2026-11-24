@@ -1121,8 +1121,8 @@ export const missionObjectiveOps = {
         params.rumorPurchased = true;
         params.bearingFixed = phase === 'fixed' || phase === 'decision' || phase === 'salvaged';
         offer.upfrontCostCr = 0;
-        offer.title = `Reconcile the Known Bearing: ${wreckName}`;
-        offer.summary = `${wreckName} is already in your ledger. Reconcile its bearing and proceed to recovery.`;
+        offer.title = `Check her bearing: ${wreckName}`;
+        offer.summary = `${wreckName} is already in your book. Check where she lies, then fetch her.`;
         changed = true;
         boardChanged = true;
       }

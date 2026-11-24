@@ -93,7 +93,7 @@ export const WARM_CARGO_CONTRACT = Object.freeze({
   destStationId: 'station_ceres',
   destSectorId: 'sector_ceres_belt',
   distance: 8900,
-  boardText: 'Ice Volatiles for Ceres Refinery. Handling limit {limit}: a harder knock spoils units off the manifest. What arrives intact pays the posted price.',
+  boardText: 'Ice Volatiles for Ceres Refinery. Knock it harder than {limit} and you spoil the load. What lands whole gets paid in full.',
 });
 
 // ── C11 — heat × contracts (THE WORLD ANSWERS): the deniable job ─────────────────────────────

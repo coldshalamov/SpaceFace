@@ -13,12 +13,12 @@ export const MASSLINE_INSTRUMENT_EVENTS = Object.freeze([
 ]);
 
 export const MASSLINE_CAPTIONS = Object.freeze({
-  attach: 'Line attached.',
-  strain: 'Line strain.',
-  reel: 'Line reel.',
-  release: 'Line release.',
-  break: 'Line break.',
-  bridle: 'Twin bridle chord.',
+  attach: "Line's on.",
+  strain: "Easy — she's straining.",
+  reel: 'Reeling in.',
+  release: "Line's away.",
+  break: "Line's gone.",
+  bridle: 'Two lines singing.',
 });
 
 export const MASSLINE_RECIPES = Object.freeze({

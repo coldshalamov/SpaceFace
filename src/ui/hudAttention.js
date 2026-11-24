@@ -740,7 +740,7 @@ export function missingThreeBeatLine(verbId) {
 // embeds the LIVE binding label (keyboard code, pad chord, or nothing on touch) so a rebind can
 // never strand the words. ≤12-word drill budget, binding excluded.
 export const SHELF_VERB_LINES = Object.freeze({
-  travelBurn: 'The burn keeps the speed',
+  travelBurn: 'Your burn holds the speed',
   chargeThrow: 'A charge is racked',
   bulletTime: 'The clock widens',
   cloak: 'The shroud is fitted',

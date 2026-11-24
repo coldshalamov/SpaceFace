@@ -659,7 +659,7 @@ function newsLine(marker) {
   }
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const where = marker.zoneId ? `drifting on the lane` : `drifting in the open`;
-  return `Aftermath reported in ${zone}: ${victim} wreckage now ${where}.`;
+  return `Wreckage in ${zone}: ${victim} now ${where}.`;
 }
 
 function normalizeStructurePatch(input) {

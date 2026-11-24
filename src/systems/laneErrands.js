@@ -78,7 +78,7 @@ export const LANE_ERRANDS = Object.freeze([
   { id: 'slag_warn', kinds: ['miner'], motion: 'flash', seconds: 4, line: 'Miner: Dump in three. Flash is the manners I have left.' },
   { id: 'soft_pay', kinds: ['salvor'], motion: 'half', seconds: 18, line: 'Salvor: Paying line. The mass is heavier than the chit.' },
   { id: 'stamp_wait', kinds: ['patrol'], motion: 'brake', seconds: 12, line: 'Patrol: Window\'s open. The stamp is not. Ref stays Ref.' },
-  { id: 'scoop_kiss', kinds: ['miner', 'hauler'], motion: 'brake', seconds: 8, line: 'Hauler: Scoop kissed a pin. I stop. The pin can file itself.' },
+  { id: 'scoop_kiss', kinds: ['miner', 'hauler'], motion: 'brake', seconds: 8, line: 'Hauler: Scoop kissed a pin. Holding. Pin can wait.' },
   { id: 'shade_hold', kinds: ['surveyor'], motion: 'orbit', seconds: 14, line: 'Survey: Parking in the barge\'s shade. Glare lies.' },
   { id: 'half_slot', kinds: ['hauler', 'patrol'], motion: 'half', seconds: 10, line: 'Hauler: Slot says crawl. The band has one lamp and it lies.' },
   { id: 'kettle_pause', kinds: ['hauler', 'miner', 'tender', 'patrol', 'surveyor', 'salvor'], motion: 'brake', seconds: 6, line: 'Crew: Kettle\'s on. The slot can wait one breath.' },

@@ -675,8 +675,8 @@ export function cargoSpillLedgerText(ownerName, reaction) {
 }
 
 const CARGO_RECOVERY_NOTICE = Object.freeze({
-  restitution: { text: 'Restitution after the spill.' },
-  bounty: { text: 'Bounty after the spill.' },
+  restitution: { text: 'Owner pays to get the spill back.' },
+  bounty: { text: 'Cargo spilled out there — bounty for fetching it.' },
   thanks: { text: 'Cargo returned.' },
 });
 const CARGO_RECOVERY_SENDER = Object.freeze({ text: 'Cargo recovery notice' });

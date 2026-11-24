@@ -50,10 +50,10 @@ const STYLE_ID = 'sf-floattext-style';
 // so a pooled node swaps meaning by class alone (no per-hit DOM mutation). Drawn marks replace
 // the old '○'/'❯'/'✕'/'◈' unicode stand-ins.
 const FT_MARK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">'
-  + '<circle class="sf-ft-shape sf-ft-shape-shield" cx="12" cy="12" r="6.4" stroke="currentColor" stroke-width="2.6"/>'
+  + '<path class="sf-ft-shape sf-ft-shape-shield" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" d="M12 3.8 L19.2 6.8 V12.4 C19.2 16.2 16.0 19.0 12 20.4 C8.0 19.0 4.8 16.2 4.8 12.4 V6.8 Z"/>'
   + '<path class="sf-ft-shape sf-ft-shape-armor" stroke="currentColor" stroke-width="2.6" d="M12 3.9 L20.1 12 L12 20.1 L3.9 12 Z"/>'
   + '<rect class="sf-ft-shape sf-ft-shape-hull" x="4.9" y="4.9" width="14.2" height="14.2" fill="currentColor"/>'
-  + '<circle class="sf-ft-shape sf-ft-shape-crit" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="2.2"/>'
+  + '<path class="sf-ft-shape sf-ft-shape-crit" stroke="currentColor" stroke-width="2.0" d="M2.5 7.5 V2.5 H7.5 M16.5 2.5 H21.5 V7.5 M21.5 16.5 V21.5 H16.5 M7.5 21.5 H2.5 V16.5"/>'
   + '</svg>';
 
 /** Direct-to-cargo yield names what the hold took. Loose ore keeps the released quantity. */
@@ -102,9 +102,9 @@ export function pickupFloatingTextSpec(payload) {
 export function factionRepToastText(state, payload = {}) {
   const fac = FACTION_BY_ID[payload.factionId];
   const name = fac ? fac.short : (payload.factionId || 'Unknown');
-  if (shouldHideOwnRepDelta(state)) return 'STANDING UPDATE ROUTED · ' + name;
+  if (shouldHideOwnRepDelta(state)) return 'Standing noted · ' + name;
   const delta = Math.round(Number(payload.delta) || 0);
-  return (delta > 0 ? '+' : '') + delta + ' REP · ' + name;
+  return (delta > 0 ? '+' : '') + delta + ' standing · ' + name;
 }
 
 // comms:log had emitters (barks, encounter acks, survey/rumor lines) and zero
@@ -308,6 +308,9 @@ export function createFloatingText(ctx) {
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
   const visiblePads = [];
+  // Collected pad entities, reused across frames — the expanded-pad pick needs the whole set
+  // before any node update can run, so the single entity walk parks them here first.
+  const padScratch = [];
   const padObstacles = [];
   const padLabelRects = [];
   const padBounds = { w: 0, h: 0 };
@@ -387,9 +390,13 @@ export function createFloatingText(ctx) {
     let expandedPadId = null;
     let bestExpandDistSq = Infinity;
     let bestExpandPriority = -1;
+    padScratch.length = 0;
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
+      // The node pass below needs the same pads: park them while this one entity walk also
+      // judges expansion eligibility (previously a second entities.values() sweep).
+      padScratch.push(e);
       const priced = rec.kind != null || Number.isFinite(rec.price);
       if (!priced) continue;
       const armed = Number.isFinite(rec.armedUntil) && rec.armedUntil > now;
@@ -414,7 +421,7 @@ export function createFloatingText(ctx) {
       }
     }
 
-    for (const e of state.entities.values()) {
+    for (const e of padScratch) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
       // An ambient flavor label ("COFFEE HATCH", "ANSEL'S SILL", "CUSTOMS QUEUE"…) is Adventure

@@ -23,12 +23,12 @@ export const ACCESSIBILITY_CAPTION_COPY = Object.freeze({
 });
 
 export const MASSLINE_CAPTION_COPY = Object.freeze({
-  attach: Object.freeze({ text: 'Line attached.' }),
-  strain: Object.freeze({ text: 'Line strain.' }),
-  reel: Object.freeze({ text: 'Line reel.' }),
-  release: Object.freeze({ text: 'Line release.' }),
-  break: Object.freeze({ text: 'Line break.' }),
-  bridle: Object.freeze({ text: 'Twin bridle chord.' }),
+  attach: Object.freeze({ text: "Line's on." }),
+  strain: Object.freeze({ text: "Easy — she's straining." }),
+  reel: Object.freeze({ text: 'Reeling in.' }),
+  release: Object.freeze({ text: "Line's away." }),
+  break: Object.freeze({ text: "Line's gone." }),
+  bridle: Object.freeze({ text: 'Two lines singing.' }),
 });
 
 export const AUDIO_CUE_CAPTIONS = Object.freeze({

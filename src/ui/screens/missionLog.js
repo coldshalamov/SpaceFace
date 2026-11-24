@@ -500,8 +500,8 @@ function nextStepText(m, state) {
   const paperwork = contract47aPaperwork(m);
   if (paperwork) {
     return paperwork.sampleRecovered
-      ? `Next: carry the recovered assay sample to ${dest} and hand it to the administrator's desk.`
-      : `Next: recover the assay sample at the marked wreck, then carry it to ${dest}.`;
+      ? `Next: carry the 47-A sample to ${dest} and hand it in.`
+      : `Next: fetch the 47-A sample from the marked wreck, then carry it to ${dest}.`;
   }
   // SF-246: the shared sim row knows the phase the static type-switch cannot see — a held
   // contract term, a wiped-out hunt, a hold short of the manifest, a berth a sector away.

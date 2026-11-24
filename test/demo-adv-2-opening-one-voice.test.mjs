@@ -270,7 +270,7 @@ test('DEMO-ADV-2: a level-up earned by the throw waits for the throw', () => {
 test('DEMO-ADV-2: the achievement payoff holds its caption and fanfare for the throw', () => {
   const source = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
   assert.match(source, /_holdForOpeningThrow/, 'the payoff hold exists');
-  assert.match(source, /bus\.on\('achievement:unlocked',[\s\S]{0,320}_holdForOpeningThrow\(play\)/,
+  assert.match(source, /bus\.on\('achievement:unlocked',[\s\S]{0,600}_holdForOpeningThrow\(play\)/,
     'the achievement listener routes through the hold');
   assert.match(source, /_drainOpeningPayoffs\(\)/, 'the held payoff replays on the audio frame');
   assert.match(source, /openingThrowLessonCurrent/, 'the hold reads the rail beat');

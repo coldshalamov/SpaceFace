@@ -435,5 +435,5 @@ export function plottedRouteEngageTeach(route, { engaged = false, mapHome = 'Sta
   if (engaged || !routeCrossesSectors(route)) return '';
   const where = String(mapHome || 'Star Map');
   const key = String(mapLabel || '').trim();
-  return key ? `Engage on the ${where} ${key}.` : `Engage on the ${where}.`;
+  return key ? `Open the ${where} ${key} to jump.` : `Open the ${where} to jump.`;
 }

@@ -311,7 +311,7 @@ export function worldSiteTargetInfoLine(target, state, player, distance) {
  */
 function asteroidClassLine(e) {
   const mix = oreTableByWeight(oreTableForAsteroidType(e.data && e.data.typeId));
-  if (!mix.length) return 'Mineable Asteroid';
+  if (!mix.length) return 'Mineable';
   const yields = mix.map((row) => {
     const commodity = COMMODITY_BY_ID.get(row.commodityId);
     return (commodity && commodity.name) || row.commodityId;

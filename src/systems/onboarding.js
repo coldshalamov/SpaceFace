@@ -542,7 +542,7 @@ const MISSING_THREE_GATE_ROUTE = Object.freeze({
 
 // Cold-open premise (spec2/03 B0 "no modal"): the tutorial voice frames the 47-A contract at the
 // opening beat rather than via a modal. This carries the 47-A intent that the intro card used to own.
-const COLD_OPEN_PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
+const COLD_OPEN_PREMISE = 'Papers say one weight. Your scale says another.';
 // Surfaced when the firing lesson first hands the player a trigger, so the starter weapon is named,
 // not just felt. Pulled from NEW_GAME's fitted starter loadout (see check:phase0-slice-contract).
 // The hull is Hitch — the callsign the opening already uses; the market copy keeps the class name.

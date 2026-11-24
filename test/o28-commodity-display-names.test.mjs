@@ -94,7 +94,7 @@ test('story cargo is named from the story table, in sentence-safe case', () => {
     const letters = name.replace(/[^A-Za-z]/g, '');
     assert.notEqual(letters, letters.toUpperCase(), `${c.id} must not shout in a sentence: "${name}"`);
   }
-  assert.equal(commodityDisplayName('cmdty_47a_assay_sample'), '47-A Assay Sample');
+  assert.equal(commodityDisplayName('cmdty_47a_assay_sample'), '47-A Sample');
   assert.equal(commodityDisplayName('depth_vols_letter'), 'Letter to the Tessera');
 });
 
@@ -135,12 +135,12 @@ test('the first story contract names its cargo as a proper name', () => {
   assert.equal(cargoId, CONTRACT_47A_SAMPLE_ID);
   const name = commodityDisplayName(cargoId);
   assertProperName(cargoId, name);
-  assert.match(name, /assay/i, `the first contract's cargo reads as an assay sample, got "${name}"`);
+  assert.match(name, /47-A sample/i, `the first contract's cargo reads as the 47-A sample, got "${name}"`);
   assert.doesNotMatch(name, /47a_/i);
   assert.doesNotMatch(name, /47a assay/, 'the old lower-case id spelling is gone');
 });
 
-test('the mission log says "47-A Assay Sample short", not "47a assay sample short"', () => {
+test('the mission log says "47-A Sample short", not "47a assay sample short"', () => {
   const { state, mission } = openingFixture();
   // A 47-A carry row that the log does not recognise as the paperwork lane (an older save, or a
   // row rebuilt without its contract id) falls to the generic "N <cargo> short" sentence — the
@@ -149,7 +149,7 @@ test('the mission log says "47-A Assay Sample short", not "47a assay sample shor
   const actions = recommendedActions(state, state.missions.active, state.ui.trackedMissionId);
   const tracked = actions.find((a) => a && a.missionId === mission.id);
   assert.ok(tracked, 'the tracked contract is a recommended action');
-  assert.match(tracked.body, /1 47-A Assay Sample short/, `got: ${tracked.body}`);
+  assert.match(tracked.body, /1 47-A Sample short/, `got: ${tracked.body}`);
   assert.doesNotMatch(tracked.body, /47a assay/i);
   assert.doesNotMatch(tracked.body, /_/);
 });

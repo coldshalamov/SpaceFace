@@ -134,7 +134,7 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     const values = Object.fromEntries([...attrs.matchAll(/(?:^|\s)(data-[\w-]+)="([^"]*)"/g)].map(([, k, v]) => [k, v]));
     const intent = mapOpenIntentFromButton({ getAttribute: name => values[name] ?? null });
     assert.equal(resolveMapOpenTarget(main, intent).kind, 'waypoint');
-    assert.match(pauseStatusLines(main).next, /recover.*47-A Recovery Site/i);
+    assert.match(pauseStatusLines(main).next, /fetch.*47-A sample.*marked rock/i);
 
     const manual = { kind: 'local', label: 'Player course', pos: { x: 37, z: 91 } };
     state.nav.waypoint = manual;
@@ -214,6 +214,6 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     mirrored = main.missions.active.find(m => m.id === mission.id);
     action = missionMapAction(main, mirrored, true);
     assert.equal(action.stationId, 'station_helios', JSON.stringify({ action, recovered: mirrored.params.sampleRecovered, wp: main.nav.waypoint }));
-    assert.match(pauseStatusLines(main).next, /deliver.*Helios Station/i);
+    assert.match(pauseStatusLines(main).next, /take the 47-A sample to Helios Station/i);
   } finally { host.shutdown(); }
 });

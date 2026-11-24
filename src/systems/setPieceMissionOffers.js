@@ -220,7 +220,7 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
   // long_read's dynamic pick — a Choir vigil re-run over a fixed site is a reconcile too.
   const knownRumorOpening = !!wreck && cursor.stageIndex === 0 && !!existingBearing;
   const title = knownRumorOpening
-    ? `Reconcile the Known Bearing: ${wreck.name}`
+    ? `Check her bearing: ${wreck.name}`
     : stage.title || `${definition.title}: ${String(stage.id || 'stage').replace(/_/g, ' ')}`;
   const instructionFallback = `${definition.title} posts ${title} as the next recorded obligation in the chain.`;
   const clauses = (Array.isArray(stage.clauseIds) ? stage.clauseIds : [])
@@ -229,7 +229,7 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
   const witness = witnessFor(state, definition, cursor, chainId);
   const source = primaryRumorSource(wreck, !!definition.wreckId && definition.wreckId === (wreck && wreck.id));
   const summary = knownRumorOpening
-    ? `${wreck.name} is already in your ledger. Reconcile its bearing and proceed to recovery.`
+    ? `${wreck.name} is already in your book. Check where she lies, then fetch her.`
     : textFor(stage.instructionRef, instructionFallback);
   const brief = chartBrief(summary);
   const params = clone(stage.params || {});

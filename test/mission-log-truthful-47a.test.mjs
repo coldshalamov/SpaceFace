@@ -144,7 +144,7 @@ test('the command brief and next step describe the sample job, not freight boile
   const brief = missionCommandBrief(m, state);
   assert.match(brief.what, /Helios Station/);
   assert.match(brief.where, /Helios Station/);
-  assert.match(brief.how, /recover the assay sample/i);
+  assert.match(brief.how, /fetch the 47-A sample/i);
   assert.match(brief.how, /marked wreck/i);
   assert.doesNotMatch(brief.how, /hand over the cargo/i, '47-A is a recovery, not a freight handoff');
   assert.match(brief.why, /MASS ON ACCEPT: 12\.4t/);
@@ -169,7 +169,7 @@ test('recommended actions put the tracked contract first with truthful brief fie
   const tracked = actions.find((a) => a && a.missionId === m.id);
   assert.ok(tracked, 'the tracked contract is a recommended action');
   assert.equal(tracked.title, CONTRACT_47A_B0_BODY.title);
-  assert.match(tracked.body, /assay sample/i);
+  assert.match(tracked.body, /47-A sample/i);
   assert.equal(tracked.brief.reward, 'Payment pending — nothing released on acceptance');
   for (const field of ['title', 'body', 'meta']) {
     assert.ok(String(tracked[field] || '').length > 0, `${field} must not render empty`);
@@ -189,10 +189,10 @@ test('B0 brief follows the actual sample site, then the real recovery owner hand
   assert.equal(source.id, rock.id, 'the authored source is the actual marked rock');
 
   const before = missionCommandBrief(mission, state);
-  assert.match(before.what, /recover the 47-A assay sample/i);
-  assert.match(before.where, /^47-A Recovery Site/);
+  assert.match(before.what, /recover the 47-A sample/i);
+  assert.match(before.where, /^(47-A Recovery Site|The marked rock)/);
   assert.match(before.where, /Helios Prime/);
-  assert.match(before.how, /recover the assay sample at the marked wreck/i);
+  assert.match(before.how, /fetch the 47-A sample from the marked wreck/i);
   assert.equal(state.nav.waypoint.missionId, mission.id);
   assert.deepEqual(state.nav.waypoint.pos, source.pos, 'owner waypoint is the real marked source fix');
   const beforeMap = missionMapAction(state, mission, true);
@@ -243,9 +243,9 @@ test('B0 brief follows the actual sample site, then the real recovery owner hand
   assert.equal(state.nav.waypoint.stationId, mission.destStationId, 'the owner now routes to its actual destination');
 
   const after = missionCommandBrief(mission, state);
-  assert.match(after.what, /deliver the recovered 47-A assay sample/i);
+  assert.match(after.what, /deliver the 47-A sample/i);
   assert.equal(after.where, 'Helios Station (Helios Prime)');
-  assert.match(after.how, /carry the recovered assay sample to Helios Station/i);
+  assert.match(after.how, /carry the 47-A sample to Helios Station/i);
   const afterMap = missionMapAction(state, mission, true);
   assert.equal(afterMap.stationId, mission.destStationId, 'recovery restores the explicit Helios selection');
   assert.ok(afterMap.selectionTarget == null, 'post-recovery destination is not a positional objective');

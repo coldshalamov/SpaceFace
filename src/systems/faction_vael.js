@@ -166,7 +166,7 @@ const LEDGER_BARKS = Object.freeze({
   writServed: 'Served. The addendum is yours again.',
   writKilled: 'You cannot shoot a debt. The ledger keeps the shape of it.',
   writRecalled: 'The writ stands down. The bill settled elsewhere.',
-  clausePosted: 'The desk posts a clause. Proximity is a signature.',
+  clausePosted: 'The desk posts: proximity is a signature.',
   clauseSigned: 'You approached. That is a signature.',
   clauseDone: 'Clause honored. The Vael pay what the paper says.',
   clauseFailed: 'A broken signature keeps its shape. The ledger keeps it longer.',
@@ -1302,7 +1302,7 @@ export const vaelLiens = {
         const openInv = v.invoices.filter((r) => r.state === 'open');
         const total = openInv.reduce((a, r) => a + r.amount, 0);
         const mass = Math.round(num(player.mass));
-        const text = `HULL READ · ${mass}t · ${counted(openInv.length, 'OPEN INVOICE', 'OPEN INVOICES')} · ${total} CR ON THE BOOK`;
+        const text = `Your hull: ${mass} t · ${counted(openInv.length, 'open bill', 'open bills')} · ${total} cr owing`;
         this.bus.emit('vael:reading', {
           entityId: e.id, hullMass: mass, openInvoices: openInv.length, invoiceTotal: total, tick: state.tick,
         });
