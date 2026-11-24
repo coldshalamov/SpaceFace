@@ -44,6 +44,13 @@
 // --eval-file=<path>: JavaScript run in the page before the route starts, for an on/off experiment
 // in the referee's own setup (a live switch, a style rule). The run is marked as an experiment.
 //
+// --ab=<switch>[,<switch>...][;<group>...]: an in-run on/off measurement of render frame-cost switches
+// (src/render/frameCostSwitches.js, flipped live through globalThis.__sfRfx). The judged segments
+// alternate switch OFF / switch ON instead of his cap / cap lifted, both sides at the lifted cap, so
+// machine load (which swings 2-3x a minute here) lands on both sides alike. The "asis" mode of the
+// report is then the OFF side and "lift" the ON side (report.ab says so); <out>/ab.txt has the
+// table, per-pair ratios and each side's dynamic-resolution scale.
+//
 // Writes <out>/report.json (+ frames.json, loaf.json, samples.json). npm run check:smooth judges.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -64,7 +71,7 @@ const SECTOR = String(argv.sector || 'sector_helios_prime');
 const SEED = Number(argv.seed || 4242);
 const SECONDS = Number(argv.seconds || 60);
 const LIFT_CAP = Number(argv.cap ?? 60);
-const SEGMENT_S = Number(argv.segment || 10);
+const SEGMENT_S = Number(argv.segment || (typeof argv.ab === 'string' ? 4 : 10));
 const TRACE = argv.trace === true || typeof argv.trace === 'string';
 // --trace=deep also records the compositor's own events and which DOM nodes had their style,
 // layout or paint invalidated and why (heavy: use short runs).
@@ -75,6 +82,17 @@ const CENSUS = argv.census === true;
 const SCHEDULING = ['both', 'focused', 'unfocused'].includes(argv.scheduling) ? argv.scheduling : 'both';
 const UNFOCUSED_STRETCH_S = 15;
 const EVAL_FILE = typeof argv['eval-file'] === 'string' ? resolve(ROOT, argv['eval-file']) : '';
+// Groups separated by ';' are measured one after another in the same boot (the judged time is split
+// between them); names inside a group (comma list) flip together.
+const AB = typeof argv.ab === 'string'
+  ? argv.ab.split(';').map((g) => g.split(',').map((x) => x.trim()).filter(Boolean)).filter((g) => g.length) : null;
+// Settle before each judged segment: long enough for a flipped switch's first frames (and dynamic
+// resolution's reaction) to fall outside the judged window.
+// --hand=turret: no held thrust (fire held, turning in place) so the fight comes to the ship. A
+// round-6 pilot holding W meets the Foundry rim and the run ends in ~20 s; an on/off measurement
+// needs minutes of the same fight.
+const TURRET = argv.hand === 'turret';
+const SETTLE_MS = AB ? Number(argv['ab-settle'] || 1200) : 300;
 const WANT = { w: 1536, h: 864, dpr: 1.25 };
 const TRANSITION_S = 3;
 const OUT = resolve(ROOT, String(argv.out || `.devshots/smooth/adhoc-${ROUTE}`));
@@ -242,7 +260,9 @@ try {
       const row = { t: performance.now(), live: live(), mode: S.mode, ts: S.timeScale, seg: R.seg,
         sim: pt && pt.active ? pt.simTime : S.simTime, cap: (S.render && S.render.frameCap) || 0,
         pw: pw ? pw.index : null, workP50: pw ? pw.workMsP50 : null, workP95: pw ? pw.workMsP95 : null,
-        stepP50: pw ? pw.stepMsP50 : null, stepP95: pw ? pw.stepMsP95 : null, screens: (S.ui && S.ui.screenStack && S.ui.screenStack.length) || 0 };
+        stepP50: pw ? pw.stepMsP50 : null, stepP95: pw ? pw.stepMsP95 : null, screens: (S.ui && S.ui.screenStack && S.ui.screenStack.length) || 0,
+        dyn: S.render && Number.isFinite(S.render.dynResScale) ? S.render.dynResScale : null };
+      if (window.__smAb) { const d = window.__THREE_GAME_DIAGNOSTICS__; row.calls = d && d.info ? d.info.calls : null; }
       if (k++ % 10 === 0) {
         let hostile = 0;
         try { for (const e of S.entities.values()) if (e && e.type === 'ship' && e.id !== S.playerId && e.alive !== false) hostile++; } catch (_) {}
@@ -375,11 +395,18 @@ try {
   const hand = createHand(cdp, vp);
   if (ROUTE === 'adventure') hand.setAim(() => ({ x: vp.w * 0.86, y: vp.h * 0.5 })); // fly one way: out across the sector edge
   hand.start();
-  const setSeg = (seg, cap) => page.evaluate(([s, c]) => {
+  // --ab: every switch of every group is set (the active group to on/off, the others ON, the
+  // shipped game); returns the page clock so segments can be matched to frames.
+  const setSeg = (seg, cap, abOn = null, abGroup = 0) => page.evaluate(([s, c, groups, on, g]) => {
     const S = window.SF.state; const v = S.settings && S.settings.video;
     if (v && c != null) { v.frameCap = c; try { window.SF.bus.emit('settings:changed', { section: 'video', key: 'frameCap' }); } catch (_) {} }
+    if (groups && on != null) {
+      const live = (globalThis.__sfRfx ||= {});
+      groups.forEach((names, i) => { for (const name of names) live[name] = i === g ? on : true; });
+    }
     window.__sm.seg = s;
-  }, [seg, cap]);
+    return performance.now();
+  }, [seg, cap, AB, abOn, abGroup]);
   const metrics = async () => {
     const m = await cdp.send('Performance.getMetrics').catch(() => null);
     const o = {}; for (const x of (m && m.metrics) || []) o[x.name] = x.value;
@@ -420,7 +447,7 @@ try {
     let beat = 0;
     while (Date.now() < judgedEnd) {
       const phase = beat % 6;
-      hand.down('KeyW');
+      if (!TURRET) hand.down('KeyW');
       if (ROUTE !== 'adventure') {
         if (phase === 1 || phase === 2) hand.down('KeyA'); else hand.up('KeyA');
         if (phase === 3) hand.down('KeyD'); else hand.up('KeyD');
@@ -446,9 +473,27 @@ try {
       }
       // Take a level-up pick / next round / respawn if the run stopped on a screen.
       await page.evaluate(PRESS_THROUGH_SCREENS).catch(() => {});
-      const mode = await page.evaluate(() => window.SF.state.mode).catch(() => 'flight');
+      // The Run Over plate keeps mode 'flight', and its Again (back to round 1) is not the round
+      // this route measures: a dead pilot counts as not flying, so the route's own round relaunches.
+      const mode = await page.evaluate(() => {
+        const plate = document.querySelector('.sf-runover__again');
+        const m = window.SF.state.mode;
+        return m === 'flight' && plate && plate.offsetParent ? 'run-over' : m;
+      }).catch(() => 'flight');
       notFlying = mode === 'flight' || mode === 'loading' ? 0 : notFlying + 1;
-      if (ROUTE === 'swarm' && notFlying >= 4) { notFlying = 0; relaunches++; await launchRoute().catch(() => {}); }
+      if (ROUTE === 'swarm' && notFlying >= 4) {
+        notFlying = 0; relaunches++;
+        if (relaunches <= 3) {
+          report.notes.push(`relaunch ${relaunches} at ${Math.round((Date.now() - (judgedEnd - SECONDS * 1000)) / 1000)} s into the judged window: ${mode}`);
+          await page.screenshot({ path: join(OUT, `relaunch-${relaunches}.png`) }).catch(() => {});
+        }
+        await launchRoute().catch(() => {});
+        // A relaunch loads for tens of seconds with the old plate still mounted: wait for the new
+        // round to go live before judging again, or every check would relaunch it once more.
+        for (const until = Date.now() + 120000; Date.now() < until && Date.now() < judgedEnd && !(await isLive());) {
+          await page.evaluate(PRESS_THROUGH_SCREENS).catch(() => {}); await sleep(1000);
+        }
+      }
     }
     hand.releaseAll();
   })();
@@ -464,26 +509,37 @@ try {
     report.__traceSyncPageMs = mark && mark.result ? Number(mark.result.value) : NaN;
   }
   let which = 0;
+  if (AB) await page.evaluate(() => { window.__smAb = true; }).catch(() => {});
+  if (AB) report.ab = { groups: AB, off: 'asis', on: 'lift', cap: LIFT_CAP || ownerCap, settleMs: SETTLE_MS, segmentS: SEGMENT_S, windows: [] };
+  const judgedStart = Date.now();
+  let lastAbGroup = -1;
   while (Date.now() < judgedEnd) {
-    const lifted = LIFT_CAP > 0 && which % 2 === 1;
-    await setSeg(3, lifted ? LIFT_CAP : ownerCap); // settle: not judged
-    await sleep(300);
+    // --ab: OFF segments ride the 'asis' slot and ON segments the 'lift' slot, both at one cap;
+    // the groups take the judged time in turn (each starts on an OFF segment).
+    const abGroup = AB ? Math.min(AB.length - 1, Math.floor(((Date.now() - judgedStart) / (SECONDS * 1000)) * AB.length)) : 0;
+    if (AB && lastAbGroup !== abGroup) { lastAbGroup = abGroup; which = 0; }
+    const lifted = AB ? which % 2 === 1 : LIFT_CAP > 0 && which % 2 === 1;
+    const segCap = AB ? (LIFT_CAP || ownerCap) : lifted ? LIFT_CAP : ownerCap;
+    await setSeg(3, segCap, AB ? lifted : null, abGroup); // settle: not judged
+    await sleep(SETTLE_MS);
     // The thread-speed loop, in the unjudged settle between segments, only while the fight is live.
     if (await isLive()) { const sp = await cpuSpeed(); if (sp > 0 && await isLive()) speedSamples.push(sp); }
-    await setSeg(lifted ? 2 : 1, null);
+    const pageT0 = await setSeg(lifted ? 2 : 1, null);
     const m0 = await metrics();
     const segEnd = Math.min(judgedEnd, Date.now() + SEGMENT_S * 1000);
     await sleep(Math.max(0, segEnd - Date.now()));
     const m1 = await metrics();
     segments.push({ mode: lifted ? 'lift' : 'asis', m0, m1 });
+    if (AB) report.ab.windows.push({ group: abGroup, on: lifted, t0: pageT0, t1: await page.evaluate(() => performance.now()).catch(() => pageT0 + SEGMENT_S * 1000) });
     which++;
   }
-  await setSeg(0, ownerCap);
+  // Every switch back on (the shipped game) for the tail: pictures, GPU timers, census.
+  await setSeg(0, ownerCap, AB ? true : null, -1);
   await playing;
   // A picture of the fight with enemies on the field, straight after the judged window (never inside it).
   {
     const enemies = () => page.evaluate(() => { const S = window.SF.state; let n = 0; try { for (const e of S.entities.values()) if (e && e.type === 'ship' && e.id !== S.playerId && e.alive !== false) n++; } catch (_) {} return S.mode === 'flight' && S.timeScale > 0 ? n : -1; }).catch(() => -1);
-    hand.down('KeyW'); hand.trigger(true);
+    if (!TURRET) hand.down('KeyW'); hand.trigger(true);
     for (let i = 0; i < 16 && (await enemies()) < 3; i++) await sleep(500);
     if ((await enemies()) >= 1) await page.screenshot({ path: join(OUT, 'fight.png') }).catch(() => {});
   }
@@ -495,7 +551,7 @@ try {
     const until = Date.now() + UNFOCUSED_STRETCH_S * 1000;
     let beat = 0;
     while (Date.now() < until) {
-      hand.down('KeyW'); hand.trigger(beat % 6 !== 4);
+      if (!TURRET) hand.down('KeyW'); hand.trigger(beat % 6 !== 4);
       if (beat % 6 === 1) hand.down('KeyA'); else hand.up('KeyA');
       beat++;
       await sleep(Math.min(1200, Math.max(0, until - Date.now())));
@@ -525,7 +581,7 @@ try {
   }
 
   // ---- tail window: GPU time per pass (timer queries are OFF in his build, so never in the judged window) ----
-  hand.down('KeyW'); hand.trigger(true);
+  if (!TURRET) hand.down('KeyW'); hand.trigger(true);
   // Median of the in-fight samples (one every segment); the single tail reading is the fallback.
   if (!speedSamples.length) { const sp = await cpuSpeed(); if (sp > 0) speedSamples.push(sp); }
   report.cpuSpeed.samples = speedSamples.slice();
@@ -595,7 +651,9 @@ try {
   };
   console.log('fight', JSON.stringify(report.fight));
   if (!(report.fight.drawCallsMax > 0 || report.fight.drawCallsMedian > 0)) fail('the scene drew nothing (0 draw calls): not a fight');
-  if (report.fight.liveFraction < 0.5) fail(`the world was live only ${Math.round(report.fight.liveFraction * 100)} % of the judged window`);
+  // An --ab run compares live frames only, OFF against ON in adjacent segments; a round-6 pilot dies
+  // and relaunches, so it asks for less live time (its pairs need live frames on both sides).
+  if (report.fight.liveFraction < (AB ? 0.25 : 0.5)) fail(`the world was live only ${Math.round(report.fight.liveFraction * 100)} % of the judged window`);
   if (ROUTE === 'swarm') {
     const wantArena = report.launch.arenaId;
     if (!report.fight.arenas.includes(wantArena)) fail(`arena is ${report.fight.arenas.join(',') || 'unknown'}, wanted ${wantArena}`);
@@ -687,6 +745,48 @@ try {
       busy: wall > 0 ? { fraction: +(sum('task') / wall).toFixed(3), script: +(sum('script') / wall).toFixed(3), layoutAndStyle: +((sum('layout') + sum('style')) / wall).toFixed(3) } : null,
       hitches,
     };
+  }
+  // ---- --ab: per group, OFF/ON over the judged segments, adjacent-pair ratios, per-side proof ----
+  // (draw calls and resolution scale per side show the switch really changed the frame).
+  if (AB && report.ab.windows.length) {
+    const lines = [];
+    report.ab.results = [];
+    const inWin = (w, at) => at >= w.t0 && at < w.t1;
+    for (let g = 0; g < AB.length; g++) {
+      const wins = report.ab.windows.filter((w) => w.group === g);
+      const rowsOf = (w) => frames.filter((f) => f.kind === 'steady' && inWin(w, f.at));
+      const side = (on) => {
+        const ws = wins.filter((w) => w.on === on);
+        const rows = ws.flatMap(rowsOf);
+        const st = stats(rows);
+        const smp = raw.samples.filter((x) => x.live && ws.some((w) => inWin(w, x.t)));
+        const dyn = smp.map((x) => x.dyn).filter((x) => x != null);
+        const calls = smp.map((x) => x.calls).filter((x) => x > 0);
+        const over33 = rows.filter((f) => f.ms > 33.4).length;
+        return { ...st, over33, over33Share: rows.length ? +(over33 / rows.length).toFixed(3) : null, dynP50: pct(dyn, 0.5), callsP50: pct(calls, 0.5) };
+      };
+      const pairs = [];
+      for (let i = 0; i + 1 < wins.length; i++) {
+        if (wins[i].on || !wins[i + 1].on) continue;
+        const a = rowsOf(wins[i]); const b = rowsOf(wins[i + 1]);
+        if (a.length >= 15 && b.length >= 15) {
+          const sa = stats(a); const sb = stats(b);
+          pairs.push({ offFps: sa.fps, onFps: sb.fps, offCb: sa.cbP50, onCb: sb.cbP50, fpsRatio: sa.fps > 0 ? +(sb.fps / sa.fps).toFixed(3) : null });
+        }
+        i++;
+      }
+      const off = side(false); const on = side(true);
+      const res = { group: AB[g], off, on, pairs, onFasterPairs: pairs.filter((x) => x.fpsRatio > 1).length };
+      report.ab.results.push(res);
+      const col = (v, n) => String(v ?? '-').padEnd(n);
+      const fmt = (label, x) => `${col(label, 12)}${col(x.fps, 7)}${col(x.over33Share, 7)}${col(x.p50, 7)}${col(x.p95, 7)}${col(x.max, 8)}${col(x.over33, 6)}${col(x.over100, 6)}${col(`${x.cbP50}/${x.cbP95}`, 12)}${col(x.callsP50, 7)}${col(x.dynP50, 6)}${x.frames}`;
+      lines.push(`A/B [${AB[g].join(',')}]: ${ROUTE}${ROUTE === 'swarm' ? ` round ${ROUND}` : ''}, ${wins.length} segments of ${SEGMENT_S} s, cap ${report.ab.cap}, steady live frames`,
+        `${col('side', 12)}${col('fps', 7)}${col('>33%', 7)}${col('p50', 7)}${col('p95', 7)}${col('max', 8)}${col('>33', 6)}${col('>100', 6)}${col('cb p50/95', 12)}${col('draws', 7)}${col('res', 6)}frames`,
+        fmt('switch OFF', off), fmt('switch ON', on),
+        `pairs OFF->ON fps: ${pairs.map((x) => `${x.offFps}->${x.onFps}`).join(', ')}; ON faster in ${res.onFasterPairs} of ${pairs.length}`, '');
+    }
+    writeFileSync(join(OUT, 'ab.txt'), `${lines.join('\n')}\n`);
+    for (const l of lines) console.log(`smooth probe ${l}`);
   }
   // ---- the unfocused stretch (scheduling "both"): the same fight as a background window ----
   if (SCHEDULING === 'both') {

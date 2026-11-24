@@ -167,6 +167,14 @@ export function collectSmoothCensus() {
     out.detail.push({ root: row.key, instancesInWindow: new Set(mine.map((d) => d.rootId)).size, drawsInOne: one.length,
       draws: one.map((d) => ({ obj: d.obj, parent: d.par, mat: `${d.matType} "${d.matName}"#${d.mat}`, prog: d.prog, geo: d.geo, tris: d.tris, moves: d.mau })) });
   }
+  // One whole presented frame in draw order (the window's last complete frame): where the program
+  // and material switches fall, opaque against transparent, for judging sort and sharing changes.
+  {
+    const frameIds = [...new Set(C.draws.map((d) => d.f))];
+    const lastFull = frameIds.length > 1 ? frameIds[frameIds.length - 2] : frameIds[0];
+    out.frameDraws = C.draws.filter((d) => d.f === lastFull).map((d) => ({ owner: `${d.root} > ${d.owner}`, obj: d.obj, mat: d.mat, matType: d.matType, matName: d.matName,
+      prog: d.prog, geo: d.geo, transparent: d.transparent, inst: d.inst, target: d.target }));
+  }
   // Materials whose version moves between frames: each bump makes three.js rebuild the program key.
   const verSeen = new Map(); const bumps = new Map();
   for (const d of C.draws) {
