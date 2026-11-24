@@ -581,7 +581,8 @@ function peopleDoorSummary(state, stationId, stationIdentity, fineOffer) {
   const facId = stationIdentity?.factionId;
   const facShort = stationIdentity?.factionShort || stationIdentity?.factionName || '';
   const rep = facId && state?.factions?.[facId] ? Number(state.factions[facId].rep) || 0 : 0;
-  const trustWord = facShort ? `${facShort} trust: ${String(tierFor(rep)?.name || 'Neutral').toLowerCase()}` : '';
+  const trustWord = facShort
+    ? `${facShort} rates you ${String(tierFor(rep)?.name || 'neutral').toLowerCase()}` : '';
 
   if (fineOffer) {
     const fineText = fineOffer.status === 'working'

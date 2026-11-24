@@ -69,7 +69,7 @@ function seedNode(root) {
 
 test('pauseRunSeedLine names only the session seed', () => {
   assert.equal(pauseRunSeedOf({ meta: { seed: 12345 } }), 12345);
-  assert.equal(pauseRunSeedLine({ meta: { seed: 12345 } }), 'Seed 12345');
+  assert.equal(pauseRunSeedLine({ meta: { seed: 12345 } }), 'Run 12345', 'Adventure words demo pass');
   assert.equal(pauseRunSeedLine({ meta: {} }), '', 'missing seed renders nothing, not a crash');
   assert.equal(pauseRunSeedLine(null), '', 'missing state renders nothing');
   assert.equal(pauseRunSeedLine({ meta: { seed: 0 } }), '', 'zero seed renders nothing');
@@ -84,7 +84,7 @@ test('pause footer carries the running session seed beside the build mark', () =
 
     const node = seedNode(root);
     assert.ok(node, 'footer has a run-seed span');
-    assert.equal(node.textContent, ' · Seed 424242', 'seed sits beside the build mark on the same line');
+    assert.equal(node.textContent, ' · Run 424242', 'Adventure words demo pass');
 
     const versionLine = root.querySelectorAll('[data-role="version"]')[0];
     assert.ok(versionLine, 'build mark line is still mounted');
@@ -115,13 +115,13 @@ test('a new run shows a different seed in the pause footer', () => {
     const rootA = globalThis.document.createElement('div');
     pauseScreen.mount(rootA, first.ctx);
     const textA = seedNode(rootA).textContent;
-    assert.equal(textA, ' · Seed 111');
+    assert.equal(textA, ' · Run 111', 'Adventure words demo pass');
 
     const second = makeCtx(999007);
     const rootB = globalThis.document.createElement('div');
     pauseScreen.mount(rootB, second.ctx);
     const textB = seedNode(rootB).textContent;
-    assert.equal(textB, ' · Seed 999007');
+    assert.equal(textB, ' · Run 999007', 'Adventure words demo pass');
     assert.notEqual(textB, textA, 'a new run carries its own seed, not the previous one');
     assert.doesNotMatch(textB, /111/, 'the old seed is gone from the new footer');
   } finally {

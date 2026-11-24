@@ -100,7 +100,7 @@ export const worldClock = {
       if (!cal.storm.stormy) emitOnce(key, () => {});
       else emitOnce(key, () => {
         this._news({
-          text: `${cal.storm.label.toUpperCase()} ON THE SECTOR WIRE: ${stormLine(cal.storm.kind)}`,
+          text: `${cap(cal.storm.label)}: ${stormLine(cal.storm.kind)}`,
           sourceRef: `calendar:storm:${sectorId}:${cal.storm.season}`,
           eventId: `calendar:storm:${sectorId}:${cal.storm.season}`,
         });
@@ -229,9 +229,9 @@ function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
 function stormLine(kind) {
   switch (kind) {
-    case 'ion_storm': return 'scope blackout fronts cycle through the week; follow your engine and the radio.';
-    case 'solar_wind': return 'crosswind carries hulls and tow loads all week; leave slack on the line.';
-    case 'meteor_shower': return 'moving iron all week; dangerous approaches, rich mining.';
+    case 'ion_storm': return 'scopes go dark in waves. Fly the engine and trust the radio.';
+    case 'solar_wind': return 'crosswind all week. It shoves hulls and tows — leave slack on the line.';
+    case 'meteor_shower': return 'iron on the move all week. Ugly approaches, good mining.';
     default: return 'clear weather holds.';
   }
 }

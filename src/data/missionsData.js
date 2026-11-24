@@ -217,7 +217,7 @@ const RANK_STEP_BY_FACTION = Object.freeze({
 });
 const ALLIED_RETAINER_FACTION = 'faction_dmc';
 const RANK_CONTRACT_FACTIONS = Object.freeze([
-  ['faction_scn', 'Concord cleared escort', 'escort'],
+  ['faction_scn', 'Concord wants an escort', 'escort'],
   ['faction_mts', 'Meridian known haul', 'cargo_delivery'],
   ['faction_dmc', 'Drift shift quota', 'mining_quota'],
   ['faction_reach', 'Reach crew run', 'bounty_hunt'],

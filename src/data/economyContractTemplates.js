@@ -333,7 +333,7 @@ export const FIRST_TRADE_CONTRACT = Object.freeze({
   // flies, and priced it below the ~430 cr round-trip gate tolls — the teaching trade taught
   // that trade loses money.
   distance: 8900,
-  title: 'First trade: 8u Fuel Cells to Tethys',
+  title: 'First haul: 8 Fuel Cells to Tethys',
   brief: 'Sealed fuel for the Tethys Trade Hub. Gate tolls come out of the run — this pay clears them. Accept, hold the manifest, dock, collect.',
   reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to the Tethys Trade Hub so the first trade ledger closes cleanly.',
   preloadedCargo: true,

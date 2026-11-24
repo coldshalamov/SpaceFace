@@ -38,7 +38,7 @@ test('report-in keeps held clauses ahead of docking and does not invent commodit
  for(const patch of [{source:'other'},{mutationTag:'salvage'},{mutatedFromMissionId:'other'},{type:'passenger_transport'},{params:{cmdtyId:'cmdty_alloys',qty:2,replacesMissionId:'m_10'}}])assert.equal(isReportInRestitution({...m,...patch}),false);
  const held={...m,clauses:[{id:'soft_berth',conditionId:'soft_berth',kind:'require'}]};assert.equal(missionNextActionRow(s,held).phase,'blocked');assert.doesNotMatch(missionCommandBrief(held,s).how,/dock at Coalition HQ to report/);
  const cargo={...m,params:{cmdtyId:'cmdty_alloys',qty:2,replacesMissionId:'m_10'}};
- assert.match(missionNavReason(cargo,{name:'Coalition HQ'},{}),/Deliver 2u/);assert.equal(missionNextActionRow(s,cargo).phase,'acquire');
+ assert.match(missionNavReason(cargo,{name:'Coalition HQ'},{}),/Deliver 2 /, 'Adventure words demo pass');assert.equal(missionNextActionRow(s,cargo).phase,'acquire');
  assert.equal(isReportInRestitution(null),false);assert.equal(isReportInRestitution({}),false);
 });
 test('failed introduction points at its actual open report-in without claiming branch settlement',()=>{

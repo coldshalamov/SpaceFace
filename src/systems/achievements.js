@@ -1038,8 +1038,8 @@ export function installAchievements({
     // Newest first, so the achievement just earned is never the one hidden behind the ellipsis.
     const names = lineDefs.map((def) => def.name).reverse();
     const text = names.length === 1
-      ? `Achievement unlocked · ${names[0]}`
-      : `${names.length} achievements unlocked · ${names.slice(0, 3).join(' · ')}${names.length > 3 ? ' · …' : ''}`;
+      ? `On your record · ${names[0]}`
+      : `${names.length} on your record · ${names.slice(0, 3).join(' · ')}${names.length > 3 ? ' · …' : ''}`;
     bus.emit('voice:say', {
       channel: 'news',
       kind: 'achievement',

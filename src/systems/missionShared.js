@@ -1056,7 +1056,7 @@ export function missionNavReason(m, station, sector) {
   if (m.type === 'recon_scan' && p.originSurveySample) {
     const sample = CMDTY_BY_ID.get(p.sampleCmdtyId);
     return p.surveyComplete
-      ? `Mine ${p.sampleQty || 1}u ${sample ? sample.name : 'sample'} from the scanned seam`
+      ? `Mine ${p.sampleQty || 1} ${sample ? sample.name : 'sample'} from the scanned seam`
       : `Scan an asteroid field in ${sectorName}`;
   }
   if (m.type === 'recon_scan' && p.landmarkProbe) {
@@ -1066,7 +1066,7 @@ export function missionNavReason(m, station, sector) {
     return `Scan the ${plainFollowupPlace(p.poiSignalFollowup)} in ${sectorName}`;
   }
   if (isReportInRestitution(m)) return `Dock at ${stationName} to report in`;
-  if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty}u ${cargo}, then deliver to ${stationName}`;
+  if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty} ${cargo}, then deliver to ${stationName}`;
   if (p.workingBattlefield) return workingBattlefieldObjective(m);
   if (p.works) return worksObjectiveLine(m);
   // W-TENDER fail-forward spot row: a qty-less carriage row, so it names its own errand rather
@@ -1074,17 +1074,17 @@ export function missionNavReason(m, station, sector) {
   // row — the rail-market sale is unverified income, never the contract's term.
   if (p.tenderSpotForMissionId) return `Spot carriage: dock at ${stationName} to complete — the rail market buys what your hold still carries`;
   switch (m.type) {
-    case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
-    case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
+    case 'cargo_delivery': return `Deliver ${p.qty || ''} ${cargo} to ${stationName}`.trim();
+    case 'bulk_trade': return `Sell ${remaining || p.qty || ''} ${cargo} at ${stationName}`.trim();
     // W-TENDER: the desk sale is the act that settles the run — the same sell line as bulk_trade,
     // counted down by what the desk has already logged.
-    case 'tender_haul': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
-    case BULK_HAUL_TYPE: return `Tether-haul ${remaining || p.massU || ''}u bulk ore to ${stationName}`.trim();
-    case 'mining_quota': return `Mine ${remaining || p.qty || ''}u ${cargo}`.trim();
-    case 'salvage_retrieval': return `Recover ${p.qty || ''}u ${cargo} for ${stationName}`.trim();
+    case 'tender_haul': return `Sell ${remaining || p.qty || ''} ${cargo} at ${stationName}`.trim();
+    case BULK_HAUL_TYPE: return `Tether-haul ${remaining || p.massU || ''} bulk ore to ${stationName}`.trim();
+    case 'mining_quota': return `Mine ${remaining || p.qty || ''} ${cargo}`.trim();
+    case 'salvage_retrieval': return `Recover ${p.qty || ''} ${cargo} for ${stationName}`.trim();
     case 'smuggling_run':
       if (p.wakeHandoff) return 'Match the hauler and take the crate in its wake';
-      return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
+      return `Smuggle ${p.qty || ''} ${cargo} to ${stationName}`.trim();
     case 'passenger_transport':
       if (p.quietPassage) return 'Escort passenger transport cold through Customs Gate checkpoint';
       return `Transport passenger to ${stationName}`;

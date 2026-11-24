@@ -12,12 +12,12 @@
 export const JOURNEY_ACTS = Object.freeze([
   Object.freeze({
     num: 'I',
-    // design/game/16: "On screen, Act I is titled Cold Start, not The Pit — the Pit is Swarm's name now."
-    title: 'Cold Start',
-    trackerTitle: 'Cold Start',
+    // On screen, Act I is First Shift. The Pit stays Swarm's name.
+    title: 'First Shift',
+    trackerTitle: 'First Shift',
     beats: Object.freeze([0, 1]),
     verb: 'Sample and haul',
-    goal: 'Sample the 47-A mass discrepancy, then dock at Helios.',
+    goal: 'Get the 47-A sample, then dock at Helios.',
     line: 'THEY KNEW THE MASS.',
   }),
   Object.freeze({

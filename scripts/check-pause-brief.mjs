@@ -26,7 +26,7 @@ assert.match(pauseSrc, /INTER-SYSTEM ROUTE/,
 assert.match(pauseSrc, /no jump route is required/,
   'pause brief should explicitly separate local routes from jump-route commitments');
 // ORRERY pause: the action wears the live map binding label and routes through openPauseMapReview.
-assert.match(pauseSrc, /if \(mapAction\) mk\(mapAction\.label, \(\) => openPauseMapReview\(ctx, mapAction\)/,
+assert.match(pauseSrc, /if \(mapAction && !inRun\) mk\(mapAction\.label, \(\) => openPauseMapReview\(ctx, mapAction\)/,
   'pause menu should expose a waypoint map review action when nav is set');
 assert.match(pauseSrc, /function openPauseMapReview\(ctx, mapAction\)[\s\S]{0,400}focus: mapAction\.focus/,
   'the pause map review action must open the map at the waypoint focus');
@@ -97,8 +97,8 @@ lines = pauseStatusLines({
   ...trackedState,
   ui: { trackedMissionId: null },
 });
-assert.match(lines.objective, /^UNTRACKED CONTRACT/);
-assert.match(lines.next, /Mission Log \(J\).*Track Nav/);
+assert.match(lines.objective, /^JOB NOT TRACKED/, 'Adventure words demo pass');
+assert.match(lines.next, /Mission Log \(J\).*track a job/, 'Adventure words demo pass');
 
 lines = pauseStatusLines({
   simTime: 10,

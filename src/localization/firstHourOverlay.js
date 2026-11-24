@@ -49,7 +49,12 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
   'Incoming telegraph': L('Telegrafía entrante', 'Télégraphe entrant', 'Telegraph eingehend', 'Telegrafia entrante'),
 
   // Massline instrument captions.
-  'Line attached.': L('Massline enganchada.', 'Massline accrochée.', 'Massline verankert.', 'Massline engatada.'),
+  "Line's on.": L('Línea puesta.', 'Ligne prise.', 'Leine dran.', 'Linha presa.'),
+  "Easy — she's straining.": L('Despacio — está tirante.', 'Doucement — elle force.', 'Langsam — sie spannt.', 'Devagar — ela está forçando.'),
+  'Reeling in.': L('Recogiendo.', 'On embobine.', 'Holt ein.', 'Recolhendo.'),
+  "Line's away.": L('Línea suelta.', 'Ligne partie.', 'Leine weg.', 'Linha solta.'),
+  "Line's gone.": L('Línea rota.', 'Ligne cassée.', 'Leine gerissen.', 'Linha partida.'),
+  'Two lines singing.': L('Dos líneas cantando.', 'Deux lignes qui chantent.', 'Zwei Leinen singen.', 'Duas linhas cantando.'),
   'Massline strain.': L('Tensión de la Massline.', 'Tension de la Massline.', 'Massline unter Zug.', 'Tensão da Massline.'),
   'Massline reel.': L('Recogida de la Massline.', 'Enroulement de la Massline.', 'Massline-Aufzug.', 'Recolhimento da Massline.'),
   'Massline release.': L('Suelta de la Massline.', 'Relâche de la Massline.', 'Massline-Lösung.', 'Soltura da Massline.'),
@@ -153,7 +158,7 @@ export const FIRST_HOUR_OVERLAY = Object.freeze({
 
   // Receipts and mission state.
   'Credits received.': L('Créditos recibidos.', 'Crédits reçus.', 'Credits erhalten.', 'Créditos recebidos.'),
-  'Mission accepted.': L('Misión aceptada.', 'Mission acceptée.', 'Mission angenommen.', 'Missão aceita.'),
+  'The job is yours.': L('El trabajo es tuyo.', 'Le boulot est à toi.', 'Der Job gehört dir.', 'O trabalho é teu.'),
   'Mission complete.': L('Misión completada.', 'Mission terminée.', 'Mission erfüllt.', 'Missão concluída.'),
   'Cruise engaged.': L('Crucero activado.', 'Croisière enclenchée.', 'Reiseflug eingelegt.', 'Cruzeiro engatado.'),
 

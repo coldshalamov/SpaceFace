@@ -1064,7 +1064,7 @@ export function payoffCaption(event, payload) {
   const name = payload && typeof payload.name === 'string' ? payload.name.trim() : '';
   if (event === 'tech:researched') return 'Research complete.';
   if (event === 'ship:purchased') return name ? `Ship purchased: ${name}.` : 'Ship purchased.';
-  if (event === 'achievement:unlocked') return name ? `Achievement: ${name}.` : 'Achievement unlocked.';
+  if (event === 'achievement:unlocked') return name ? `On your record: ${name}.` : 'On your record.';
   if (event === 'career:ladder:completed') return 'Rank attained.';
   return null;
 }
@@ -1084,7 +1084,7 @@ export const OPENING_PAYOFF_HOLD_MS = 25000;
 const OPENING_PAYOFF_HOLD_CAP = 4;
 
 export function missionMomentCaption(event) {
-  if (event === 'mission:accepted') return 'Mission accepted.';
+  if (event === 'mission:accepted') return 'The job is yours.';
   if (event === 'mission:completed') return 'Mission complete.';
   return null;
 }

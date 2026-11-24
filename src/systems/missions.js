@@ -1732,8 +1732,8 @@ export const missions = {
     // the dossier tags still cannot start a term-carrying run without having been told the terms.
     const termLines = this._missionConditions(inst).map((c) => c.brief).filter(Boolean);
     const acceptText = termLines.length
-      ? `Mission accepted: ${inst.title} — Terms: ${termLines.join(' ')}`
-      : `Mission accepted: ${inst.title}`;
+      ? `Job taken: ${inst.title} — ${termLines.join(' ')}`
+      : `Job taken: ${inst.title}`;
     this.bus.emit('toast', { text: acceptText, kind: 'success', ttl: termLines.length ? 5 : 3 });
     // GF-4: a gold echo-ring + light flash at the player so accepting a contract has a visible beat
     // (the audio stinger fires from audioSystem's mission:accepted subscription). 'objective' lane

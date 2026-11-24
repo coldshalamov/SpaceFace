@@ -43,7 +43,7 @@ test('pause line names the latest hit and drops the one it replaced', () => {
     weaponId: 'wpn_pulse_laser_s',
   });
   const gunned = pauseStatusLines(state);
-  assert.equal(gunned.hit, 'A gun hit you.');
+  assert.equal(gunned.hit, 'A shot hit you.', 'Adventure words demo pass');
   assert.equal(gunned.objective, before.objective);
   assert.equal(gunned.next, before.next);
   assert.equal(gunned.save, before.save);
@@ -54,7 +54,7 @@ test('pause line names the latest hit and drops the one it replaced', () => {
     origin: { kind: 'impulse_charge', id: 'charge' },
   });
   const shoved = pauseStatusLines(state);
-  assert.equal(shoved.hit, 'A shove hit you.');
+  assert.equal(shoved.hit, 'You got shoved.', 'Adventure words demo pass');
   assert.equal(shoved.hit.includes('gun'), false);
   assert.equal(shoved.objective, before.objective);
   assert.equal(shoved.next, before.next);
@@ -82,7 +82,7 @@ test('pause line names the latest hit and drops the one it replaced', () => {
     atT: 48,
     patchedAtT: null,
   });
-  assert.equal(pauseStatusLines(state).hit, 'A slam hit you.');
+  assert.equal(pauseStatusLines(state).hit, 'You got slammed.', 'Adventure words demo pass');
   assert.equal(state.meta.seed, SEED);
 });
 
@@ -92,7 +92,7 @@ test('pause accepts an identity-matched projection and safely falls back to a fu
     playerId: PLAYER,
     latestPlayerImpact: { tick: 18, cause: 'gun' },
   };
-  assert.equal(pauseStatusLines(state).hit, 'A gun hit you.');
+  assert.equal(pauseStatusLines(state).hit, 'A shot hit you.', 'Adventure words demo pass');
 
   // A malformed projected cause cannot become a false UI receipt when a full
   // authoritative trace is available alongside it.
@@ -107,7 +107,7 @@ test('pause accepts an identity-matched projection and safely falls back to a fu
     latestPlayerImpact: { tick: 99, cause: 'unknown' },
     events: fullTrace.trace.events,
   };
-  assert.equal(pauseStatusLines(state).hit, 'A gun hit you.');
+  assert.equal(pauseStatusLines(state).hit, 'A shot hit you.', 'Adventure words demo pass');
 
   // A receipt for a previous player must never be shown for the current one;
   // the full trace fallback still filters by the current player identity.
@@ -116,7 +116,7 @@ test('pause accepts an identity-matched projection and safely falls back to a fu
     latestPlayerImpact: { tick: 999, cause: 'shove' },
     events: fullTrace.trace.events,
   };
-  assert.equal(pauseStatusLines(state).hit, 'A gun hit you.');
+  assert.equal(pauseStatusLines(state).hit, 'A shot hit you.', 'Adventure words demo pass');
   state.combat.trace = {
     playerId: 999,
     latestPlayerImpact: { tick: 999, cause: 'shove' },

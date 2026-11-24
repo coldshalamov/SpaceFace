@@ -141,7 +141,7 @@ test('Mission Log opens Scale 4 and the next Tethys berth without changing the c
     const buttons = () => root.querySelectorAll('[data-map-selection-target="active-waypoint"]');
     assert.match(root.querySelector('.sf-mlog-stage')?.textContent, /Honest Work/);
     assert.doesNotMatch(root.textContent, /Sample the 47-A mass discrepancy, then dock at Helios|(?:visit a station board|dock at a station).*accept (?:a contract|work)|choose a first contract/i);
-    assert.match(root.textContent, /Act I - Cold Start/i);
+    assert.match(root.textContent, /Act I - First Shift/i, 'Adventure words demo pass');
     assert.equal(current?.querySelector('.sf-mlog-rec-marker')?.textContent, `◆ ${marker.label}`, current?.textContent);
     assert.equal(buttons().length, 1);
     buttons()[0].click();

@@ -129,7 +129,7 @@ test('the hold cry speaks once when the lane goes hot — re-checks stay quiet i
   sim.bus.on('toast', (p) => toasts.push(p.text || ''));
   const distress = [];
   sim.bus.on('npcjobs:distress', (p) => distress.push(p));
-  const cries = () => toasts.filter((t) => t.includes("Lane's still hot")).length;
+  const cries = () => toasts.filter((t) => t.includes("Lane's hot")).length;
 
   const pirate = hostile(sim, e.pos.x + 300, 0);
   steps(sim, 12);
@@ -215,8 +215,8 @@ test('the hold cry names the stop in words, never a raw route mark id', () => {
   pirate.pos.x = 1900; pirate.pos.z = 60;
   steps(sim, 30);
   assert.ok(entry.routeHold, 'the fallback hold is chosen');
-  const cry = toasts.find((t) => t.includes("Lane's still hot"));
-  assert.ok(cry, 'the hold cry goes out');
+  const cry = toasts.find((t) => t.includes("Lane's hot"));
+  assert.ok(cry, 'Adventure words demo pass: the hold cry goes out');
   assert.doesNotMatch(cry, /helios_seam_ore_face/, 'the bark never reads a raw mark id aloud');
-  assert.match(cry, /holding at the ore face/);
+  assert.match(cry, /Holding at the ore face/);
 });

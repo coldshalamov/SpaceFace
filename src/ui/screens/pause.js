@@ -431,9 +431,9 @@ export function saveLine(state) {
 // scar list are the receipts that already record what hit the player. A gun's impulse row is
 // written after its damage row and must stay a gun — only a later receipt may replace it.
 const PAUSE_HIT_LINES = Object.freeze({
-  gun: 'A gun hit you.',
-  shove: 'A shove hit you.',
-  slam: 'A slam hit you.',
+  gun: 'A shot hit you.',
+  shove: 'You got shoved.',
+  slam: 'You got slammed.',
   rock: 'A rock hit you.',
 });
 
@@ -532,11 +532,11 @@ export function pauseStatusLines(state) {
     const candidate = active[0];
     return {
       hit: pauseLastImpactLine(state),
-      objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objective: 'JOB NOT TRACKED · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
       objectiveMention: missionId(candidate)
-        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
+        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'JOB NOT TRACKED · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
-      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and Track Nav on a contract.',
+      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and track a job.',
       save: saveLine(state),
     };
   }
@@ -614,7 +614,7 @@ export function pauseRunSeedOf(state) {
 
 export function pauseRunSeedLine(state) {
   const seed = pauseRunSeedOf(state);
-  return seed ? 'Seed ' + seed : '';
+  return seed ? 'Run ' + seed : '';
 }
 
 /** Write the seed line onto its footer span. Sync: the seed is known at mount. */

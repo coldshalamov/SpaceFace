@@ -2141,20 +2141,20 @@ export const missionBoardOps = {
     const destName = dest ? dest.name : 'destination';
     const cName = (id) => { const c = CMDTY_BY_ID.get(id); return c ? c.name : 'cargo'; };
     switch (typeId) {
-      case 'cargo_delivery': return `Haul ${p.qty}u ${cName(p.cmdtyId)} to ${destName}`;
-      case 'bulk_trade': return `Sell ${p.qty}u ${cName(p.cmdtyId)} at ${destName}`;
-      case 'mining_quota': return `Mine ${p.qty}u ${cName(p.cmdtyId)}`;
-      case 'salvage_retrieval': return `Recover ${p.qty}u ${cName(p.cmdtyId)} for ${destName}`;
-      case 'smuggling_run': return `Smuggle ${p.qty}u ${cName(p.cmdtyId)} to ${destName}`;
+      case 'cargo_delivery': return `Haul ${p.qty} ${cName(p.cmdtyId)} to ${destName}`;
+      case 'bulk_trade': return `Sell ${p.qty} ${cName(p.cmdtyId)} at ${destName}`;
+      case 'mining_quota': return `Mine ${p.qty} ${cName(p.cmdtyId)}`;
+      case 'salvage_retrieval': return `Recover ${p.qty} ${cName(p.cmdtyId)} for ${destName}`;
+      case 'smuggling_run': return `Smuggle ${p.qty} ${cName(p.cmdtyId)} to ${destName}`;
       case 'bounty_hunt': return p.markName
-        ? `Eliminate ${p.markName}${p.markPlace ? ` — ${p.markPlace}` : ` near ${destName}`}`
-        : `Eliminate a wanted target near ${destName}`;
+        ? `Take down ${p.markName}${p.markPlace ? ` — ${p.markPlace}` : ` near ${destName}`}`
+        : `Take down a wanted ship near ${destName}`;
       case 'escort': return `Escort a convoy to ${destName}`;
       case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
-      case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
+      case 'recon_scan': return `Scan ${p.scanTargets} ${Number(p.scanTargets) === 1 ? 'site' : 'sites'} near ${destName}`;
       case 'passenger_transport': return p.passenger
         ? `Take ${p.passenger.name} to ${destName}`
-        : `Transport a passenger to ${destName}`;
+        : `Take a passenger to ${destName}`;
       case 'tow_recovery': return p.variant === 'drift_hulk'
         ? `Tow the dead freighter to ${destName}`
         : `Tow the ${p.massU} t slag core to ${destName}`;
@@ -2164,10 +2164,10 @@ export const missionBoardOps = {
       case 'rescue_under_fire': return p.variant === 'pocket_pull'
         ? `Pull the pods out of the pocket near ${destName}`
         : `Pull the pods out of ${destName}`;
-      case 'race': return `Run the ${p.courseName || 'gate course'} gates`;
+      case 'race': return `Race the ${p.courseName || 'outbound gates'}`;
       case AUTHORED_SET_PIECE_TYPE: return p.title || `Physical set piece at ${destName}`;
       case CAPITAL_BOSS_TYPE: return p.title || CAPITAL_BOSS.title;
-      default: return `Contract at ${destName}`;
+      default: return `Job at ${destName}`;
     }
   },
 
@@ -2185,19 +2185,19 @@ export const missionBoardOps = {
     let line;
     switch (typeId) {
       case 'cargo_delivery':
-        line = `${p.qty}u ${cName(p.cmdtyId)} out of ${fromName}. ${destName} signs for it or nobody eats.`;
+        line = `${p.qty} ${cName(p.cmdtyId)} out of ${fromName}. ${destName} signs for it or nobody eats.`;
         break;
       case 'bulk_trade':
-        line = `Move ${p.qty}u ${cName(p.cmdtyId)} across ${destName}. Their books, your margin.`;
+        line = `Move ${p.qty} ${cName(p.cmdtyId)} across ${destName}. Their books, your margin.`;
         break;
       case 'mining_quota':
-        line = `${p.qty}u ${cName(p.cmdtyId)} out of the rock. Nobody asks which rock.`;
+        line = `${p.qty} ${cName(p.cmdtyId)} out of the rock. Nobody asks which rock.`;
         break;
       case 'salvage_retrieval':
-        line = `${p.qty}u ${cName(p.cmdtyId)} off a dead hull on the ${destName} drift. ${destName} wants it back on the books.`;
+        line = `${p.qty} ${cName(p.cmdtyId)} off a dead hull on the ${destName} drift. ${destName} wants it back on the books.`;
         break;
       case 'smuggling_run':
-        line = `${p.qty}u ${cName(p.cmdtyId)} into ${destName}. Customs is the whole job.`;
+        line = `${p.qty} ${cName(p.cmdtyId)} into ${destName}. Customs is the whole job.`;
         break;
       case 'bounty_hunt':
         line = p.markName

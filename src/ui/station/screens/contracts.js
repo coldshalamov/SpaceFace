@@ -452,17 +452,20 @@ export function consequenceScalesSvg(m, state, { compact = false } = {}) {
   return out;
 }
 
-/** The risk in one sentence: the tier, then what success and failure do to the account. */
+/** The risk in one sentence: the tier, then what finishing and failing do to the account. */
 function riskSentence(m, consequences, facShort) {
   const r = Math.min(risk(m), 5);
-  const gain = `+${cr(reward(m))}${consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort} standing` : ''}`;
-  const loss = consequences.collateral
-    ? `costs ${cr(consequences.collateral)} collateral${consequences.repPenalty < 0 ? ` and ${consequences.repPenalty} ${facShort} standing` : ''}`
-    : (consequences.repPenalty < 0 ? `costs ${consequences.repPenalty} ${facShort} standing` : 'costs nothing');
+  const pay = cr(reward(m));
+  const repUp = consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort}` : '';
+  const repDown = consequences.repPenalty < 0
+    ? `${Math.abs(consequences.repPenalty)} ${facShort} standing` : '';
+  const miss = consequences.collateral
+    ? `you forfeit ${cr(consequences.collateral)}${repDown ? ` and ${repDown}` : ''}`
+    : (repDown ? `you lose ${repDown}` : 'you lose nothing');
   // SF-112: the premium names its cause when the offer was priced on a real complication —
   // a customs weir on the lane, or the destination sector's thin patrol cover.
   const note = typeof m.riskNote === 'string' && m.riskNote ? ` — ${m.riskNote}` : '';
-  return `${RISK_LABEL[r]} risk${note}. Success pays ${gain}; failure ${loss}.`;
+  return `${RISK_LABEL[r]} job${note}. Done pays ${pay}${repUp}. A miss: ${miss}.`;
 }
 
 /**
