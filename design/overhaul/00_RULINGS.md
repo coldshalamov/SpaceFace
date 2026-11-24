@@ -356,6 +356,22 @@ Authority, highest first:
   a missing part to pay off, the part gets built. The capture's recipe is
   [`12_PIPELINE.md`](12_PIPELINE.md) § The measure.
 
+## Rulings of 2026-11-21 (the owner's words that day, and what follows from them)
+
+### R25 — The loading movie never hitches, even at the cost of load time
+
+- **Owner:** "I'd rather the game loaded slightly slower as long as the video wasn't hitchy."
+- **Was:** the loading movie streamed from the wire during the first loading session, hitching and
+  standing on a frame while the boot's ~700 no-cache module revalidations and every asset competed
+  for the same sockets (measured: 17 buffer stalls per cold boot; multi-second standing frames on a
+  busy host). The in-memory copy that plays hitch-free only started at module-eval time, 14–25 s in.
+- **Ruling:** the loading movie plays only from memory, from its first frame. The entry markup
+  starts the in-memory fetch at parse time (the page's first download), the element never
+  pre-streams (`preload="none"`), and the poster with its compositor drift carries the short wait.
+  The wire is only the failure fallback when the fetch itself fails. Boot may pay slightly for it;
+  the movie may not hitch for it. Pinned by `test/boot-media-playback.test.mjs`
+  ("the entry markup never wire-streams the boot movie").
+
 ## Decisions the director made that the owner may want to overrule
 
 These are judgment calls inside the owner's vision, made so work can proceed. Each is easy to flip.

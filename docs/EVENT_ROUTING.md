@@ -7,50 +7,50 @@
 > This is a static source index: dynamic names, bus taps, and consumers in scripts or tests
 > are not listed. A missing endpoint does not establish that an event is unused.
 >
-> Generated: 2026-11-20 · 2167 events · 7674 routing sites.
+> Generated: 2026-11-23 · 2180 events · 7727 routing sites.
 
 ## By event (alphabetical)
 
 | Event | Emitters (file:line) | Subscribers (file:line) |
 |---|---|---|
 | `aceMemory:transition` | — | `systems/claims.js:371`, `systems/encounterDirector.js:405`, `ui/discoveryPlate.js:218` |
-| `achievement:unlocked` | — | `audio/audioSystem.js:3203` |
-| `aftermath:causeExhausted` | `systems/aftermathWrecks.js:2589` | — |
+| `achievement:unlocked` | — | `audio/audioSystem.js:3242` |
+| `aftermath:causeExhausted` | `systems/aftermathWrecks.js:2677` | — |
 | `aftermath:causeRecorded` | `systems/aftermathWrecks.js:930` | — |
-| `aftermath:custodyFreight` | `systems/aftermathWrecks.js:2475` | — |
-| `aftermath:custodySurvivor` | `systems/aftermathWrecks.js:2487` | — |
-| `aftermath:remedied` | `systems/aftermathWrecks.js:2568` | — |
-| `aftermathWreck:completed` | `systems/aftermathWrecks.js:2980`, `systems/aftermathWrecks.js:2992` | `systems/combatOutcome.js:266`, `systems/missions.js:739` |
-| `aftermathWreck:recorded` | `systems/aftermathWrecks.js:995` | `render/vfx.js:3036`, `systems/missions.js:738`, `systems/salvage.js:161` |
-| `aftermathWreck:retired` | `systems/aftermathWrecks.js:1828`, `systems/aftermathWrecks.js:2358`, `systems/aftermathWrecks.js:2369` | `systems/combatOutcome.js:267`, `systems/missions.js:740`, `ui/galaxyMap.js:2170` |
-| `aftermathWreck:siteUnavailable` | `systems/aftermathWrecks.js:2046` | — |
-| `aftermathWreck:spawned` | `systems/aftermathWrecks.js:2691` | `systems/alienEcology.js:425`, `systems/dyingHull.js:183`, `systems/lawSecurity.js:430`, `systems/salvage.js:162` |
+| `aftermath:custodyFreight` | `systems/aftermathWrecks.js:2563` | — |
+| `aftermath:custodySurvivor` | `systems/aftermathWrecks.js:2575` | — |
+| `aftermath:remedied` | `systems/aftermathWrecks.js:2656` | — |
+| `aftermathWreck:completed` | `systems/aftermathWrecks.js:3068`, `systems/aftermathWrecks.js:3080` | `systems/combatOutcome.js:270`, `systems/missions.js:805` |
+| `aftermathWreck:recorded` | `systems/aftermathWrecks.js:995` | `render/vfx.js:3048`, `systems/missions.js:804`, `systems/salvage.js:161` |
+| `aftermathWreck:retired` | `systems/aftermathWrecks.js:1878`, `systems/aftermathWrecks.js:2446`, `systems/aftermathWrecks.js:2457` | `systems/combatOutcome.js:271`, `systems/missions.js:806`, `ui/galaxyMap.js:2171` |
+| `aftermathWreck:siteUnavailable` | `systems/aftermathWrecks.js:2129` | — |
+| `aftermathWreck:spawned` | `systems/aftermathWrecks.js:2779` | `systems/alienEcology.js:425`, `systems/dyingHull.js:183`, `systems/lawSecurity.js:430`, `systems/salvage.js:162` |
 | `ai:counterTether` | `ai/sg03ActionPort.js:386` | `systems/presentationOrchestrator.js:172` |
-| `ai:doctrinePhase` | `ai/pack/packBrain.js:728`, `systems/tacticalAI.js:824`, `systems/tacticalAI.js:874` | `systems/presentationOrchestrator.js:173`, `systems/scissorwake.js:81`, `systems/tetherGameplay.js:376`, `ui/threatHalo.js:940` |
+| `ai:doctrinePhase` | `ai/pack/packBrain.js:756`, `systems/tacticalAI.js:856`, `systems/tacticalAI.js:906` | `systems/presentationOrchestrator.js:173`, `systems/scissorwake.js:81`, `systems/tetherGameplay.js:383`, `ui/threatHalo.js:941` |
 | `ai:egressExit` | `ai/egressExit.js:111`, `systems/missionStoryOps.js:1315` | — |
-| `ai:encounterCommand` | `systems/aiPorts.js:401` | — |
-| `ai:flee` | `systems/tacticalAI.js:351`, `systems/trafficRoleOps.js:498`, `systems/wingMorale.js:331` | `render/authoredMotion.js:1195`, `render/vfx.js:3142`, `systems/barkDirector.js:877`, `systems/combatOutcome.js:260`, `systems/encounterDirector.js:443`, `systems/presentationOrchestrator.js:174` |
-| `ai:formationBroken` | `systems/wingMorale.js:281` | `render/vfx.js:3143` |
+| `ai:encounterCommand` | `systems/aiPorts.js:403` | — |
+| `ai:flee` | `systems/tacticalAI.js:352`, `systems/trafficRoleOps.js:498`, `systems/wingMorale.js:331` | `render/authoredMotion.js:1195`, `render/vfx.js:3156`, `systems/barkDirector.js:877`, `systems/combatOutcome.js:264`, `systems/encounterDirector.js:443`, `systems/presentationOrchestrator.js:174` |
+| `ai:formationBroken` | `systems/wingMorale.js:281` | `render/vfx.js:3157` |
 | `ai:mayday` | `ai/shovePanic.js:72` | — |
 | `ai:reinforcementScheduled` | — | `systems/barkDirector.js:879` |
-| `ai:stateChange` | — | `render/authoredMotion.js:1212`, `systems/combatOutcome.js:298` |
-| `ai:telegraph` | `ai/counterplay/live.js:138`, `ai/pack/packBrain.js:702`, `systems/encounterScripts.js:173`, `systems/encounterScripts.js:1223`, `systems/encounterScripts/weirAmbush.js:256`, `systems/masslineSnares.js:347`, `systems/mines.js:212`, `systems/tacticalAI.js:136`, `systems/tacticalAI.js:172`, `systems/tacticalAI.js:851`, `systems/tacticalAI.js:1050` | `audio/audioSystem.js:3159`, `render/authoredMotion.js:1194`, `render/vfx.js:2915`, `render/vfx.js:3141`, `systems/presentationOrchestrator.js:171`, `systems/scissorwake.js:74`, `systems/survivalResults.js:536`, `ui/survivalHud.js:489`, `ui/threatHalo.js:936` |
+| `ai:stateChange` | — | `render/authoredMotion.js:1212`, `systems/combatOutcome.js:302` |
+| `ai:telegraph` | `ai/counterplay/live.js:138`, `ai/pack/packBrain.js:730`, `systems/encounterScripts.js:173`, `systems/encounterScripts.js:1223`, `systems/encounterScripts/weirAmbush.js:256`, `systems/masslineSnares.js:347`, `systems/mines.js:212`, `systems/tacticalAI.js:137`, `systems/tacticalAI.js:173`, `systems/tacticalAI.js:883`, `systems/tacticalAI.js:1082` | `audio/audioSystem.js:3198`, `render/authoredMotion.js:1194`, `render/vfx.js:2927`, `render/vfx.js:3155`, `systems/presentationOrchestrator.js:171`, `systems/scissorwake.js:74`, `systems/survivalResults.js:536`, `ui/survivalHud.js:490`, `ui/threatHalo.js:937` |
 | `ai:ventPress` | `ai/ventPress.js:153` | — |
 | `aiTrader:requestTrade` | `systems/trafficEscortOps.js:170` | `systems/economy.js:1751` |
-| `alienEcology:blackBoxRecovered` | `systems/world.js:967` | `systems/world.js:938` |
+| `alienEcology:blackBoxRecovered` | `systems/world.js:986` | `systems/world.js:957` |
 | `alienEcology:cystRupture` | `systems/alienEcology.js:1469` | — |
-| `alienEcology:lureDropped` | `systems/impulseCharges.js:1244` | `systems/world.js:946` |
-| `alienEcology:nurseryBloom` | — | `systems/world.js:936` |
-| `alienEcology:nurseryPowered` | — | `systems/world.js:934` |
-| `alienEcology:relaySevered` | — | `systems/world.js:935` |
-| `alienEcology:relocateSite` | — | `systems/world.js:937` |
+| `alienEcology:lureDropped` | `systems/impulseCharges.js:1244` | `systems/world.js:965` |
+| `alienEcology:nurseryBloom` | — | `systems/world.js:955` |
+| `alienEcology:nurseryPowered` | — | `systems/world.js:953` |
+| `alienEcology:relaySevered` | — | `systems/world.js:954` |
+| `alienEcology:relocateSite` | — | `systems/world.js:956` |
 | `alienEcology:vented` | `systems/alienEcology.js:2494` | — |
 | `ambientComms:register` | `systems/e1EncounterRuntime.js:114`, `systems/economyContracts.js:792` | `systems/story.js:179` |
 | `ambientComms:toneChanged` | `systems/e1EncounterRuntime.js:289` | `systems/story.js:180` |
 | `ambush:clauseDecided` | `systems/encounterDirector.js:1115` | — |
 | `ambush:clauseFired` | `systems/encounterDirector.js:1308` | — |
 | `anomaly:bearing` | `systems/scanner.js:1439` | `systems/presentationOrchestrator.js:208` |
-| `anomaly:triangulated` | `systems/scanner.js:1457` | `systems/world.js:836` |
+| `anomaly:triangulated` | `systems/scanner.js:1457` | `systems/world.js:853` |
 | `archive:amnesty` | `systems/faction_archive.js:1227`, `systems/faction_archive.js:1578` | — |
 | `archive:annotated` | `systems/faction_archive.js:1546` | — |
 | `archive:cited` | `systems/faction_archive.js:726` | — |
@@ -78,13 +78,13 @@
 | `archive:redactionLifted` | `systems/faction_archive.js:862` | — |
 | `archive:suppressOffered` | `systems/faction_archive.js:1150` | — |
 | `archive:tier` | `systems/faction_archive.js:706` | — |
-| `asset:deployed` | `systems/automation.js:2829`, `systems/automation.js:2906`, `systems/automation.js:2929`, `systems/automation.js:3070`, `systems/claims.js:577` | `systems/missions.js:993`, `systems/onboarding.js:994`, `systems/story.js:270` |
-| `asteroid:chunked` | `systems/environmentMaterials.js:337`, `systems/mining.js:2681` | `audio/audioSystem.js:2980`, `render/asteroidMotionPresentation.js:525`, `render/authoredMotion.js:1210`, `render/vfx.js:3077`, `systems/presentationOrchestrator.js:221` |
-| `asteroid:destroyed` | `balance/prospectorPublicRoute.js:516`, `systems/automation.js:1239`, `systems/mining.js:1311` | `audio/audioSystem.js:2976`, `render/authoredMotion.js:1209`, `render/vfx.js:3075`, `systems/asteroidFormations.js:131`, `systems/environmentalMachinery.js:285`, `systems/fieldDepletion.js:755`, `ui/prompts/bulkHaulTag.js:147` |
-| `audio:cue` | `features/breakwaterSpur/presentation.js:117`, `features/industrialDisasters/presentation.js:126`, `features/salvageTender/presentation.js:64`, `features/shipbreakingYard/audio.js:28`, `features/towjaw/presentation.js:279`, `matter/collectorKnot.js:155`, `matter/collectorKnot.js:178`, `matter/collectorKnot.js:363`, `matter/collectorKnot.js:410`, `render/feel.js:635`, `render/shipMicroMotion.js:2770`, `render/trailerStaging.js:39`, `render/vfx.js:3170`, `render/vfx.js:6109`, `render/vfx.js:10789`, `render/vfx/tetherCableEventMethods.js:338`, `systems/alienEcology.js:790`, `systems/asteroidSites.js:3679`, `systems/barkDirector.js:2055`, `systems/barkDirector.js:2109`, `systems/barkDirector.js:2318`, `systems/beacons.js:79`, `systems/beacons.js:84`, `systems/beacons.js:96`, `systems/bellhop.js:198`, `systems/blindWelderRuntime.js:161`, `systems/bombs.js:1236`, `systems/bombs.js:1367`, `systems/bombs.js:1759`, `systems/bracket.js:125`, `systems/bulletTime.js:216`, `systems/bulletTime.js:234`, `systems/bulletTime.js:314`, `systems/cargo.js:1646`, `systems/cargo.js:1669`, `systems/claims.js:424`, `systems/claims.js:509`, `systems/claims.js:554`, `systems/claims.js:1602`, `systems/claims.js:1722`, `systems/claims.js:2462`, `systems/cloak.js:201`, `systems/cloak.js:241`, `systems/countermeasures.js:559`, `systems/countermeasures.js:595`, `systems/crafting.js:358`, `systems/crafting.js:368`, `systems/crafting.js:390`, `systems/discoverySound.js:25`, `systems/docket.js:158`, `systems/eighthBellRuntime.js:122`, `systems/eighthBellRuntime.js:137`, `systems/environmentalMachinery.js:1689`, `systems/fields.js:895`, `systems/fields.js:1483`, `systems/fields.js:1661`, `systems/fields.js:1953`, `systems/flybyFocus.js:560`, `systems/glueMeetMassRuntime.js:109`, `systems/gyreSnare.js:531`, `systems/gyreSnare.js:1237`, `systems/gyreSnare.js:1609`, `systems/gyreSnare.js:1642`, `systems/gyreSnare.js:2017`, `systems/gyreSnare.js:2130`, `systems/gyreSnare.js:2212`, `systems/gyreSnare.js:2447`, `systems/gyreSnare.js:2472`, `systems/gyreSnare.js:2487`, `systems/gyreSnare.js:2500`, `systems/gyreSnare.js:2529`, `systems/gyreSnare.js:2560`, `systems/gyreSnare.js:2665`, `systems/gyreSnare.js:2684`, `systems/gyreSnare.js:2700`, `systems/gyreSnare.js:2738`, `systems/gyreSnare.js:2747`, `systems/gyreSnare.js:2769`, `systems/gyreSnare.js:2871`, `systems/gyreSnare.js:2951`, `systems/gyreSnare.js:2961`, `systems/gyreSnare.js:3005`, `systems/heroManeuvers.js:454`, `systems/heroManeuvers.js:494`, `systems/heroManeuvers.js:740`, `systems/heroManeuvers.js:750`, `systems/hullBurst.js:238`, `systems/hullBurst.js:401`, `systems/hullBurst.js:432`, `systems/hullBurst.js:546`, `systems/hullBurst.js:618`, `systems/hullFracture.js:605`, `systems/hullFracture.js:747`, `systems/impulseCharges.js:693`, `systems/impulseCharges.js:800`, `systems/impulseCharges.js:1021`, `systems/impulseCharges.js:1058`, `systems/impulseCharges.js:1258`, `systems/impulseCharges.js:1447`, `systems/jettisonImpulse.js:78`, `systems/lineHeads.js:233`, `systems/machineWork.js:214`, `systems/machineWork.js:264`, `systems/machineWork.js:323`, `systems/machineWork.js:399`, `systems/machineWork.js:481`, `systems/massSeed.js:255`, `systems/massSeed.js:721`, `systems/massSeed.js:767`, `systems/masslineThrow.js:350`, `systems/masslineThrow.js:724`, `systems/masslineThrow.js:812`, `systems/masslineThrow.js:838`, `systems/mining.js:1016`, `systems/mining.js:2769`, `systems/morrow.js:201`, `systems/phaseBlink.js:193`, `systems/phaseBlink.js:338`, `systems/plants/afterHoursCoach.js:404`, `systems/plants/anselsDish.js:162`, `systems/plants/badMagnetPlant.js:150`, `systems/plants/borrowedBoost.js:345`, `systems/plants/borrowedLadder.js:150`, `systems/plants/brokenTollPlant.js:306`, `systems/plants/broodShortcutPlant.js:133`, `systems/plants/busDoesntMove.js:391`, `systems/plants/carriedWord.js:370`, `systems/plants/chalkSeat.js:139`, `systems/plants/chasedThiefPlant.js:359`, `systems/plants/coatRack.js:158`, `systems/plants/coffeeHatch.js:149`, `systems/plants/convoyGodmother.js:371`, `systems/plants/coveredWindow.js:171`, `systems/plants/crowdCoinPlant.js:133`, `systems/plants/crowdCoinPlant.js:221`, `systems/plants/crowdCoinPlant.js:234`, `systems/plants/crowdCoinPlant.js:251`, `systems/plants/darkStretchPlant.js:339`, `systems/plants/deadLane.js:253`, `systems/plants/deadStickPlant.js:275`, `systems/plants/dingPlant.js:82`, `systems/plants/doorstop.js:273`, `systems/plants/doorstop.js:290`, `systems/plants/dutchAfterYou.js:103`, `systems/plants/dutchAfterYou.js:203`, `systems/plants/emptyBerthPlant.js:381`, `systems/plants/farBerth.js:282`, `systems/plants/farePool.js:159`, `systems/plants/figureheadPlant.js:228`, `systems/plants/firstLight.js:362`, `systems/plants/freeForgePlant.js:145`, `systems/plants/freeForgePlant.js:175`, `systems/plants/gateGawkerPlant.js:195`, `systems/plants/glassPays.js:142`, `systems/plants/glassPays.js:148`, `systems/plants/glassPays.js:176`, `systems/plants/goodPatch.js:80`, `systems/plants/goodPatch.js:128`, `systems/plants/goodWord.js:184`, `systems/plants/gullDrone.js:141`, `systems/plants/kidMechanic.js:161`, `systems/plants/lanternLoan.js:141`, `systems/plants/litter.js:151`, `systems/plants/loanerGunPlant.js:99`, `systems/plants/looseBolts.js:157`, `systems/plants/magpieReads.js:136`, `systems/plants/mascotPlant.js:257`, `systems/plants/medicMulePlant.js:223`, `systems/plants/medicMulePlant.js:251`, `systems/plants/mercies/pl269KindnessLocker.js:245`, `systems/plants/mercies/pl270StashedMedal.js:187`, `systems/plants/mercies/pl270StashedMedal.js:268`, `systems/plants/mercies/pl271MapInTheLid.js:303`, `systems/plants/mercies/pl271MapInTheLid.js:376`, `systems/plants/mercies/pl272ForwardBeacon.js:232`, `systems/plants/mercies/pl272ForwardBeacon.js:310`, `systems/plants/mercies/pl364KindnessLedger.js:251`, `systems/plants/mercies/pl365LampGarden.js:175`, `systems/plants/mercies/pl365LampGarden.js:275`, `systems/plants/mercies/pl366RegistryHatch.js:210`, `systems/plants/mercies/pl366RegistryHatch.js:259`, `systems/plants/mercies/pl367LingeringLift.js:262`, `systems/plants/mercies/pl368ThankYouSlate.js:202`, `systems/plants/mercies/pl368ThankYouSlate.js:212`, `systems/plants/mercies/pl369LastAllowance.js:200`, `systems/plants/mercies/pl369LastAllowance.js:256`, `systems/plants/mercies/pl369LastAllowance.js:351`, `systems/plants/mercies/pl370HousewarmingPart.js:170`, `systems/plants/mercies/pl370HousewarmingPart.js:194`, `systems/plants/mercies/pl371LaneTithe.js:225`, `systems/plants/mercies/pl372WreckersCourtesy.js:189`, `systems/plants/mercies/pl372WreckersCourtesy.js:213`, `systems/plants/mercies/pl373HearthLamp.js:170`, `systems/plants/mistaken.js:216`, `systems/plants/mooringAlarms.js:161`, `systems/plants/movingHousePlant.js:331`, `systems/plants/nightBell.js:153`, `systems/plants/nightlyGhostPlant.js:102`, `systems/plants/onTheCallPlant.js:112`, `systems/plants/oneShotShortPlant.js:122`, `systems/plants/oneYank.js:267`, `systems/plants/oneYank.js:301`, `systems/plants/oneYank.js:307`, `systems/plants/oneYank.js:371`, `systems/plants/openDoorPlant.js:88`, `systems/plants/openHatch.js:353`, `systems/plants/orphanWreck.js:248`, `systems/plants/otherSide.js:263`, `systems/plants/otherSide.js:293`, `systems/plants/outriderPlant.js:275`, `systems/plants/overtimeMug.js:150`, `systems/plants/ownFaultPlant.js:403`, `systems/plants/paperTrail.js:133`, `systems/plants/perspective.js:188`, `systems/plants/pipsCounts.js:228`, `systems/plants/pl104Inventory.js:149`, `systems/plants/pl104Inventory.js:172`, `systems/plants/pl105Standoff.js:151`, `systems/plants/pl106PartsSled.js:122`, `systems/plants/pl107EmptySlot.js:130`, `systems/plants/pl124ParkedLight.js:310`, `systems/plants/pl125UnderPaint.js:105`, `systems/plants/pl126KeepingIt.js:182`, `systems/plants/pl128TheSurge.js:129`, `systems/plants/pl129SomebodysCrate.js:116`, `systems/plants/pl130TheStamp.js:125`, `systems/plants/pl146FirstCaller.js:225`, `systems/plants/pl146FirstCaller.js:261`, `systems/plants/pl148TheCount.js:139`, `systems/plants/pl148TheCount.js:233`, `systems/plants/pl149SeedlingLean.js:172`, `systems/plants/pl151NoPapers.js:149`, `systems/plants/pl151NoPapers.js:257`, `systems/plants/pl152TheTally.js:145`, `systems/plants/pl153TheMinute.js:119`, `systems/plants/pl153TheMinute.js:130`, `systems/plants/pl153TheMinute.js:135`, `systems/plants/pl155FairTrade.js:239`, `systems/plants/pl171RattleInB.js:162`, `systems/plants/pl171RattleInB.js:169`, `systems/plants/pl172ShadeMarket.js:218`, `systems/plants/pl173HesperLight.js:192`, `systems/plants/pl173HesperLight.js:233`, `systems/plants/pl175First.js:211`, `systems/plants/pl178SlingshotHour.js:138`, `systems/plants/pl180ChalkThief.js:116`, `systems/plants/pl181HotCargo.js:122`, `systems/plants/pl182FlagTruce.js:125`, `systems/plants/pl183TheWeather.js:152`, `systems/plants/pl190DroneRange.js:170`, `systems/plants/pl190DroneRange.js:205`, `systems/plants/pl191StormLamps.js:180`, `systems/plants/pl191StormLamps.js:194`, `systems/plants/pl193OneShort.js:194`, `systems/plants/pl196MirrorRock.js:159`, `systems/plants/pl199TheJug.js:123`, `systems/plants/pl200TwoTaps.js:226`, `systems/plants/pl200TwoTaps.js:241`, `systems/plants/pl200TwoTaps.js:272`, `systems/plants/pl201OddQueue.js:187`, `systems/plants/pl201OddQueue.js:225`, `systems/plants/pl202KeptBerth.js:264`, `systems/plants/pl202KeptBerth.js:327`, `systems/plants/pl203TheTour.js:204`, `systems/plants/pl203TheTour.js:236`, `systems/plants/pl203TheTour.js:246`, `systems/plants/pl204TheHook.js:218`, `systems/plants/pl204TheHook.js:297`, `systems/plants/pl205TheLitHull.js:151`, `systems/plants/pl205TheLitHull.js:172`, `systems/plants/pl205TheLitHull.js:197`, `systems/plants/pl214PyrrhaBox.js:233`, `systems/plants/pl215SomebodysStall.js:237`, `systems/plants/pl215SomebodysStall.js:243`, `systems/plants/pl216BlueMinute.js:176`, `systems/plants/pl230VennsWindow.js:262`, `systems/plants/pl231MarshsLine.js:214`, `systems/plants/pl231MarshsLine.js:231`, `systems/plants/pl232TheValidInstruction.js:199`, `systems/plants/pl232TheValidInstruction.js:252`, `systems/plants/pl232TheValidInstruction.js:276`, `systems/plants/pl232TheValidInstruction.js:283`, `systems/plants/pl233TheFreshMark.js:194`, `systems/plants/pl233TheFreshMark.js:214`, `systems/plants/pl234TheMiddleSeat.js:208`, `systems/plants/pl234TheMiddleSeat.js:266`, `systems/plants/pl235CleanWeld.js:200`, `systems/plants/pl236IvesMinute.js:185`, `systems/plants/pl237HonkAtHeat.js:188`, `systems/plants/pl238SeeHim.js:234`, `systems/plants/pl239RowansTap.js:190`, `systems/plants/pl245TheBellsHush.js:181`, `systems/plants/pl245TheBellsHush.js:200`, `systems/plants/pl245TheBellsHush.js:215`, `systems/plants/pl246WallTime.js:284`, `systems/plants/pl246WallTime.js:296`, `systems/plants/pl246WallTime.js:312`, `systems/plants/pl246WallTime.js:322`, `systems/plants/pl247TheScandal.js:249`, `systems/plants/pl247TheScandal.js:264`, `systems/plants/pl252RegularsHour.js:113`, `systems/plants/pl252RegularsHour.js:125`, `systems/plants/pl253WallDent.js:151`, `systems/plants/pl257GutterRun.js:252`, `systems/plants/pl258TowAlong.js:276`, `systems/plants/pl259SpareAndShare.js:216`, `systems/plants/pl259SpareAndShare.js:222`, `systems/plants/pl259SpareAndShare.js:258`, `systems/plants/pl260FiftiethVisit.js:113`, `systems/plants/pl260FiftiethVisit.js:139`, `systems/plants/pl261OpenTank.js:151`, `systems/plants/pl261OpenTank.js:184`, `systems/plants/pl262GatheredPile.js:205`, `systems/plants/pl263LessonAlongside.js:112`, `systems/plants/pl263LessonAlongside.js:147`, `systems/plants/pl264LaneLight.js:199`, `systems/plants/pl266SomebodysSpare.js:123`, `systems/plants/pl266SomebodysSpare.js:170`, `systems/plants/pl267QueuePass.js:214`, `systems/plants/pl267QueuePass.js:228`, `systems/plants/pl268WakeGift.js:195`, `systems/plants/pl333NoQuestionsShelf.js:271`, `systems/plants/pl333NoQuestionsShelf.js:344`, `systems/plants/pl334WindBreakChain.js:275`, `systems/plants/pl334WindBreakChain.js:281`, `systems/plants/pl334WindBreakChain.js:295`, `systems/plants/pl335DawnLine.js:312`, `systems/plants/pl335DawnLine.js:330`, `systems/plants/pl335DawnLine.js:343`, `systems/plants/pl335DawnLine.js:368`, `systems/plants/pl336LampKeeper.js:233`, `systems/plants/pl336LampKeeper.js:249`, `systems/plants/pl337HonorUrn.js:231`, `systems/plants/pl337HonorUrn.js:245`, `systems/plants/pl337HonorUrn.js:259`, `systems/plants/pl338TowPost.js:217`, `systems/plants/pl338TowPost.js:246`, `systems/plants/pl338TowPost.js:255`, `systems/plants/pl339SignalMirror.js:229`, `systems/plants/pl339SignalMirror.js:239`, `systems/plants/pl339SignalMirror.js:257`, `systems/plants/pl340EchoCount.js:226`, `systems/plants/pl340EchoCount.js:251`, `systems/plants/pl340EchoCount.js:259`, `systems/plants/pl341RestringBuoys.js:261`, `systems/plants/pl341RestringBuoys.js:280`, `systems/plants/pl342BleedVent.js:207`, `systems/plants/pl342BleedVent.js:286`, `systems/plants/pl342BleedVent.js:308`, `systems/plants/pl343LiftBell.js:240`, `systems/plants/pl343LiftBell.js:260`, `systems/plants/pl343LiftBell.js:271`, `systems/plants/pl343LiftBell.js:282`, `systems/plants/pl344NeedsList.js:294`, `systems/plants/pl344NeedsList.js:298`, `systems/plants/pl344NeedsList.js:311`, `systems/plants/pl345KettleWindow.js:231`, `systems/plants/pl345KettleWindow.js:251`, `systems/plants/pl345KettleWindow.js:258`, `systems/plants/pl345KettleWindow.js:269`, `systems/plants/pl346FixedRope.js:265`, `systems/plants/pl346FixedRope.js:299`, `systems/plants/pl347SmallHullDrum.js:259`, `systems/plants/pl347SmallHullDrum.js:296`, `systems/plants/pl347SmallHullDrum.js:320`, `systems/plants/pl347SmallHullDrum.js:330`, `systems/plants/pl348SeamKitchen.js:272`, `systems/plants/pl348SeamKitchen.js:280`, `systems/plants/pl348SeamKitchen.js:292`, `systems/plants/pl348SeamKitchen.js:311`, `systems/plants/pl349MercyTug.js:271`, `systems/plants/pl349MercyTug.js:304`, `systems/plants/pl349MercyTug.js:325`, `systems/plants/pl350KeyWall.js:289`, `systems/plants/pl350KeyWall.js:326`, `systems/plants/pl350KeyWall.js:352`, `systems/plants/pl350KeyWall.js:370`, `systems/plants/pl351SamplePad.js:313`, `systems/plants/pl351SamplePad.js:350`, `systems/plants/pl352ChalkedName.js:305`, `systems/plants/pl352ChalkedName.js:324`, `systems/plants/pl353CleanStamp.js:256`, `systems/plants/pl353CleanStamp.js:278`, `systems/plants/pl353CleanStamp.js:293`, `systems/plants/pl354GoodHullRate.js:118`, `systems/plants/pl355TheUnit.js:141`, `systems/plants/pl355TheUnit.js:215`, `systems/plants/pl356ParadeBerth.js:202`, `systems/plants/pl357WarmGrid.js:139`, `systems/plants/pl357WarmGrid.js:155`, `systems/plants/pl358ApprenticesReturn.js:228`, `systems/plants/pl358ApprenticesReturn.js:261`, `systems/plants/pl359EscortsGift.js:226`, `systems/plants/pl359EscortsGift.js:263`, `systems/plants/pl360RainCheck.js:127`, `systems/plants/pl360RainCheck.js:160`, `systems/plants/pl361SecondStart.js:142`, `systems/plants/pl362NameOnPlate.js:215`, `systems/plants/pl362NameOnPlate.js:239`, `systems/plants/pl363FamilyRate.js:235`, `systems/plants/ratRun.js:236`, `systems/plants/ratRun.js:250`, `systems/plants/redAtHome.js:119`, `systems/plants/redMinute.js:107`, `systems/plants/redMinute.js:268`, `systems/plants/reversedRobberyPlant.js:190`, `systems/plants/rungPlant.js:114`, `systems/plants/ruthsKnock.js:148`, `systems/plants/ruthsKnock.js:176`, `systems/plants/ruthsKnock.js:184`, `systems/plants/sameTimeTomorrowPlant.js:340`, `systems/plants/secondChair.js:153`, `systems/plants/seen.js:93`, `systems/plants/sennaReads.js:173`, `systems/plants/shadowPilotPlant.js:309`, `systems/plants/snaggedPod.js:237`, `systems/plants/someonesCourse.js:309`, `systems/plants/spareBed.js:383`, `systems/plants/sponsorshipPlant.js:172`, `systems/plants/stalledStringPlant.js:361`, `systems/plants/stillEvenPlant.js:328`, `systems/plants/surrenderDoorPlant.js:97`, `systems/plants/surrenderDoorPlant.js:115`, `systems/plants/sweepingLine.js:319`, `systems/plants/tapCheerPlant.js:110`, `systems/plants/tapCheerPlant.js:187`, `systems/plants/theArch.js:137`, `systems/plants/theArch.js:144`, `systems/plants/theBrightOne.js:285`, `systems/plants/theBrightOne.js:292`, `systems/plants/theBrightOne.js:332`, `systems/plants/theOldTrail.js:244`, `systems/plants/theSampler.js:147`, `systems/plants/theShelf.js:144`, `systems/plants/theShelf.js:184`, `systems/plants/theWindowThatDoesnt.js:120`, `systems/plants/theWindowThatDoesnt.js:223`, `systems/plants/threeCount.js:117`, `systems/plants/threeCount.js:123`, `systems/plants/threeCount.js:147`, `systems/plants/tickingCratePlant.js:370`, `systems/plants/tipJar.js:137`, `systems/plants/tipLine.js:335`, `systems/plants/twice.js:116`, `systems/plants/twice.js:247`, `systems/plants/twice.js:267`, `systems/plants/twoRopes.js:98`, `systems/plants/twoRopes.js:230`, `systems/plants/twoRopes.js:240`, `systems/plants/twoRopes.js:246`, `systems/plants/umbrellaCrane.js:391`, `systems/plants/veteranSeatPlant.js:99`, `systems/plants/veteranSeatPlant.js:242`, `systems/plants/veteranTapPlant.js:113`, `systems/plants/veteranTapPlant.js:158`, `systems/plants/waitingLinePlant.js:264`, `systems/plants/walkingLunch.js:161`, `systems/plants/waveBackPlant.js:198`, `systems/plants/weldersSparksPlant.js:305`, `systems/plants/windowWarmer.js:155`, `systems/plants/wrongWay.js:251`, `systems/precursorMachines.js:194`, `systems/precursorMachines.js:580`, `systems/precursorMachines.js:670`, `systems/precursorMachines.js:1053`, `systems/precursorMachines.js:1111`, `systems/presentationAdapters.js:322`, `systems/presentationAdapters.js:700`, `systems/presentationOrchestrator.js:561`, `systems/ravel.js:131`, `systems/rubric.js:307`, `systems/ruckus.js:143`, `systems/runawayKilnRuntime.js:190`, `systems/runawayKilnRuntime.js:208`, `systems/ruud.js:553`, `systems/ruud.js:557`, `systems/salvage.js:1091`, `systems/salvage.js:1193`, `systems/salvage.js:1249`, `systems/shieldPylons.js:347`, `systems/shieldPylons.js:367`, `systems/shieldPylons.js:377`, `systems/shipjack.js:91`, `systems/solstice.js:296`, `systems/special500DeathBell.js:87`, `systems/special500ForgeKaraoke.js:87`, `systems/special500Spectacle.js:151`, `systems/stationServices.js:342`, `systems/stationServices.js:611`, `systems/survivorPod.js:1710`, `systems/tacticalAI.js:1192`, `systems/tailgater.js:295`, `systems/tailgater.js:335`, `systems/theBolus.js:359`, `systems/tumbleStates.js:563`, `systems/tumbleStates.js:678`, `systems/twoShipsOneMistakeRuntime.js:193`, `systems/vesper.js:245`, `systems/volatileExposure.js:494`, `systems/volatileExposure.js:568`, `systems/weapons.js:2474`, `systems/weapons.js:2606`, `systems/worldClock.js:142`, `ui/commsRadial.js:543`, `ui/commsRadial.js:583`, `ui/commsRadial.js:597`, `ui/commsRadial.js:824`, `ui/commsRadial.js:867`, `ui/contextWheel.js:285`, `ui/contextWheel.js:287`, `ui/contextWheel.js:309`, `ui/hud.js:2935`, `ui/hud.js:4676`, `ui/hud.js:4708`, `ui/hud.js:4738`, `ui/hud.js:4982`, `ui/hud.js:5066`, `ui/hud.js:5072`, `ui/hud.js:5174`, `ui/hud.js:5195`, `ui/hud.js:5299`, `ui/hud.js:5475`, `ui/hud.js:5844`, `ui/input.js:381`, `ui/input.js:414`, `ui/input.js:575`, `ui/input.js:633`, `ui/input.js:657`, `ui/input.js:695`, `ui/input.js:701`, `ui/input.js:737`, `ui/input.js:850`, `ui/input.js:932`, `ui/input.js:939`, `ui/input.js:947`, `ui/input.js:1188`, `ui/input.js:1433`, `ui/input.js:1438`, `ui/input.js:1456`, `ui/input.js:1461`, `ui/input.js:1563`, `ui/input.js:1577`, `ui/input.js:1586`, `ui/input.js:1591`, `ui/input.js:1600`, `ui/input.js:1615`, `ui/input.js:1657`, `ui/input.js:1671`, `ui/input.js:1675`, `ui/input.js:1688`, `ui/kit/sound.js:14`, `ui/lineClassMoment.js:42`, `ui/market/tradeLogic.js:578`, `ui/screens/base.js:592`, `ui/screens/base.js:839`, `ui/screens/missionLog.js:2493`, `ui/screens/missionLog.js:2497`, `ui/screens/missionLog.js:2501`, `ui/screens/missionLog.js:2505`, `ui/screens/missionLog.js:2521`, `ui/screens/missionLog.js:2529`, `ui/screens/missionLog.js:2536`, `ui/screens/missionLog.js:2543`, `ui/screens/missionLog.js:2551`, `ui/screens/missionLog.js:2558`, `ui/screens/missionLog.js:2565`, `ui/screens/missionLog.js:2574`, `ui/screens/missionLog.js:2581`, `ui/screens/missionLog.js:2597`, `ui/screens/missionLog.js:2628`, `ui/screens/missionLog.js:2648`, `ui/shipLedgerPanel.js:255`, `ui/shipLedgerPanel.js:531`, `ui/shipLedgerPanel.js:538`, `ui/station/screens/bar.js:761`, `ui/station/screens/bar.js:880`, `ui/station/screens/bar.js:884`, `ui/station/screens/bar.js:888`, `ui/station/screens/bar.js:910`, `ui/station/screens/bar.js:947`, `ui/station/screens/bar.js:1021`, `ui/station/screens/bar.js:1088`, `ui/station/screens/bar.js:1097`, `ui/station/screens/contracts.js:1534`, `ui/station/screens/contracts.js:1545`, `ui/station/screens/contracts.js:1581`, `ui/station/screens/contracts.js:1584`, `ui/station/screens/contracts.js:1670`, `ui/station/screens/factions.js:429`, `ui/station/screens/industry.js:616`, `ui/station/screens/industry.js:666`, `ui/station/screens/industry.js:703`, `ui/station/screens/industry.js:712`, `ui/station/screens/industry.js:720`, `ui/station/screens/industry.js:726`, `ui/station/screens/industry.js:736`, `ui/station/screens/market.js:1683`, `ui/station/screens/market.js:2550`, `ui/station/screens/market.js:2622`, `ui/station/screens/market.js:2655`, `ui/station/screens/market.js:2671`, `ui/station/screens/market.js:2734`, `ui/station/screens/market.js:2749`, `ui/station/screens/market.js:2942`, `ui/station/screens/shipworks.js:918`, `ui/station/screens/shipworks.js:3890`, `ui/station/screens/shipworks.js:4269`, `ui/station/screens/shipworks.js:4930`, `ui/station/screens/shipworks.js:4989`, `ui/station/screens/shipworks.js:5006`, `ui/station/screens/shipworks.js:5019`, `ui/station/screens/shipworks.js:5023`, `ui/station/screens/shipworks.js:5028`, `ui/station/screens/shipworks.js:5058`, `ui/station/screens/shipworks.js:5076`, `ui/station/screens/shipworks.js:5112`, `ui/station/screens/shipworks.js:5134`, `ui/station/screens/shipworks.js:5136`, `ui/station/screens/shipworks.js:5154`, `ui/station/screens/shipworks.js:5201`, `ui/station/screens/shipworks.js:5256`, `ui/station/screens/shipworks.js:5270`, `ui/station/screens/shipworks.js:5277`, `ui/station/screens/shipworks.js:5335`, `ui/station/screens/shipworks.js:5343`, `ui/station/screens/shipworks.js:5385`, `ui/station/screens/shipworks.js:5396`, `ui/station/screens/shipworks.js:5407`, `ui/station/screens/shipworks.js:5417`, `ui/station/screens/shipworks.js:5422`, `ui/station/screens/shipworks.js:5430`, `ui/station/screens/shipworks.js:5439`, `ui/station/screens/shipworks.js:5446`, `ui/station/screens/shipworks.js:5602`, `ui/station/screens/shipworks.js:5612`, `ui/station/screens/shipworks.js:5622`, `ui/station/screens/shipworks.js:5632`, `ui/station/screens/shipworks.js:5694`, `ui/station/screens/shipworks.js:5745`, `ui/station/screens/shipworks.js:5749`, `ui/station/screens/shipworks.js:5777`, `ui/station/screens/shipworks.js:5782`, `ui/station/screens/shipworks.js:5804`, `ui/station/screens/shipworks.js:5808`, `ui/station/stationApp.js:862`, `ui/station/stationApp.js:895`, `ui/station/stationApp.js:1327`, `ui/station/stationApp.js:1375`, `ui/station/stationApp.js:1411`, `ui/station/stationLife.js:33`, `ui/survivalHud.js:1012`, `ui/toasts.js:493`, `ui/uiRoot.js:1732`, `ui/wingmanRadial.js:229`, `ui/wingmanRadial.js:252`, `ui/wingmanRadial.js:277`, `ui/wingmanRadial.js:314`, `ui/wingmanRadial.js:339`, `world/motionFossil.js:188` | `audio/audioSystem.js:3283` |
-| `audio:outputDeviceChanged` | `audio/audioSystem.js:3657` | — |
+| `asset:deployed` | `systems/automation.js:2829`, `systems/automation.js:2906`, `systems/automation.js:2929`, `systems/automation.js:3070`, `systems/claims.js:577` | `systems/missions.js:1073`, `systems/onboarding.js:1007`, `systems/story.js:270` |
+| `asteroid:chunked` | `systems/environmentMaterials.js:337`, `systems/mining.js:2698` | `audio/audioSystem.js:3019`, `render/asteroidMotionPresentation.js:525`, `render/authoredMotion.js:1210`, `render/vfx.js:3089`, `systems/presentationOrchestrator.js:221` |
+| `asteroid:destroyed` | `balance/prospectorPublicRoute.js:516`, `systems/automation.js:1239`, `systems/mining.js:1317` | `audio/audioSystem.js:3015`, `render/authoredMotion.js:1209`, `render/vfx.js:3087`, `systems/asteroidFormations.js:131`, `systems/environmentalMachinery.js:285`, `systems/fieldDepletion.js:755`, `ui/prompts/bulkHaulTag.js:147` |
+| `audio:cue` | `features/breakwaterSpur/presentation.js:117`, `features/industrialDisasters/presentation.js:126`, `features/salvageTender/presentation.js:64`, `features/shipbreakingYard/audio.js:28`, `features/towjaw/presentation.js:279`, `matter/collectorKnot.js:155`, `matter/collectorKnot.js:178`, `matter/collectorKnot.js:363`, `matter/collectorKnot.js:410`, `render/feel.js:643`, `render/shipMicroMotion.js:2770`, `render/trailerStaging.js:39`, `render/vfx.js:3184`, `render/vfx.js:6226`, `render/vfx.js:10906`, `render/vfx/tetherCableEventMethods.js:338`, `systems/alienEcology.js:790`, `systems/asteroidSites.js:3736`, `systems/barkDirector.js:2055`, `systems/barkDirector.js:2109`, `systems/barkDirector.js:2318`, `systems/beacons.js:79`, `systems/beacons.js:84`, `systems/beacons.js:96`, `systems/bellhop.js:198`, `systems/blindWelderRuntime.js:161`, `systems/bombs.js:1236`, `systems/bombs.js:1367`, `systems/bombs.js:1759`, `systems/bracket.js:125`, `systems/bulletTime.js:216`, `systems/bulletTime.js:234`, `systems/bulletTime.js:314`, `systems/cargo.js:1646`, `systems/cargo.js:1669`, `systems/claims.js:424`, `systems/claims.js:509`, `systems/claims.js:554`, `systems/claims.js:1602`, `systems/claims.js:1722`, `systems/claims.js:2462`, `systems/cloak.js:252`, `systems/cloak.js:292`, `systems/countermeasures.js:559`, `systems/countermeasures.js:595`, `systems/crafting.js:358`, `systems/crafting.js:368`, `systems/crafting.js:390`, `systems/discoverySound.js:25`, `systems/docket.js:158`, `systems/eighthBellRuntime.js:122`, `systems/eighthBellRuntime.js:137`, `systems/environmentalMachinery.js:1689`, `systems/fields.js:899`, `systems/fields.js:1497`, `systems/fields.js:1675`, `systems/fields.js:1967`, `systems/flybyFocus.js:560`, `systems/glueMeetMassRuntime.js:109`, `systems/gyreSnare.js:531`, `systems/gyreSnare.js:1237`, `systems/gyreSnare.js:1609`, `systems/gyreSnare.js:1642`, `systems/gyreSnare.js:2017`, `systems/gyreSnare.js:2130`, `systems/gyreSnare.js:2212`, `systems/gyreSnare.js:2447`, `systems/gyreSnare.js:2472`, `systems/gyreSnare.js:2487`, `systems/gyreSnare.js:2500`, `systems/gyreSnare.js:2529`, `systems/gyreSnare.js:2560`, `systems/gyreSnare.js:2665`, `systems/gyreSnare.js:2684`, `systems/gyreSnare.js:2700`, `systems/gyreSnare.js:2738`, `systems/gyreSnare.js:2747`, `systems/gyreSnare.js:2769`, `systems/gyreSnare.js:2871`, `systems/gyreSnare.js:2951`, `systems/gyreSnare.js:2961`, `systems/gyreSnare.js:3005`, `systems/heroManeuvers.js:454`, `systems/heroManeuvers.js:494`, `systems/heroManeuvers.js:740`, `systems/heroManeuvers.js:750`, `systems/hullBurst.js:238`, `systems/hullBurst.js:401`, `systems/hullBurst.js:432`, `systems/hullBurst.js:546`, `systems/hullBurst.js:618`, `systems/hullFracture.js:605`, `systems/hullFracture.js:747`, `systems/impulseCharges.js:693`, `systems/impulseCharges.js:800`, `systems/impulseCharges.js:1021`, `systems/impulseCharges.js:1058`, `systems/impulseCharges.js:1258`, `systems/impulseCharges.js:1447`, `systems/jettisonImpulse.js:78`, `systems/lineHeads.js:233`, `systems/machineWork.js:214`, `systems/machineWork.js:264`, `systems/machineWork.js:323`, `systems/machineWork.js:399`, `systems/machineWork.js:481`, `systems/massSeed.js:255`, `systems/massSeed.js:721`, `systems/massSeed.js:767`, `systems/masslineThrow.js:351`, `systems/masslineThrow.js:744`, `systems/masslineThrow.js:831`, `systems/mining.js:1022`, `systems/mining.js:2786`, `systems/morrow.js:201`, `systems/phaseBlink.js:193`, `systems/phaseBlink.js:338`, `systems/plants/afterHoursCoach.js:405`, `systems/plants/anselsDish.js:162`, `systems/plants/badMagnetPlant.js:151`, `systems/plants/borrowedBoost.js:346`, `systems/plants/borrowedLadder.js:150`, `systems/plants/brokenTollPlant.js:307`, `systems/plants/broodShortcutPlant.js:134`, `systems/plants/busDoesntMove.js:391`, `systems/plants/carriedWord.js:371`, `systems/plants/chalkSeat.js:139`, `systems/plants/chasedThiefPlant.js:360`, `systems/plants/coatRack.js:158`, `systems/plants/coffeeHatch.js:149`, `systems/plants/convoyGodmother.js:372`, `systems/plants/coveredWindow.js:171`, `systems/plants/crowdCoinPlant.js:134`, `systems/plants/crowdCoinPlant.js:222`, `systems/plants/crowdCoinPlant.js:235`, `systems/plants/crowdCoinPlant.js:252`, `systems/plants/darkStretchPlant.js:340`, `systems/plants/deadLane.js:254`, `systems/plants/deadStickPlant.js:276`, `systems/plants/dingPlant.js:83`, `systems/plants/doorstop.js:273`, `systems/plants/doorstop.js:290`, `systems/plants/dutchAfterYou.js:104`, `systems/plants/dutchAfterYou.js:204`, `systems/plants/emptyBerthPlant.js:382`, `systems/plants/farBerth.js:282`, `systems/plants/farePool.js:159`, `systems/plants/figureheadPlant.js:229`, `systems/plants/firstLight.js:363`, `systems/plants/freeForgePlant.js:146`, `systems/plants/freeForgePlant.js:176`, `systems/plants/gateGawkerPlant.js:196`, `systems/plants/glassPays.js:143`, `systems/plants/glassPays.js:149`, `systems/plants/glassPays.js:177`, `systems/plants/goodPatch.js:81`, `systems/plants/goodPatch.js:129`, `systems/plants/goodWord.js:184`, `systems/plants/gullDrone.js:141`, `systems/plants/kidMechanic.js:161`, `systems/plants/lanternLoan.js:141`, `systems/plants/litter.js:151`, `systems/plants/loanerGunPlant.js:100`, `systems/plants/looseBolts.js:157`, `systems/plants/magpieReads.js:137`, `systems/plants/mascotPlant.js:258`, `systems/plants/medicMulePlant.js:224`, `systems/plants/medicMulePlant.js:252`, `systems/plants/mercies/pl269KindnessLocker.js:245`, `systems/plants/mercies/pl270StashedMedal.js:187`, `systems/plants/mercies/pl270StashedMedal.js:268`, `systems/plants/mercies/pl271MapInTheLid.js:303`, `systems/plants/mercies/pl271MapInTheLid.js:376`, `systems/plants/mercies/pl272ForwardBeacon.js:232`, `systems/plants/mercies/pl272ForwardBeacon.js:310`, `systems/plants/mercies/pl364KindnessLedger.js:251`, `systems/plants/mercies/pl365LampGarden.js:175`, `systems/plants/mercies/pl365LampGarden.js:275`, `systems/plants/mercies/pl366RegistryHatch.js:210`, `systems/plants/mercies/pl366RegistryHatch.js:259`, `systems/plants/mercies/pl367LingeringLift.js:262`, `systems/plants/mercies/pl368ThankYouSlate.js:202`, `systems/plants/mercies/pl368ThankYouSlate.js:212`, `systems/plants/mercies/pl369LastAllowance.js:200`, `systems/plants/mercies/pl369LastAllowance.js:256`, `systems/plants/mercies/pl369LastAllowance.js:351`, `systems/plants/mercies/pl370HousewarmingPart.js:170`, `systems/plants/mercies/pl370HousewarmingPart.js:194`, `systems/plants/mercies/pl371LaneTithe.js:225`, `systems/plants/mercies/pl372WreckersCourtesy.js:189`, `systems/plants/mercies/pl372WreckersCourtesy.js:213`, `systems/plants/mercies/pl373HearthLamp.js:170`, `systems/plants/mistaken.js:216`, `systems/plants/mooringAlarms.js:162`, `systems/plants/movingHousePlant.js:332`, `systems/plants/nightBell.js:153`, `systems/plants/nightlyGhostPlant.js:103`, `systems/plants/onTheCallPlant.js:113`, `systems/plants/oneShotShortPlant.js:123`, `systems/plants/oneYank.js:267`, `systems/plants/oneYank.js:301`, `systems/plants/oneYank.js:307`, `systems/plants/oneYank.js:371`, `systems/plants/openDoorPlant.js:89`, `systems/plants/openHatch.js:354`, `systems/plants/orphanWreck.js:248`, `systems/plants/otherSide.js:264`, `systems/plants/otherSide.js:294`, `systems/plants/outriderPlant.js:276`, `systems/plants/overtimeMug.js:150`, `systems/plants/ownFaultPlant.js:404`, `systems/plants/paperTrail.js:133`, `systems/plants/perspective.js:188`, `systems/plants/pipsCounts.js:229`, `systems/plants/pl104Inventory.js:149`, `systems/plants/pl104Inventory.js:172`, `systems/plants/pl105Standoff.js:151`, `systems/plants/pl106PartsSled.js:122`, `systems/plants/pl107EmptySlot.js:130`, `systems/plants/pl124ParkedLight.js:310`, `systems/plants/pl125UnderPaint.js:105`, `systems/plants/pl126KeepingIt.js:182`, `systems/plants/pl128TheSurge.js:129`, `systems/plants/pl129SomebodysCrate.js:116`, `systems/plants/pl130TheStamp.js:125`, `systems/plants/pl146FirstCaller.js:225`, `systems/plants/pl146FirstCaller.js:261`, `systems/plants/pl148TheCount.js:139`, `systems/plants/pl148TheCount.js:233`, `systems/plants/pl149SeedlingLean.js:172`, `systems/plants/pl151NoPapers.js:149`, `systems/plants/pl151NoPapers.js:257`, `systems/plants/pl152TheTally.js:145`, `systems/plants/pl153TheMinute.js:119`, `systems/plants/pl153TheMinute.js:130`, `systems/plants/pl153TheMinute.js:135`, `systems/plants/pl155FairTrade.js:239`, `systems/plants/pl171RattleInB.js:163`, `systems/plants/pl171RattleInB.js:170`, `systems/plants/pl172ShadeMarket.js:219`, `systems/plants/pl173HesperLight.js:193`, `systems/plants/pl173HesperLight.js:234`, `systems/plants/pl175First.js:211`, `systems/plants/pl178SlingshotHour.js:138`, `systems/plants/pl180ChalkThief.js:116`, `systems/plants/pl181HotCargo.js:122`, `systems/plants/pl182FlagTruce.js:125`, `systems/plants/pl183TheWeather.js:152`, `systems/plants/pl190DroneRange.js:171`, `systems/plants/pl190DroneRange.js:206`, `systems/plants/pl191StormLamps.js:181`, `systems/plants/pl191StormLamps.js:195`, `systems/plants/pl193OneShort.js:195`, `systems/plants/pl196MirrorRock.js:159`, `systems/plants/pl199TheJug.js:123`, `systems/plants/pl200TwoTaps.js:226`, `systems/plants/pl200TwoTaps.js:241`, `systems/plants/pl200TwoTaps.js:272`, `systems/plants/pl201OddQueue.js:187`, `systems/plants/pl201OddQueue.js:225`, `systems/plants/pl202KeptBerth.js:264`, `systems/plants/pl202KeptBerth.js:327`, `systems/plants/pl203TheTour.js:204`, `systems/plants/pl203TheTour.js:236`, `systems/plants/pl203TheTour.js:246`, `systems/plants/pl204TheHook.js:218`, `systems/plants/pl204TheHook.js:297`, `systems/plants/pl205TheLitHull.js:151`, `systems/plants/pl205TheLitHull.js:172`, `systems/plants/pl205TheLitHull.js:197`, `systems/plants/pl214PyrrhaBox.js:234`, `systems/plants/pl215SomebodysStall.js:238`, `systems/plants/pl215SomebodysStall.js:244`, `systems/plants/pl216BlueMinute.js:177`, `systems/plants/pl230VennsWindow.js:262`, `systems/plants/pl231MarshsLine.js:214`, `systems/plants/pl231MarshsLine.js:231`, `systems/plants/pl232TheValidInstruction.js:199`, `systems/plants/pl232TheValidInstruction.js:252`, `systems/plants/pl232TheValidInstruction.js:276`, `systems/plants/pl232TheValidInstruction.js:283`, `systems/plants/pl233TheFreshMark.js:194`, `systems/plants/pl233TheFreshMark.js:214`, `systems/plants/pl234TheMiddleSeat.js:208`, `systems/plants/pl234TheMiddleSeat.js:266`, `systems/plants/pl235CleanWeld.js:201`, `systems/plants/pl236IvesMinute.js:186`, `systems/plants/pl237HonkAtHeat.js:189`, `systems/plants/pl238SeeHim.js:235`, `systems/plants/pl239RowansTap.js:191`, `systems/plants/pl245TheBellsHush.js:181`, `systems/plants/pl245TheBellsHush.js:200`, `systems/plants/pl245TheBellsHush.js:215`, `systems/plants/pl246WallTime.js:284`, `systems/plants/pl246WallTime.js:296`, `systems/plants/pl246WallTime.js:312`, `systems/plants/pl246WallTime.js:322`, `systems/plants/pl247TheScandal.js:250`, `systems/plants/pl247TheScandal.js:265`, `systems/plants/pl252RegularsHour.js:113`, `systems/plants/pl252RegularsHour.js:125`, `systems/plants/pl253WallDent.js:151`, `systems/plants/pl257GutterRun.js:252`, `systems/plants/pl258TowAlong.js:276`, `systems/plants/pl259SpareAndShare.js:216`, `systems/plants/pl259SpareAndShare.js:222`, `systems/plants/pl259SpareAndShare.js:258`, `systems/plants/pl260FiftiethVisit.js:113`, `systems/plants/pl260FiftiethVisit.js:139`, `systems/plants/pl261OpenTank.js:151`, `systems/plants/pl261OpenTank.js:184`, `systems/plants/pl262GatheredPile.js:205`, `systems/plants/pl263LessonAlongside.js:112`, `systems/plants/pl263LessonAlongside.js:147`, `systems/plants/pl264LaneLight.js:199`, `systems/plants/pl266SomebodysSpare.js:123`, `systems/plants/pl266SomebodysSpare.js:170`, `systems/plants/pl267QueuePass.js:214`, `systems/plants/pl267QueuePass.js:228`, `systems/plants/pl268WakeGift.js:195`, `systems/plants/pl333NoQuestionsShelf.js:272`, `systems/plants/pl333NoQuestionsShelf.js:345`, `systems/plants/pl334WindBreakChain.js:276`, `systems/plants/pl334WindBreakChain.js:282`, `systems/plants/pl334WindBreakChain.js:296`, `systems/plants/pl335DawnLine.js:313`, `systems/plants/pl335DawnLine.js:331`, `systems/plants/pl335DawnLine.js:344`, `systems/plants/pl335DawnLine.js:369`, `systems/plants/pl336LampKeeper.js:234`, `systems/plants/pl336LampKeeper.js:250`, `systems/plants/pl337HonorUrn.js:232`, `systems/plants/pl337HonorUrn.js:246`, `systems/plants/pl337HonorUrn.js:260`, `systems/plants/pl338TowPost.js:218`, `systems/plants/pl338TowPost.js:247`, `systems/plants/pl338TowPost.js:256`, `systems/plants/pl339SignalMirror.js:230`, `systems/plants/pl339SignalMirror.js:240`, `systems/plants/pl339SignalMirror.js:258`, `systems/plants/pl340EchoCount.js:227`, `systems/plants/pl340EchoCount.js:252`, `systems/plants/pl340EchoCount.js:260`, `systems/plants/pl341RestringBuoys.js:262`, `systems/plants/pl341RestringBuoys.js:281`, `systems/plants/pl342BleedVent.js:208`, `systems/plants/pl342BleedVent.js:287`, `systems/plants/pl342BleedVent.js:309`, `systems/plants/pl343LiftBell.js:241`, `systems/plants/pl343LiftBell.js:261`, `systems/plants/pl343LiftBell.js:272`, `systems/plants/pl343LiftBell.js:283`, `systems/plants/pl344NeedsList.js:295`, `systems/plants/pl344NeedsList.js:299`, `systems/plants/pl344NeedsList.js:312`, `systems/plants/pl345KettleWindow.js:232`, `systems/plants/pl345KettleWindow.js:252`, `systems/plants/pl345KettleWindow.js:259`, `systems/plants/pl345KettleWindow.js:270`, `systems/plants/pl346FixedRope.js:266`, `systems/plants/pl346FixedRope.js:300`, `systems/plants/pl347SmallHullDrum.js:260`, `systems/plants/pl347SmallHullDrum.js:297`, `systems/plants/pl347SmallHullDrum.js:321`, `systems/plants/pl347SmallHullDrum.js:331`, `systems/plants/pl348SeamKitchen.js:273`, `systems/plants/pl348SeamKitchen.js:281`, `systems/plants/pl348SeamKitchen.js:293`, `systems/plants/pl348SeamKitchen.js:312`, `systems/plants/pl349MercyTug.js:272`, `systems/plants/pl349MercyTug.js:305`, `systems/plants/pl349MercyTug.js:326`, `systems/plants/pl350KeyWall.js:290`, `systems/plants/pl350KeyWall.js:327`, `systems/plants/pl350KeyWall.js:353`, `systems/plants/pl350KeyWall.js:371`, `systems/plants/pl351SamplePad.js:314`, `systems/plants/pl351SamplePad.js:351`, `systems/plants/pl352ChalkedName.js:306`, `systems/plants/pl352ChalkedName.js:325`, `systems/plants/pl353CleanStamp.js:257`, `systems/plants/pl353CleanStamp.js:279`, `systems/plants/pl353CleanStamp.js:294`, `systems/plants/pl354GoodHullRate.js:118`, `systems/plants/pl355TheUnit.js:141`, `systems/plants/pl355TheUnit.js:215`, `systems/plants/pl356ParadeBerth.js:202`, `systems/plants/pl357WarmGrid.js:139`, `systems/plants/pl357WarmGrid.js:155`, `systems/plants/pl358ApprenticesReturn.js:228`, `systems/plants/pl358ApprenticesReturn.js:261`, `systems/plants/pl359EscortsGift.js:226`, `systems/plants/pl359EscortsGift.js:263`, `systems/plants/pl360RainCheck.js:127`, `systems/plants/pl360RainCheck.js:160`, `systems/plants/pl361SecondStart.js:142`, `systems/plants/pl362NameOnPlate.js:215`, `systems/plants/pl362NameOnPlate.js:239`, `systems/plants/pl363FamilyRate.js:235`, `systems/plants/ratRun.js:237`, `systems/plants/ratRun.js:251`, `systems/plants/redAtHome.js:119`, `systems/plants/redMinute.js:108`, `systems/plants/redMinute.js:269`, `systems/plants/reversedRobberyPlant.js:191`, `systems/plants/rungPlant.js:115`, `systems/plants/ruthsKnock.js:149`, `systems/plants/ruthsKnock.js:177`, `systems/plants/ruthsKnock.js:185`, `systems/plants/sameTimeTomorrowPlant.js:341`, `systems/plants/secondChair.js:153`, `systems/plants/seen.js:93`, `systems/plants/sennaReads.js:174`, `systems/plants/shadowPilotPlant.js:310`, `systems/plants/snaggedPod.js:238`, `systems/plants/someonesCourse.js:310`, `systems/plants/spareBed.js:384`, `systems/plants/sponsorshipPlant.js:173`, `systems/plants/stalledStringPlant.js:362`, `systems/plants/stillEvenPlant.js:329`, `systems/plants/surrenderDoorPlant.js:98`, `systems/plants/surrenderDoorPlant.js:116`, `systems/plants/sweepingLine.js:319`, `systems/plants/tapCheerPlant.js:111`, `systems/plants/tapCheerPlant.js:188`, `systems/plants/theArch.js:138`, `systems/plants/theArch.js:145`, `systems/plants/theBrightOne.js:286`, `systems/plants/theBrightOne.js:293`, `systems/plants/theBrightOne.js:333`, `systems/plants/theOldTrail.js:245`, `systems/plants/theSampler.js:147`, `systems/plants/theShelf.js:145`, `systems/plants/theShelf.js:185`, `systems/plants/theWindowThatDoesnt.js:121`, `systems/plants/theWindowThatDoesnt.js:224`, `systems/plants/threeCount.js:118`, `systems/plants/threeCount.js:124`, `systems/plants/threeCount.js:148`, `systems/plants/tickingCratePlant.js:371`, `systems/plants/tipJar.js:137`, `systems/plants/tipLine.js:336`, `systems/plants/twice.js:117`, `systems/plants/twice.js:248`, `systems/plants/twice.js:268`, `systems/plants/twoRopes.js:99`, `systems/plants/twoRopes.js:231`, `systems/plants/twoRopes.js:241`, `systems/plants/twoRopes.js:247`, `systems/plants/umbrellaCrane.js:392`, `systems/plants/veteranSeatPlant.js:100`, `systems/plants/veteranSeatPlant.js:243`, `systems/plants/veteranTapPlant.js:114`, `systems/plants/veteranTapPlant.js:159`, `systems/plants/waitingLinePlant.js:265`, `systems/plants/walkingLunch.js:161`, `systems/plants/waveBackPlant.js:199`, `systems/plants/weldersSparksPlant.js:306`, `systems/plants/windowWarmer.js:155`, `systems/plants/wrongWay.js:251`, `systems/precursorMachines.js:194`, `systems/precursorMachines.js:580`, `systems/precursorMachines.js:670`, `systems/precursorMachines.js:1053`, `systems/precursorMachines.js:1111`, `systems/presentationAdapters.js:322`, `systems/presentationAdapters.js:700`, `systems/presentationOrchestrator.js:561`, `systems/ravel.js:131`, `systems/rubric.js:307`, `systems/ruckus.js:143`, `systems/runawayKilnRuntime.js:190`, `systems/runawayKilnRuntime.js:208`, `systems/ruud.js:553`, `systems/ruud.js:557`, `systems/salvage.js:1091`, `systems/salvage.js:1193`, `systems/salvage.js:1249`, `systems/shieldPylons.js:347`, `systems/shieldPylons.js:367`, `systems/shieldPylons.js:377`, `systems/shipjack.js:91`, `systems/solstice.js:296`, `systems/special500DeathBell.js:87`, `systems/special500ForgeKaraoke.js:87`, `systems/special500Spectacle.js:151`, `systems/stationServices.js:342`, `systems/stationServices.js:611`, `systems/survivorPod.js:1710`, `systems/tacticalAI.js:1224`, `systems/tailgater.js:295`, `systems/tailgater.js:335`, `systems/theBolus.js:359`, `systems/tumbleStates.js:563`, `systems/tumbleStates.js:678`, `systems/twoShipsOneMistakeRuntime.js:193`, `systems/vesper.js:245`, `systems/volatileExposure.js:494`, `systems/volatileExposure.js:568`, `systems/weapons.js:2595`, `systems/weapons.js:2727`, `systems/worldClock.js:142`, `ui/cargoBag.js:242`, `ui/cargoBag.js:586`, `ui/commsRadial.js:543`, `ui/commsRadial.js:583`, `ui/commsRadial.js:597`, `ui/commsRadial.js:824`, `ui/commsRadial.js:867`, `ui/contextWheel.js:288`, `ui/contextWheel.js:290`, `ui/contextWheel.js:312`, `ui/hud.js:2960`, `ui/hud.js:4728`, `ui/hud.js:4760`, `ui/hud.js:4790`, `ui/hud.js:5034`, `ui/hud.js:5118`, `ui/hud.js:5124`, `ui/hud.js:5226`, `ui/hud.js:5247`, `ui/hud.js:5356`, `ui/hud.js:5635`, `ui/hud.js:6015`, `ui/input.js:383`, `ui/input.js:416`, `ui/input.js:563`, `ui/input.js:621`, `ui/input.js:645`, `ui/input.js:683`, `ui/input.js:689`, `ui/input.js:725`, `ui/input.js:838`, `ui/input.js:930`, `ui/input.js:937`, `ui/input.js:945`, `ui/input.js:1204`, `ui/input.js:1449`, `ui/input.js:1454`, `ui/input.js:1472`, `ui/input.js:1477`, `ui/input.js:1590`, `ui/input.js:1604`, `ui/input.js:1613`, `ui/input.js:1618`, `ui/input.js:1627`, `ui/input.js:1642`, `ui/input.js:1684`, `ui/input.js:1698`, `ui/input.js:1702`, `ui/input.js:1718`, `ui/kit/sound.js:14`, `ui/lineClassMoment.js:42`, `ui/market/tradeLogic.js:578`, `ui/screens/base.js:592`, `ui/screens/base.js:839`, `ui/screens/missionLog.js:2496`, `ui/screens/missionLog.js:2500`, `ui/screens/missionLog.js:2504`, `ui/screens/missionLog.js:2508`, `ui/screens/missionLog.js:2524`, `ui/screens/missionLog.js:2532`, `ui/screens/missionLog.js:2539`, `ui/screens/missionLog.js:2546`, `ui/screens/missionLog.js:2554`, `ui/screens/missionLog.js:2561`, `ui/screens/missionLog.js:2568`, `ui/screens/missionLog.js:2577`, `ui/screens/missionLog.js:2584`, `ui/screens/missionLog.js:2600`, `ui/screens/missionLog.js:2631`, `ui/screens/missionLog.js:2651`, `ui/shipLedgerPanel.js:255`, `ui/shipLedgerPanel.js:531`, `ui/shipLedgerPanel.js:538`, `ui/station/screens/bar.js:761`, `ui/station/screens/bar.js:880`, `ui/station/screens/bar.js:884`, `ui/station/screens/bar.js:888`, `ui/station/screens/bar.js:910`, `ui/station/screens/bar.js:947`, `ui/station/screens/bar.js:1021`, `ui/station/screens/bar.js:1088`, `ui/station/screens/bar.js:1097`, `ui/station/screens/contracts.js:1537`, `ui/station/screens/contracts.js:1548`, `ui/station/screens/contracts.js:1584`, `ui/station/screens/contracts.js:1587`, `ui/station/screens/contracts.js:1673`, `ui/station/screens/factions.js:429`, `ui/station/screens/industry.js:616`, `ui/station/screens/industry.js:666`, `ui/station/screens/industry.js:703`, `ui/station/screens/industry.js:712`, `ui/station/screens/industry.js:720`, `ui/station/screens/industry.js:726`, `ui/station/screens/industry.js:736`, `ui/station/screens/market.js:1702`, `ui/station/screens/market.js:2572`, `ui/station/screens/market.js:2644`, `ui/station/screens/market.js:2677`, `ui/station/screens/market.js:2693`, `ui/station/screens/market.js:2756`, `ui/station/screens/market.js:2771`, `ui/station/screens/market.js:2964`, `ui/station/screens/shipworks.js:918`, `ui/station/screens/shipworks.js:3890`, `ui/station/screens/shipworks.js:4269`, `ui/station/screens/shipworks.js:4930`, `ui/station/screens/shipworks.js:4989`, `ui/station/screens/shipworks.js:5006`, `ui/station/screens/shipworks.js:5019`, `ui/station/screens/shipworks.js:5023`, `ui/station/screens/shipworks.js:5028`, `ui/station/screens/shipworks.js:5058`, `ui/station/screens/shipworks.js:5076`, `ui/station/screens/shipworks.js:5112`, `ui/station/screens/shipworks.js:5134`, `ui/station/screens/shipworks.js:5136`, `ui/station/screens/shipworks.js:5154`, `ui/station/screens/shipworks.js:5201`, `ui/station/screens/shipworks.js:5256`, `ui/station/screens/shipworks.js:5270`, `ui/station/screens/shipworks.js:5277`, `ui/station/screens/shipworks.js:5335`, `ui/station/screens/shipworks.js:5343`, `ui/station/screens/shipworks.js:5385`, `ui/station/screens/shipworks.js:5396`, `ui/station/screens/shipworks.js:5407`, `ui/station/screens/shipworks.js:5417`, `ui/station/screens/shipworks.js:5422`, `ui/station/screens/shipworks.js:5430`, `ui/station/screens/shipworks.js:5439`, `ui/station/screens/shipworks.js:5446`, `ui/station/screens/shipworks.js:5602`, `ui/station/screens/shipworks.js:5612`, `ui/station/screens/shipworks.js:5622`, `ui/station/screens/shipworks.js:5632`, `ui/station/screens/shipworks.js:5694`, `ui/station/screens/shipworks.js:5745`, `ui/station/screens/shipworks.js:5749`, `ui/station/screens/shipworks.js:5777`, `ui/station/screens/shipworks.js:5782`, `ui/station/screens/shipworks.js:5804`, `ui/station/screens/shipworks.js:5808`, `ui/station/stationApp.js:864`, `ui/station/stationApp.js:897`, `ui/station/stationApp.js:1329`, `ui/station/stationApp.js:1377`, `ui/station/stationApp.js:1413`, `ui/station/stationLife.js:33`, `ui/survivalHud.js:1013`, `ui/toasts.js:537`, `ui/uiRoot.js:1771`, `ui/wingmanRadial.js:229`, `ui/wingmanRadial.js:252`, `ui/wingmanRadial.js:277`, `ui/wingmanRadial.js:314`, `ui/wingmanRadial.js:339`, `world/motionFossil.js:188` | `audio/audioSystem.js:3322` |
+| `audio:outputDeviceChanged` | `audio/audioSystem.js:3697` | — |
 | `automation:assetDistressed` | `systems/automation.js:2489` | `ui/automationPayoff.js:107` |
-| `automation:assetLost` | `systems/automation.js:3407` | `systems/intervention.js:75`, `systems/lossLedger.js:461`, `systems/missions.js:995` |
+| `automation:assetLost` | `systems/automation.js:3407` | `systems/intervention.js:75`, `systems/lossLedger.js:461`, `systems/missions.js:1075` |
 | `automation:assetRepossessed` | `systems/automation.js:2537` | `ui/automationPayoff.js:114` |
 | `automation:assetResumed` | `systems/automation.js:2991` | — |
 | `automation:droneDistressed` | `systems/automation.js:1721` | — |
@@ -95,7 +95,7 @@
 | `automation:offlineSummary` | `systems/automation.js:3443`, `systems/automation.js:3467`, `systems/automation.js:3491`, `systems/automation.js:3514`, `systems/automation.js:3734` | `ui/automationPayoff.js:104`, `ui/dockArrival.js:154` |
 | `automation:outpostRaided` | `systems/automation.js:2408`, `systems/automation.js:3809` | `systems/lossLedger.js:462` |
 | `automation:outpostsChanged` | `systems/automation.js:2352`, `systems/automation.js:2384`, `systems/automation.js:3071`, `systems/automation.js:3087`, `systems/automation.js:3130`, `systems/automation.js:3161`, `systems/automation.js:3177`, `systems/automation.js:3200`, `systems/automation.js:3211`, `systems/automation.js:3235`, `systems/automation.js:3258` | — |
-| `automation:programAssigned` | `systems/automation.js:2761` | `systems/missions.js:994`, `ui/screens/automationPanel.js:1990` |
+| `automation:programAssigned` | `systems/automation.js:2761` | `systems/missions.js:1074`, `ui/screens/automationPanel.js:1990` |
 | `automation:programInterrupted` | `systems/alphabet.js:234`, `systems/alphabet.js:599`, `systems/alphabet.js:607` | — |
 | `automation:programRejected` | `systems/automation.js:2727`, `systems/automation.js:2734` | `ui/screens/automationPanel.js:1985` |
 | `automation:reactionAssigned` | `systems/automation.js:2776` | — |
@@ -105,27 +105,27 @@
 | `band:bearingRequest` | `systems/bandRadio.js:1043` | — |
 | `band:bearingResolved` | `systems/uniqueWrecks.js:920`, `systems/uniqueWrecks.js:963` | `render/authoredMotion.js:1183` |
 | `band:bearingUnavailable` | `systems/uniqueWrecks.js:927`, `systems/uniqueWrecks.js:935`, `systems/uniqueWrecks.js:949` | `ui/bandHud.js:151` |
-| `band:bed` | `systems/bandRadio.js:1127` | `audio/audioSystem.js:3455` |
-| `band:cycle` | `ui/input.js:786` | — |
+| `band:bed` | `systems/bandRadio.js:1127` | `audio/audioSystem.js:3494` |
+| `band:cycle` | `ui/input.js:774` | — |
 | `band:status` | `systems/bandRadio.js:1109` | `ui/bandHud.js:150` |
 | `band:tune` | `ui/bandHud.js:204` | — |
 | `bark:triggered` | `systems/fenderBenderPlant.js:263`, `systems/nearMissPlant.js:307`, `systems/scramblePlant.js:144` | — |
-| `barkDirector:silence` | — | `audio/audioSystem.js:3048` |
-| `barkDirector:voice` | `features/salvageOutfits/presentation.js:103`, `systems/barkDirector.js:1001`, `systems/npcJobsRuntime.js:3983`, `systems/survivorPod.js:1554`, `systems/survivorPod.js:1585`, `ui/station/stationArrival.js:239`, `ui/station/stationLife.js:41`, `ui/voiceArbiter.js:894` | `audio/audioSystem.js:3405` |
+| `barkDirector:silence` | — | `audio/audioSystem.js:3087` |
+| `barkDirector:voice` | `features/salvageOutfits/presentation.js:103`, `systems/barkDirector.js:1001`, `systems/npcJobsRuntime.js:3983`, `systems/survivorPod.js:1554`, `systems/survivorPod.js:1585`, `ui/station/stationArrival.js:239`, `ui/station/stationLife.js:41`, `ui/voiceArbiter.js:894` | `audio/audioSystem.js:3444` |
 | `beacon:deploy` | — | `systems/beacons.js:52` |
-| `beacon:deployed` | `systems/beacons.js:91` | `render/shipMicroMotion.js:1774`, `systems/onboarding.js:1152` |
-| `beam:denied` | `systems/mining.js:475`, `systems/mining.js:557`, `systems/mining.js:673`, `systems/mining.js:689`, `systems/mining.js:701`, `systems/mining.js:732` | `render/authoredMotion.js:1155` |
-| `beam:repaired` | `systems/mining.js:802` | — |
-| `beam:transferred` | `systems/mining.js:863` | — |
+| `beacon:deployed` | `systems/beacons.js:91` | `render/shipMicroMotion.js:1774`, `systems/onboarding.js:1165` |
+| `beam:denied` | `systems/mining.js:479`, `systems/mining.js:563`, `systems/mining.js:679`, `systems/mining.js:695`, `systems/mining.js:707`, `systems/mining.js:738` | `render/authoredMotion.js:1155` |
+| `beam:repaired` | `systems/mining.js:808` | — |
+| `beam:transferred` | `systems/mining.js:869` | — |
 | `body:sled` | — | `systems/spectrum/live.js:63` |
 | `bombs:armed` | `systems/bombs.js:1294` | `audio/bombAudio.js:440` |
-| `bombs:commanded` | `systems/bombs.js:1249` | `systems/fields.js:520` |
+| `bombs:commanded` | `systems/bombs.js:1249` | `systems/fields.js:524` |
 | `bombs:cycle` | `systems/bombs.js:868`, `systems/bombs.js:878`, `systems/bombs.js:1227` | `audio/bombAudio.js:469` |
 | `bombs:denied` | `systems/bombs.js:696`, `systems/bombs.js:855`, `systems/bombs.js:895`, `systems/bombs.js:932`, `systems/bombs.js:971`, `systems/bombs.js:996`, `systems/bombs.js:1153`, `systems/bombs.js:1172` | — |
-| `bombs:destroyed` | `systems/bombs.js:1756` | `audio/bombAudio.js:441`, `render/vfx.js:3124` |
-| `bombs:detonated` | `systems/bombs.js:1360` | `audio/bombAudio.js:444`, `render/vfx.js:3122`, `systems/fields.js:524` |
-| `bombs:dropped` | `systems/bombs.js:1235` | `audio/bombAudio.js:438`, `render/ordnanceMotionPresentation.js:315`, `systems/onboarding.js:1011` |
-| `bombs:fieldEnded` | `systems/bombs.js:1655` | `audio/bombAudio.js:452`, `render/vfx.js:3123` |
+| `bombs:destroyed` | `systems/bombs.js:1756` | `audio/bombAudio.js:441`, `render/vfx.js:3138` |
+| `bombs:detonated` | `systems/bombs.js:1360` | `audio/bombAudio.js:444`, `render/vfx.js:3136`, `systems/fields.js:528` |
+| `bombs:dropped` | `systems/bombs.js:1235` | `audio/bombAudio.js:438`, `render/ordnanceMotionPresentation.js:315`, `systems/onboarding.js:1024` |
+| `bombs:fieldEnded` | `systems/bombs.js:1655` | `audio/bombAudio.js:452`, `render/vfx.js:3137` |
 | `bombs:primed` | `systems/bombs.js:1261` | `audio/bombAudio.js:439`, `ui/stuntCallout.js:1100` |
 | `bombs:rackChanged` | `systems/bombs.js:1098` | `audio/bombAudio.js:474` |
 | `bombs:redirected` | `systems/bombs.js:1722` | — |
@@ -165,7 +165,7 @@
 | `borrowedVoice:dispositionAccepted` | `systems/borrowedVoice.js:155` | — |
 | `borrowedVoice:fragmentRecovered` | `systems/borrowedVoice.js:117` | — |
 | `borrowedVoice:offer` | `systems/borrowedVoice.js:127` | `ui/borrowedVoicePrompt.js:4` |
-| `boss:defeated` | `systems/world.js:1232` | `systems/survivalAnnounce.js:456` |
+| `boss:defeated` | `systems/world.js:1251` | `systems/survivalAnnounce.js:456` |
 | `bouncer:banned` | `systems/bouncer.js:725` | — |
 | `bouncer:ejected` | `systems/bouncer.js:684` | — |
 | `bouncer:muscleHired` | `systems/bouncer.js:776` | — |
@@ -188,73 +188,75 @@
 | `breakwaterSpur:action` | `features/breakwaterSpur/presentation.js:65` | `features/breakwaterSpur/runtime.js:71` |
 | `breakwaterSpur:close` | `features/breakwaterSpur/runtime.js:143` | `features/breakwaterSpur/presentation.js:32` |
 | `breakwaterSpur:cue` | `features/breakwaterSpur/freight.js:72`, `features/breakwaterSpur/runtime.js:121` | `features/breakwaterSpur/presentation.js:101` |
-| `breakwaterSpur:offer` | `features/breakwaterSpur/runtime.js:136`, `features/breakwaterSpur/runtime.js:248` | `features/breakwaterSpur/presentation.js:30`, `ui/screens/missionLog.js:2769` |
-| `breakwaterSpur:receipt` | `features/breakwaterSpur/runtime.js:287`, `features/breakwaterSpur/runtime.js:314`, `features/breakwaterSpur/runtime.js:316`, `features/breakwaterSpur/runtime.js:323`, `features/breakwaterSpur/runtime.js:347`, `features/breakwaterSpur/runtime.js:353`, `features/breakwaterSpur/runtime.js:358`, `features/breakwaterSpur/runtime.js:363`, `features/breakwaterSpur/runtime.js:368`, `features/breakwaterSpur/runtime.js:375`, `features/breakwaterSpur/runtime.js:395`, `features/breakwaterSpur/runtime.js:402`, `features/breakwaterSpur/runtime.js:426` | `features/breakwaterSpur/presentation.js:31`, `ui/screens/missionLog.js:2770` |
-| `buildIdentity:revealed` | `systems/buildIdentity.js:327` | `audio/audioSystem.js:3148` |
-| `bulletTime:end` | `systems/bulletTime.js:233` | `audio/audioSystem.js:3454` |
-| `bulletTime:start` | `systems/bulletTime.js:215` | `audio/audioSystem.js:3451`, `systems/onboarding.js:1111` |
+| `breakwaterSpur:offer` | `features/breakwaterSpur/runtime.js:136`, `features/breakwaterSpur/runtime.js:248` | `features/breakwaterSpur/presentation.js:30`, `ui/screens/missionLog.js:2772` |
+| `breakwaterSpur:receipt` | `features/breakwaterSpur/runtime.js:287`, `features/breakwaterSpur/runtime.js:314`, `features/breakwaterSpur/runtime.js:316`, `features/breakwaterSpur/runtime.js:323`, `features/breakwaterSpur/runtime.js:347`, `features/breakwaterSpur/runtime.js:353`, `features/breakwaterSpur/runtime.js:358`, `features/breakwaterSpur/runtime.js:363`, `features/breakwaterSpur/runtime.js:368`, `features/breakwaterSpur/runtime.js:375`, `features/breakwaterSpur/runtime.js:395`, `features/breakwaterSpur/runtime.js:402`, `features/breakwaterSpur/runtime.js:426` | `features/breakwaterSpur/presentation.js:31`, `ui/screens/missionLog.js:2773` |
+| `buildIdentity:revealed` | `systems/buildIdentity.js:327` | `audio/audioSystem.js:3187` |
+| `bulletTime:end` | `systems/bulletTime.js:233` | `audio/audioSystem.js:3493` |
+| `bulletTime:start` | `systems/bulletTime.js:215` | `audio/audioSystem.js:3490`, `systems/onboarding.js:1124` |
 | `calendar:festival` | `systems/worldClock.js:122` | — |
 | `calendar:marketDay` | `systems/worldClock.js:170` | — |
 | `calendar:rushHour` | `systems/worldClock.js:198` | — |
 | `calendar:stormSeason` | `systems/worldClock.js:107` | — |
 | `callout:firstBeat` | `ui/stuntCallout.js:951` | — |
-| `camera:shake` | `matter/collectorKnot.js:412`, `render/shipMicroMotion.js:2768`, `render/vfx/explosionPresentationVfx.js:172`, `render/vfx/explosionPresentationVfx.js:473`, `render/vfx/explosionPresentationVfx.js:819`, `systems/combat.js:705`, `systems/combat.js:876`, `systems/combat.js:1094`, `systems/drill.js:1581`, `systems/drill.js:1696`, `systems/drill.js:2046`, `systems/flybyFocus.js:559`, `systems/gyreSnare.js:551`, `systems/gyreSnare.js:1246`, `systems/gyreSnare.js:1636`, `systems/gyreSnare.js:2863`, `systems/gyreSnare.js:2943`, `systems/intervention.js:267`, `systems/presentationAdapters.js:613`, `systems/survivalAnnounce.js:1073`, `systems/tetherGameplay.js:809` | — |
-| `camera:zoom` | `ui/crucibleFocus.js:169`, `ui/crucibleFocus.js:174`, `ui/input.js:1027`, `ui/input.js:1031`, `ui/input.js:1272` | — |
-| `capitalBoss:actChanged` | — | `ui/toasts.js:865` |
+| `camera:shake` | `matter/collectorKnot.js:412`, `render/shipMicroMotion.js:2768`, `render/vfx/explosionPresentationVfx.js:172`, `render/vfx/explosionPresentationVfx.js:473`, `render/vfx/explosionPresentationVfx.js:819`, `systems/combat.js:705`, `systems/combat.js:876`, `systems/combat.js:1094`, `systems/drill.js:1606`, `systems/drill.js:1721`, `systems/drill.js:2077`, `systems/flybyFocus.js:559`, `systems/gyreSnare.js:551`, `systems/gyreSnare.js:1246`, `systems/gyreSnare.js:1636`, `systems/gyreSnare.js:2863`, `systems/gyreSnare.js:2943`, `systems/intervention.js:267`, `systems/presentationAdapters.js:613`, `systems/survivalAnnounce.js:1073`, `systems/tetherGameplay.js:827` | — |
+| `camera:zoom` | `ui/crucibleFocus.js:169`, `ui/crucibleFocus.js:174`, `ui/input.js:1025`, `ui/input.js:1029`, `ui/input.js:1288` | — |
+| `capitalBoss:actChanged` | — | `ui/toasts.js:909` |
 | `capitalBoss:actRetried` | `systems/capitalBossEncounters.js:650` | — |
-| `capitalBoss:countered` | — | `ui/toasts.js:874` |
-| `capitalBoss:detach` | `systems/missions.js:1031` | — |
-| `capitalBoss:disarmed` | — | `ui/toasts.js:876` |
-| `capitalBoss:ended` | — | `audio/audioSystem.js:2964`, `ui/toasts.js:891` |
-| `capitalBoss:hit` | — | `ui/toasts.js:883` |
+| `capitalBoss:countered` | — | `ui/toasts.js:918` |
+| `capitalBoss:detach` | `systems/missions.js:1127` | — |
+| `capitalBoss:disarmed` | — | `ui/toasts.js:920` |
+| `capitalBoss:ended` | — | `audio/audioSystem.js:3003`, `ui/toasts.js:935` |
+| `capitalBoss:hit` | — | `ui/toasts.js:927` |
 | `capitalBoss:plateTorn` | `systems/capitalBossEncounters.js:590` | — |
-| `capitalBoss:recovery` | — | `ui/toasts.js:875` |
-| `capitalBoss:start` | `systems/missionObjectiveOps.js:2275` | `systems/swarmJuice.js:149` |
-| `capitalBoss:started` | — | `ui/toasts.js:858` |
-| `capitalBoss:telegraph` | — | `render/authoredMotion.js:1211`, `ui/toasts.js:843` |
+| `capitalBoss:recovery` | — | `ui/toasts.js:919` |
+| `capitalBoss:start` | `systems/missionObjectiveOps.js:2280` | `systems/swarmJuice.js:149` |
+| `capitalBoss:started` | — | `ui/toasts.js:902` |
+| `capitalBoss:telegraph` | — | `render/authoredMotion.js:1211`, `ui/toasts.js:887` |
 | `capitalBoss:telegraphEnd` | `systems/capitalBossEncounters.js:643`, `systems/capitalBossEncounters.js:669`, `systems/capitalBossEncounters.js:693` | — |
 | `captain:remembered` | `systems/captainMemory.js:92` | — |
 | `cargo:breakwaterFreightAccepted` | `systems/cargo.js:1878` | — |
-| `cargo:caughtByNet` | `systems/lootShards.js:861` | `systems/world.js:838` |
-| `cargo:changed` | `features/salvageTender/physical.js:406`, `systems/cargo.js:501`, `systems/mining.js:3021` | `audio/audioSystem.js:3072`, `systems/moistureLoss.js:89`, `systems/onboarding.js:912`, `systems/ships.js:2002`, `ui/cargoConscience.js:143`, `ui/commandBar.js:256` |
+| `cargo:caughtByNet` | `systems/lootShards.js:887` | `systems/world.js:855` |
+| `cargo:changed` | `features/salvageTender/physical.js:406`, `systems/cargo.js:501`, `systems/mining.js:3038` | `audio/audioSystem.js:3111`, `systems/moistureLoss.js:89`, `systems/onboarding.js:925`, `systems/ships.js:2002`, `ui/cargoConscience.js:143`, `ui/commandBar.js:256` |
 | `cargo:cinderglassReceived` | `features/cinderglassJob/ownerSeams.js:46` | — |
-| `cargo:delivered` | `systems/asteroidSites.js:4072`, `systems/missions.js:4349`, `systems/missions.js:4409`, `systems/missions.js:4533`, `systems/missions.js:4583` | `systems/economy.js:1763` |
+| `cargo:delivered` | `systems/asteroidSites.js:4129`, `systems/missions.js:4457`, `systems/missions.js:4517`, `systems/missions.js:4641`, `systems/missions.js:4691` | `systems/economy.js:1763`, `world/adventureXp.js:72` |
 | `cargo:fragileLost` | `systems/fragileCargo.js:320` | — |
-| `cargo:full` | `systems/cargo.js:633`, `systems/cargo.js:1087`, `systems/mining.js:1920`, `systems/mining.js:2998` | `audio/audioSystem.js:3073`, `careers/origins/prospectorOrigin.js:639`, `systems/onboarding.js:915`, `systems/presentationOrchestrator.js:229`, `ui/alerts.js:693` |
+| `cargo:full` | `systems/cargo.js:633`, `systems/cargo.js:1087`, `systems/mining.js:1937`, `systems/mining.js:3015` | `audio/audioSystem.js:3112`, `careers/origins/prospectorOrigin.js:639`, `systems/onboarding.js:928`, `systems/presentationOrchestrator.js:229`, `ui/alerts.js:731` |
 | `cargo:hotDockSpill` | `systems/cargo.js:1590` | — |
-| `cargo:jettison` | `ui/hud.js:4684`, `ui/hud.js:5100`, `ui/hud.js:5121` | — |
+| `cargo:jettison` | `ui/cargoBag.js:445`, `ui/hud.js:4736`, `ui/hud.js:5152`, `ui/hud.js:5173` | — |
 | `cargo:jettisonSealed` | `systems/cargo.js:1912` | — |
-| `cargo:jettisoned` | `systems/cargo.js:2029` | `audio/audioSystem.js:3111`, `render/authoredMotion.js:1220`, `render/shipMicroMotion.js:1772`, `systems/barkDirector.js:888`, `systems/cloak.js:57`, `systems/jettisonImpulse.js:54`, `systems/lawSecurity.js:454`, `systems/onboarding.js:1093`, `systems/onboarding.js:1160` |
+| `cargo:jettisoned` | `systems/cargo.js:2029` | `audio/audioSystem.js:3150`, `render/authoredMotion.js:1220`, `render/shipMicroMotion.js:1772`, `systems/barkDirector.js:888`, `systems/cloak.js:75`, `systems/jettisonImpulse.js:54`, `systems/lawSecurity.js:454`, `systems/onboarding.js:1106`, `systems/onboarding.js:1173` |
 | `cargo:massSettled` | `systems/cargo.js:1286` | `systems/presentationOrchestrator.js:228`, `systems/ships.js:2003` |
+| `cargo:mergeStacks` | `ui/cargoBag.js:425` | — |
+| `cargo:moveStack` | `ui/cargoBag.js:426` | — |
 | `cargo:parkedHoldSwapped` | `systems/cargo.js:1464` | `systems/shipControlTransfer.js:143` |
 | `cargo:parkedTransfer` | `systems/cargo.js:1529` | — |
 | `cargo:persistentAdded` | `systems/e1EncounterRuntime.js:84` | — |
 | `cargo:podIntake` | `systems/economy.js:3843` | `systems/economy.js:1773` |
 | `cargo:radiationCooked` | `systems/fragileCargo.js:152` | — |
 | `cargo:sealedFreightJettisoned` | `systems/cargo.js:2040` | — |
-| `cargo:sortBag` | `ui/hud.js:5073` | — |
-| `cargo:splitStack` | `ui/hud.js:4709` | — |
+| `cargo:sortBag` | `ui/cargoBag.js:237`, `ui/hud.js:5125` | — |
+| `cargo:splitStack` | `ui/cargoBag.js:459`, `ui/hud.js:4761` | — |
 | `cargo:tallyThreeDelivered` | `systems/economy.js:4262` | — |
 | `cargo:vesselFreightReleased` | `systems/cargo.js:1725` | — |
-| `cargo:volatileCorrosive` | `systems/lootShards.js:1031` | — |
-| `cargo:volatileCryo` | `systems/lootShards.js:1067` | — |
+| `cargo:volatileCorrosive` | `systems/lootShards.js:1057` | — |
+| `cargo:volatileCryo` | `systems/lootShards.js:1093` | — |
 | `cargo:volatileExposed` | `systems/volatileExposure.js:384` | — |
 | `cargo:volatileRupture` | `systems/volatileExposure.js:548` | — |
-| `cargo:volatileSlam` | `systems/lootShards.js:951`, `systems/lootShards.js:1007` | `systems/volatileExposure.js:218` |
+| `cargo:volatileSlam` | `systems/lootShards.js:977`, `systems/lootShards.js:1033` | `systems/volatileExposure.js:218` |
 | `cargo:volatileVent` | `systems/volatileExposure.js:472` | — |
 | `ceresNinthMouth:action` | `ui/ceresNinthMouthPrompt.js:58` | `systems/ceresNinthMouth.js:362` |
 | `ceresNinthMouth:rescueCommitted` | `systems/ceresNinthMouth.js:470` | — |
 | `ceresWinching:action` | `ui/ceresWinchingPrompt.js:26` | `systems/ceresAnchorWinching.js:202` |
 | `ceresWorkfleet:interrupted` | `systems/ceresWorkfleet.js:317` | — |
-| `chain:detonated` | `systems/impulseCharges.js:1001` | `systems/fields.js:509` |
+| `chain:detonated` | `systems/impulseCharges.js:1001` | `systems/fields.js:513` |
 | `chain:primeEnded` | `systems/impulseCharges.js:964` | — |
 | `chain:primed` | `systems/impulseCharges.js:941` | — |
-| `chain:slam` | `systems/impulseCharges.js:875`, `systems/impulseCharges.js:895` | `systems/fields.js:508` |
-| `chain:tetherShare` | `systems/tetherGameplay.js:1221`, `systems/tetherGameplay.js:2525` | — |
-| `charge:aftDropped` | `systems/impulseCharges.js:1254` | `systems/onboarding.js:1119` |
+| `chain:slam` | `systems/impulseCharges.js:875`, `systems/impulseCharges.js:895` | `systems/fields.js:512` |
+| `chain:tetherShare` | `systems/tetherGameplay.js:1239`, `systems/tetherGameplay.js:2606` | — |
+| `charge:aftDropped` | `systems/impulseCharges.js:1254` | `systems/onboarding.js:1132` |
 | `charge:armed` | `systems/impulseCharges.js:1075` | — |
-| `charge:combo` | `systems/impulseCharges.js:1365`, `systems/impulseCharges.js:1430` | `systems/tetherGameplay.js:381` |
-| `charge:detonated` | `systems/impulseCharges.js:684`, `systems/impulseCharges.js:792`, `systems/impulseCharges.js:1013`, `systems/impulseCharges.js:1049`, `systems/impulseCharges.js:1438` | `audio/audioSystem.js:3173`, `render/feel.js:1785`, `render/vfx.js:3110`, `systems/fields.js:510`, `systems/fields.js:521`, `systems/fields.js:525`, `systems/flightV3.js:233`, `systems/gamepad.js:994` |
+| `charge:combo` | `systems/impulseCharges.js:1365`, `systems/impulseCharges.js:1430` | `systems/tetherGameplay.js:388` |
+| `charge:detonated` | `systems/impulseCharges.js:684`, `systems/impulseCharges.js:792`, `systems/impulseCharges.js:1013`, `systems/impulseCharges.js:1049`, `systems/impulseCharges.js:1438` | `audio/audioSystem.js:3212`, `render/feel.js:1793`, `render/vfx.js:3122`, `systems/fields.js:514`, `systems/fields.js:525`, `systems/fields.js:529`, `systems/flightV3.js:233`, `systems/gamepad.js:1040` |
 | `charge:stuck` | `systems/impulseCharges.js:1156` | `render/ordnanceMotionPresentation.js:317`, `render/shipMicroMotion.js:1771` |
 | `charge:thrown` | `systems/impulseCharges.js:1241`, `systems/impulseCharges.js:1325` | `render/ordnanceMotionPresentation.js:316` |
 | `choir:bellHeadRing` | `systems/faction_choir.js:737` | — |
@@ -290,11 +292,11 @@
 | `cinderglassJob:close` | `features/cinderglassJob/runtime.js:483` | — |
 | `cinderglassJob:fact` | `features/cinderglassJob/runtime.js:336`, `features/cinderglassJob/runtime.js:470` | — |
 | `cinderglassJob:offer` | `features/cinderglassJob/runtime.js:149` | — |
-| `cinderglassJob:refused` | `features/cinderglassJob/runtime.js:428` | `ui/screens/missionLog.js:2772` |
+| `cinderglassJob:refused` | `features/cinderglassJob/runtime.js:428` | `ui/screens/missionLog.js:2775` |
 | `cinderglassJob:servicePrompt` | `features/cinderglassJob/runtime.js:320`, `features/cinderglassJob/runtime.js:483` | — |
-| `cinderglassJob:view` | `features/cinderglassJob/runtime.js:481` | `features/cinderglassJob/integration.js:89`, `ui/screens/missionLog.js:2771` |
-| `claim:claimed` | `systems/claims.js:423` | `systems/onboarding.js:1000`, `systems/story.js:279`, `systems/traffic.js:2005` |
-| `claim:convoyAbandoned` | `systems/claims.js:1416` | `systems/traffic.js:2008` |
+| `cinderglassJob:view` | `features/cinderglassJob/runtime.js:481` | `features/cinderglassJob/integration.js:89`, `ui/screens/missionLog.js:2774` |
+| `claim:claimed` | `systems/claims.js:423` | `systems/onboarding.js:1013`, `systems/story.js:279`, `systems/traffic.js:2007` |
+| `claim:convoyAbandoned` | `systems/claims.js:1416` | `systems/traffic.js:2010` |
 | `claim:convoyDocked` | `systems/trafficConvoyOps.js:211` | `systems/claims.js:379` |
 | `claim:convoyManifested` | `systems/trafficConvoyOps.js:111` | `systems/claims.js:378` |
 | `claim:defenseDelegate` | — | `systems/claims.js:370` |
@@ -310,76 +312,78 @@
 | `claim:depotPatrolSpent` | `systems/claims.js:1782` | — |
 | `claim:depotSupport` | `systems/claims.js:2920`, `systems/claims.js:2946` | — |
 | `claim:freightDelivered` | `systems/trafficConvoyOps.js:423` | — |
-| `claim:infrastructureActive` | `systems/claims.js:1092`, `systems/claims.js:2712` | `systems/traffic.js:2003` |
+| `claim:infrastructureActive` | `systems/claims.js:1092`, `systems/claims.js:2712` | `systems/traffic.js:2005` |
 | `claim:infrastructureConstructed` | `systems/claims.js:490`, `systems/claims.js:2649` | — |
-| `claim:infrastructureStatus` | `systems/claims.js:1103` | `systems/traffic.js:2004` |
+| `claim:infrastructureStatus` | `systems/claims.js:1103` | `systems/traffic.js:2006` |
 | `claim:moduleBuilt` | `systems/claims.js:508` | — |
 | `claim:raidRepelled` | `systems/claims.js:1533` | — |
-| `claim:raidWarning` | `systems/claims.js:1526` | `audio/audioSystem.js:3136` |
+| `claim:raidWarning` | `systems/claims.js:1526` | `audio/audioSystem.js:3175` |
 | `claim:receipt` | `systems/claims.js:2097` | — |
-| `claim:sensorPostRumor` | `systems/claims.js:1152` | `systems/world.js:895` |
+| `claim:sensorPostRumor` | `systems/claims.js:1152` | `systems/world.js:914` |
 | `claim:specialized` | `systems/claims.js:549` | — |
 | `claim:trophyHeadGranted` | `systems/claims.js:3187` | — |
 | `claims:migrated` | `systems/claims.js:2275` | — |
-| `cloak:burned` | `systems/cloak.js:306` | `audio/audioSystem.js:2998` |
-| `cloak:dropped` | `systems/cloak.js:240` | `audio/audioSystem.js:2993`, `render/authoredMotion.js:1215`, `render/shipMicroMotion.js:1768` |
-| `cloak:engaged` | `systems/cloak.js:200` | `render/authoredMotion.js:1214`, `render/shipMicroMotion.js:1767`, `systems/gamepad.js:999`, `systems/onboarding.js:1115` |
-| `cloak:faded` | `systems/aiPorts.js:1329` | `audio/audioSystem.js:2992` |
-| `coldburnRey:playerDelivered` | `systems/missions.js:5078` | — |
+| `cloak:ambush` | `systems/cloak.js:222` | — |
+| `cloak:burned` | `systems/cloak.js:357` | `audio/audioSystem.js:3037` |
+| `cloak:dropped` | `systems/cloak.js:291` | `audio/audioSystem.js:3032`, `render/authoredMotion.js:1215`, `render/shipMicroMotion.js:1768` |
+| `cloak:engaged` | `systems/cloak.js:251` | `render/authoredMotion.js:1214`, `render/shipMicroMotion.js:1767`, `systems/fields.js:499`, `systems/gamepad.js:1045`, `systems/onboarding.js:1128` |
+| `cloak:faded` | `systems/aiPorts.js:1331` | `audio/audioSystem.js:3031` |
+| `cloak:vanished` | `systems/cloak.js:237` | — |
+| `coldburnRey:playerDelivered` | `systems/missions.js:5188` | — |
 | `coldburnRey:raceSettled` | `systems/coldburnRey.js:91` | — |
 | `collector:absorbed` | `matter/collectorKnot.js:174` | — |
 | `collector:freed` | `matter/collectorKnot.js:114` | — |
 | `collector:lost` | `matter/collectorKnot.js:123` | — |
 | `collector:released` | `matter/collectorKnot.js:405` | — |
 | `collector:snagged` | `matter/collectorKnot.js:154` | — |
-| `collision:tearOff` | `systems/hullFracture.js:738` | `render/vfx.js:2978` |
+| `collision:tearOff` | `systems/hullFracture.js:738` | `render/vfx.js:2990` |
 | `combat:actionCancelled` | `combat/actions.js:373` | — |
 | `combat:actionCompleted` | `combat/actions.js:359` | — |
 | `combat:actionPhase` | `combat/actions.js:222` | — |
-| `combat:actionRejected` | `combat/actions.js:395` | `ui/toasts.js:902` |
+| `combat:actionRejected` | `combat/actions.js:395` | `ui/toasts.js:946` |
 | `combat:actionStarted` | `combat/actions.js:189` | `systems/presentationOrchestrator.js:180`, `systems/scenarioRuntime.js:24` |
-| `combat:aftermathChoices` | `systems/combatOutcome.js:496`, `systems/combatOutcome.js:565`, `systems/combatOutcome.js:600` | `ui/aftermathChoicePrompt.js:114` |
-| `combat:aftermathChoose` | `ui/aftermathChoicePrompt.js:102` | `systems/combatOutcome.js:292` |
-| `combat:aftermathChosen` | `systems/combatOutcome.js:253` | `ui/aftermathChoicePrompt.js:115` |
-| `combat:bankShot` | — | `render/vfx.js:2962` |
-| `combat:baseDestroyed` | `systems/combat.js:862` | `systems/economy.js:1842`, `systems/gamepad.js:1104` |
-| `combat:beamStop` | `systems/swarmFortifyEffects.js:308`, `systems/weapons.js:1666` | `audio/audioSystem.js:2870`, `render/asteroidMotionPresentation.js:524`, `render/vfx.js:2958` |
-| `combat:bounceContinued` | `combat/attackHit.js:38` | `render/vfx.js:2963`, `systems/presentationOrchestrator.js:272` |
+| `combat:aftermathChoices` | `systems/combatOutcome.js:502`, `systems/combatOutcome.js:571`, `systems/combatOutcome.js:606` | `ui/aftermathChoicePrompt.js:114` |
+| `combat:aftermathChoose` | `ui/aftermathChoicePrompt.js:102` | `systems/combatOutcome.js:296` |
+| `combat:aftermathChosen` | `systems/combatOutcome.js:257` | `ui/aftermathChoicePrompt.js:115` |
+| `combat:bankShot` | — | `render/vfx.js:2974` |
+| `combat:baseDestroyed` | `systems/combat.js:862` | `systems/economy.js:1842`, `systems/gamepad.js:1150` |
+| `combat:beamStop` | `systems/swarmFortifyEffects.js:308`, `systems/weapons.js:1767` | `audio/audioSystem.js:2909`, `render/asteroidMotionPresentation.js:524`, `render/vfx.js:2970` |
+| `combat:bounceContinued` | `combat/attackHit.js:38` | `render/vfx.js:2975`, `systems/presentationOrchestrator.js:272` |
 | `combat:chainKill` | — | `systems/killReplay.js:403` |
-| `combat:collisionConsequence` | `systems/collisionConsequences.js:584` | `render/feel.js:1820`, `render/vfx.js:2976`, `systems/economy.js:1844`, `systems/fields.js:512`, `systems/gamepad.js:986`, `systems/lawSecurity.js:425`, `systems/ships.js:2135`, `systems/swarmLegendaries.js:115` |
-| `combat:collisionDebris` | `systems/collisionConsequences.js:603` | `render/vfx.js:2977` |
-| `combat:crushed` | — | `render/vfx.js:3133` |
-| `combat:damage` | `combat/damage.js:625` | `audio/audioSystem.js:2885`, `balance/hunterPublicRoute.js:324`, `balance/hunterPublicRoute.js:473`, `data/encounters/367-the-salvage-tail.js:147`, `render/asteroidMotionPresentation.js:517`, `render/authoredMotion.js:1171`, `render/feel.js:1578`, `render/shipMicroMotion.js:1752`, `render/vfx.js:2964`, `save/saveSystem.js:508`, `systems/aiEncounter.js:140`, `systems/asteroidSites.js:891`, `systems/barkDirector.js:883`, `systems/cloak.js:53`, `systems/collisionConsequences.js:130`, `systems/combatOutcome.js:297`, `systems/cruise.js:58`, `systems/difficultyDirector.js:161`, `systems/encounterDirector.js:386`, `systems/factionPresence.js:522`, `systems/gamepad.js:1112`, `systems/heat.js:377`, `systems/killReplay.js:391`, `systems/lawSecurity.js:424`, `systems/missions.js:871`, `systems/missions.js:979`, `systems/npcJobsRuntime.js:1246`, `systems/npcJobsRuntime.js:1247`, `systems/onboarding.js:836`, `systems/onboarding.js:847`, `systems/onboarding.js:859`, `systems/presentationOrchestrator.js:170`, `systems/routeFollower.js:435`, `systems/salvageActions.js:142`, `systems/scenarioRuntime.js:30`, `systems/ships.js:2124`, `systems/special500HullLog.js:44`, `systems/stationBroadcast.js:265`, `systems/survivalResults.js:529`, `systems/survivalWave.js:233`, `systems/swarmArena.js:934`, `systems/swarmElites.js:184`, `systems/swarmElites.js:185`, `systems/swarmElites.js:186`, `systems/swarmJuice.js:143`, `systems/titles.js:599`, `systems/traffic.js:1923`, `systems/volatileExposure.js:216`, `systems/world.js:831`, `ui/alerts.js:677`, `ui/commandBar.js:245`, `ui/orrery/hudAdapter.js:666`, `ui/uiRoot.js:1018` |
-| `combat:emp` | `combat/damage.js:630` | — |
-| `combat:fire` | `systems/impulseCharges.js:726`, `systems/swarmFortifyEffects.js:305`, `systems/swarmFortifyEffects.js:409`, `systems/weapons.js:1543`, `systems/weapons.js:1645`, `systems/weapons.js:1910`, `systems/weapons.js:2335` | `audio/audioSystem.js:2869`, `data/stationBubbles.js:184`, `render/farPlaneLife.js:95`, `render/feel.js:1722`, `render/shipMicroMotion.js:1750`, `render/vfx.js:2957`, `systems/asteroidSites.js:708`, `systems/cloak.js:59`, `systems/cruise.js:66`, `systems/lawSecurity.js:426`, `systems/onboarding.js:750`, `systems/onboarding.js:763`, `systems/presentationOrchestrator.js:179`, `systems/story.js:284`, `systems/traffic.js:1924`, `systems/world.js:944`, `ui/orrery/hudAdapter.js:680` |
-| `combat:hit` | `systems/salvageActions.js:624`, `systems/salvageActions.js:715` | `render/farPlaneLife.js:94`, `systems/routeFollower.js:433`, `systems/story.js:285` |
+| `combat:collisionConsequence` | `systems/collisionConsequences.js:584` | `render/feel.js:1828`, `render/vfx.js:2988`, `systems/economy.js:1844`, `systems/fields.js:516`, `systems/gamepad.js:1032`, `systems/lawSecurity.js:425`, `systems/ships.js:2135`, `systems/swarmLegendaries.js:115` |
+| `combat:collisionDebris` | `systems/collisionConsequences.js:603` | `render/vfx.js:2989` |
+| `combat:crushed` | — | `render/vfx.js:3147` |
+| `combat:damage` | `combat/damage.js:679` | `audio/audioSystem.js:2924`, `balance/hunterPublicRoute.js:324`, `balance/hunterPublicRoute.js:473`, `data/encounters/367-the-salvage-tail.js:147`, `render/asteroidMotionPresentation.js:517`, `render/authoredMotion.js:1171`, `render/feel.js:1586`, `render/shipMicroMotion.js:1752`, `render/vfx.js:2976`, `save/saveSystem.js:508`, `systems/aiEncounter.js:142`, `systems/asteroidSites.js:893`, `systems/barkDirector.js:883`, `systems/cloak.js:71`, `systems/collisionConsequences.js:130`, `systems/combatOutcome.js:301`, `systems/cruise.js:58`, `systems/difficultyDirector.js:161`, `systems/encounterDirector.js:386`, `systems/factionPresence.js:522`, `systems/gamepad.js:1158`, `systems/heat.js:377`, `systems/killReplay.js:391`, `systems/lawSecurity.js:424`, `systems/missions.js:937`, `systems/missions.js:1059`, `systems/npcJobsRuntime.js:1246`, `systems/npcJobsRuntime.js:1247`, `systems/onboarding.js:849`, `systems/onboarding.js:860`, `systems/onboarding.js:872`, `systems/presentationOrchestrator.js:170`, `systems/routeFollower.js:435`, `systems/salvageActions.js:142`, `systems/scenarioRuntime.js:30`, `systems/ships.js:2124`, `systems/special500HullLog.js:44`, `systems/stationBroadcast.js:265`, `systems/survivalResults.js:529`, `systems/survivalWave.js:233`, `systems/swarmArena.js:934`, `systems/swarmElites.js:184`, `systems/swarmElites.js:185`, `systems/swarmElites.js:186`, `systems/swarmJuice.js:143`, `systems/titles.js:599`, `systems/traffic.js:1925`, `systems/volatileExposure.js:216`, `systems/world.js:848`, `ui/alerts.js:715`, `ui/commandBar.js:245`, `ui/orrery/hudAdapter.js:670`, `ui/uiRoot.js:1043` |
+| `combat:emp` | `combat/damage.js:684` | — |
+| `combat:fire` | `systems/impulseCharges.js:726`, `systems/swarmFortifyEffects.js:305`, `systems/swarmFortifyEffects.js:409`, `systems/weapons.js:1627`, `systems/weapons.js:1747`, `systems/weapons.js:2019`, `systems/weapons.js:2456` | `audio/audioSystem.js:2908`, `data/stationBubbles.js:184`, `render/farPlaneLife.js:96`, `render/feel.js:1730`, `render/shipMicroMotion.js:1750`, `render/vfx.js:2969`, `systems/asteroidSites.js:710`, `systems/cloak.js:77`, `systems/cruise.js:66`, `systems/gamepad.js:1169`, `systems/lawSecurity.js:426`, `systems/onboarding.js:763`, `systems/onboarding.js:776`, `systems/presentationOrchestrator.js:179`, `systems/story.js:284`, `systems/traffic.js:1926`, `systems/world.js:963`, `ui/orrery/hudAdapter.js:684` |
+| `combat:hit` | `systems/salvageActions.js:624`, `systems/salvageActions.js:715` | `render/farPlaneLife.js:95`, `systems/routeFollower.js:433`, `systems/story.js:285` |
 | `combat:hitAsset` | `systems/wingmen.js:246` | `systems/automation.js:615` |
 | `combat:hitstunImpulse` | — | `systems/rubberneckers.js:100`, `systems/scramblePlant.js:119` |
 | `combat:hullRepair` | `combat/kernel.js:517` | — |
-| `combat:kill` | `systems/world.js:7873` | `systems/factionPresence.js:530` |
-| `combat:lockChanged` | `systems/weapons.js:1253` | `systems/onboarding.js:872`, `systems/world.js:830`, `ui/alerts.js:686` |
-| `combat:outcome` | `systems/combatOutcome.js:473` | `systems/barkDirector.js:880`, `ui/aftermathChoicePrompt.js:114` |
-| `combat:outcomeConsequence` | `systems/combatOutcome.js:474` | — |
+| `combat:kill` | `systems/world.js:8255` | `systems/factionPresence.js:530` |
+| `combat:lockChanged` | `systems/weapons.js:1329` | `systems/onboarding.js:885`, `systems/world.js:847`, `ui/alerts.js:724` |
+| `combat:outcome` | `systems/combatOutcome.js:479` | `systems/barkDirector.js:880`, `ui/aftermathChoicePrompt.js:114` |
+| `combat:outcomeConsequence` | `systems/combatOutcome.js:480` | — |
 | `combat:repairSubsystem` | `systems/npcJobsRuntime.js:6625`, `systems/npcJobsRuntime.js:6991` | `combat/kernel.js:207` |
 | `combat:requestAction` | — | `combat/kernel.js:204` |
-| `combat:routeDamage` | `systems/bombs.js:1716`, `systems/capitalBossEncounters.js:132`, `systems/drill.js:2058`, `systems/foldAberrant.js:173`, `systems/hullBurst.js:554`, `systems/impulseCharges.js:1672`, `systems/mines.js:571`, `systems/missionObjectiveOps.js:2663`, `systems/theBolus.js:349`, `systems/tumbleStates.js:615` | `combat/kernel.js:206`, `systems/routeFollower.js:434` |
+| `combat:routeDamage` | `systems/bombs.js:1716`, `systems/capitalBossEncounters.js:132`, `systems/drill.js:2089`, `systems/foldAberrant.js:173`, `systems/hullBurst.js:554`, `systems/impulseCharges.js:1672`, `systems/mines.js:571`, `systems/missionObjectiveOps.js:2668`, `systems/theBolus.js:349`, `systems/tumbleStates.js:615` | `combat/kernel.js:206`, `systems/routeFollower.js:434` |
 | `combat:shipjackPulse` | `combat/kernel.js:592` | — |
 | `combat:shipjackShutdown` | `combat/kernel.js:607` | — |
-| `combat:shockwavePass` | — | `render/asteroidMotionPresentation.js:519`, `render/vfx.js:3140` |
-| `combat:shove` | `systems/onboarding.js:3805` | `audio/audioSystem.js:3153`, `systems/onboarding.js:762` |
-| `combat:statusApplied` | `combat/statuses.js:212` | `render/vfx.js:2979`, `ui/stuntCallout.js:1060` |
+| `combat:shockwavePass` | — | `render/asteroidMotionPresentation.js:519`, `render/vfx.js:3154` |
+| `combat:shove` | `systems/onboarding.js:3818` | `audio/audioSystem.js:3192`, `systems/onboarding.js:775` |
+| `combat:statusApplied` | `combat/statuses.js:212` | `render/vfx.js:2991`, `ui/stuntCallout.js:1060` |
 | `combat:statusExpired` | `combat/statuses.js:90`, `systems/bombs.js:1693` | `audio/bombAudio.js:464`, `systems/tumbleStates.js:143`, `ui/stuntCallout.js:1081` |
-| `combat:subsystemDisabled` | — | `systems/barkDirector.js:956`, `systems/combatOutcome.js:261`, `systems/encounterDirector.js:377`, `systems/factionPresence.js:520`, `systems/npcJobsRuntime.js:1251`, `systems/presentationOrchestrator.js:251`, `systems/surrenderRecovery.js:92`, `systems/tumbleStates.js:147`, `systems/wingMorale.js:202`, `ui/alerts.js:667` |
-| `combat:subsystemEnabled` | `combat/latchRepair.js:112` | `render/shipMicroMotion.js:1770`, `systems/factionPresence.js:521`, `systems/npcJobsRuntime.js:1252`, `systems/presentationOrchestrator.js:260`, `systems/surrenderRecovery.js:93`, `ui/alerts.js:672` |
-| `combat:surrendered` | — | `systems/combatOutcome.js:262`, `systems/surrenderRecovery.js:91` |
+| `combat:subsystemDisabled` | — | `systems/barkDirector.js:956`, `systems/combatOutcome.js:265`, `systems/encounterDirector.js:377`, `systems/factionPresence.js:520`, `systems/npcJobsRuntime.js:1251`, `systems/presentationOrchestrator.js:251`, `systems/surrenderRecovery.js:92`, `systems/tumbleStates.js:147`, `systems/wingMorale.js:202`, `ui/alerts.js:705` |
+| `combat:subsystemEnabled` | `combat/latchRepair.js:112` | `render/shipMicroMotion.js:1770`, `systems/factionPresence.js:521`, `systems/npcJobsRuntime.js:1252`, `systems/presentationOrchestrator.js:260`, `systems/surrenderRecovery.js:93`, `ui/alerts.js:710` |
+| `combat:surrendered` | — | `systems/combatOutcome.js:266`, `systems/surrenderRecovery.js:91` |
 | `combat:thrownWreck` | `systems/deedRecord.js:524` | `systems/barkDirector.js:952` |
 | `combat:tumbleRake` | `systems/tumbleStates.js:603` | `systems/barkDirector.js:951` |
-| `combat:tumbled` | `systems/tumbleStates.js:561` | `render/shipMicroMotion.js:1753`, `systems/fields.js:511`, `systems/missions.js:876`, `systems/tetherGameplay.js:375` |
-| `combat:warded` | `combat/damage.js:585` | `audio/audioSystem.js:3034` |
-| `combat:weakPointHit` | `combat/damage.js:518`, `systems/combat.js:769` | `render/vfx.js:2965` |
-| `comms:log` | `data/boundaryField.js:42`, `data/curlField.js:41`, `data/encounters/344-opening-hauler-raid.js:60`, `data/encounters/344-opening-hauler-raid.js:583`, `data/encounters/344-opening-hauler-raid.js:611`, `data/encounters/350-the-long-tail.js:229`, `data/encounters/350-the-long-tail.js:264`, `data/encounters/350-the-long-tail.js:282`, `data/encounters/351-the-chord.js:141`, `data/encounters/351-the-chord.js:165`, `data/encounters/352-the-slot.js:155`, `data/encounters/352-the-slot.js:175`, `data/encounters/353-the-wake.js:132`, `data/encounters/353-the-wake.js:172`, `data/encounters/353-the-wake.js:206`, `data/encounters/354-the-sweep.js:138`, `data/encounters/354-the-sweep.js:198`, `data/encounters/354-the-sweep.js:215`, `data/encounters/355-the-winnow-throw.js:144`, `data/encounters/355-the-winnow-throw.js:161`, `data/encounters/355-the-winnow-throw.js:168`, `data/encounters/355-the-winnow-throw.js:186`, `data/encounters/356-the-surge-line.js:188`, `data/encounters/356-the-surge-line.js:204`, `data/encounters/356-the-surge-line.js:213`, `data/encounters/356-the-surge-line.js:230`, `data/encounters/357-the-handoff.js:73`, `data/encounters/357-the-handoff.js:246`, `data/encounters/357-the-handoff.js:261`, `data/encounters/357-the-handoff.js:296`, `data/encounters/357-the-handoff.js:312`, `data/encounters/357-the-handoff.js:355`, `data/encounters/358-the-press-camp.js:117`, `data/encounters/358-the-press-camp.js:153`, `data/encounters/358-the-press-camp.js:344`, `data/encounters/358-the-press-camp.js:358`, `data/encounters/358-the-press-camp.js:372`, `data/encounters/358-the-press-camp.js:382`, `data/encounters/362-the-salvage-watch.js:446`, `data/encounters/367-the-salvage-tail.js:339`, `data/encounters/700-the-weighing.js:142`, `data/encounters/700-the-weighing.js:227`, `data/encounters/701-spine-break.js:137`, `data/encounters/701-spine-break.js:153`, `data/encounters/701-spine-break.js:190`, `data/encounters/701-spine-break.js:206`, `data/encounters/702-the-swap.js:55`, `data/encounters/702-the-swap.js:180`, `data/encounters/702-the-swap.js:201`, `data/encounters/703-too-perfect-pack.js:117`, `data/encounters/703-too-perfect-pack.js:162`, `data/encounters/704-claim-jump.js:128`, `data/encounters/704-claim-jump.js:145`, `data/encounters/705-the-nest.js:254`, `data/encounters/705-the-nest.js:420`, `data/encounters/705-the-nest.js:459`, `data/encounters/705-the-nest.js:464`, `data/encounters/705-the-nest.js:633`, `data/laneField.js:53`, `data/laneField.js:65`, `data/velocityPlane.js:46`, `features/derelictExpedition/runtime.js:591`, `features/industrialDisasters/presentation.js:119`, `features/salvageOutfits/index.js:72`, `systems/aftermathWrecks.js:3038`, `systems/alienEcology.js:787`, `systems/alienEcology.js:816`, `systems/alienEcology.js:839`, `systems/alienEcology.js:918`, `systems/alienEcology.js:949`, `systems/alienEcology.js:959`, `systems/alienEcology.js:980`, `systems/alienEcology.js:987`, `systems/alienEcology.js:1006`, `systems/alienEcology.js:1346`, `systems/alienEcology.js:1538`, `systems/alienEcology.js:1675`, `systems/alienEcology.js:1708`, `systems/alienEcology.js:1750`, `systems/alienEcology.js:1785`, `systems/alienEcology.js:1790`, `systems/alienEcology.js:1859`, `systems/alienEcology.js:1941`, `systems/alienEcology.js:1953`, `systems/alienEcology.js:2006`, `systems/alienEcology.js:2348`, `systems/alienEcology.js:2427`, `systems/alienEcology.js:2778`, `systems/alienEcology.js:2806`, `systems/alienEcology.js:3093`, `systems/alienEcology.js:3121`, `systems/alienEcology.js:3132`, `systems/alienEcology.js:3191`, `systems/alienEcology.js:3233`, `systems/alienEcology.js:3440`, `systems/alphabet.js:246`, `systems/asteroidSites.js:1669`, `systems/automation.js:4319`, `systems/borrowedSun.js:671`, `systems/contractClauses.js:774`, `systems/docket.js:210`, `systems/docket.js:220`, `systems/economy.js:3803`, `systems/encounterDirector.js:3492`, `systems/encounterScripts.js:828`, `systems/encounterScripts.js:3725`, `systems/encounterScripts.js:3984`, `systems/faction_archive.js:629`, `systems/faction_archive.js:852`, `systems/faction_archive.js:864`, `systems/faction_archive.js:933`, `systems/faction_archive.js:965`, `systems/faction_choir.js:624`, `systems/faction_choir.js:648`, `systems/faction_choir.js:668`, `systems/faction_choir.js:682`, `systems/faction_choir.js:861`, `systems/faction_choir.js:862`, `systems/faction_choir.js:900`, `systems/faction_choir.js:942`, `systems/faction_choir.js:980`, `systems/faction_choir.js:1032`, `systems/faction_choir.js:1038`, `systems/faction_choir.js:1040`, `systems/faction_choir.js:1109`, `systems/faction_choir.js:1112`, `systems/faction_choir.js:1116`, `systems/faction_choir.js:1121`, `systems/faction_choir.js:1303`, `systems/faction_choir.js:1427`, `systems/faction_choir.js:1445`, `systems/faction_choir.js:1486`, `systems/faction_choir.js:1509`, `systems/faction_choir.js:1517`, `systems/faction_choir.js:1628`, `systems/faction_concord.js:215`, `systems/faction_frontier.js:882`, `systems/faction_frontier.js:1186`, `systems/faction_frontier.js:1307`, `systems/faction_frontier.js:1312`, `systems/faction_frontier.js:1317`, `systems/faction_frontier.js:1367`, `systems/faction_frontier.js:1428`, `systems/faction_frontier.js:1485`, `systems/faction_frontier.js:1688`, `systems/faction_frontier.js:2608`, `systems/faction_fulfillment.js:257`, `systems/faction_fulfillment.js:266`, `systems/faction_fulfillment.js:319`, `systems/faction_fulfillment.js:323`, `systems/faction_fulfillment.js:337`, `systems/faction_fulfillment.js:350`, `systems/faction_fulfillment.js:389`, `systems/faction_fulfillment.js:423`, `systems/faction_helix.js:573`, `systems/faction_helix.js:778`, `systems/faction_helix.js:846`, `systems/faction_meridian.js:436`, `systems/faction_meridian.js:737`, `systems/faction_pitborn.js:660`, `systems/faction_pitborn.js:771`, `systems/faction_pitborn.js:855`, `systems/faction_pitborn.js:881`, `systems/faction_pitborn.js:887`, `systems/faction_pitborn.js:890`, `systems/faction_pitborn.js:940`, `systems/faction_understory.js:982`, `systems/faction_understory.js:1008`, `systems/faction_understory.js:1061`, `systems/faction_understory.js:1194`, `systems/faction_understory.js:1242`, `systems/faction_understory.js:1402`, `systems/faction_understory.js:2123`, `systems/faction_vael.js:489`, `systems/faction_vael.js:502`, `systems/faction_vael.js:653`, `systems/faction_vael.js:703`, `systems/faction_vael.js:822`, `systems/faction_vael.js:823`, `systems/faction_vael.js:851`, `systems/faction_verge.js:590`, `systems/faction_verge.js:1701`, `systems/faction_verge.js:1760`, `systems/faction_verge.js:1797`, `systems/faction_verge.js:1848`, `systems/faction_verge.js:1858`, `systems/faction_verge.js:1884`, `systems/faction_verge.js:1908`, `systems/factions.js:610`, `systems/fenderBenderPlant.js:300`, `systems/foldAberrant.js:44`, `systems/impoundGrudge.js:1100`, `systems/lamplighter.js:635`, `systems/lineHeads.js:292`, `systems/machineWork.js:14`, `systems/massSignature.js:514`, `systems/massSignature.js:531`, `systems/massSignature.js:630`, `systems/missionObjectiveOps.js:1517`, `systems/morrow.js:253`, `systems/nestVisit.js:160`, `systems/nestVisit.js:180`, `systems/patrolBait.js:92`, `systems/plants/pl216BlueMinute.js:171`, `systems/precursorMachines.js:65`, `systems/precursorMachines.js:132`, `systems/precursorMachines.js:165`, `systems/precursorMachines.js:172`, `systems/precursorMachines.js:185`, `systems/precursorMachines.js:191`, `systems/precursorMachines.js:409`, `systems/precursorMachines.js:422`, `systems/precursorMachines.js:440`, `systems/precursorMachines.js:464`, `systems/precursorMachines.js:487`, `systems/precursorMachines.js:503`, `systems/precursorMachines.js:517`, `systems/precursorMachines.js:529`, `systems/precursorMachines.js:536`, `systems/precursorMachines.js:552`, `systems/precursorMachines.js:613`, `systems/precursorMachines.js:709`, `systems/precursorMachines.js:728`, `systems/precursorMachines.js:750`, `systems/precursorMachines.js:784`, `systems/precursorMachines.js:799`, `systems/precursorMachines.js:831`, `systems/precursorMachines.js:859`, `systems/precursorMachines.js:907`, `systems/precursorMachines.js:1026`, `systems/precursorMachines.js:1040`, `systems/precursorMachines.js:1086`, `systems/precursorMachines.js:1100`, `systems/precursorMachines.js:1166`, `systems/precursorMachines.js:1219`, `systems/precursorMachines.js:1227`, `systems/quill.js:485`, `systems/rubric.js:474`, `systems/salvage.js:181`, `systems/salvage.js:980`, `systems/salvage.js:1051`, `systems/salvage.js:1085`, `systems/salvage.js:1247`, `systems/shipjack.js:85`, `systems/special500CollectiveHours.js:78`, `systems/special500Confessional.js:234`, `systems/special500Confessional.js:272`, `systems/special500DeathBell.js:92`, `systems/special500Director.js:280`, `systems/special500DockLedger.js:166`, `systems/special500DockLedger.js:178`, `systems/special500DockLedger.js:191`, `systems/special500DockLedger.js:215`, `systems/special500DockLedger.js:239`, `systems/special500ForgeKaraoke.js:89`, `systems/special500HullLog.js:92`, `systems/special500HullLog.js:112`, `systems/special500Invoice.js:129`, `systems/special500Invoice.js:174`, `systems/special500Invoice.js:189`, `systems/special500PortraitBuoys.js:228`, `systems/special500Question.js:90`, `systems/special500Sommelier.js:103`, `systems/special500Sommelier.js:150`, `systems/special500Sommelier.js:156`, `systems/stationContacts.js:393`, `systems/towlineTable.js:266`, `systems/uniqueWrecks.js:2089`, `systems/vesper.js:287`, `systems/wingmen.js:328`, `systems/wingmen.js:334`, `systems/wingmen.js:341`, `systems/worldClock.js:148`, `systems/worldPressure.js:238`, `systems/worldPressure.js:286`, `world/motionFossil.js:41`, `world/playerHullEcho.js:100`, `world/playerHullEcho.js:111`, `world/playerHullEcho.js:133`, `world/vestaWinnowRecovery.js:159`, `world/vestaWinnowRecovery.js:342`, `world/vestaWinnowRecovery.js:552` | `ui/floatingText.js:130` |
+| `combat:tumbled` | `systems/tumbleStates.js:561` | `render/shipMicroMotion.js:1753`, `systems/fields.js:515`, `systems/missions.js:956`, `systems/tetherGameplay.js:382` |
+| `combat:warded` | `combat/damage.js:628` | `audio/audioSystem.js:3073` |
+| `combat:weakPointHit` | `combat/damage.js:557`, `systems/combat.js:769` | `render/vfx.js:2977` |
+| `comms:log` | `data/boundaryField.js:42`, `data/curlField.js:41`, `data/encounters/344-opening-hauler-raid.js:60`, `data/encounters/344-opening-hauler-raid.js:583`, `data/encounters/344-opening-hauler-raid.js:611`, `data/encounters/350-the-long-tail.js:229`, `data/encounters/350-the-long-tail.js:264`, `data/encounters/350-the-long-tail.js:282`, `data/encounters/351-the-chord.js:141`, `data/encounters/351-the-chord.js:165`, `data/encounters/352-the-slot.js:155`, `data/encounters/352-the-slot.js:175`, `data/encounters/353-the-wake.js:132`, `data/encounters/353-the-wake.js:172`, `data/encounters/353-the-wake.js:206`, `data/encounters/354-the-sweep.js:138`, `data/encounters/354-the-sweep.js:198`, `data/encounters/354-the-sweep.js:215`, `data/encounters/355-the-winnow-throw.js:144`, `data/encounters/355-the-winnow-throw.js:161`, `data/encounters/355-the-winnow-throw.js:168`, `data/encounters/355-the-winnow-throw.js:186`, `data/encounters/356-the-surge-line.js:188`, `data/encounters/356-the-surge-line.js:204`, `data/encounters/356-the-surge-line.js:213`, `data/encounters/356-the-surge-line.js:230`, `data/encounters/357-the-handoff.js:73`, `data/encounters/357-the-handoff.js:246`, `data/encounters/357-the-handoff.js:261`, `data/encounters/357-the-handoff.js:296`, `data/encounters/357-the-handoff.js:312`, `data/encounters/357-the-handoff.js:355`, `data/encounters/358-the-press-camp.js:117`, `data/encounters/358-the-press-camp.js:153`, `data/encounters/358-the-press-camp.js:344`, `data/encounters/358-the-press-camp.js:358`, `data/encounters/358-the-press-camp.js:372`, `data/encounters/358-the-press-camp.js:382`, `data/encounters/362-the-salvage-watch.js:446`, `data/encounters/367-the-salvage-tail.js:339`, `data/encounters/700-the-weighing.js:142`, `data/encounters/700-the-weighing.js:227`, `data/encounters/701-spine-break.js:137`, `data/encounters/701-spine-break.js:153`, `data/encounters/701-spine-break.js:190`, `data/encounters/701-spine-break.js:206`, `data/encounters/702-the-swap.js:55`, `data/encounters/702-the-swap.js:180`, `data/encounters/702-the-swap.js:201`, `data/encounters/703-too-perfect-pack.js:117`, `data/encounters/703-too-perfect-pack.js:162`, `data/encounters/704-claim-jump.js:128`, `data/encounters/704-claim-jump.js:145`, `data/encounters/705-the-nest.js:254`, `data/encounters/705-the-nest.js:420`, `data/encounters/705-the-nest.js:459`, `data/encounters/705-the-nest.js:464`, `data/encounters/705-the-nest.js:633`, `data/laneField.js:53`, `data/laneField.js:65`, `data/velocityPlane.js:46`, `features/derelictExpedition/runtime.js:591`, `features/industrialDisasters/presentation.js:119`, `features/salvageOutfits/index.js:72`, `systems/aftermathWrecks.js:3126`, `systems/alienEcology.js:787`, `systems/alienEcology.js:816`, `systems/alienEcology.js:839`, `systems/alienEcology.js:918`, `systems/alienEcology.js:949`, `systems/alienEcology.js:959`, `systems/alienEcology.js:980`, `systems/alienEcology.js:987`, `systems/alienEcology.js:1006`, `systems/alienEcology.js:1346`, `systems/alienEcology.js:1538`, `systems/alienEcology.js:1675`, `systems/alienEcology.js:1708`, `systems/alienEcology.js:1750`, `systems/alienEcology.js:1785`, `systems/alienEcology.js:1790`, `systems/alienEcology.js:1859`, `systems/alienEcology.js:1941`, `systems/alienEcology.js:1953`, `systems/alienEcology.js:2006`, `systems/alienEcology.js:2348`, `systems/alienEcology.js:2427`, `systems/alienEcology.js:2778`, `systems/alienEcology.js:2806`, `systems/alienEcology.js:3093`, `systems/alienEcology.js:3121`, `systems/alienEcology.js:3132`, `systems/alienEcology.js:3191`, `systems/alienEcology.js:3233`, `systems/alienEcology.js:3440`, `systems/alphabet.js:246`, `systems/asteroidSites.js:1716`, `systems/automation.js:4319`, `systems/borrowedSun.js:671`, `systems/contractClauses.js:774`, `systems/docket.js:210`, `systems/docket.js:220`, `systems/economy.js:3803`, `systems/encounterDirector.js:3492`, `systems/encounterScripts.js:828`, `systems/encounterScripts.js:3725`, `systems/encounterScripts.js:3984`, `systems/faction_archive.js:629`, `systems/faction_archive.js:852`, `systems/faction_archive.js:864`, `systems/faction_archive.js:933`, `systems/faction_archive.js:965`, `systems/faction_choir.js:624`, `systems/faction_choir.js:648`, `systems/faction_choir.js:668`, `systems/faction_choir.js:682`, `systems/faction_choir.js:861`, `systems/faction_choir.js:862`, `systems/faction_choir.js:900`, `systems/faction_choir.js:942`, `systems/faction_choir.js:980`, `systems/faction_choir.js:1032`, `systems/faction_choir.js:1038`, `systems/faction_choir.js:1040`, `systems/faction_choir.js:1109`, `systems/faction_choir.js:1112`, `systems/faction_choir.js:1116`, `systems/faction_choir.js:1121`, `systems/faction_choir.js:1303`, `systems/faction_choir.js:1427`, `systems/faction_choir.js:1445`, `systems/faction_choir.js:1486`, `systems/faction_choir.js:1509`, `systems/faction_choir.js:1517`, `systems/faction_choir.js:1628`, `systems/faction_concord.js:215`, `systems/faction_frontier.js:882`, `systems/faction_frontier.js:1186`, `systems/faction_frontier.js:1307`, `systems/faction_frontier.js:1312`, `systems/faction_frontier.js:1317`, `systems/faction_frontier.js:1367`, `systems/faction_frontier.js:1428`, `systems/faction_frontier.js:1485`, `systems/faction_frontier.js:1688`, `systems/faction_frontier.js:2608`, `systems/faction_fulfillment.js:257`, `systems/faction_fulfillment.js:266`, `systems/faction_fulfillment.js:319`, `systems/faction_fulfillment.js:323`, `systems/faction_fulfillment.js:337`, `systems/faction_fulfillment.js:350`, `systems/faction_fulfillment.js:389`, `systems/faction_fulfillment.js:423`, `systems/faction_helix.js:573`, `systems/faction_helix.js:778`, `systems/faction_helix.js:846`, `systems/faction_meridian.js:436`, `systems/faction_meridian.js:737`, `systems/faction_pitborn.js:660`, `systems/faction_pitborn.js:771`, `systems/faction_pitborn.js:855`, `systems/faction_pitborn.js:881`, `systems/faction_pitborn.js:887`, `systems/faction_pitborn.js:890`, `systems/faction_pitborn.js:940`, `systems/faction_understory.js:982`, `systems/faction_understory.js:1008`, `systems/faction_understory.js:1061`, `systems/faction_understory.js:1194`, `systems/faction_understory.js:1242`, `systems/faction_understory.js:1402`, `systems/faction_understory.js:2123`, `systems/faction_vael.js:489`, `systems/faction_vael.js:502`, `systems/faction_vael.js:653`, `systems/faction_vael.js:703`, `systems/faction_vael.js:822`, `systems/faction_vael.js:823`, `systems/faction_vael.js:851`, `systems/faction_verge.js:590`, `systems/faction_verge.js:1701`, `systems/faction_verge.js:1760`, `systems/faction_verge.js:1797`, `systems/faction_verge.js:1848`, `systems/faction_verge.js:1858`, `systems/faction_verge.js:1884`, `systems/faction_verge.js:1908`, `systems/factions.js:610`, `systems/fenderBenderPlant.js:300`, `systems/foldAberrant.js:44`, `systems/impoundGrudge.js:1100`, `systems/lamplighter.js:635`, `systems/lineHeads.js:292`, `systems/machineWork.js:14`, `systems/massSignature.js:514`, `systems/massSignature.js:531`, `systems/massSignature.js:630`, `systems/missionObjectiveOps.js:1522`, `systems/morrow.js:253`, `systems/nestVisit.js:160`, `systems/nestVisit.js:180`, `systems/patrolBait.js:92`, `systems/plants/pl216BlueMinute.js:172`, `systems/precursorMachines.js:65`, `systems/precursorMachines.js:132`, `systems/precursorMachines.js:165`, `systems/precursorMachines.js:172`, `systems/precursorMachines.js:185`, `systems/precursorMachines.js:191`, `systems/precursorMachines.js:409`, `systems/precursorMachines.js:422`, `systems/precursorMachines.js:440`, `systems/precursorMachines.js:464`, `systems/precursorMachines.js:487`, `systems/precursorMachines.js:503`, `systems/precursorMachines.js:517`, `systems/precursorMachines.js:529`, `systems/precursorMachines.js:536`, `systems/precursorMachines.js:552`, `systems/precursorMachines.js:613`, `systems/precursorMachines.js:709`, `systems/precursorMachines.js:728`, `systems/precursorMachines.js:750`, `systems/precursorMachines.js:784`, `systems/precursorMachines.js:799`, `systems/precursorMachines.js:831`, `systems/precursorMachines.js:859`, `systems/precursorMachines.js:907`, `systems/precursorMachines.js:1026`, `systems/precursorMachines.js:1040`, `systems/precursorMachines.js:1086`, `systems/precursorMachines.js:1100`, `systems/precursorMachines.js:1166`, `systems/precursorMachines.js:1219`, `systems/precursorMachines.js:1227`, `systems/quill.js:485`, `systems/rubric.js:474`, `systems/salvage.js:181`, `systems/salvage.js:980`, `systems/salvage.js:1051`, `systems/salvage.js:1085`, `systems/salvage.js:1247`, `systems/shipjack.js:85`, `systems/special500CollectiveHours.js:78`, `systems/special500Confessional.js:234`, `systems/special500Confessional.js:272`, `systems/special500DeathBell.js:92`, `systems/special500Director.js:280`, `systems/special500DockLedger.js:166`, `systems/special500DockLedger.js:178`, `systems/special500DockLedger.js:191`, `systems/special500DockLedger.js:215`, `systems/special500DockLedger.js:239`, `systems/special500ForgeKaraoke.js:89`, `systems/special500HullLog.js:92`, `systems/special500HullLog.js:112`, `systems/special500Invoice.js:129`, `systems/special500Invoice.js:174`, `systems/special500Invoice.js:189`, `systems/special500PortraitBuoys.js:228`, `systems/special500Question.js:90`, `systems/special500Sommelier.js:103`, `systems/special500Sommelier.js:150`, `systems/special500Sommelier.js:156`, `systems/stationContacts.js:393`, `systems/towlineTable.js:266`, `systems/uniqueWrecks.js:2089`, `systems/vesper.js:287`, `systems/wingmen.js:328`, `systems/wingmen.js:334`, `systems/wingmen.js:341`, `systems/worldClock.js:148`, `systems/worldPressure.js:238`, `systems/worldPressure.js:286`, `world/motionFossil.js:41`, `world/playerHullEcho.js:100`, `world/playerHullEcho.js:111`, `world/playerHullEcho.js:133`, `world/vestaWinnowRecovery.js:159`, `world/vestaWinnowRecovery.js:342`, `world/vestaWinnowRecovery.js:552` | `ui/floatingText.js:130` |
 | `comms:message` | `systems/ceresAnchorWinching.js:141`, `systems/ceresNinthMouth.js:139`, `systems/ceresWorkfleetStagecraft.js:99`, `systems/economy.js:4209`, `systems/precursorMachines.js:313`, `systems/trafficRoleOps.js:266`, `systems/trafficRoleOps.js:1297`, `systems/trafficRoleOps.js:1440` | — |
-| `comms:popup` | `missions/cinderReceivingScene.js:69`, `missions/compostArrivalScene.js:132`, `missions/dioneTargetPractice.js:63`, `missions/furnaceArrivalScene.js:62`, `missions/furnaceCapstan.js:299`, `missions/furnaceCapstan.js:360`, `missions/furnaceCasingReturn.js:113`, `missions/furnaceReceivingLane.js:59`, `missions/lanternWardConversation.js:46`, `missions/lanternWardConversation.js:54`, `missions/weighingWorksite.js:144`, `systems/bellhop.js:140`, `systems/bouncer.js:352`, `systems/bouncer.js:555`, `systems/bouncer.js:571`, `systems/bouncer.js:628`, `systems/bouncer.js:679`, `systems/bouncer.js:710`, `systems/bouncer.js:728`, `systems/careerContracts.js:456`, `systems/careerContracts.js:470`, `systems/careerContracts.js:486`, `systems/coldburnRey.js:64`, `systems/crew.js:250`, `systems/crew.js:361`, `systems/crew.js:382`, `systems/crew.js:507`, `systems/crew.js:523`, `systems/crew.js:539`, `systems/crew.js:561`, `systems/crew.js:570`, `systems/crew.js:590`, `systems/crew.js:614`, `systems/crew.js:623`, `systems/crew.js:646`, `systems/crew.js:667`, `systems/crew.js:692`, `systems/crew.js:712`, `systems/crew.js:741`, `systems/crew.js:771`, `systems/crew.js:788`, `systems/crew.js:800`, `systems/factionPresence.js:817`, `systems/factionPresence.js:1486`, `systems/factionPresence.js:1537`, `systems/factionPresence.js:1552`, `systems/furnaceIntake.js:129`, `systems/furnaceIntake.js:178`, `systems/gateThreeWeir.js:318`, `systems/gateThreeWeir.js:336`, `systems/gravedigger.js:533`, `systems/holdfast.js:163`, `systems/impoundGrudge.js:489`, `systems/kesslerScale.js:267`, `systems/kesslerScale.js:317`, `systems/kesslerScale.js:363`, `systems/lamplighter.js:630`, `systems/mail.js:230`, `systems/memorialThief.js:103`, `systems/missionObjectiveOps.js:278`, `systems/missionObjectiveOps.js:1410`, `systems/missionSpawningOps.js:618`, `systems/missionSpawningOps.js:1001`, `systems/missionSpawningOps.js:1352`, `systems/missionSpawningOps.js:1484`, `systems/missionSpawningOps.js:1498`, `systems/missionSpawningOps.js:1509`, `systems/missionSpawningOps.js:1712`, `systems/missionSpawningOps.js:1774`, `systems/missionStoryOps.js:165`, `systems/missionStoryOps.js:1364`, `systems/missionStoryOps.js:1406`, `systems/missionStoryOps.js:1753`, `systems/missionStoryOps.js:1761`, `systems/missionStoryOps.js:1775`, `systems/missionStoryOps.js:1781`, `systems/missionStoryOps.js:1787`, `systems/missionStoryOps.js:1793`, `systems/missionStoryOps.js:1805`, `systems/missionStoryOps.js:1816`, `systems/missionStoryOps.js:1825`, `systems/missionStoryOps.js:1871`, `systems/missionStoryOps.js:1876`, `systems/missionStoryOps.js:1888`, `systems/missionStoryOps.js:1962`, `systems/missionStoryOps.js:2076`, `systems/missionStoryOps.js:2080`, `systems/missionStoryOps.js:2429`, `systems/missionStoryOps.js:2511`, `systems/missionStoryOps.js:2674`, `systems/missionStoryOps.js:2683`, `systems/missionStoryOps.js:2701`, `systems/missionStoryOps.js:2720`, `systems/missionStoryOps.js:2740`, `systems/missionStoryOps.js:2752`, `systems/missions.js:4775`, `systems/missions.js:4940`, `systems/missions.js:5104`, `systems/missions.js:5114`, `systems/missions.js:5122`, `systems/moistureLoss.js:148`, `systems/mop.js:135`, `systems/onboarding.js:1629`, `systems/onboarding.js:4400`, `systems/onboarding.js:4568`, `systems/plants/afterHoursCoach.js:400`, `systems/plants/anselsDish.js:152`, `systems/plants/borrowedBoost.js:341`, `systems/plants/borrowedLadder.js:146`, `systems/plants/brokenTollPlant.js:302`, `systems/plants/busDoesntMove.js:392`, `systems/plants/busDoesntMove.js:413`, `systems/plants/carriedWord.js:362`, `systems/plants/carriedWord.js:366`, `systems/plants/chalkSeat.js:135`, `systems/plants/chasedThiefPlant.js:355`, `systems/plants/coatRack.js:154`, `systems/plants/coffeeHatch.js:145`, `systems/plants/convoyGodmother.js:367`, `systems/plants/coveredWindow.js:167`, `systems/plants/darkStretchPlant.js:326`, `systems/plants/deadStickPlant.js:271`, `systems/plants/doorstop.js:226`, `systems/plants/doorstop.js:274`, `systems/plants/doorstop.js:291`, `systems/plants/doorstop.js:299`, `systems/plants/ducklings.js:237`, `systems/plants/dutchAfterYou.js:232`, `systems/plants/farBerth.js:372`, `systems/plants/farePool.js:155`, `systems/plants/firstLight.js:358`, `systems/plants/glassPays.js:182`, `systems/plants/goodPatch.js:139`, `systems/plants/goodWord.js:180`, `systems/plants/gullDrone.js:135`, `systems/plants/kidMechanic.js:153`, `systems/plants/kindChecker.js:279`, `systems/plants/lanternLoan.js:137`, `systems/plants/litter.js:152`, `systems/plants/looseBolts.js:153`, `systems/plants/magpieReads.js:150`, `systems/plants/measuringHullPlant.js:316`, `systems/plants/mercies/pl269KindnessLocker.js:237`, `systems/plants/mercies/pl270StashedMedal.js:179`, `systems/plants/mercies/pl270StashedMedal.js:260`, `systems/plants/mercies/pl271MapInTheLid.js:295`, `systems/plants/mercies/pl271MapInTheLid.js:336`, `systems/plants/mercies/pl271MapInTheLid.js:368`, `systems/plants/mercies/pl272ForwardBeacon.js:224`, `systems/plants/mercies/pl272ForwardBeacon.js:238`, `systems/plants/mercies/pl272ForwardBeacon.js:302`, `systems/plants/mercies/pl364KindnessLedger.js:243`, `systems/plants/mercies/pl364KindnessLedger.js:294`, `systems/plants/mercies/pl365LampGarden.js:167`, `systems/plants/mercies/pl365LampGarden.js:242`, `systems/plants/mercies/pl365LampGarden.js:267`, `systems/plants/mercies/pl366RegistryHatch.js:202`, `systems/plants/mercies/pl366RegistryHatch.js:213`, `systems/plants/mercies/pl366RegistryHatch.js:251`, `systems/plants/mercies/pl367LingeringLift.js:254`, `systems/plants/mercies/pl367LingeringLift.js:303`, `systems/plants/mercies/pl367LingeringLift.js:314`, `systems/plants/mercies/pl368ThankYouSlate.js:194`, `systems/plants/mercies/pl368ThankYouSlate.js:204`, `systems/plants/mercies/pl368ThankYouSlate.js:247`, `systems/plants/mercies/pl369LastAllowance.js:192`, `systems/plants/mercies/pl369LastAllowance.js:248`, `systems/plants/mercies/pl369LastAllowance.js:281`, `systems/plants/mercies/pl369LastAllowance.js:295`, `systems/plants/mercies/pl369LastAllowance.js:343`, `systems/plants/mercies/pl370HousewarmingPart.js:162`, `systems/plants/mercies/pl370HousewarmingPart.js:186`, `systems/plants/mercies/pl371LaneTithe.js:183`, `systems/plants/mercies/pl371LaneTithe.js:217`, `systems/plants/mercies/pl372WreckersCourtesy.js:181`, `systems/plants/mercies/pl372WreckersCourtesy.js:205`, `systems/plants/mercies/pl373HearthLamp.js:162`, `systems/plants/mercies/pl373HearthLamp.js:212`, `systems/plants/mistaken.js:256`, `systems/plants/movingHousePlant.js:327`, `systems/plants/nightBell.js:147`, `systems/plants/orphanWreck.js:213`, `systems/plants/orphanWreck.js:240`, `systems/plants/otherSide.js:220`, `systems/plants/otherSide.js:256`, `systems/plants/overtimeMug.js:146`, `systems/plants/ownFaultPlant.js:399`, `systems/plants/paperTrail.js:134`, `systems/plants/paperTrail.js:183`, `systems/plants/pipsCounts.js:247`, `systems/plants/pl104Inventory.js:164`, `systems/plants/pl105Standoff.js:146`, `systems/plants/pl106PartsSled.js:117`, `systems/plants/pl107EmptySlot.js:114`, `systems/plants/pl124ParkedLight.js:224`, `systems/plants/pl124ParkedLight.js:260`, `systems/plants/pl125UnderPaint.js:97`, `systems/plants/pl125UnderPaint.js:130`, `systems/plants/pl126KeepingIt.js:174`, `systems/plants/pl126KeepingIt.js:194`, `systems/plants/pl128TheSurge.js:124`, `systems/plants/pl129SomebodysCrate.js:100`, `systems/plants/pl130TheStamp.js:120`, `systems/plants/pl146FirstCaller.js:253`, `systems/plants/pl147FirstPart.js:136`, `systems/plants/pl148TheCount.js:131`, `systems/plants/pl148TheCount.js:225`, `systems/plants/pl149SeedlingLean.js:164`, `systems/plants/pl150ItsSpot.js:165`, `systems/plants/pl151NoPapers.js:141`, `systems/plants/pl151NoPapers.js:261`, `systems/plants/pl152TheTally.js:122`, `systems/plants/pl152TheTally.js:137`, `systems/plants/pl153TheMinute.js:111`, `systems/plants/pl171RattleInB.js:130`, `systems/plants/pl172ShadeMarket.js:217`, `systems/plants/pl175First.js:203`, `systems/plants/pl175First.js:234`, `systems/plants/pl178SlingshotHour.js:133`, `systems/plants/pl179KesslersNumber.js:102`, `systems/plants/pl180ChalkThief.js:111`, `systems/plants/pl181HotCargo.js:117`, `systems/plants/pl182FlagTruce.js:120`, `systems/plants/pl183TheWeather.js:136`, `systems/plants/pl190DroneRange.js:143`, `systems/plants/pl192AgainMaybe.js:112`, `systems/plants/pl193OneShort.js:208`, `systems/plants/pl195FixedX.js:142`, `systems/plants/pl196MirrorRock.js:141`, `systems/plants/pl196MirrorRock.js:151`, `systems/plants/pl199TheJug.js:118`, `systems/plants/pl200TwoTaps.js:157`, `systems/plants/pl201OddQueue.js:217`, `systems/plants/pl203TheTour.js:185`, `systems/plants/pl204TheHook.js:315`, `systems/plants/pl214PyrrhaBox.js:228`, `systems/plants/pl214PyrrhaBox.js:248`, `systems/plants/pl215SomebodysStall.js:212`, `systems/plants/pl215SomebodysStall.js:233`, `systems/plants/pl216BlueMinute.js:172`, `systems/plants/pl231MarshsLine.js:206`, `systems/plants/pl232TheValidInstruction.js:191`, `systems/plants/pl232TheValidInstruction.js:244`, `systems/plants/pl233TheFreshMark.js:296`, `systems/plants/pl247TheScandal.js:241`, `systems/plants/pl247TheScandal.js:245`, `systems/plants/pl252RegularsHour.js:105`, `systems/plants/pl252RegularsHour.js:117`, `systems/plants/pl253WallDent.js:128`, `systems/plants/pl253WallDent.js:143`, `systems/plants/pl257GutterRun.js:245`, `systems/plants/pl259SpareAndShare.js:245`, `systems/plants/pl259SpareAndShare.js:257`, `systems/plants/pl260FiftiethVisit.js:106`, `systems/plants/pl261OpenTank.js:150`, `systems/plants/pl262GatheredPile.js:235`, `systems/plants/pl267QueuePass.js:227`, `systems/plants/pl333NoQuestionsShelf.js:283`, `systems/plants/pl334WindBreakChain.js:215`, `systems/plants/pl335DawnLine.js:248`, `systems/plants/pl336LampKeeper.js:169`, `systems/plants/pl337HonorUrn.js:186`, `systems/plants/pl338TowPost.js:179`, `systems/plants/pl339SignalMirror.js:191`, `systems/plants/pl340EchoCount.js:196`, `systems/plants/pl341RestringBuoys.js:214`, `systems/plants/pl342BleedVent.js:184`, `systems/plants/pl343LiftBell.js:198`, `systems/plants/pl344NeedsList.js:221`, `systems/plants/pl345KettleWindow.js:186`, `systems/plants/pl346FixedRope.js:214`, `systems/plants/pl347SmallHullDrum.js:220`, `systems/plants/pl348SeamKitchen.js:208`, `systems/plants/pl349MercyTug.js:214`, `systems/plants/pl350KeyWall.js:243`, `systems/plants/pl351SamplePad.js:247`, `systems/plants/pl352ChalkedName.js:231`, `systems/plants/pl353CleanStamp.js:206`, `systems/plants/pl354GoodHullRate.js:170`, `systems/plants/pl355TheUnit.js:134`, `systems/plants/pl355TheUnit.js:178`, `systems/plants/pl356ParadeBerth.js:201`, `systems/plants/pl357WarmGrid.js:119`, `systems/plants/pl357WarmGrid.js:154`, `systems/plants/pl358ApprenticesReturn.js:227`, `systems/plants/pl358ApprenticesReturn.js:251`, `systems/plants/pl358ApprenticesReturn.js:263`, `systems/plants/pl358ApprenticesReturn.js:281`, `systems/plants/pl359EscortsGift.js:170`, `systems/plants/pl359EscortsGift.js:225`, `systems/plants/pl359EscortsGift.js:262`, `systems/plants/pl360RainCheck.js:126`, `systems/plants/pl360RainCheck.js:159`, `systems/plants/pl360RainCheck.js:181`, `systems/plants/pl360RainCheck.js:188`, `systems/plants/pl361SecondStart.js:135`, `systems/plants/pl361SecondStart.js:184`, `systems/plants/pl362NameOnPlate.js:202`, `systems/plants/pl362NameOnPlate.js:226`, `systems/plants/pl363FamilyRate.js:190`, `systems/plants/pl363FamilyRate.js:234`, `systems/plants/ratRun.js:311`, `systems/plants/redAtHome.js:154`, `systems/plants/redMinute.js:275`, `systems/plants/rescueDividend.js:457`, `systems/plants/sameTimeTomorrowPlant.js:336`, `systems/plants/secondChair.js:149`, `systems/plants/sennaReads.js:245`, `systems/plants/shadowPilotPlant.js:305`, `systems/plants/sharedCab.js:406`, `systems/plants/someonesCourse.js:263`, `systems/plants/spareBed.js:379`, `systems/plants/stillEvenPlant.js:324`, `systems/plants/sweepingLine.js:312`, `systems/plants/theArch.js:246`, `systems/plants/theBrightOne.js:347`, `systems/plants/theOldTrail.js:320`, `systems/plants/theOtherName.js:176`, `systems/plants/theOtherName.js:198`, `systems/plants/theSampler.js:143`, `systems/plants/theWindowThatDoesnt.js:242`, `systems/plants/threeCount.js:273`, `systems/plants/tickingCratePlant.js:366`, `systems/plants/tipJar.js:131`, `systems/plants/tipLine.js:331`, `systems/plants/twoNames.js:218`, `systems/plants/twoRopes.js:273`, `systems/plants/umbrellaCrane.js:387`, `systems/plants/walkingLunch.js:157`, `systems/plants/weldersSparksPlant.js:301`, `systems/plants/windowWarmer.js:149`, `systems/plants/witness.js:180`, `systems/plants/yourBerth.js:149`, `systems/plants/yourBerth.js:182`, `systems/plants/yourWake.js:208`, `systems/quill.js:480`, `systems/receipt.js:111`, `systems/receipt.js:129`, `systems/receipt.js:177`, `systems/rookBooth.js:404`, `systems/rookBooth.js:435`, `systems/scenarioRuntime.js:189`, `systems/shepherd12.js:174`, `systems/slateColumn.js:138`, `systems/slateColumn.js:156`, `systems/slateColumn.js:180`, `systems/special500Director.js:272`, `systems/special500Invoice.js:122`, `systems/special500Question.js:89`, `systems/special500ReadEverything.js:70`, `systems/story.js:589`, `systems/story.js:1412`, `systems/story.js:1440`, `systems/tallyho.js:461`, `systems/tallyho.js:514`, `systems/tallyho.js:662`, `systems/tare.js:129`, `systems/wexTicket.js:121`, `systems/worldClock.js:214`, `ui/station/screens/bar.js:1041` | `audio/audioSystem.js:3266`, `ui/screens/codex.js:1361` |
+| `comms:popup` | `missions/cinderReceivingScene.js:69`, `missions/compostArrivalScene.js:132`, `missions/dioneTargetPractice.js:63`, `missions/furnaceArrivalScene.js:62`, `missions/furnaceCapstan.js:299`, `missions/furnaceCapstan.js:360`, `missions/furnaceCasingReturn.js:113`, `missions/furnaceReceivingLane.js:59`, `missions/lanternWardConversation.js:46`, `missions/lanternWardConversation.js:54`, `missions/weighingWorksite.js:144`, `systems/bellhop.js:140`, `systems/bouncer.js:352`, `systems/bouncer.js:555`, `systems/bouncer.js:571`, `systems/bouncer.js:628`, `systems/bouncer.js:679`, `systems/bouncer.js:710`, `systems/bouncer.js:728`, `systems/careerContracts.js:456`, `systems/careerContracts.js:470`, `systems/careerContracts.js:486`, `systems/coldburnRey.js:64`, `systems/crew.js:250`, `systems/crew.js:361`, `systems/crew.js:382`, `systems/crew.js:507`, `systems/crew.js:523`, `systems/crew.js:539`, `systems/crew.js:561`, `systems/crew.js:570`, `systems/crew.js:590`, `systems/crew.js:614`, `systems/crew.js:623`, `systems/crew.js:646`, `systems/crew.js:667`, `systems/crew.js:692`, `systems/crew.js:712`, `systems/crew.js:741`, `systems/crew.js:771`, `systems/crew.js:788`, `systems/crew.js:800`, `systems/factionPresence.js:817`, `systems/factionPresence.js:1486`, `systems/factionPresence.js:1537`, `systems/factionPresence.js:1552`, `systems/furnaceIntake.js:129`, `systems/furnaceIntake.js:178`, `systems/gateThreeWeir.js:318`, `systems/gateThreeWeir.js:336`, `systems/gravedigger.js:533`, `systems/holdfast.js:163`, `systems/impoundGrudge.js:489`, `systems/kesslerScale.js:267`, `systems/kesslerScale.js:317`, `systems/kesslerScale.js:363`, `systems/lamplighter.js:630`, `systems/mail.js:230`, `systems/memorialThief.js:103`, `systems/missionObjectiveOps.js:286`, `systems/missionObjectiveOps.js:1415`, `systems/missionSpawningOps.js:618`, `systems/missionSpawningOps.js:1001`, `systems/missionSpawningOps.js:1352`, `systems/missionSpawningOps.js:1484`, `systems/missionSpawningOps.js:1498`, `systems/missionSpawningOps.js:1509`, `systems/missionSpawningOps.js:1712`, `systems/missionSpawningOps.js:1774`, `systems/missionStoryOps.js:165`, `systems/missionStoryOps.js:1364`, `systems/missionStoryOps.js:1406`, `systems/missionStoryOps.js:1753`, `systems/missionStoryOps.js:1761`, `systems/missionStoryOps.js:1775`, `systems/missionStoryOps.js:1781`, `systems/missionStoryOps.js:1787`, `systems/missionStoryOps.js:1793`, `systems/missionStoryOps.js:1805`, `systems/missionStoryOps.js:1816`, `systems/missionStoryOps.js:1825`, `systems/missionStoryOps.js:1871`, `systems/missionStoryOps.js:1876`, `systems/missionStoryOps.js:1888`, `systems/missionStoryOps.js:1962`, `systems/missionStoryOps.js:2076`, `systems/missionStoryOps.js:2080`, `systems/missionStoryOps.js:2429`, `systems/missionStoryOps.js:2511`, `systems/missionStoryOps.js:2674`, `systems/missionStoryOps.js:2683`, `systems/missionStoryOps.js:2701`, `systems/missionStoryOps.js:2720`, `systems/missionStoryOps.js:2740`, `systems/missionStoryOps.js:2752`, `systems/missions.js:4885`, `systems/missions.js:5050`, `systems/missions.js:5214`, `systems/missions.js:5224`, `systems/missions.js:5232`, `systems/moistureLoss.js:148`, `systems/mop.js:135`, `systems/onboarding.js:1642`, `systems/onboarding.js:4413`, `systems/onboarding.js:4581`, `systems/plants/afterHoursCoach.js:401`, `systems/plants/anselsDish.js:152`, `systems/plants/borrowedBoost.js:342`, `systems/plants/borrowedLadder.js:146`, `systems/plants/brokenTollPlant.js:303`, `systems/plants/busDoesntMove.js:392`, `systems/plants/busDoesntMove.js:413`, `systems/plants/carriedWord.js:363`, `systems/plants/carriedWord.js:367`, `systems/plants/chalkSeat.js:135`, `systems/plants/chasedThiefPlant.js:356`, `systems/plants/coatRack.js:154`, `systems/plants/coffeeHatch.js:145`, `systems/plants/convoyGodmother.js:368`, `systems/plants/coveredWindow.js:167`, `systems/plants/darkStretchPlant.js:327`, `systems/plants/deadStickPlant.js:272`, `systems/plants/doorstop.js:226`, `systems/plants/doorstop.js:274`, `systems/plants/doorstop.js:291`, `systems/plants/doorstop.js:299`, `systems/plants/ducklings.js:237`, `systems/plants/dutchAfterYou.js:233`, `systems/plants/farBerth.js:372`, `systems/plants/farePool.js:155`, `systems/plants/firstLight.js:359`, `systems/plants/glassPays.js:183`, `systems/plants/goodPatch.js:140`, `systems/plants/goodWord.js:180`, `systems/plants/gullDrone.js:135`, `systems/plants/kidMechanic.js:153`, `systems/plants/kindChecker.js:280`, `systems/plants/lanternLoan.js:137`, `systems/plants/litter.js:152`, `systems/plants/looseBolts.js:153`, `systems/plants/magpieReads.js:151`, `systems/plants/measuringHullPlant.js:317`, `systems/plants/mercies/pl269KindnessLocker.js:237`, `systems/plants/mercies/pl270StashedMedal.js:179`, `systems/plants/mercies/pl270StashedMedal.js:260`, `systems/plants/mercies/pl271MapInTheLid.js:295`, `systems/plants/mercies/pl271MapInTheLid.js:336`, `systems/plants/mercies/pl271MapInTheLid.js:368`, `systems/plants/mercies/pl272ForwardBeacon.js:224`, `systems/plants/mercies/pl272ForwardBeacon.js:238`, `systems/plants/mercies/pl272ForwardBeacon.js:302`, `systems/plants/mercies/pl364KindnessLedger.js:243`, `systems/plants/mercies/pl364KindnessLedger.js:294`, `systems/plants/mercies/pl365LampGarden.js:167`, `systems/plants/mercies/pl365LampGarden.js:242`, `systems/plants/mercies/pl365LampGarden.js:267`, `systems/plants/mercies/pl366RegistryHatch.js:202`, `systems/plants/mercies/pl366RegistryHatch.js:213`, `systems/plants/mercies/pl366RegistryHatch.js:251`, `systems/plants/mercies/pl367LingeringLift.js:254`, `systems/plants/mercies/pl367LingeringLift.js:303`, `systems/plants/mercies/pl367LingeringLift.js:314`, `systems/plants/mercies/pl368ThankYouSlate.js:194`, `systems/plants/mercies/pl368ThankYouSlate.js:204`, `systems/plants/mercies/pl368ThankYouSlate.js:247`, `systems/plants/mercies/pl369LastAllowance.js:192`, `systems/plants/mercies/pl369LastAllowance.js:248`, `systems/plants/mercies/pl369LastAllowance.js:281`, `systems/plants/mercies/pl369LastAllowance.js:295`, `systems/plants/mercies/pl369LastAllowance.js:343`, `systems/plants/mercies/pl370HousewarmingPart.js:162`, `systems/plants/mercies/pl370HousewarmingPart.js:186`, `systems/plants/mercies/pl371LaneTithe.js:183`, `systems/plants/mercies/pl371LaneTithe.js:217`, `systems/plants/mercies/pl372WreckersCourtesy.js:181`, `systems/plants/mercies/pl372WreckersCourtesy.js:205`, `systems/plants/mercies/pl373HearthLamp.js:162`, `systems/plants/mercies/pl373HearthLamp.js:212`, `systems/plants/mistaken.js:256`, `systems/plants/movingHousePlant.js:328`, `systems/plants/nightBell.js:147`, `systems/plants/orphanWreck.js:213`, `systems/plants/orphanWreck.js:240`, `systems/plants/otherSide.js:221`, `systems/plants/otherSide.js:257`, `systems/plants/overtimeMug.js:146`, `systems/plants/ownFaultPlant.js:400`, `systems/plants/paperTrail.js:134`, `systems/plants/paperTrail.js:183`, `systems/plants/pipsCounts.js:248`, `systems/plants/pl104Inventory.js:164`, `systems/plants/pl105Standoff.js:146`, `systems/plants/pl106PartsSled.js:117`, `systems/plants/pl107EmptySlot.js:114`, `systems/plants/pl124ParkedLight.js:224`, `systems/plants/pl124ParkedLight.js:260`, `systems/plants/pl125UnderPaint.js:97`, `systems/plants/pl125UnderPaint.js:130`, `systems/plants/pl126KeepingIt.js:174`, `systems/plants/pl126KeepingIt.js:194`, `systems/plants/pl128TheSurge.js:124`, `systems/plants/pl129SomebodysCrate.js:100`, `systems/plants/pl130TheStamp.js:120`, `systems/plants/pl146FirstCaller.js:253`, `systems/plants/pl147FirstPart.js:136`, `systems/plants/pl148TheCount.js:131`, `systems/plants/pl148TheCount.js:225`, `systems/plants/pl149SeedlingLean.js:164`, `systems/plants/pl150ItsSpot.js:165`, `systems/plants/pl151NoPapers.js:141`, `systems/plants/pl151NoPapers.js:261`, `systems/plants/pl152TheTally.js:122`, `systems/plants/pl152TheTally.js:137`, `systems/plants/pl153TheMinute.js:111`, `systems/plants/pl171RattleInB.js:131`, `systems/plants/pl172ShadeMarket.js:218`, `systems/plants/pl175First.js:203`, `systems/plants/pl175First.js:234`, `systems/plants/pl178SlingshotHour.js:133`, `systems/plants/pl179KesslersNumber.js:102`, `systems/plants/pl180ChalkThief.js:111`, `systems/plants/pl181HotCargo.js:117`, `systems/plants/pl182FlagTruce.js:120`, `systems/plants/pl183TheWeather.js:136`, `systems/plants/pl190DroneRange.js:144`, `systems/plants/pl192AgainMaybe.js:113`, `systems/plants/pl193OneShort.js:209`, `systems/plants/pl195FixedX.js:142`, `systems/plants/pl196MirrorRock.js:141`, `systems/plants/pl196MirrorRock.js:151`, `systems/plants/pl199TheJug.js:118`, `systems/plants/pl200TwoTaps.js:157`, `systems/plants/pl201OddQueue.js:217`, `systems/plants/pl203TheTour.js:185`, `systems/plants/pl204TheHook.js:315`, `systems/plants/pl214PyrrhaBox.js:229`, `systems/plants/pl214PyrrhaBox.js:249`, `systems/plants/pl215SomebodysStall.js:213`, `systems/plants/pl215SomebodysStall.js:234`, `systems/plants/pl216BlueMinute.js:173`, `systems/plants/pl231MarshsLine.js:206`, `systems/plants/pl232TheValidInstruction.js:191`, `systems/plants/pl232TheValidInstruction.js:244`, `systems/plants/pl233TheFreshMark.js:296`, `systems/plants/pl247TheScandal.js:242`, `systems/plants/pl247TheScandal.js:246`, `systems/plants/pl252RegularsHour.js:105`, `systems/plants/pl252RegularsHour.js:117`, `systems/plants/pl253WallDent.js:128`, `systems/plants/pl253WallDent.js:143`, `systems/plants/pl257GutterRun.js:245`, `systems/plants/pl259SpareAndShare.js:245`, `systems/plants/pl259SpareAndShare.js:257`, `systems/plants/pl260FiftiethVisit.js:106`, `systems/plants/pl261OpenTank.js:150`, `systems/plants/pl262GatheredPile.js:235`, `systems/plants/pl267QueuePass.js:227`, `systems/plants/pl333NoQuestionsShelf.js:284`, `systems/plants/pl334WindBreakChain.js:216`, `systems/plants/pl335DawnLine.js:249`, `systems/plants/pl336LampKeeper.js:170`, `systems/plants/pl337HonorUrn.js:187`, `systems/plants/pl338TowPost.js:180`, `systems/plants/pl339SignalMirror.js:192`, `systems/plants/pl340EchoCount.js:197`, `systems/plants/pl341RestringBuoys.js:215`, `systems/plants/pl342BleedVent.js:185`, `systems/plants/pl343LiftBell.js:199`, `systems/plants/pl344NeedsList.js:222`, `systems/plants/pl345KettleWindow.js:187`, `systems/plants/pl346FixedRope.js:215`, `systems/plants/pl347SmallHullDrum.js:221`, `systems/plants/pl348SeamKitchen.js:209`, `systems/plants/pl349MercyTug.js:215`, `systems/plants/pl350KeyWall.js:244`, `systems/plants/pl351SamplePad.js:248`, `systems/plants/pl352ChalkedName.js:232`, `systems/plants/pl353CleanStamp.js:207`, `systems/plants/pl354GoodHullRate.js:170`, `systems/plants/pl355TheUnit.js:134`, `systems/plants/pl355TheUnit.js:178`, `systems/plants/pl356ParadeBerth.js:201`, `systems/plants/pl357WarmGrid.js:119`, `systems/plants/pl357WarmGrid.js:154`, `systems/plants/pl358ApprenticesReturn.js:227`, `systems/plants/pl358ApprenticesReturn.js:251`, `systems/plants/pl358ApprenticesReturn.js:263`, `systems/plants/pl358ApprenticesReturn.js:281`, `systems/plants/pl359EscortsGift.js:170`, `systems/plants/pl359EscortsGift.js:225`, `systems/plants/pl359EscortsGift.js:262`, `systems/plants/pl360RainCheck.js:126`, `systems/plants/pl360RainCheck.js:159`, `systems/plants/pl360RainCheck.js:181`, `systems/plants/pl360RainCheck.js:188`, `systems/plants/pl361SecondStart.js:135`, `systems/plants/pl361SecondStart.js:184`, `systems/plants/pl362NameOnPlate.js:202`, `systems/plants/pl362NameOnPlate.js:226`, `systems/plants/pl363FamilyRate.js:190`, `systems/plants/pl363FamilyRate.js:234`, `systems/plants/ratRun.js:312`, `systems/plants/redAtHome.js:154`, `systems/plants/redMinute.js:276`, `systems/plants/rescueDividend.js:458`, `systems/plants/sameTimeTomorrowPlant.js:337`, `systems/plants/secondChair.js:149`, `systems/plants/sennaReads.js:246`, `systems/plants/shadowPilotPlant.js:306`, `systems/plants/sharedCab.js:407`, `systems/plants/someonesCourse.js:264`, `systems/plants/spareBed.js:380`, `systems/plants/stillEvenPlant.js:325`, `systems/plants/sweepingLine.js:312`, `systems/plants/theArch.js:247`, `systems/plants/theBrightOne.js:348`, `systems/plants/theOldTrail.js:321`, `systems/plants/theOtherName.js:176`, `systems/plants/theOtherName.js:198`, `systems/plants/theSampler.js:143`, `systems/plants/theWindowThatDoesnt.js:243`, `systems/plants/threeCount.js:274`, `systems/plants/tickingCratePlant.js:367`, `systems/plants/tipJar.js:131`, `systems/plants/tipLine.js:332`, `systems/plants/twoNames.js:218`, `systems/plants/twoRopes.js:274`, `systems/plants/umbrellaCrane.js:388`, `systems/plants/walkingLunch.js:157`, `systems/plants/weldersSparksPlant.js:302`, `systems/plants/windowWarmer.js:149`, `systems/plants/witness.js:180`, `systems/plants/yourBerth.js:149`, `systems/plants/yourBerth.js:182`, `systems/plants/yourWake.js:209`, `systems/quill.js:480`, `systems/receipt.js:111`, `systems/receipt.js:129`, `systems/receipt.js:177`, `systems/rookBooth.js:404`, `systems/rookBooth.js:435`, `systems/scenarioRuntime.js:189`, `systems/shepherd12.js:174`, `systems/slateColumn.js:138`, `systems/slateColumn.js:156`, `systems/slateColumn.js:180`, `systems/special500Director.js:272`, `systems/special500Invoice.js:122`, `systems/special500Question.js:89`, `systems/special500ReadEverything.js:70`, `systems/story.js:589`, `systems/story.js:1412`, `systems/story.js:1440`, `systems/tallyho.js:464`, `systems/tallyho.js:517`, `systems/tallyho.js:665`, `systems/tare.js:129`, `systems/wexTicket.js:121`, `systems/worldClock.js:214`, `ui/station/screens/bar.js:1041` | `audio/audioSystem.js:3305`, `ui/screens/codex.js:1361` |
 | `concord:clampAttached` | `systems/faction_concord.js:270` | — |
 | `concord:clampReleased` | `systems/faction_concord.js:246` | — |
 | `concord:formationLocked` | `systems/faction_concord.js:209` | — |
@@ -394,26 +398,26 @@
 | `contactHail:handoff` | `systems/scanner.js:1879` | — |
 | `contactHail:offer` | `systems/scanner.js:1844`, `systems/scanner.js:1922`, `systems/scanner.js:2179` | — |
 | `contactHail:request` | `ui/commsRadial.js:598`, `ui/contactHailPrompt.js:293` | `systems/scanner.js:1128`, `systems/special500Question.js:104` |
-| `contactHail:response` | `systems/scanner.js:1827`, `systems/scanner.js:1947`, `systems/scanner.js:2007` | `systems/traffic.js:1890` |
+| `contactHail:response` | `systems/scanner.js:1827`, `systems/scanner.js:1947`, `systems/scanner.js:2007` | `systems/traffic.js:1892` |
 | `contraband:bribe` | `systems/encounterScripts.js:432` | `systems/economy.js:1836` |
 | `contraband:scanned` | `systems/economy.js:5703` | `systems/encounterDirector.js:387`, `systems/factions.js:527`, `systems/heat.js:382`, `systems/lawSecurity.js:436`, `systems/lawSecurity.js:455`, `ui/customsPrompt.js:60` |
-| `contract:clauseBroken` | `systems/contractClauses.js:787` | `systems/missions.js:934` |
-| `contract:clauseHonored` | `systems/contractClauses.js:706`, `systems/missions.js:5136` | `systems/contractClauses.js:385` |
-| `contract:clauseSettledKill` | `systems/contractClauses.js:563` | `systems/missions.js:807` |
+| `contract:clauseBroken` | `systems/contractClauses.js:787` | `systems/missions.js:1014` |
+| `contract:clauseHonored` | `systems/contractClauses.js:706`, `systems/missions.js:5246` | `systems/contractClauses.js:385` |
+| `contract:clauseSettledKill` | `systems/contractClauses.js:563` | `systems/missions.js:873` |
 | `convoyRaid:command` | `features/convoyRaid/interactions.js:95` | — |
 | `countermeasure:denied` | `systems/countermeasures.js:572` | — |
 | `countermeasure:deployed` | `systems/countermeasures.js:554` | `render/shipMicroMotion.js:1773` |
-| `counterplay:encountered` | `ai/counterplay/adventure.js:82` | `ui/toasts.js:722` |
+| `counterplay:encountered` | `ai/counterplay/adventure.js:82` | `ui/toasts.js:766` |
 | `counterweightCircuit:action` | `features/counterweightCircuit/prompts.js:61` | — |
 | `counterweightCircuit:attemptStarted` | `features/counterweightCircuit/runtime.js:150` | — |
-| `counterweightCircuit:close` | `features/counterweightCircuit/runtime.js:307` | `ui/screens/missionLog.js:2768` |
+| `counterweightCircuit:close` | `features/counterweightCircuit/runtime.js:307` | `ui/screens/missionLog.js:2771` |
 | `counterweightCircuit:discovered` | `features/counterweightCircuit/runtime.js:506` | — |
 | `counterweightCircuit:offer` | `features/counterweightCircuit/runtime.js:273` | — |
-| `counterweightCircuit:view` | `features/counterweightCircuit/runtime.js:460` | `ui/screens/missionLog.js:2767` |
+| `counterweightCircuit:view` | `features/counterweightCircuit/runtime.js:460` | `ui/screens/missionLog.js:2770` |
 | `craft:cancelled` | `systems/crafting.js:388` | — |
 | `craft:complete` | `systems/crafting.js:357`, `systems/crafting.js:429` | `ui/station/screens/industry.js:747` |
-| `craft:queueChanged` | `systems/crafting.js:218`, `systems/crafting.js:242`, `systems/crafting.js:367`, `systems/crafting.js:389` | `render/authoredMotion.js:1181`, `systems/onboarding.js:1005`, `ui/station/screens/industry.js:747` |
-| `credits:changed` | `systems/economy.js:4245`, `systems/economy.js:4295`, `systems/economy.js:4380`, `systems/economy.js:4392` | `audio/audioSystem.js:3096`, `balance/hunterPublicRoute.js:469`, `ui/commandBar.js:257` |
+| `craft:queueChanged` | `systems/crafting.js:218`, `systems/crafting.js:242`, `systems/crafting.js:367`, `systems/crafting.js:389` | `render/authoredMotion.js:1181`, `systems/onboarding.js:1018`, `ui/station/screens/industry.js:747` |
+| `credits:changed` | `systems/economy.js:4245`, `systems/economy.js:4295`, `systems/economy.js:4380`, `systems/economy.js:4392` | `audio/audioSystem.js:3135`, `balance/hunterPublicRoute.js:469`, `ui/commandBar.js:257` |
 | `crew:decide` | `ui/crewPrompt.js:83` | `systems/crew.js:94` |
 | `crew:decisionOffer` | `systems/crew.js:309` | `ui/crewPrompt.js:95` |
 | `crew:decline` | `ui/crewPrompt.js:49` | `systems/crew.js:84` |
@@ -431,15 +435,15 @@
 | `crew:strike` | `systems/crew.js:542` | — |
 | `crew:strikeSettled` | `systems/crew.js:593` | — |
 | `crew:wagesPaid` | `systems/crew.js:505` | — |
-| `cruise:charging` | `systems/cruise.js:183` | `render/vfx.js:3107`, `systems/presentationOrchestrator.js:187` |
-| `cruise:dropped` | `systems/cruise.js:249` | `audio/audioSystem.js:3254`, `render/authoredMotion.js:1188`, `render/vfx.js:3109`, `systems/presentationOrchestrator.js:189` |
-| `cruise:engaged` | `systems/cruise.js:138` | `audio/audioSystem.js:3250`, `render/vfx.js:3108`, `systems/presentationOrchestrator.js:188` |
+| `cruise:charging` | `systems/cruise.js:183` | `render/vfx.js:3119`, `systems/presentationOrchestrator.js:187` |
+| `cruise:dropped` | `systems/cruise.js:249` | `audio/audioSystem.js:3293`, `render/authoredMotion.js:1188`, `render/vfx.js:3121`, `systems/presentationOrchestrator.js:189` |
+| `cruise:engaged` | `systems/cruise.js:138` | `audio/audioSystem.js:3289`, `render/vfx.js:3120`, `systems/presentationOrchestrator.js:188` |
 | `cruise:snareRequest` | `systems/encounterScripts.js:612` | `render/authoredMotion.js:1187`, `systems/cruise.js:72` |
-| `cruise:snared` | `systems/cruise.js:248` | `audio/audioSystem.js:3258` |
+| `cruise:snared` | `systems/cruise.js:248` | `audio/audioSystem.js:3297` |
 | `cruise:wrestleEscaped` | `systems/cruise.js:150` | — |
 | `cruise:wrestleStarted` | `systems/cruise.js:80` | — |
-| `custody:aftermathChanged` | — | `systems/combatOutcome.js:293` |
-| `custody:aftermathSettled` | — | `systems/aftermathWrecks.js:1287` |
+| `custody:aftermathChanged` | — | `systems/combatOutcome.js:297` |
+| `custody:aftermathSettled` | — | `systems/aftermathWrecks.js:1301` |
 | `customs:breakScan` | `systems/encounterScripts.js:407` | `render/authoredMotion.js:1199` |
 | `customs:massSlipFiled` | — | `systems/economyContracts.js:270` |
 | `customs:scanAborted` | — | `ui/customsPrompt.js:61` |
@@ -447,8 +451,8 @@
 | `customs:submit` | `systems/encounterScripts.js:443` | `render/authoredMotion.js:1198`, `systems/lawSecurity.js:451` |
 | `customs:trustMarked` | — | `ui/customsPrompt.js:62` |
 | `customs:weirBolt` | — | `systems/economy.js:1835`, `systems/heat.js:397` |
-| `danger:miningNoise` | `systems/mining.js:3033` | `audio/audioSystem.js:3041` |
-| `day:tick` | `core/coreSystem.js:645` | `systems/crew.js:121`, `systems/custodyConsequences.js:58`, `systems/economy.js:1719`, `systems/encounterDirector.js:356`, `systems/factions.js:559`, `systems/impoundLot.js:1095`, `systems/sectorSim.js:128` |
+| `danger:miningNoise` | `systems/mining.js:3050` | `audio/audioSystem.js:3080` |
+| `day:tick` | `core/coreSystem.js:710` | `systems/crew.js:121`, `systems/custodyConsequences.js:58`, `systems/economy.js:1719`, `systems/encounterDirector.js:356`, `systems/factions.js:559`, `systems/impoundLot.js:1095`, `systems/sectorSim.js:128` |
 | `debug:invulnerable` | `ui/screens/crucibleLabControls.js:233` | `systems/combat.js:472` |
 | `debug:refillPlayer` | `ui/screens/crucibleLabControls.js:224` | `systems/combat.js:471` |
 | `deniable:fenceBurned` | — | `systems/fenceDesk.js:52` |
@@ -457,69 +461,70 @@
 | `derby:finished` | `data/encounters/706-breaker-derby.js:213` | — |
 | `derby:slam` | `data/encounters/706-breaker-derby.js:143`, `data/encounters/706-breaker-derby.js:165` | — |
 | `detonator:detonated` | `systems/impulseCharges.js:672` | — |
-| `difficulty:pinReleased` | `systems/difficultyDirector.js:359` | `systems/combatOutcome.js:300` |
+| `difficulty:pinReleased` | `systems/difficultyDirector.js:359` | `systems/combatOutcome.js:304` |
 | `difficulty:stanceChanged` | `systems/difficultyDirector.js:410` | — |
-| `discovery:chartFiled` | `systems/world.js:5582` | — |
-| `discovery:plateUnlocked` | `systems/world.js:1187`, `systems/world.js:7587`, `systems/world.js:8224`, `systems/world.js:8850` | `audio/audioSystem.js:3149`, `ui/discoveryPlate.js:216`, `ui/screens/codex.js:1363` |
-| `distress:call` | `systems/trafficRoleOps.js:264`, `systems/trafficRoleOps.js:317` | `audio/audioSystem.js:3009` |
+| `discovery:chartFiled` | `systems/world.js:5892` | — |
+| `discovery:plateUnlocked` | `systems/world.js:1206`, `systems/world.js:7969`, `systems/world.js:8612`, `systems/world.js:9238` | `audio/audioSystem.js:3188`, `ui/discoveryPlate.js:216`, `ui/screens/codex.js:1363` |
+| `distress:call` | `systems/trafficRoleOps.js:264`, `systems/trafficRoleOps.js:317` | `audio/audioSystem.js:3048` |
 | `distress:rescued` | `systems/encounterScripts.js:827` | `systems/factions.js:537` |
-| `dock:attempt` | `ui/input.js:376` | `ui/dockDenyBanner.js:54` |
-| `dock:committed` | `ui/dockStateCommit.js:19` | `systems/encounterDirector.js:436`, `systems/special500Confessional.js:134`, `ui/alerts.js:567` |
+| `dock:attempt` | `ui/input.js:378` | `ui/dockDenyBanner.js:54` |
+| `dock:committed` | `ui/dockStateCommit.js:19` | `systems/encounterDirector.js:436`, `systems/special500Confessional.js:134`, `ui/alerts.js:605` |
 | `dock:denied` | `ui/dockDenyBanner.js:80` | `render/authoredMotion.js:1230` |
-| `dock:docked` | `balance/careerCohorts.js:533`, `balance/careerCohorts.js:2008`, `balance/careerCohorts.js:2069`, `balance/careerCohorts.js:2338`, `balance/courierPublicRoute.js:595`, `balance/courierPublicRoute.js:800`, `balance/courierPublicRoute.js:821`, `balance/courierPublicRoute.js:929`, `balance/courierPublicRoute.js:1068`, `balance/courierPublicRoute.js:1114`, `balance/courierPublicRoute.js:1250`, `balance/courierPublicRoute.js:1308`, `balance/courierPublicRoute.js:1429`, `balance/courierPublicRoute.js:1463`, `balance/courierPublicRoute.js:1551`, `balance/courierPublicRoute.js:1617`, `balance/hunterPublicRoute.js:656`, `balance/hunterPublicRoute.js:774`, `balance/hunterPublicRoute.js:867`, `balance/hunterPublicRoute.js:968`, `balance/hunterPublicRoute.js:1059`, `balance/prospectorPublicRoute.js:557`, `balance/prospectorPublicRoute.js:831`, `balance/prospectorPublicRoute.js:917`, `balance/prospectorPublicRoute.js:1121`, `balance/prospectorPublicRoute.js:1250`, `systems/world.js:8079`, `ui/input.js:380` | `audio/audioSystem.js:3152`, `careers/origins/haulerOriginSystem.js:62`, `careers/origins/prospectorOrigin.js:630`, `render/authoredMotion.js:1228`, `render/infrastructureMotion.js:290`, `render/shipMicroMotion.js:1763`, `save/saveSystem.js:575`, `systems/achievements.js:1204`, `systems/aftermathWrecks.js:1284`, `systems/autoTargetAssist.js:148`, `systems/barkDirector.js:959`, `systems/combat.js:422`, `systems/crew.js:126`, `systems/economy.js:1794`, `systems/economyContracts.js:250`, `systems/encounterDirector.js:435`, `systems/factionPresence.js:514`, `systems/fenceDesk.js:49`, `systems/impoundLot.js:1096`, `systems/lawSecurity.js:446`, `systems/lawSecurity.js:450`, `systems/mining.js:308`, `systems/mining.js:310`, `systems/missions.js:683`, `systems/onboarding.js:714`, `systems/onboarding.js:971`, `systems/pirateDisguise.js:436`, `systems/scanner.js:1135`, `systems/shieldPylons.js:247`, `systems/special500CollectiveHours.js:39`, `systems/special500DockLedger.js:124`, `systems/special500ForgeKaraoke.js:45`, `systems/special500HullLog.js:45`, `systems/special500Invoice.js:73`, `systems/stationServices.js:329`, `systems/story.js:233`, `systems/world.js:888`, `systems/world.js:947`, `ui/cargoConscience.js:144`, `ui/causeLedger.js:235`, `ui/comms.js:153`, `ui/contextWheel.js:380`, `ui/dockDenyBanner.js:55`, `ui/impoundPayPrompt.js:73`, `ui/impoundPayPrompt.js:78`, `ui/impoundPayPrompt.js:89`, `ui/priceForecast.js:86`, `ui/promptDeck.js:944`, `ui/securityReadout.js:158`, `ui/station/screens/bar.js:208`, `ui/uiRoot.js:1609`, `ui/watchlistHud.js:90`, `ui/wingmanRadial.js:357`, `ui/worldObjectInteraction.js:470`, `ui/wreckChoicePrompt.js:61` |
+| `dock:docked` | `balance/careerCohorts.js:533`, `balance/careerCohorts.js:2008`, `balance/careerCohorts.js:2069`, `balance/careerCohorts.js:2338`, `balance/courierPublicRoute.js:595`, `balance/courierPublicRoute.js:800`, `balance/courierPublicRoute.js:821`, `balance/courierPublicRoute.js:929`, `balance/courierPublicRoute.js:1068`, `balance/courierPublicRoute.js:1114`, `balance/courierPublicRoute.js:1250`, `balance/courierPublicRoute.js:1308`, `balance/courierPublicRoute.js:1429`, `balance/courierPublicRoute.js:1463`, `balance/courierPublicRoute.js:1551`, `balance/courierPublicRoute.js:1617`, `balance/hunterPublicRoute.js:656`, `balance/hunterPublicRoute.js:774`, `balance/hunterPublicRoute.js:867`, `balance/hunterPublicRoute.js:968`, `balance/hunterPublicRoute.js:1059`, `balance/prospectorPublicRoute.js:557`, `balance/prospectorPublicRoute.js:831`, `balance/prospectorPublicRoute.js:917`, `balance/prospectorPublicRoute.js:1121`, `balance/prospectorPublicRoute.js:1250`, `systems/world.js:8467`, `ui/input.js:382` | `audio/audioSystem.js:3191`, `careers/origins/haulerOriginSystem.js:62`, `careers/origins/prospectorOrigin.js:630`, `render/authoredMotion.js:1228`, `render/infrastructureMotion.js:290`, `render/shipMicroMotion.js:1763`, `save/saveSystem.js:575`, `systems/achievements.js:1204`, `systems/aftermathWrecks.js:1298`, `systems/autoTargetAssist.js:148`, `systems/barkDirector.js:959`, `systems/combat.js:422`, `systems/crew.js:126`, `systems/economy.js:1794`, `systems/economyContracts.js:250`, `systems/encounterDirector.js:435`, `systems/factionPresence.js:514`, `systems/fenceDesk.js:49`, `systems/impoundLot.js:1096`, `systems/lawSecurity.js:446`, `systems/lawSecurity.js:450`, `systems/mining.js:312`, `systems/mining.js:314`, `systems/missions.js:749`, `systems/onboarding.js:727`, `systems/onboarding.js:984`, `systems/pirateDisguise.js:436`, `systems/scanner.js:1135`, `systems/shieldPylons.js:247`, `systems/special500CollectiveHours.js:39`, `systems/special500DockLedger.js:124`, `systems/special500ForgeKaraoke.js:45`, `systems/special500HullLog.js:45`, `systems/special500Invoice.js:73`, `systems/stationServices.js:329`, `systems/story.js:233`, `systems/world.js:907`, `systems/world.js:966`, `ui/cargoConscience.js:144`, `ui/causeLedger.js:235`, `ui/comms.js:153`, `ui/contextWheel.js:383`, `ui/dockDenyBanner.js:55`, `ui/impoundPayPrompt.js:73`, `ui/impoundPayPrompt.js:78`, `ui/impoundPayPrompt.js:89`, `ui/input.js:425`, `ui/priceForecast.js:86`, `ui/promptDeck.js:961`, `ui/securityReadout.js:158`, `ui/station/screens/bar.js:208`, `ui/uiRoot.js:1648`, `ui/watchlistHud.js:90`, `ui/wingmanRadial.js:357`, `ui/worldObjectInteraction.js:519`, `ui/wreckChoicePrompt.js:61` |
 | `dock:launder` | `ui/station/launderService.js:22`, `ui/station/launderService.js:73` | `systems/pirateDisguise.js:437` |
-| `dock:range` | `core/physics.js:1721`, `core/physics.js:1725`, `ui/input.js:349` | `render/authoredMotion.js:1227`, `systems/onboarding.js:875`, `systems/plants/doorstop.js:124`, `systems/plants/litter.js:74`, `systems/plants/paperTrail.js:75`, `systems/plants/redAtHome.js:81`, `systems/plants/theOtherName.js:91`, `systems/plants/twoNames.js:100`, `systems/plants/witness.js:93`, `systems/plants/yourBerth.js:89`, `ui/alerts.js:541`, `ui/input.js:355` |
-| `dock:undocked` | `balance/careerCohorts.js:534`, `balance/careerCohorts.js:2013`, `balance/careerCohorts.js:2074`, `balance/careerCohorts.js:2415`, `balance/courierPublicRoute.js:239`, `balance/hunterPublicRoute.js:174`, `balance/prospectorPublicRoute.js:273`, `ui/input.js:1236`, `ui/station/stationApp.js:1299` | `audio/audioSystem.js:3157`, `render/authoredMotion.js:1229`, `render/infrastructureMotion.js:291`, `render/shipMicroMotion.js:1764`, `render/vfx.js:2919`, `save/saveSystem.js:576`, `systems/combat.js:427`, `systems/economy.js:1808`, `systems/economyContracts.js:280`, `systems/factionPresence.js:515`, `systems/missions.js:715`, `systems/moralTrap.js:188`, `systems/onboarding.js:801`, `systems/pirateDisguise.js:440`, `systems/presentationAdapters.js:345`, `systems/special500Sommelier.js:27`, `systems/stationServices.js:330`, `systems/wingmen.js:175`, `systems/world.js:889`, `ui/comms.js:154`, `ui/impoundPayPrompt.js:76`, `ui/impoundPayPrompt.js:81`, `ui/input.js:363`, `ui/moralTrapPrompt.js:42`, `ui/uiRoot.js:1682`, `ui/wreckChoicePrompt.js:66` |
+| `dock:range` | `core/physics.js:1937`, `core/physics.js:1941`, `ui/input.js:351` | `render/authoredMotion.js:1227`, `systems/onboarding.js:888`, `systems/plants/doorstop.js:124`, `systems/plants/litter.js:74`, `systems/plants/paperTrail.js:75`, `systems/plants/redAtHome.js:81`, `systems/plants/theOtherName.js:91`, `systems/plants/twoNames.js:100`, `systems/plants/witness.js:93`, `systems/plants/yourBerth.js:89`, `ui/alerts.js:579`, `ui/input.js:357` |
+| `dock:undocked` | `balance/careerCohorts.js:534`, `balance/careerCohorts.js:2013`, `balance/careerCohorts.js:2074`, `balance/careerCohorts.js:2415`, `balance/courierPublicRoute.js:239`, `balance/hunterPublicRoute.js:174`, `balance/prospectorPublicRoute.js:273`, `ui/input.js:1252`, `ui/station/stationApp.js:1301` | `audio/audioSystem.js:3196`, `render/authoredMotion.js:1229`, `render/infrastructureMotion.js:291`, `render/shipMicroMotion.js:1764`, `render/vfx.js:2931`, `save/saveSystem.js:576`, `systems/combat.js:427`, `systems/economy.js:1808`, `systems/economyContracts.js:280`, `systems/factionPresence.js:515`, `systems/missions.js:781`, `systems/moralTrap.js:188`, `systems/onboarding.js:814`, `systems/pirateDisguise.js:440`, `systems/presentationAdapters.js:345`, `systems/special500Sommelier.js:27`, `systems/stationServices.js:330`, `systems/wingmen.js:175`, `systems/world.js:908`, `ui/comms.js:154`, `ui/impoundPayPrompt.js:76`, `ui/impoundPayPrompt.js:81`, `ui/input.js:365`, `ui/moralTrapPrompt.js:42`, `ui/uiRoot.js:1721`, `ui/wreckChoicePrompt.js:66` |
 | `docket:delivered` | `systems/docket.js:219` | — |
 | `docket:met` | `systems/docket.js:182`, `systems/docket.js:187` | — |
 | `docket:voice` | `systems/docket.js:154` | — |
 | `drift:claimContested` | `systems/faction_drift.js:244` | — |
 | `drift:claimLifted` | `systems/faction_drift.js:217` | — |
 | `drift:claimStaked` | `systems/faction_drift.js:240` | — |
-| `drill:approachCancelled` | `systems/tetherGameplay.js:1726` | `ui/uiRoot.js:1751` |
-| `drill:approachCompleted` | `systems/tetherGameplay.js:1711`, `ui/sandbox/sandboxSetup.js:743` | `ui/uiRoot.js:1735` |
-| `drill:approachRequested` | `ui/fieldBuild/fieldBuildMode.js:526`, `ui/input.js:1143` | `systems/tetherGameplay.js:374` |
-| `drill:approachStarted` | `systems/tetherGameplay.js:1603`, `ui/sandbox/sandboxSetup.js:742` | `ui/asteroid/asteroidScreen.js:2754`, `ui/uiRoot.js:1722` |
-| `drill:backblast` | `systems/drill.js:1576` | `ui/asteroid/asteroidScreen.js:2656` |
-| `drill:beginRejected` | `systems/input.js:1307` | `ui/asteroid/asteroidScreen.js:2613` |
-| `drill:break` | `systems/asteroidSites.js:3728`, `systems/drill.js:1502`, `systems/drill.js:1530`, `systems/drill.js:1675`, `systems/drill.js:2016` | `audio/audioSystem.js:3485`, `render/authoredMotion.js:1192`, `systems/asteroidSites.js:724`, `systems/presentationOrchestrator.js:237`, `ui/asteroid/asteroidScreen.js:2683`, `ui/screens/drill.js:2008` |
-| `drill:cargoFull` | `systems/drill.js:234`, `systems/drill.js:330` | `audio/audioSystem.js:3487`, `systems/presentationOrchestrator.js:244`, `ui/asteroid/asteroidScreen.js:2640`, `ui/screens/drill.js:1979` |
-| `drill:caveIn` | `systems/drill.js:1695` | `audio/audioSystem.js:3493`, `systems/asteroidSites.js:744`, `ui/asteroid/asteroidScreen.js:2666` |
-| `drill:chargeArm` | `systems/drill.js:1383`, `systems/drill.js:1393`, `systems/drill.js:1415` | — |
-| `drill:chargeBlast` | `systems/drill.js:1582` | `audio/audioSystem.js:3490`, `systems/asteroidSites.js:784`, `ui/asteroid/asteroidScreen.js:2649` |
-| `drill:chargePlanted` | `systems/drill.js:1456` | `audio/audioSystem.js:3489`, `systems/asteroidSites.js:783`, `ui/asteroid/asteroidScreen.js:2644` |
-| `drill:chargeTick` | `systems/drill.js:1761` | `audio/audioSystem.js:3491` |
-| `drill:end` | `systems/drill.js:1025` | `audio/audioSystem.js:3501`, `render/authoredMotion.js:1193`, `systems/asteroidSites.js:786`, `systems/faction_pitborn.js:645`, `systems/presentationOrchestrator.js:245` |
-| `drill:gasHit` | `systems/drill.js:1552`, `systems/drill.js:2045` | `audio/audioSystem.js:3486`, `systems/presentationOrchestrator.js:239`, `ui/asteroid/asteroidScreen.js:2627`, `ui/screens/drill.js:1908` |
-| `drill:gasVent` | `systems/drill.js:1501` | `audio/audioSystem.js:3494`, `systems/asteroidSites.js:759`, `ui/asteroid/asteroidScreen.js:2672` |
-| `drill:retry` | `systems/drill.js:1074` | `systems/presentationOrchestrator.js:246` |
-| `drill:rockCreak` | `systems/drill.js:1644` | `audio/audioSystem.js:3492`, `ui/asteroid/asteroidScreen.js:2660` |
-| `drill:rockDepleted` | `systems/drill.js:250`, `systems/drill.js:279`, `systems/drill.js:339`, `systems/drill.js:987` | `audio/audioSystem.js:3488`, `ui/asteroid/asteroidScreen.js:2637`, `ui/screens/drill.js:1970` |
-| `drill:scanPulse` | `systems/drill.js:1153` | `audio/audioSystem.js:3495`, `systems/asteroidSites.js:810`, `systems/presentationOrchestrator.js:235`, `ui/asteroid/asteroidScreen.js:2677`, `ui/screens/drill.js:1996` |
-| `drill:spark` | `systems/drill.js:1984` | `audio/audioSystem.js:3484`, `systems/presentationOrchestrator.js:236`, `ui/asteroid/asteroidScreen.js:2688`, `ui/screens/drill.js:2029` |
-| `drill:start` | `systems/drill.js:978` | `audio/audioSystem.js:3500`, `render/authoredMotion.js:1191`, `systems/asteroidSites.js:716`, `systems/onboarding.js:976`, `systems/presentationOrchestrator.js:234`, `ui/asteroid/asteroidScreen.js:2616` |
-| `drill:warn` | `systems/drill.js:235`, `systems/drill.js:257`, `systems/drill.js:298`, `systems/drill.js:331`, `systems/drill.js:993`, `systems/drill.js:998`, `systems/drill.js:1426`, `systems/drill.js:1645`, `systems/drill.js:1843`, `systems/drill.js:1873`, `systems/drill.js:1896`, `systems/drill.js:1917` | `audio/audioSystem.js:3496`, `systems/presentationOrchestrator.js:233`, `ui/asteroid/asteroidRenderer3d.js:7485`, `ui/asteroid/asteroidScreen.js:2633`, `ui/screens/drill.js:1936` |
-| `drill:yield` | `systems/drill.js:277`, `systems/drill.js:326` | `audio/audioSystem.js:3481`, `systems/missions.js:786`, `systems/presentationOrchestrator.js:238`, `ui/asteroid/asteroidScreen.js:2619`, `ui/screens/drill.js:1886` |
+| `drill:approachCancelled` | `systems/tetherGameplay.js:1800` | `ui/uiRoot.js:1790` |
+| `drill:approachCompleted` | `systems/tetherGameplay.js:1785`, `ui/sandbox/sandboxSetup.js:750` | `ui/uiRoot.js:1774` |
+| `drill:approachRequested` | `ui/fieldBuild/fieldBuildMode.js:565`, `ui/input.js:1145`, `ui/input.js:1159` | `systems/tetherGameplay.js:381` |
+| `drill:approachStarted` | `systems/tetherGameplay.js:1672`, `ui/sandbox/sandboxSetup.js:749` | `ui/asteroid/asteroidScreen.js:2894`, `ui/uiRoot.js:1761` |
+| `drill:backblast` | `systems/drill.js:1601` | `systems/missions.js:945`, `ui/asteroid/asteroidScreen.js:2788` |
+| `drill:beginRejected` | `systems/input.js:1349` | `ui/asteroid/asteroidScreen.js:2732` |
+| `drill:break` | `systems/asteroidSites.js:3785`, `systems/drill.js:1527`, `systems/drill.js:1555`, `systems/drill.js:1700`, `systems/drill.js:2047` | `audio/audioSystem.js:3524`, `render/authoredMotion.js:1192`, `systems/asteroidSites.js:726`, `systems/missions.js:943`, `systems/presentationOrchestrator.js:237`, `ui/asteroid/asteroidScreen.js:2823`, `ui/screens/drill.js:2008` |
+| `drill:cargoFull` | `systems/drill.js:254`, `systems/drill.js:350` | `audio/audioSystem.js:3526`, `systems/presentationOrchestrator.js:244`, `ui/asteroid/asteroidScreen.js:2772`, `ui/screens/drill.js:1979` |
+| `drill:caveIn` | `systems/drill.js:1720` | `audio/audioSystem.js:3532`, `systems/asteroidSites.js:746`, `ui/asteroid/asteroidScreen.js:2798` |
+| `drill:chargeArm` | `systems/drill.js:1408`, `systems/drill.js:1418`, `systems/drill.js:1440` | — |
+| `drill:chargeBlast` | `systems/drill.js:1607` | `audio/audioSystem.js:3529`, `systems/asteroidSites.js:786`, `ui/asteroid/asteroidScreen.js:2781` |
+| `drill:chargePlanted` | `systems/drill.js:1481` | `audio/audioSystem.js:3528`, `systems/asteroidSites.js:785`, `ui/asteroid/asteroidScreen.js:2776` |
+| `drill:chargeTick` | `systems/drill.js:1786` | `audio/audioSystem.js:3530` |
+| `drill:end` | `systems/drill.js:1050` | `audio/audioSystem.js:3541`, `render/authoredMotion.js:1193`, `systems/asteroidSites.js:788`, `systems/faction_pitborn.js:645`, `systems/presentationOrchestrator.js:245` |
+| `drill:fill` | `systems/asteroidSites.js:1561` | `audio/audioSystem.js:3534`, `ui/asteroid/asteroidScreen.js:2806` |
+| `drill:gasHit` | `systems/drill.js:1577`, `systems/drill.js:2076` | `audio/audioSystem.js:3525`, `systems/missions.js:944`, `systems/presentationOrchestrator.js:239`, `ui/asteroid/asteroidScreen.js:2759`, `ui/screens/drill.js:1908` |
+| `drill:gasVent` | `systems/drill.js:1526` | `audio/audioSystem.js:3533`, `systems/asteroidSites.js:761`, `ui/asteroid/asteroidScreen.js:2812` |
+| `drill:retry` | `systems/drill.js:1099` | `systems/presentationOrchestrator.js:246` |
+| `drill:rockCreak` | `systems/drill.js:1669` | `audio/audioSystem.js:3531`, `ui/asteroid/asteroidScreen.js:2792` |
+| `drill:rockDepleted` | `systems/drill.js:270`, `systems/drill.js:299`, `systems/drill.js:359`, `systems/drill.js:1012` | `audio/audioSystem.js:3527`, `ui/asteroid/asteroidScreen.js:2769`, `ui/screens/drill.js:1970` |
+| `drill:scanPulse` | `systems/drill.js:1178` | `audio/audioSystem.js:3535`, `systems/asteroidSites.js:812`, `systems/presentationOrchestrator.js:235`, `ui/asteroid/asteroidScreen.js:2817`, `ui/screens/drill.js:1996` |
+| `drill:spark` | `systems/drill.js:2015` | `audio/audioSystem.js:3523`, `systems/presentationOrchestrator.js:236`, `ui/asteroid/asteroidScreen.js:2828`, `ui/screens/drill.js:2029` |
+| `drill:start` | `systems/drill.js:1003` | `audio/audioSystem.js:3540`, `render/authoredMotion.js:1191`, `systems/asteroidSites.js:718`, `systems/onboarding.js:989`, `systems/presentationOrchestrator.js:234`, `ui/asteroid/asteroidScreen.js:2735` |
+| `drill:warn` | `systems/drill.js:255`, `systems/drill.js:277`, `systems/drill.js:318`, `systems/drill.js:351`, `systems/drill.js:1018`, `systems/drill.js:1023`, `systems/drill.js:1451`, `systems/drill.js:1670`, `systems/drill.js:1869`, `systems/drill.js:1904`, `systems/drill.js:1927`, `systems/drill.js:1948` | `audio/audioSystem.js:3536`, `systems/presentationOrchestrator.js:233`, `ui/asteroid/asteroidRenderer3d.js:7587`, `ui/asteroid/asteroidScreen.js:2765`, `ui/screens/drill.js:1936` |
+| `drill:yield` | `systems/drill.js:297`, `systems/drill.js:346` | `audio/audioSystem.js:3520`, `systems/missions.js:852`, `systems/missions.js:942`, `systems/presentationOrchestrator.js:238`, `ui/asteroid/asteroidScreen.js:2751`, `ui/screens/drill.js:1886` |
 | `drone:grindStart` | `systems/automation.js:1178` | `render/authoredMotion.js:1177` |
 | `drone:grindStop` | — | `render/authoredMotion.js:1178` |
-| `dyingHull:begin` | `systems/dyingHull.js:356` | `render/vfx.js:3012` |
-| `dyingHull:lost` | `systems/dyingHull.js:267`, `systems/dyingHull.js:416` | `render/vfx.js:3014` |
-| `dyingHull:ruptured` | `systems/dyingHull.js:506` | `render/vfx.js:3013` |
+| `dyingHull:begin` | `systems/dyingHull.js:356` | `render/vfx.js:3024` |
+| `dyingHull:lost` | `systems/dyingHull.js:267`, `systems/dyingHull.js:416` | `render/vfx.js:3026` |
+| `dyingHull:ruptured` | `systems/dyingHull.js:506` | `render/vfx.js:3025` |
 | `ecology:claimCrew` | `systems/alienEcology.js:3094` | — |
 | `ecology:coherence` | `systems/alienEcology.js:1694` | — |
 | `ecology:collar` | `systems/alienEcology.js:798` | — |
-| `ecology:evidence` | `systems/precursorMachines.js:134`, `systems/precursorMachines.js:135`, `systems/precursorMachines.js:417`, `systems/precursorMachines.js:803`, `systems/precursorMachines.js:835`, `systems/precursorMachines.js:1223`, `world/motionFossil.js:256`, `world/veilRayNursery.js:158` | `systems/world.js:950` |
-| `ecology:factionOutcome` | `systems/economy.js:3101`, `systems/economy.js:3408` | `systems/world.js:949` |
+| `ecology:evidence` | `systems/precursorMachines.js:134`, `systems/precursorMachines.js:135`, `systems/precursorMachines.js:417`, `systems/precursorMachines.js:803`, `systems/precursorMachines.js:835`, `systems/precursorMachines.js:1223`, `world/motionFossil.js:256`, `world/veilRayNursery.js:158` | `systems/world.js:969` |
+| `ecology:factionOutcome` | `systems/economy.js:3101`, `systems/economy.js:3408` | `systems/world.js:968` |
 | `ecology:fossilRecorded` | `world/motionFossil.js:231` | — |
 | `ecology:fossilSettled` | `world/motionFossil.js:257` | — |
-| `ecology:quarantinePulse` | `systems/precursorMachines.js:753` | `systems/world.js:951` |
-| `ecology:relayPulse` | `systems/alienEcology.js:1814` | `audio/audioSystem.js:3516` |
+| `ecology:quarantinePulse` | `systems/precursorMachines.js:753` | `systems/world.js:970` |
+| `ecology:relayPulse` | `systems/alienEcology.js:1814` | `audio/audioSystem.js:3556` |
 | `ecology:setpiece` | `systems/alienEcology.js:1845`, `systems/alienEcology.js:3313`, `systems/alienEcology.js:3380` | — |
 | `economy:applyTradePressure` | `systems/automation.js:1036`, `systems/automation.js:2139`, `systems/automation.js:2140`, `systems/claims.js:1398`, `systems/encounterDirector.js:2863`, `systems/encounterDirector.js:2911`, `systems/lossLedger.js:617`, `systems/scavengerOccupationSwitch.js:588`, `systems/sectorSim.js:447`, `systems/trafficCausalChainOps.js:2786`, `systems/trafficRecoveryOps.js:333` | `systems/economy.js:1755` |
 | `economy:auditorTally` | `systems/economy.js:3876` | — |
 | `economy:automationIntake` | `systems/economy.js:2869` | — |
-| `economy:cargoKillOpportunity` | `systems/economy.js:3277` | `systems/missions.js:781` |
-| `economy:chargeCredits` | `data/encounters/1206-the-fire-sale.js:259`, `data/encounters/1208-the-vetting.js:241`, `data/encounters/1212-the-clean-sheet.js:314`, `features/breakwaterSpur/services.js:113`, `features/salvageTender/services.js:58`, `features/shipbreakingYard/runtime.js:281`, `shipjack/fleetOperations.js:116`, `shipjack/yardOperations.js:128`, `shipjack/yardOperations.js:194`, `shipjack/yardOperations.js:226`, `shipjack/yardOperations.js:239`, `systems/automation.js:2435`, `systems/automation.js:2443`, `systems/automation.js:3696`, `systems/automation.js:3924`, `systems/automation.js:3937`, `systems/beacons.js:88`, `systems/beamRepairResources.js:99`, `systems/bombs.js:899`, `systems/bombs.js:982`, `systems/bombs.js:1000`, `systems/bombs.js:1066`, `systems/borrowedSun.js:687`, `systems/borrowedSun.js:1280`, `systems/claims.js:403`, `systems/claims.js:473`, `systems/claims.js:544`, `systems/claims.js:1486`, `systems/combat.js:1063`, `systems/crew.js:381`, `systems/crew.js:504`, `systems/crew.js:589`, `systems/crew.js:622`, `systems/drill.js:1441`, `systems/economy.js:5034`, `systems/eighthBellRuntime.js:304`, `systems/encounterDirector.js:2857`, `systems/faction_archive.js:752`, `systems/faction_choir.js:1035`, `systems/faction_helix.js:608`, `systems/faction_meridian.js:425`, `systems/faction_pitborn.js:686`, `systems/faction_understory.js:2041`, `systems/faction_understory.js:2072`, `systems/faction_vael.js:535`, `systems/faction_vael.js:850`, `systems/faction_verge.js:704`, `systems/faction_verge.js:970`, `systems/faction_verge.js:1433`, `systems/faction_verge.js:1484`, `systems/factions.js:645`, `systems/fenceDesk.js:355`, `systems/gateControlDirector.js:129`, `systems/gateThreeWeir.js:538`, `systems/gateThreeWeir.js:608`, `systems/gateThreeWeir.js:640`, `systems/gateThreeWeir.js:723`, `systems/gravedigger.js:586`, `systems/impoundGrudge.js:748`, `systems/impoundGrudge.js:816`, `systems/longBerth.js:285`, `systems/manifestGame.js:32`, `systems/missions.js:1394`, `systems/missions.js:1595`, `systems/missions.js:1598`, `systems/npcJobsRuntime.js:3756`, `systems/npcJobsRuntime.js:6250`, `systems/pirateParley.js:896`, `systems/plants/litter.js:149`, `systems/plants/pl215SomebodysStall.js:231`, `systems/quill.js:702`, `systems/quill.js:723`, `systems/quill.js:858`, `systems/shieldPylons.js:291`, `systems/shipjack.js:230`, `systems/ships.js:2644`, `systems/ships.js:2821`, `systems/ships.js:2928`, `systems/ships.js:2957`, `systems/special500Confessional.js:263`, `systems/special500Invoice.js:162`, `systems/special500Invoice.js:187`, `systems/special500Sommelier.js:89`, `systems/special500Sommelier.js:148`, `systems/tallyho.js:638`, `systems/world.js:5619`, `systems/world.js:5663`, `systems/world.js:7190` | `systems/economy.js:1708` |
+| `economy:cargoKillOpportunity` | `systems/economy.js:3277` | `systems/missions.js:847` |
+| `economy:chargeCredits` | `data/encounters/1206-the-fire-sale.js:259`, `data/encounters/1208-the-vetting.js:241`, `data/encounters/1212-the-clean-sheet.js:314`, `features/breakwaterSpur/services.js:113`, `features/salvageTender/services.js:58`, `features/shipbreakingYard/runtime.js:281`, `shipjack/fleetOperations.js:116`, `shipjack/yardOperations.js:128`, `shipjack/yardOperations.js:194`, `shipjack/yardOperations.js:226`, `shipjack/yardOperations.js:239`, `systems/automation.js:2435`, `systems/automation.js:2443`, `systems/automation.js:3696`, `systems/automation.js:3924`, `systems/automation.js:3937`, `systems/beacons.js:88`, `systems/beamRepairResources.js:99`, `systems/bombs.js:899`, `systems/bombs.js:982`, `systems/bombs.js:1000`, `systems/bombs.js:1066`, `systems/borrowedSun.js:687`, `systems/borrowedSun.js:1280`, `systems/claims.js:403`, `systems/claims.js:473`, `systems/claims.js:544`, `systems/claims.js:1486`, `systems/combat.js:1063`, `systems/crew.js:381`, `systems/crew.js:504`, `systems/crew.js:589`, `systems/crew.js:622`, `systems/drill.js:1466`, `systems/economy.js:5034`, `systems/eighthBellRuntime.js:304`, `systems/encounterDirector.js:2857`, `systems/faction_archive.js:752`, `systems/faction_choir.js:1035`, `systems/faction_helix.js:608`, `systems/faction_meridian.js:425`, `systems/faction_pitborn.js:686`, `systems/faction_understory.js:2041`, `systems/faction_understory.js:2072`, `systems/faction_vael.js:535`, `systems/faction_vael.js:850`, `systems/faction_verge.js:704`, `systems/faction_verge.js:970`, `systems/faction_verge.js:1433`, `systems/faction_verge.js:1484`, `systems/factions.js:645`, `systems/fenceDesk.js:355`, `systems/gateControlDirector.js:129`, `systems/gateThreeWeir.js:538`, `systems/gateThreeWeir.js:608`, `systems/gateThreeWeir.js:640`, `systems/gateThreeWeir.js:723`, `systems/gravedigger.js:586`, `systems/impoundGrudge.js:748`, `systems/impoundGrudge.js:816`, `systems/longBerth.js:285`, `systems/manifestGame.js:32`, `systems/missions.js:1491`, `systems/missions.js:1692`, `systems/missions.js:1695`, `systems/npcJobsRuntime.js:3756`, `systems/npcJobsRuntime.js:6250`, `systems/pirateParley.js:902`, `systems/plants/litter.js:149`, `systems/plants/pl215SomebodysStall.js:232`, `systems/quill.js:702`, `systems/quill.js:723`, `systems/quill.js:858`, `systems/runSession.js:886`, `systems/shieldPylons.js:291`, `systems/shipjack.js:230`, `systems/ships.js:2644`, `systems/ships.js:2821`, `systems/ships.js:2928`, `systems/ships.js:2957`, `systems/special500Confessional.js:263`, `systems/special500Invoice.js:162`, `systems/special500Invoice.js:187`, `systems/special500Sommelier.js:89`, `systems/special500Sommelier.js:148`, `systems/tallyho.js:641`, `systems/world.js:5929`, `systems/world.js:5973`, `systems/world.js:7572` | `systems/economy.js:1708` |
 | `economy:coldChainArmed` | `systems/economy.js:4049` | — |
 | `economy:coldChainSpoiled` | `systems/economy.js:4106` | — |
 | `economy:convoyShareBought` | `systems/economy.js:3667` | — |
@@ -530,27 +535,27 @@
 | `economy:eventStarted` | `systems/economy.js:1958`, `systems/economy.js:5785` | — |
 | `economy:forwardSlipBought` | `systems/economy.js:3721` | — |
 | `economy:forwardSlipSettled` | `systems/economy.js:3965`, `systems/economy.js:4010` | — |
-| `economy:freightAccepted` | `systems/economy.js:3548`, `systems/economy.js:3601` | `systems/claims.js:361`, `systems/economyContracts.js:254`, `systems/missions.js:777` |
-| `economy:grantCredits` | `features/industrialDisasters/runtime.js:441`, `features/rigWorkshop/jobs.js:292`, `missions/lanternWardStory.js:71`, `shipjack/fleetOperations.js:98`, `shipjack/fleetOperations.js:136`, `shipjack/yardOperations.js:195`, `shipjack/yardOperations.js:263`, `systems/alienEcology.js:979`, `systems/automation.js:2564`, `systems/automation.js:2575`, `systems/automation.js:3681`, `systems/bellhop.js:221`, `systems/bombs.js:1019`, `systems/borrowedSun.js:639`, `systems/cargo.js:1631`, `systems/claims.js:1397`, `systems/claims.js:2261`, `systems/combat.js:879`, `systems/combat.js:891`, `systems/combat.js:1071`, `systems/crew.js:689`, `systems/encounterDirector.js:2858`, `systems/faction_archive.js:721`, `systems/faction_archive.js:734`, `systems/faction_choir.js:944`, `systems/faction_choir.js:981`, `systems/faction_choir.js:1137`, `systems/faction_choir.js:1416`, `systems/faction_choir.js:1626`, `systems/faction_frontier.js:1519`, `systems/faction_fulfillment.js:420`, `systems/faction_helix.js:601`, `systems/faction_meridian.js:419`, `systems/faction_pitborn.js:680`, `systems/faction_pitborn.js:805`, `systems/faction_understory.js:1245`, `systems/faction_understory.js:1341`, `systems/faction_vael.js:529`, `systems/faction_verge.js:896`, `systems/fenceDesk.js:265`, `systems/fenceDesk.js:300`, `systems/gateThreeWeir.js:426`, `systems/gateThreeWeir.js:596`, `systems/gravedigger.js:581`, `systems/impoundGrudge.js:677`, `systems/lamplighter.js:651`, `systems/manifestGame.js:15`, `systems/mining.js:2590`, `systems/mining.js:2785`, `systems/mining.js:2957`, `systems/missionStoryOps.js:2337`, `systems/missions.js:4969`, `systems/missions.js:5149`, `systems/missions.js:5152`, `systems/missions.js:5700`, `systems/moralTrap.js:326`, `systems/npcJobsRuntime.js:3771`, `systems/npcJobsRuntime.js:4058`, `systems/plants/glassPays.js:140`, `systems/plants/glassPays.js:146`, `systems/plants/pl151NoPapers.js:256`, `systems/quill.js:676`, `systems/quill.js:762`, `systems/quill.js:774`, `systems/rookBooth.js:562`, `systems/scanReveal.js:206`, `systems/scanReveal.js:241`, `systems/scavengerOccupationSwitch.js:603`, `systems/shieldPylons.js:337`, `systems/shieldPylons.js:573`, `systems/ships.js:2734`, `systems/ships.js:3093`, `systems/stationServices.js:479`, `systems/survivorPod.js:1692`, `systems/survivorPod.js:2065`, `systems/tallyho.js:632`, `systems/uniqueWrecks.js:2004`, `systems/uniqueWrecks.js:2133`, `systems/world.js:5574`, `systems/wreckCourt.js:1029` | `systems/economy.js:1704`, `systems/onboarding.js:730`, `systems/story.js:268` |
+| `economy:freightAccepted` | `systems/economy.js:3548`, `systems/economy.js:3601` | `systems/claims.js:361`, `systems/economyContracts.js:254`, `systems/missions.js:843` |
+| `economy:grantCredits` | `features/industrialDisasters/runtime.js:441`, `features/rigWorkshop/jobs.js:292`, `missions/lanternWardStory.js:71`, `shipjack/fleetOperations.js:98`, `shipjack/fleetOperations.js:136`, `shipjack/yardOperations.js:195`, `shipjack/yardOperations.js:263`, `systems/alienEcology.js:979`, `systems/automation.js:2564`, `systems/automation.js:2575`, `systems/automation.js:3681`, `systems/bellhop.js:221`, `systems/bombs.js:1019`, `systems/borrowedSun.js:639`, `systems/cargo.js:1631`, `systems/claims.js:1397`, `systems/claims.js:2261`, `systems/combat.js:879`, `systems/combat.js:891`, `systems/combat.js:1071`, `systems/crew.js:689`, `systems/encounterDirector.js:2858`, `systems/faction_archive.js:721`, `systems/faction_archive.js:734`, `systems/faction_choir.js:944`, `systems/faction_choir.js:981`, `systems/faction_choir.js:1137`, `systems/faction_choir.js:1416`, `systems/faction_choir.js:1626`, `systems/faction_frontier.js:1519`, `systems/faction_fulfillment.js:420`, `systems/faction_helix.js:601`, `systems/faction_meridian.js:419`, `systems/faction_pitborn.js:680`, `systems/faction_pitborn.js:805`, `systems/faction_understory.js:1245`, `systems/faction_understory.js:1341`, `systems/faction_vael.js:529`, `systems/faction_verge.js:896`, `systems/fenceDesk.js:265`, `systems/fenceDesk.js:300`, `systems/gateThreeWeir.js:426`, `systems/gateThreeWeir.js:596`, `systems/gravedigger.js:581`, `systems/impoundGrudge.js:677`, `systems/lamplighter.js:651`, `systems/manifestGame.js:15`, `systems/mining.js:2607`, `systems/mining.js:2802`, `systems/mining.js:2974`, `systems/missionStoryOps.js:2337`, `systems/missions.js:5079`, `systems/missions.js:5259`, `systems/missions.js:5262`, `systems/missions.js:5810`, `systems/moralTrap.js:326`, `systems/npcJobsRuntime.js:3771`, `systems/npcJobsRuntime.js:4058`, `systems/plants/glassPays.js:141`, `systems/plants/glassPays.js:147`, `systems/plants/pl151NoPapers.js:256`, `systems/quill.js:676`, `systems/quill.js:762`, `systems/quill.js:774`, `systems/rookBooth.js:562`, `systems/scanReveal.js:206`, `systems/scanReveal.js:241`, `systems/scavengerOccupationSwitch.js:603`, `systems/shieldPylons.js:337`, `systems/shieldPylons.js:573`, `systems/ships.js:2734`, `systems/ships.js:3093`, `systems/stationServices.js:479`, `systems/survivorPod.js:1692`, `systems/survivorPod.js:2065`, `systems/tallyho.js:635`, `systems/uniqueWrecks.js:2004`, `systems/uniqueWrecks.js:2133`, `systems/world.js:5884`, `systems/wreckCourt.js:1029` | `systems/economy.js:1704`, `systems/onboarding.js:743`, `systems/story.js:268` |
 | `economy:marketContractExpired` | `systems/economy.js:3930`, `systems/economy.js:4084` | — |
-| `economy:marketOpened` | `ui/station/screens/market.js:2991` | `systems/economy.js:1724` |
+| `economy:marketOpened` | `ui/station/screens/market.js:3013` | `systems/economy.js:1724` |
 | `economy:oreFlood` | `systems/sectorSim.js:719` | `systems/barkDirector.js:945`, `systems/economy.js:1783` |
 | `economy:payBounty` | `ui/screens/footprint.js:1662` | `systems/economy.js:1711` |
 | `economy:podIntakeAccepted` | `systems/economy.js:3762`, `systems/economy.js:3777` | — |
 | `economy:releaseDebt` | `systems/stationServices.js:488` | `systems/economy.js:1709` |
-| `economy:salvageIntakeApplied` | `systems/economy.js:4363` | `ui/alerts.js:602` |
-| `economy:shortageRelieved` | `systems/economy.js:3593` | `systems/missions.js:778` |
+| `economy:salvageIntakeApplied` | `systems/economy.js:4363` | `ui/alerts.js:640` |
+| `economy:shortageRelieved` | `systems/economy.js:3593` | `systems/missions.js:844` |
 | `economy:shortageRepairRestored` | `systems/economyContracts.js:886` | — |
-| `economy:sinkCharged` | `systems/economy.js:4406` | `ui/alerts.js:618` |
+| `economy:sinkCharged` | `systems/economy.js:4406` | `ui/alerts.js:656` |
 | `economy:tick` | `systems/economy.js:1928` | `systems/achievements.js:1190`, `systems/economyContracts.js:293` |
-| `economy:towCharge` | `systems/world.js:8049` | `systems/economy.js:1828` |
-| `economy:tradeCompleted` | `systems/economy.js:3087` | `audio/audioSystem.js:3099`, `audio/audioSystem.js:3216`, `careers/origins/haulerOriginSystem.js:90`, `careers/origins/prospectorOrigin.js:648`, `save/saveSystem.js:583`, `systems/claims.js:358`, `systems/factions.js:503`, `systems/missions.js:763`, `systems/missions.js:779`, `systems/onboarding.js:721`, `systems/sectorSim.js:143`, `systems/story.js:263`, `ui/adventureDecisions.js:453`, `ui/station/screens/market.js:2506` |
-| `economy:tradeFailed` | `systems/economy.js:3361`, `systems/economy.js:3393` | `audio/audioSystem.js:3105`, `ui/adventureDecisions.js:454`, `ui/station/screens/market.js:2505` |
+| `economy:towCharge` | `systems/world.js:8431` | `systems/economy.js:1828` |
+| `economy:tradeCompleted` | `systems/economy.js:3087` | `audio/audioSystem.js:3138`, `audio/audioSystem.js:3255`, `careers/origins/haulerOriginSystem.js:90`, `careers/origins/prospectorOrigin.js:648`, `save/saveSystem.js:583`, `systems/claims.js:358`, `systems/factions.js:503`, `systems/missions.js:829`, `systems/missions.js:845`, `systems/onboarding.js:734`, `systems/sectorSim.js:143`, `systems/story.js:263`, `ui/adventureDecisions.js:453`, `ui/station/screens/market.js:2528`, `world/adventureXp.js:89` |
+| `economy:tradeFailed` | `systems/economy.js:3361`, `systems/economy.js:3393` | `audio/audioSystem.js:3144`, `ui/adventureDecisions.js:454`, `ui/station/screens/market.js:2527` |
 | `emergent:audio` | `systems/emergentPrimitives.js:185`, `systems/environmentMaterials.js:259` | `audio/emergentPrimitiveVoice.js:83` |
-| `emergent:contact` | `systems/emergentPrimitives.js:191` | `render/feel.js:1803` |
+| `emergent:contact` | `systems/emergentPrimitives.js:191` | `render/feel.js:1811` |
 | `encounter:ambientPredationCleared` | — | `systems/barkDirector.js:936` |
 | `encounter:ambientPredationTelegraph` | — | `systems/barkDirector.js:935` |
-| `encounter:castAnnounced` | — | `ui/survivalHud.js:477` |
+| `encounter:castAnnounced` | — | `ui/survivalHud.js:478` |
 | `encounter:choiceOffered` | `features/industrialDisasters/presentation.js:140`, `features/industrialDisasters/presentation.js:188`, `systems/encounterDirector.js:2659` | `ui/encounterChoicePrompt.js:175` |
 | `encounter:choose` | `ui/encounterChoicePrompt.js:44` | `systems/encounterDirector.js:411` |
 | `encounter:claimDefenseRoster` | `systems/encounterDirector.js:1859` | — |
@@ -568,18 +573,18 @@
 | `encounter:predationEngaged` | `systems/encounterScripts.js:1235`, `systems/encounterScripts.js:1303` | `render/authoredMotion.js:1196` |
 | `encounter:predationTelegraph` | — | `render/authoredMotion.js:1213` |
 | `encounter:receipt` | `systems/encounterDirector.js:2808` | `ui/recoveryEncounterPrompt.js:499` |
-| `encounter:resolved` | `features/industrialDisasters/presentation.js:113`, `systems/encounterDirector.js:2786`, `systems/encounterDirector.js:2841`, `systems/survivalArena.js:1957` | `audio/audioSystem.js:3161`, `data/encounters/362-the-salvage-watch.js:80`, `data/encounters/367-the-salvage-tail.js:130`, `features/towjaw/runtime.js:279`, `systems/aftermathWrecks.js:1283`, `systems/claims.js:373`, `systems/claims.js:374`, `systems/encounterDirector.js:422`, `systems/encounterDirector.js:427`, `systems/missions.js:733`, `systems/story.js:170`, `systems/terrainAnchors.js:128`, `systems/traffic.js:1875`, `systems/traffic.js:2009`, `systems/uniqueLootAbilities.js:160`, `ui/encounterChoicePrompt.js:176` |
+| `encounter:resolved` | `features/industrialDisasters/presentation.js:113`, `systems/encounterDirector.js:2786`, `systems/encounterDirector.js:2841`, `systems/survivalArena.js:1957` | `audio/audioSystem.js:3200`, `data/encounters/362-the-salvage-watch.js:80`, `data/encounters/367-the-salvage-tail.js:130`, `features/towjaw/runtime.js:279`, `systems/aftermathWrecks.js:1297`, `systems/claims.js:373`, `systems/claims.js:374`, `systems/encounterDirector.js:422`, `systems/encounterDirector.js:427`, `systems/missions.js:799`, `systems/story.js:170`, `systems/terrainAnchors.js:128`, `systems/traffic.js:1877`, `systems/traffic.js:2011`, `systems/uniqueLootAbilities.js:160`, `ui/encounterChoicePrompt.js:176` |
 | `encounter:scarcityRumor` | `systems/encounterDirector.js:1058` | — |
 | `encounter:spawned` | `systems/encounterDirector.js:1987` | `systems/uniqueLootAbilities.js:159` |
 | `encounter:stale` | `systems/encounterDirector.js:647` | — |
-| `encounter:telegraph` | `systems/encounterDirector.js:1959`, `systems/survivalArena.js:1847` | `audio/audioSystem.js:3160`, `render/authoredMotion.js:1208`, `systems/survivalResults.js:537`, `systems/terrainAnchors.js:127`, `systems/world.js:898` |
+| `encounter:telegraph` | `systems/encounterDirector.js:1959`, `systems/survivalArena.js:1847` | `audio/audioSystem.js:3199`, `render/authoredMotion.js:1208`, `systems/survivalResults.js:537`, `systems/terrainAnchors.js:127`, `systems/world.js:917` |
 | `encounter:voice` | `systems/encounterDirector.js:2640` | — |
 | `encounter:waitStarted` | `data/encounters/367-the-salvage-tail.js:96`, `data/encounters/367-the-salvage-tail.js:263`, `systems/e1EncounterRuntime.js:499` | `ui/encounterChoicePrompt.js:177` |
 | `encounter:winnerHostile` | `systems/e1EncounterRuntime.js:458` | `systems/story.js:185` |
 | `endgame:archive` | `systems/story.js:249`, `systems/story.js:1174` | `ui/screens/codex.js:1366` |
-| `endgame:chosen` | `systems/story.js:1162` | `systems/routeFollower.js:425`, `systems/traffic.js:1841`, `ui/screens/missionLog.js:2791` |
-| `endgame:confirmRequired` | `systems/story.js:1045` | `ui/screens/missionLog.js:2790` |
-| `endgame:eligibility` | `systems/story.js:856` | `ui/screens/missionLog.js:2789` |
+| `endgame:chosen` | `systems/story.js:1162` | `systems/routeFollower.js:425`, `systems/traffic.js:1843`, `ui/screens/missionLog.js:2794` |
+| `endgame:confirmRequired` | `systems/story.js:1045` | `ui/screens/missionLog.js:2793` |
+| `endgame:eligibility` | `systems/story.js:856` | `ui/screens/missionLog.js:2792` |
 | `endgame:finaleCompleted` | `systems/story.js:932` | — |
 | `endgame:finaleReady` | `systems/story.js:1171` | — |
 | `endgame:ineligible` | `systems/story.js:942`, `systems/story.js:999`, `systems/story.js:1025`, `systems/story.js:1092` | — |
@@ -588,13 +593,15 @@
 | `endgame:promptChoiceD` | `systems/story.js:968` | — |
 | `endgame:promptSandbox` | `systems/story.js:867` | — |
 | `endgame:pullCompleted` | `systems/claims.js:3133` | `systems/factions.js:550` |
-| `endgame:sandboxContinued` | `systems/story.js:1156` | `ui/screens/missionLog.js:2792` |
-| `entity:destroyed` | `core/newGameBoot.js:215`, `main.js:1013`, `save/saveSystem.js:8649`, `systems/survivorPod.js:425`, `systems/trafficTugOps.js:280` | `audio/audioSystem.js:2936`, `audio/audioSystem.js:2962`, `combat/kernel.js:197`, `data/encounters/362-the-salvage-watch.js:196`, `features/breakwaterSpur/runtime.js:74`, `render/vfx.js:3015`, `systems/aftermathWrecks.js:1260`, `systems/aiEncounter.js:139`, `systems/asteroidFormations.js:140`, `systems/asteroidSites.js:898`, `systems/automation.js:616`, `systems/cloak.js:94`, `systems/combatOutcome.js:265`, `systems/encounterDirector.js:375`, `systems/environmentalMachinery.js:283`, `systems/gateControlDirector.js:77`, `systems/heistFacilities.js:324`, `systems/lawSecurity.js:429`, `systems/missions.js:809`, `systems/missions.js:981`, `systems/missions.js:985`, `systems/npcJobsRuntime.js:1234`, `systems/plants/snaggedPod.js:114`, `systems/plants/someonesCourse.js:125`, `systems/presentationOrchestrator.js:186`, `systems/scramblePlant.js:121`, `systems/spawnBudget.js:55`, `systems/stationSideEventDirector.js:104`, `systems/survivalWave.js:230`, `systems/swarmArena.js:907`, `systems/swarmDrops.js:98`, `systems/swarmFortify.js:180`, `systems/swarmSupply.js:113`, `systems/traffic.js:1871`, `systems/traffic.js:1904`, `systems/traffic.js:1908`, `systems/traffic.js:1915`, `systems/world.js:847`, `systems/world.js:848`, `ui/prompts/bulkHaulTag.js:148` |
-| `entity:kill` | `systems/tallyho.js:967` | `core/coreSystem.js:551` |
-| `entity:killed` | `balance/careerCohorts.js:502`, `combat/damage.js:770`, `combat/kernel.js:139`, `systems/combat.js:837`, `systems/tallyho.js:969` | `audio/audioSystem.js:2935`, `audio/audioSystem.js:2961`, `combat/chainKills.js:88`, `features/breakwaterSpur/runtime.js:73`, `features/towjaw/runtime.js:274`, `render/feel.js:1650`, `render/shipMicroMotion.js:1745`, `render/vfx.js:2995`, `render/vfx.js:3009`, `systems/aftermathWrecks.js:1258`, `systems/applausePlant.js:184`, `systems/asteroidSites.js:894`, `systems/barkDirector.js:889`, `systems/barkDirector.js:890`, `systems/barkDirector.js:937`, `systems/combatOutcome.js:259`, `systems/crew.js:99`, `systems/dyingHull.js:182`, `systems/economy.js:1779`, `systems/economy.js:1782`, `systems/encounterDirector.js:376`, `systems/environmentalMachinery.js:284`, `systems/faction_archive.js:589`, `systems/faction_choir.js:520`, `systems/faction_frontier.js:491`, `systems/faction_helix.js:505`, `systems/faction_meridian.js:368`, `systems/faction_pitborn.js:644`, `systems/faction_understory.js:715`, `systems/faction_vael.js:438`, `systems/factions.js:402`, `systems/factions.js:464`, `systems/gamepad.js:1101`, `systems/impoundGrudge.js:397`, `systems/impulseCharges.js:236`, `systems/killReplay.js:375`, `systems/lawSecurity.js:428`, `systems/lawSecurity.js:440`, `systems/lawSecurity.js:441`, `systems/lootShards.js:601`, `systems/lossLedger.js:465`, `systems/mining.js:303`, `systems/missions.js:802`, `systems/missions.js:980`, `systems/missions.js:984`, `systems/npcJobsRuntime.js:1226`, `systems/onboarding.js:764`, `systems/onboarding.js:820`, `systems/pirateDisguise.js:439`, `systems/plants/theOtherName.js:92`, `systems/plants/twoNames.js:99`, `systems/presentationOrchestrator.js:185`, `systems/rockCore.js:90`, `systems/rubberneckers.js:97`, `systems/scramblePlant.js:120`, `systems/sectorSim.js:147`, `systems/surrenderRecovery.js:100`, `systems/survivalResults.js:521`, `systems/survivalWave.js:231`, `systems/survivorPod.js:734`, `systems/swarmChain.js:162`, `systems/swarmDrops.js:91`, `systems/swarmElites.js:183`, `systems/swarmJuice.js:142`, `systems/swarmLegendaries.js:112`, `systems/swarmSupply.js:105`, `systems/titles.js:600`, `systems/traffic.js:1867`, `systems/traffic.js:1903`, `systems/wingMorale.js:201`, `systems/wingmen.js:143`, `systems/world.js:902`, `testing/playerTruth/reader.js:415`, `ui/stuntCallout.js:1035`, `ui/uiRoot.js:1025`, `ui/uiRoot.js:1033` |
-| `entity:spawnRequest` | `data/scanReveal.js:537`, `systems/salvageActions.js:279`, `systems/salvageActions.js:528` | `core/coreSystem.js:555` |
-| `entity:spawned` | `core/coreSystem.js:382`, `core/coreSystem.js:421` | `audio/audioSystem.js:2960`, `combat/kernel.js:186`, `render/asteroidMotionPresentation.js:526`, `render/ordnanceMotionPresentation.js:313`, `render/pickupMotionPresentation.js:262`, `render/shipMicroMotion.js:1746`, `render/vfx.js:3021`, `render/vfx.js:3026`, `sim/titleAttract.js:10`, `systems/aiEncounter.js:138`, `systems/barkDirector.js:875`, `systems/barkDirector.js:876`, `systems/ceresAnchorWinching.js:281`, `systems/ceresNinthMouth.js:357`, `systems/combatOutcome.js:264`, `systems/factionPresence.js:527`, `systems/faction_understory.js:714`, `systems/fields.js:506`, `systems/flybyFocus.js:325`, `systems/foundryPlateTheft.js:149`, `systems/lawSecurity.js:427`, `systems/lossLedger.js:463`, `systems/npcJobsRuntime.js:1200`, `systems/plants/litter.js:72`, `systems/salvageActions.js:139`, `systems/scanReveal.js:68`, `systems/survivalSwarm.js:227`, `systems/swarmDrops.js:96`, `systems/swarmElites.js:182`, `systems/swarmFortify.js:181`, `systems/swarmSupply.js:111`, `systems/titles.js:601`, `systems/uniqueLootAbilities.js:162`, `testing/playerTruth/impulseObserver.js:123` |
-| `environment:detonated` | — | `render/vfx.js:3076` |
+| `endgame:sandboxContinued` | `systems/story.js:1156` | `ui/screens/missionLog.js:2795` |
+| `entity:destroyed` | `core/newGameBoot.js:258`, `main.js:1136`, `save/saveSystem.js:8649`, `systems/survivorPod.js:425`, `systems/trafficTugOps.js:281` | `audio/audioSystem.js:2975`, `audio/audioSystem.js:3001`, `combat/kernel.js:197`, `data/encounters/362-the-salvage-watch.js:196`, `features/breakwaterSpur/runtime.js:74`, `render/vfx.js:3027`, `systems/aiEncounter.js:141`, `systems/asteroidFormations.js:140`, `systems/asteroidSites.js:900`, `systems/automation.js:616`, `systems/cloak.js:112`, `systems/combatOutcome.js:269`, `systems/encounterDirector.js:375`, `systems/environmentalMachinery.js:283`, `systems/gateControlDirector.js:77`, `systems/heistFacilities.js:324`, `systems/lawSecurity.js:429`, `systems/missions.js:875`, `systems/missions.js:1061`, `systems/missions.js:1065`, `systems/npcJobsRuntime.js:1234`, `systems/plants/snaggedPod.js:115`, `systems/plants/someonesCourse.js:126`, `systems/presentationOrchestrator.js:186`, `systems/scramblePlant.js:121`, `systems/spawnBudget.js:75`, `systems/stationSideEventDirector.js:104`, `systems/survivalWave.js:230`, `systems/swarmArena.js:907`, `systems/swarmDrops.js:98`, `systems/swarmFortify.js:180`, `systems/swarmSupply.js:113`, `systems/traffic.js:1873`, `systems/traffic.js:1906`, `systems/traffic.js:1910`, `systems/traffic.js:1917`, `systems/world.js:864`, `systems/world.js:865`, `ui/prompts/bulkHaulTag.js:148` |
+| `entity:destroyedBatch` | — | `systems/aftermathWrecks.js:1274` |
+| `entity:kill` | `systems/tallyho.js:970` | `core/coreSystem.js:602` |
+| `entity:killed` | `balance/careerCohorts.js:502`, `combat/damage.js:824`, `combat/kernel.js:139`, `systems/combat.js:837`, `systems/tallyho.js:972` | `audio/audioSystem.js:2974`, `audio/audioSystem.js:3000`, `combat/chainKills.js:88`, `core/coreSystem.js:609`, `features/breakwaterSpur/runtime.js:73`, `features/towjaw/runtime.js:274`, `render/feel.js:1658`, `render/shipMicroMotion.js:1745`, `render/vfx.js:3007`, `render/vfx.js:3021`, `systems/aftermathWrecks.js:1272`, `systems/applausePlant.js:184`, `systems/asteroidSites.js:896`, `systems/barkDirector.js:889`, `systems/barkDirector.js:890`, `systems/barkDirector.js:937`, `systems/cloak.js:117`, `systems/combatOutcome.js:263`, `systems/crew.js:99`, `systems/dyingHull.js:182`, `systems/economy.js:1779`, `systems/economy.js:1782`, `systems/encounterDirector.js:376`, `systems/environmentalMachinery.js:284`, `systems/faction_archive.js:589`, `systems/faction_choir.js:520`, `systems/faction_frontier.js:491`, `systems/faction_helix.js:505`, `systems/faction_meridian.js:368`, `systems/faction_pitborn.js:644`, `systems/faction_understory.js:715`, `systems/faction_vael.js:438`, `systems/factions.js:402`, `systems/factions.js:464`, `systems/gamepad.js:1147`, `systems/impoundGrudge.js:397`, `systems/impulseCharges.js:236`, `systems/killReplay.js:375`, `systems/lawSecurity.js:428`, `systems/lawSecurity.js:440`, `systems/lawSecurity.js:441`, `systems/lootShards.js:627`, `systems/lossLedger.js:465`, `systems/mining.js:307`, `systems/missions.js:868`, `systems/missions.js:1060`, `systems/missions.js:1064`, `systems/npcJobsRuntime.js:1226`, `systems/onboarding.js:777`, `systems/onboarding.js:833`, `systems/pirateDisguise.js:439`, `systems/plants/theOtherName.js:92`, `systems/plants/twoNames.js:99`, `systems/presentationOrchestrator.js:185`, `systems/rockCore.js:90`, `systems/rubberneckers.js:97`, `systems/scramblePlant.js:120`, `systems/sectorSim.js:147`, `systems/surrenderRecovery.js:100`, `systems/survivalResults.js:521`, `systems/survivalWave.js:231`, `systems/survivorPod.js:734`, `systems/swarmChain.js:162`, `systems/swarmDrops.js:91`, `systems/swarmElites.js:183`, `systems/swarmJuice.js:142`, `systems/swarmLegendaries.js:112`, `systems/swarmSupply.js:105`, `systems/titles.js:600`, `systems/traffic.js:1869`, `systems/traffic.js:1905`, `systems/wingMorale.js:201`, `systems/wingmen.js:143`, `systems/world.js:921`, `testing/playerTruth/reader.js:415`, `ui/stuntCallout.js:1035`, `ui/uiRoot.js:1050`, `ui/uiRoot.js:1058`, `world/adventureXp.js:55` |
+| `entity:spawnRequest` | `data/scanReveal.js:537`, `systems/salvageActions.js:279`, `systems/salvageActions.js:528` | `core/coreSystem.js:614` |
+| `entity:spawned` | `core/coreSystem.js:391`, `core/coreSystem.js:431` | `audio/audioSystem.js:2999`, `combat/kernel.js:186`, `render/asteroidMotionPresentation.js:526`, `render/ordnanceMotionPresentation.js:313`, `render/pickupMotionPresentation.js:262`, `render/shipMicroMotion.js:1746`, `render/vfx.js:3033`, `render/vfx.js:3038`, `sim/titleAttract.js:10`, `systems/barkDirector.js:875`, `systems/barkDirector.js:876`, `systems/ceresAnchorWinching.js:281`, `systems/ceresNinthMouth.js:357`, `systems/combatOutcome.js:268`, `systems/factionPresence.js:527`, `systems/faction_understory.js:714`, `systems/fields.js:510`, `systems/flybyFocus.js:325`, `systems/foundryPlateTheft.js:149`, `systems/lawSecurity.js:427`, `systems/lossLedger.js:463`, `systems/npcJobsRuntime.js:1200`, `systems/plants/litter.js:72`, `systems/salvageActions.js:139`, `systems/scanReveal.js:68`, `systems/survivalSwarm.js:227`, `systems/swarmDrops.js:96`, `systems/swarmElites.js:182`, `systems/swarmFortify.js:181`, `systems/swarmSupply.js:111`, `systems/titles.js:601`, `systems/uniqueLootAbilities.js:162`, `testing/playerTruth/impulseObserver.js:123` |
+| `entity:spawnedBatch` | — | `systems/aiEncounter.js:140` |
+| `environment:detonated` | — | `render/vfx.js:3088` |
 | `environment:fractured` | — | `systems/sectorSim.js:163` |
 | `environmentalMachinery:ensureAnvil` | `systems/environmentalMachinery.js:585`, `systems/environmentalMachinery.js:1512` | `systems/terrainAnchors.js:129` |
 | `environmentalMachinery:ensureAperturePlug` | `systems/environmentalMachinery.js:1095` | `systems/terrainAnchors.js:133` |
@@ -606,8 +613,8 @@
 | `escalation:seeded` | `systems/encounterDirector.js:674` | — |
 | `faction:aggro` | `systems/e1EncounterRuntime.js:138`, `systems/e1EncounterRuntime.js:342`, `systems/factions.js:604`, `systems/factions.js:687`, `systems/factions.js:1091` | `systems/heat.js:404` |
 | `faction:bribe` | `data/encounters/1208-the-vetting.js:277`, `ui/screens/footprint.js:1668` | `systems/factions.js:380` |
-| `faction:repChanged` | `systems/factions.js:600`, `systems/factions.js:682`, `systems/factions.js:1087` | `audio/audioSystem.js:3213`, `systems/factionPresence.js:531`, `systems/missions.js:627`, `ui/station/screens/factions.js:477` |
-| `faction:repDelta` | `balance/careerCohorts.js:273`, `balance/courierPublicRoute.js:408`, `balance/hunterPublicRoute.js:244`, `balance/prospectorPublicRoute.js:385`, `features/industrialDisasters/runtime.js:442`, `missions/tenderHaul.js:513`, `missions/tenderHaul.js:553`, `systems/borrowedSun.js:644`, `systems/choirReliefBerth.js:426`, `systems/choirReliefBerth.js:460`, `systems/choirReliefBerth.js:481`, `systems/claims.js:1858`, `systems/economy.js:4513`, `systems/economy.js:5323`, `systems/economy.js:5695`, `systems/encounterDirector.js:2859`, `systems/faction_archive.js:724`, `systems/faction_archive.js:759`, `systems/faction_archive.js:1489`, `systems/faction_archive.js:1516`, `systems/faction_choir.js:945`, `systems/faction_choir.js:982`, `systems/faction_choir.js:1044`, `systems/faction_choir.js:1113`, `systems/faction_choir.js:1117`, `systems/faction_choir.js:1122`, `systems/faction_choir.js:1183`, `systems/faction_choir.js:1211`, `systems/faction_choir.js:1417`, `systems/faction_choir.js:1627`, `systems/faction_frontier.js:1525`, `systems/faction_helix.js:615`, `systems/faction_meridian.js:431`, `systems/faction_pitborn.js:692`, `systems/faction_understory.js:1244`, `systems/faction_understory.js:1347`, `systems/faction_vael.js:541`, `systems/faction_vael.js:882`, `systems/faction_verge.js:752`, `systems/faction_verge.js:771`, `systems/faction_verge.js:897`, `systems/faction_verge.js:1108`, `systems/faction_verge.js:1126`, `systems/faction_verge.js:1405`, `systems/faction_verge.js:1455`, `systems/faction_verge.js:1544`, `systems/faction_verge.js:1571`, `systems/faction_verge.js:1614`, `systems/faction_verge.js:1666`, `systems/fenceDesk.js:268`, `systems/gateThreeWeir.js:427`, `systems/gateThreeWeir.js:539`, `systems/gateThreeWeir.js:597`, `systems/gateThreeWeir.js:609`, `systems/gravedigger.js:591`, `systems/lamplighter.js:656`, `systems/missionStoryOps.js:2274`, `systems/missionStoryOps.js:2276`, `systems/missionStoryOps.js:2355`, `systems/missions.js:5697`, `systems/missions.js:5802`, `systems/moralTrap.js:320`, `systems/quill.js:703`, `systems/quill.js:903`, `systems/scavengerOccupationSwitch.js:761`, `systems/scavengerOccupationSwitch.js:766`, `systems/special500Confessional.js:266`, `systems/special500ForgeKaraoke.js:82`, `systems/special500Invoice.js:173`, `systems/special500Invoice.js:188`, `systems/special500Sommelier.js:97`, `systems/stuntGrammar.js:184`, `systems/stuntGrammar.js:192`, `systems/survivorPod.js:1681`, `systems/survivorPod.js:2071`, `systems/tallyho.js:644`, `systems/uniqueWrecks.js:2008`, `systems/uniqueWrecks.js:2135`, `systems/world.js:5578`, `systems/world.js:8352`, `systems/world.js:8586` | `systems/factions.js:352` |
+| `faction:repChanged` | `systems/factions.js:600`, `systems/factions.js:682`, `systems/factions.js:1087` | `audio/audioSystem.js:3252`, `systems/factionPresence.js:531`, `systems/missions.js:693`, `ui/station/screens/factions.js:477` |
+| `faction:repDelta` | `balance/careerCohorts.js:273`, `balance/courierPublicRoute.js:408`, `balance/hunterPublicRoute.js:244`, `balance/prospectorPublicRoute.js:385`, `features/industrialDisasters/runtime.js:442`, `missions/tenderHaul.js:513`, `missions/tenderHaul.js:553`, `systems/borrowedSun.js:644`, `systems/choirReliefBerth.js:426`, `systems/choirReliefBerth.js:460`, `systems/choirReliefBerth.js:481`, `systems/claims.js:1858`, `systems/economy.js:4513`, `systems/economy.js:5323`, `systems/economy.js:5695`, `systems/encounterDirector.js:2859`, `systems/faction_archive.js:724`, `systems/faction_archive.js:759`, `systems/faction_archive.js:1489`, `systems/faction_archive.js:1516`, `systems/faction_choir.js:945`, `systems/faction_choir.js:982`, `systems/faction_choir.js:1044`, `systems/faction_choir.js:1113`, `systems/faction_choir.js:1117`, `systems/faction_choir.js:1122`, `systems/faction_choir.js:1183`, `systems/faction_choir.js:1211`, `systems/faction_choir.js:1417`, `systems/faction_choir.js:1627`, `systems/faction_frontier.js:1525`, `systems/faction_helix.js:615`, `systems/faction_meridian.js:431`, `systems/faction_pitborn.js:692`, `systems/faction_understory.js:1244`, `systems/faction_understory.js:1347`, `systems/faction_vael.js:541`, `systems/faction_vael.js:882`, `systems/faction_verge.js:752`, `systems/faction_verge.js:771`, `systems/faction_verge.js:897`, `systems/faction_verge.js:1108`, `systems/faction_verge.js:1126`, `systems/faction_verge.js:1405`, `systems/faction_verge.js:1455`, `systems/faction_verge.js:1544`, `systems/faction_verge.js:1571`, `systems/faction_verge.js:1614`, `systems/faction_verge.js:1666`, `systems/fenceDesk.js:268`, `systems/gateThreeWeir.js:427`, `systems/gateThreeWeir.js:539`, `systems/gateThreeWeir.js:597`, `systems/gateThreeWeir.js:609`, `systems/gravedigger.js:591`, `systems/lamplighter.js:656`, `systems/missionStoryOps.js:2274`, `systems/missionStoryOps.js:2276`, `systems/missionStoryOps.js:2355`, `systems/missions.js:5807`, `systems/missions.js:5912`, `systems/moralTrap.js:320`, `systems/quill.js:703`, `systems/quill.js:903`, `systems/scavengerOccupationSwitch.js:761`, `systems/scavengerOccupationSwitch.js:766`, `systems/special500Confessional.js:266`, `systems/special500ForgeKaraoke.js:82`, `systems/special500Invoice.js:173`, `systems/special500Invoice.js:188`, `systems/special500Sommelier.js:97`, `systems/stuntGrammar.js:184`, `systems/stuntGrammar.js:192`, `systems/survivorPod.js:1681`, `systems/survivorPod.js:2071`, `systems/tallyho.js:647`, `systems/uniqueWrecks.js:2008`, `systems/uniqueWrecks.js:2135`, `systems/world.js:5888`, `systems/world.js:8740`, `systems/world.js:8974` | `systems/factions.js:352` |
 | `faction:repSpillover` | `systems/factions.js:680` | — |
 | `faction:tradePosture` | `systems/e1EncounterRuntime.js:126`, `systems/e1EncounterRuntime.js:130`, `systems/e1EncounterRuntime.js:140` | `systems/factions.js:372` |
 | `factionPresence:administrativeRouting` | `systems/factionPresence.js:1835` | `systems/barkDirector.js:917` |
@@ -615,7 +622,7 @@
 | `factionPresence:berthGreeting` | `systems/factionPresence.js:1027` | — |
 | `factionPresence:berthReturned` | `systems/factionPresence.js:1004` | — |
 | `factionPresence:berthRobbed` | `systems/factionPresence.js:990` | — |
-| `factionPresence:boardingPhase` | `systems/factionPresence.js:1747` | `ui/uiRoot.js:600` |
+| `factionPresence:boardingPhase` | `systems/factionPresence.js:1747` | `ui/uiRoot.js:625` |
 | `factionPresence:conduct` | `systems/factionPresence.js:801`, `systems/factionPresence.js:908` | — |
 | `factionPresence:fulfillmentProvoked` | `systems/factionPresence.js:1324` | `systems/barkDirector.js:916` |
 | `factionPresence:service` | `systems/factionPresence.js:1429` | — |
@@ -623,63 +630,64 @@
 | `factionPresence:spawned` | `systems/factionPresence.js:777`, `systems/factionPresence.js:948`, `systems/factionPresence.js:1140` | — |
 | `fence:routeLegDue` | — | `systems/economyContracts.js:263` |
 | `fence:scrubAsk` | — | `systems/fenceDesk.js:62` |
-| `field:depletedChanged` | `systems/fieldDepletion.js:841` | `systems/world.js:835` |
-| `field:opportunity` | `systems/world.js:6370` | — |
-| `field:regrown` | `systems/world.js:6299` | `systems/presentationOrchestrator.js:231` |
-| `field:richSeamMissed` | `systems/fieldDepletion.js:769`, `systems/traffic.js:2429`, `systems/trafficCausalChainOps.js:2705` | `systems/presentationOrchestrator.js:232` |
-| `field:richSeamOpened` | `systems/heliosClaimOpening.js:158`, `systems/trafficCausalChainOps.js:532` | `systems/traffic.js:1860` |
+| `field:depletedChanged` | `systems/fieldDepletion.js:841` | `systems/world.js:852` |
+| `field:opportunity` | `systems/world.js:6693` | — |
+| `field:regrown` | `systems/world.js:6622` | `systems/presentationOrchestrator.js:231` |
+| `field:richSeamMissed` | `systems/fieldDepletion.js:769`, `systems/traffic.js:2442`, `systems/trafficCausalChainOps.js:2705` | `systems/presentationOrchestrator.js:232` |
+| `field:richSeamOpened` | `systems/heliosClaimOpening.js:158`, `systems/trafficCausalChainOps.js:532` | `systems/traffic.js:1862` |
 | `field:richSeamVisible` | `systems/heliosClaimOpening.js:147` | `systems/presentationOrchestrator.js:199` |
-| `field:richSeamWorked` | `systems/mining.js:1275`, `systems/trafficRecoveryOps.js:698` | `systems/traffic.js:1861` |
+| `field:richSeamWorked` | `systems/mining.js:1281`, `systems/trafficRecoveryOps.js:698` | `systems/traffic.js:1863` |
+| `field:slotRestocked` | `systems/world.js:3868` | — |
 | `fieldDepletion:changed` | `systems/fieldDepletion.js:840` | `systems/npcJobsRuntime.js:1242`, `systems/presentationOrchestrator.js:230` |
-| `fields:anchorRegistered` | `systems/fields.js:1138` | `audio/audioSystem.js:3425`, `render/forceLanguage/fieldForcePresentation.js:61` |
-| `fields:cleared` | `systems/fields.js:2014` | `audio/fieldAudio.js:321`, `render/forceLanguage/fieldForcePresentation.js:62` |
-| `fields:clusterDetonate` | `systems/fields.js:2873` | `systems/presentationOrchestrator.js:293` |
-| `fields:coneToggled` | `systems/fields.js:1650`, `systems/fields.js:1660`, `systems/fields.js:1776`, `systems/fields.js:1791` | `systems/onboarding.js:811` |
-| `fields:deployDenied` | `systems/fields.js:1479` | — |
-| `fields:deployed` | `systems/fields.js:738`, `systems/fields.js:830`, `systems/fields.js:1569`, `systems/fields.js:1647`, `systems/fields.js:1767`, `systems/fields.js:1872` | `audio/audioSystem.js:3426`, `render/vfx.js:3112`, `systems/fields.js:507`, `systems/onboarding.js:810` |
-| `fields:ended` | `systems/fields.js:1157`, `systems/fields.js:1180`, `systems/fields.js:1244`, `systems/fields.js:1790`, `systems/fields.js:1815`, `systems/fields.js:1951` | `audio/fieldAudio.js:318` |
-| `fields:hitchCut` | `systems/fields.js:776` | — |
-| `fields:hitchLatched` | `systems/fields.js:764` | — |
-| `fields:plowCaptured` | `systems/plow.js:130` | — |
-| `fields:plowDropped` | `systems/fields.js:1657`, `systems/plow.js:85` | — |
-| `fields:plowLaunched` | `systems/plow.js:170` | `render/vfx.js:3115` |
-| `fields:pullMarked` | `systems/fields.js:1612` | — |
-| `fields:specialistDisrupt` | `systems/fields.js:647` | `audio/fieldAudio.js:322` |
-| `fields:thermalCreated` | `systems/fields.js:2059` | — |
+| `fields:anchorRegistered` | `systems/fields.js:1142` | `audio/audioSystem.js:3464`, `render/forceLanguage/fieldForcePresentation.js:61` |
+| `fields:cleared` | `systems/fields.js:2028` | `audio/fieldAudio.js:321`, `render/forceLanguage/fieldForcePresentation.js:62` |
+| `fields:clusterDetonate` | `systems/fields.js:3033` | `systems/presentationOrchestrator.js:293` |
+| `fields:coneToggled` | `systems/fields.js:1664`, `systems/fields.js:1674`, `systems/fields.js:1790`, `systems/fields.js:1805` | `systems/onboarding.js:824` |
+| `fields:deployDenied` | `systems/fields.js:1493` | — |
+| `fields:deployed` | `systems/fields.js:742`, `systems/fields.js:834`, `systems/fields.js:1583`, `systems/fields.js:1661`, `systems/fields.js:1781`, `systems/fields.js:1886` | `audio/audioSystem.js:3465`, `render/vfx.js:3124`, `systems/fields.js:511`, `systems/onboarding.js:823` |
+| `fields:ended` | `systems/fields.js:1161`, `systems/fields.js:1184`, `systems/fields.js:1248`, `systems/fields.js:1804`, `systems/fields.js:1829`, `systems/fields.js:1965` | `audio/fieldAudio.js:318` |
+| `fields:hitchCut` | `systems/fields.js:780` | — |
+| `fields:hitchLatched` | `systems/fields.js:768` | — |
+| `fields:plowCaptured` | `systems/plow.js:159` | — |
+| `fields:plowDropped` | `systems/fields.js:1671`, `systems/plow.js:114` | — |
+| `fields:plowLaunched` | `systems/plow.js:199` | `render/vfx.js:3129` |
+| `fields:pullMarked` | `systems/fields.js:1626` | — |
+| `fields:specialistDisrupt` | `systems/fields.js:651` | `audio/fieldAudio.js:322` |
+| `fields:thermalCreated` | `systems/fields.js:2073` | — |
 | `fields:thermalHit` | `core/fields/thermalFields.js:35` | — |
-| `firsthour:beat` | `systems/onboarding.js:5322` | — |
-| `firsthour:complete` | `systems/onboarding.js:5339` | — |
-| `firsthour:milestone` | `systems/onboarding.js:1981` | `audio/audioSystem.js:3418`, `testing/playerTruth/reader.js:410` |
-| `firsthour:sentence` | `systems/onboarding.js:3331` | — |
-| `firsthour:sentenceOffer` | `systems/onboarding.js:3312` | — |
-| `firsthour:sentencePresented` | `ui/station/stationApp.js:1164` | `systems/onboarding.js:776` |
-| `firsthour:started` | `systems/onboarding.js:4987` | — |
-| `firsthour:verb` | `systems/onboarding.js:5259` | — |
+| `firsthour:beat` | `systems/onboarding.js:5335` | — |
+| `firsthour:complete` | `systems/onboarding.js:5352` | — |
+| `firsthour:milestone` | `systems/onboarding.js:1994` | `audio/audioSystem.js:3457`, `testing/playerTruth/reader.js:410` |
+| `firsthour:sentence` | `systems/onboarding.js:3344` | — |
+| `firsthour:sentenceOffer` | `systems/onboarding.js:3325` | — |
+| `firsthour:sentencePresented` | `ui/station/stationApp.js:1166` | `systems/onboarding.js:789` |
+| `firsthour:started` | `systems/onboarding.js:5000` | — |
+| `firsthour:verb` | `systems/onboarding.js:5272` | — |
 | `flight:modeChanged` | `systems/flightV3.js:1191` | — |
-| `flight:racePrecision` | `systems/missions.js:4000` | `systems/flightV3.js:206` |
+| `flight:racePrecision` | `systems/missions.js:4108` | `systems/flightV3.js:206` |
 | `flight:sweptHull` | `systems/flightV3.js:1090` | — |
 | `flybyFocus:cancel` | `systems/flybyFocus.js:401` | `render/cameraDirector.js:1572` |
 | `flybyFocus:end` | `systems/flybyFocus.js:402` | `render/cameraDirector.js:1571` |
-| `flybyFocus:start` | `systems/flybyFocus.js:542` | `systems/onboarding.js:747` |
+| `flybyFocus:start` | `systems/flybyFocus.js:542` | `systems/onboarding.js:760` |
 | `formation:discovered` | `systems/asteroidFormations.js:329` | — |
-| `freight:arrival` | `systems/trafficEscortOps.js:187` | `render/authoredMotion.js:1204`, `systems/economy.js:1775`, `systems/traffic.js:1917` |
-| `freight:cargoSpilled` | `systems/encounterScripts.js:2220`, `systems/encounterScripts.js:2513`, `systems/trafficRoleOps.js:442` | `systems/barkDirector.js:886`, `systems/economy.js:1710`, `systems/encounterDirector.js:441`, `systems/lootShards.js:604`, `systems/plants/sweepingLine.js:92`, `systems/presentationOrchestrator.js:306`, `systems/scramblePlant.js:118`, `systems/sectorSim.js:154`, `systems/traffic.js:1901`, `systems/traffic.js:1906`, `systems/traffic.js:1911`, `systems/traffic.js:1913` |
-| `freight:clear` | — | `render/vfx.js:2970` |
-| `freight:custodyChanged` | `systems/encounterScripts.js:2053` | `render/authoredMotion.js:1203`, `systems/aftermathWrecks.js:1285` |
+| `freight:arrival` | `systems/trafficEscortOps.js:187` | `render/authoredMotion.js:1204`, `systems/economy.js:1775`, `systems/traffic.js:1919` |
+| `freight:cargoSpilled` | `systems/encounterScripts.js:2220`, `systems/encounterScripts.js:2513`, `systems/trafficRoleOps.js:442` | `systems/barkDirector.js:886`, `systems/economy.js:1710`, `systems/encounterDirector.js:441`, `systems/lootShards.js:630`, `systems/plants/sweepingLine.js:92`, `systems/presentationOrchestrator.js:306`, `systems/scramblePlant.js:118`, `systems/sectorSim.js:154`, `systems/traffic.js:1903`, `systems/traffic.js:1908`, `systems/traffic.js:1913`, `systems/traffic.js:1915` |
+| `freight:clear` | — | `render/vfx.js:2982` |
+| `freight:custodyChanged` | `systems/encounterScripts.js:2053` | `render/authoredMotion.js:1203`, `systems/aftermathWrecks.js:1299` |
 | `freight:custodyRebound` | `systems/encounterDirector.js:893` | — |
 | `freight:custodyReceipt` | `systems/encounterScripts.js:2110`, `systems/encounterScripts.js:2132` | — |
 | `freight:departed` | — | `systems/survivalWave.js:236` |
-| `freight:gratitudeGift` | `systems/missions.js:4196` | — |
+| `freight:gratitudeGift` | `systems/missions.js:4304` | — |
 | `freight:lootSweepStarted` | `systems/encounterScripts.js:1776` | — |
 | `freight:loss` | `systems/encounterDirector.js:2921`, `systems/trafficCausalChainOps.js:2798`, `systems/trafficRecoveryOps.js:335` | `systems/claims.js:380`, `systems/economy.js:1776`, `systems/encounterDirector.js:442`, `systems/sectorSim.js:153` |
 | `freight:manifestRemaining` | `systems/encounterScripts.js:2054` | `systems/surrenderRecovery.js:101` |
 | `freight:raiderEscaped` | `systems/encounterScripts.js:2669` | `systems/barkDirector.js:887` |
-| `freight:recovery` | — | `systems/encounterDirector.js:383`, `systems/traffic.js:1893` |
-| `freight:recoveryAbandoned` | — | `systems/encounterDirector.js:384`, `systems/traffic.js:1894` |
+| `freight:recovery` | — | `systems/encounterDirector.js:383`, `systems/traffic.js:1895` |
+| `freight:recoveryAbandoned` | — | `systems/encounterDirector.js:384`, `systems/traffic.js:1896` |
 | `freight:reverseRequested` | `systems/swarmCourseTwists.js:384` | `systems/freightLane.js:594` |
 | `freight:sweeperEscaped` | `systems/encounterScripts.js:1937` | — |
-| `freight:warning` | — | `render/vfx.js:2969` |
-| `frontier:barnRetry` | `systems/faction_frontier.js:1363` | `systems/missions.js:648` |
+| `freight:warning` | — | `render/vfx.js:2981` |
+| `frontier:barnRetry` | `systems/faction_frontier.js:1363` | `systems/missions.js:714` |
 | `frontier:debtLapsed` | `systems/faction_frontier.js:1947` | — |
 | `frontier:debtPosted` | `systems/faction_frontier.js:1880` | — |
 | `frontier:debtSettled` | `systems/faction_frontier.js:1927` | — |
@@ -692,20 +700,20 @@
 | `frontier:disputePosted` | `systems/faction_frontier.js:1998` | — |
 | `frontier:disputeSettled` | `systems/faction_frontier.js:2107` | — |
 | `frontier:homesteadLost` | `systems/faction_frontier.js:2330` | — |
-| `frontier:homesteadRaised` | — | `systems/missions.js:649` |
+| `frontier:homesteadRaised` | — | `systems/missions.js:715` |
 | `frontier:jobTier` | `systems/faction_frontier.js:1505` | — |
 | `frontier:justiceFiled` | `systems/faction_frontier.js:1538` | — |
 | `frontier:leadPosted` | `systems/faction_frontier.js:1749` | — |
 | `frontier:leadSoured` | `systems/faction_frontier.js:1764` | — |
 | `frontier:leadVerified` | `systems/faction_frontier.js:1785` | — |
-| `frontier:missionAttemptLost` | `systems/faction_frontier.js:766`, `systems/faction_frontier.js:1065` | `systems/missions.js:650` |
+| `frontier:missionAttemptLost` | `systems/faction_frontier.js:766`, `systems/faction_frontier.js:1065` | `systems/missions.js:716` |
 | `frontier:missionAttemptStarted` | `systems/faction_frontier.js:599` | — |
-| `frontier:missionAttemptUnavailable` | `systems/faction_frontier.js:589` | `systems/missions.js:651` |
+| `frontier:missionAttemptUnavailable` | `systems/faction_frontier.js:589` | `systems/missions.js:717` |
 | `frontier:moduleRestocked` | `systems/faction_frontier.js:1249` | — |
-| `frontier:moduleSnapped` | `systems/faction_frontier.js:1298` | `systems/missions.js:647` |
+| `frontier:moduleSnapped` | `systems/faction_frontier.js:1298` | `systems/missions.js:713` |
 | `frontier:raidSpawned` | `systems/faction_frontier.js:2186` | — |
 | `frontier:raiderRepelled` | `systems/faction_frontier.js:2502`, `systems/faction_frontier.js:2520` | — |
-| `frontier:sitePlanted` | `systems/faction_frontier.js:877`, `systems/faction_frontier.js:1182` | `systems/missions.js:646` |
+| `frontier:sitePlanted` | `systems/faction_frontier.js:877`, `systems/faction_frontier.js:1182` | `systems/missions.js:712` |
 | `frontier:steadStruck` | `systems/faction_frontier.js:2263` | — |
 | `frontier:supplyDelivered` | `systems/faction_frontier.js:1611`, `systems/faction_frontier.js:1710` | — |
 | `frontier:supplyRunAsked` | `systems/faction_frontier.js:1687`, `systems/faction_frontier.js:2259` | — |
@@ -714,13 +722,13 @@
 | `frontier:vendettaPaid` | `systems/faction_frontier.js:2481` | — |
 | `frontier:vendettaPosted` | `systems/faction_frontier.js:2400` | — |
 | `frontier:welded` | `systems/faction_frontier.js:2605` | — |
-| `frontierRumor:acquired` | `systems/world.js:5682` | — |
-| `frontierRumor:blackMarketAccess` | `systems/world.js:8817` | — |
-| `frontierRumor:contacted` | `systems/world.js:8713` | — |
-| `frontierRumor:resolved` | `systems/world.js:5699` | — |
-| `fuel:changed` | `features/salvageTender/services.js:189`, `systems/economy.js:4956`, `systems/economy.js:5117`, `systems/economy.js:5134`, `systems/stationServices.js:593`, `systems/stationServices.js:718`, `systems/stationServices.js:812`, `systems/world.js:7895`, `systems/world.js:7903` | — |
-| `fuel:crackCell` | `ui/hud.js:4739` | `systems/world.js:829` |
-| `fuel:empty` | `systems/world.js:7896` | `audio/audioSystem.js:3185`, `systems/economy.js:1826`, `ui/alerts.js:694` |
+| `frontierRumor:acquired` | `systems/world.js:5992` | — |
+| `frontierRumor:blackMarketAccess` | `systems/world.js:9205` | — |
+| `frontierRumor:contacted` | `systems/world.js:9101` | — |
+| `frontierRumor:resolved` | `systems/world.js:6009` | — |
+| `fuel:changed` | `features/salvageTender/services.js:189`, `systems/economy.js:4956`, `systems/economy.js:5117`, `systems/economy.js:5134`, `systems/stationServices.js:593`, `systems/stationServices.js:718`, `systems/stationServices.js:812`, `systems/world.js:8277`, `systems/world.js:8285` | — |
+| `fuel:crackCell` | `ui/cargoBag.js:243`, `ui/hud.js:4791` | `systems/world.js:846` |
+| `fuel:empty` | `systems/world.js:8278` | `audio/audioSystem.js:3224`, `systems/economy.js:1826`, `ui/alerts.js:732` |
 | `fulfillment:boardingDocked` | `systems/faction_fulfillment.js:349` | — |
 | `fulfillment:boardingFlung` | `systems/faction_fulfillment.js:336` | — |
 | `fulfillment:cargoFiled` | `systems/faction_fulfillment.js:388` | — |
@@ -729,22 +737,22 @@
 | `fulfillment:orderOneClosed` | `systems/faction_fulfillment.js:422` | — |
 | `fulfillment:rerailed` | `systems/faction_fulfillment.js:265` | — |
 | `fulfillment:trainSpawned` | `systems/faction_fulfillment.js:496` | — |
-| `furnace:fed` | `systems/furnaceIntake.js:168` | `systems/missions.js:745` |
-| `game:embarkSpeculation` | `ui/sandbox/sandboxSetup.js:445`, `ui/screens/gameOver.js:598`, `ui/screens/newGame.js:963` | — |
-| `game:exitToMenu` | `ui/loadingPresenter.js:643`, `ui/screens/crucible.js:3798`, `ui/screens/crucible.js:4196`, `ui/screens/gameOver.js:626`, `ui/screens/pause.js:1400` | `audio/audioSystem.js:3544`, `core/gameStartRecovery.js:25`, `main.js:474`, `save/saveSystem.js:601`, `systems/missions.js:956`, `systems/runSession.js:163`, `systems/swarmFortify.js:183`, `ui/confirm.js:337`, `ui/loadingPresenter.js:712`, `ui/sandbox/sandboxSetup.js:723`, `ui/screens/crucibleLabControls.js:583`, `ui/uiRoot.js:1814` |
-| `game:load` | `ui/input.js:706`, `ui/input.js:1019`, `ui/screens/gameOver.js:587`, `ui/screens/mainMenu.js:745`, `ui/screens/saveLoad.js:1681` | `core/gameStartRecovery.js:17`, `save/saveSystem.js:394`, `systems/scanner.js:1134`, `ui/commandBar.js:274`, `ui/loadingPresenter.js:711`, `ui/loadingPresenter.js:743`, `ui/promptDeck.js:943` |
-| `game:loadingProgress` | `main.js:151`, `main.js:245`, `main.js:308`, `main.js:342`, `main.js:531`, `main.js:950`, `main.js:1049`, `main.js:1120`, `main.js:1147`, `main.js:1181`, `main.js:1192`, `main.js:1255`, `main.js:1427`, `save/saveSystem.js:7046` | `ui/loadingPresenter.js:662`, `ui/screens/newGame.js:915`, `ui/screens/saveLoad.js:1145` |
-| `game:new` | `main.js:696`, `systems/devSectorJump.js:46`, `ui/physicsVenues.js:28`, `ui/sandbox/sandboxSetup.js:460`, `ui/screens/gameOver.js:613`, `ui/screens/newGame.js:1053`, `ui/screens/raceBoard.js:64` | `audio/audioSystem.js:3539`, `audio/bombAudio.js:458`, `audio/fieldAudio.js:325`, `careers/origins/haulerOriginSystem.js:64`, `core/coreSystem.js:569`, `core/gameStartRecovery.js:16`, `features/breakwaterSpur/presentation.js:35`, `features/stormChase/runtime.js:638`, `main.js:438`, `render/feel.js:1554`, `render/vfx.js:3039`, `render/vfx.js:3050`, `save/saveSystem.js:523`, `sim/killcamTape.js:471`, `systems/aftermathWrecks.js:1293`, `systems/aiEncounter.js:143`, `systems/bombs.js:704`, `systems/cloak.js:89`, `systems/combatOutcome.js:271`, `systems/countermeasures.js:224`, `systems/difficultyDirector.js:168`, `systems/dockingCorridor.js:84`, `systems/encounterDirector.js:373`, `systems/environmentalMachinery.js:287`, `systems/faction_frontier.js:503`, `systems/faction_helix.js:518`, `systems/fields.js:492`, `systems/impulseCharges.js:241`, `systems/killReplay.js:363`, `systems/massSeed.js:210`, `systems/massSeed.js:213`, `systems/masslineSnares.js:137`, `systems/masslineTelemetry.js:125`, `systems/mines.js:120`, `systems/mining.js:324`, `systems/planetRuntime.js:214`, `systems/presentationOrchestrator.js:295`, `systems/reactiveMatter.js:537`, `systems/rockCore.js:91`, `systems/salvageActions.js:146`, `systems/scanner.js:1133`, `systems/scissorwake.js:73`, `systems/shieldPylons.js:244`, `systems/ships.js:1987`, `systems/special500Spectacle.js:206`, `systems/surrenderRecovery.js:107`, `systems/survivorPod.js:730`, `systems/swarmFortify.js:182`, `systems/swarmLegendaries.js:124`, `systems/tetherGameplay.js:366`, `systems/titles.js:603`, `systems/tumbleStates.js:145`, `ui/aftermathChoicePrompt.js:116`, `ui/capitalBossOverlayMount.js:718`, `ui/commandBar.js:273`, `ui/hudLayout.js:123`, `ui/loadingPresenter.js:710`, `ui/loadingPresenter.js:742`, `ui/moralTrapPrompt.js:44`, `ui/promptDeck.js:942`, `ui/screens/crucibleLabControls.js:577`, `ui/uiRoot.js:833`, `ui/uiRoot.js:1818`, `ui/voiceArbiter.js:541`, `ui/wreckChoicePrompt.js:68` |
-| `game:newGame` | `core/newGameBoot.js:251` | `audio/audioSystem.js:3540`, `audio/bombAudio.js:459`, `audio/fieldAudio.js:326`, `core/coreSystem.js:570`, `core/physics.js:219`, `features/derelictExpedition/runtime.js:153`, `render/npcJobSignatureVfx.js:903`, `render/shipMicroMotion.js:1749`, `render/vfx.js:3040`, `render/vfx.js:3051`, `save/saveSystem.js:530`, `systems/aftermathWrecks.js:1294`, `systems/bombs.js:707`, `systems/cloak.js:90`, `systems/collisionConsequences.js:137`, `systems/combatOutcome.js:278`, `systems/countermeasures.js:225`, `systems/difficultyDirector.js:169`, `systems/faction_frontier.js:504`, `systems/faction_helix.js:519`, `systems/fieldDepletion.js:757`, `systems/fields.js:495`, `systems/fragileCargo.js:415`, `systems/lossInvestigation.js:131`, `systems/lossLedger.js:468`, `systems/masslineTelemetry.js:126`, `systems/moistureLoss.js:85`, `systems/onboarding.js:692`, `systems/plants/orphanWreck.js:104`, `systems/salvageActions.js:147`, `systems/scanReveal.js:67`, `systems/survivorPod.js:729`, `systems/tumbleStates.js:146`, `systems/wingMorale.js:203`, `ui/cargoConscience.js:148`, `ui/uiRoot.js:893` |
-| `game:over` | `systems/combat.js:794`, `systems/combat.js:957` | `ui/confirm.js:336`, `ui/uiRoot.js:1783` |
+| `furnace:fed` | `systems/furnaceIntake.js:168` | `systems/missions.js:811` |
+| `game:embarkSpeculation` | `ui/sandbox/sandboxSetup.js:452`, `ui/screens/gameOver.js:598`, `ui/screens/newGame.js:963` | — |
+| `game:exitToMenu` | `ui/loadingPresenter.js:643`, `ui/screens/crucible.js:3838`, `ui/screens/crucible.js:4243`, `ui/screens/gameOver.js:626`, `ui/screens/pause.js:1405` | `audio/audioSystem.js:3584`, `core/gameStartRecovery.js:25`, `main.js:486`, `save/saveSystem.js:601`, `systems/missions.js:1036`, `systems/runSession.js:182`, `systems/swarmFortify.js:183`, `ui/confirm.js:337`, `ui/loadingPresenter.js:712`, `ui/sandbox/sandboxSetup.js:730`, `ui/screens/crucibleLabControls.js:583`, `ui/uiRoot.js:1853` |
+| `game:load` | `ui/input.js:694`, `ui/input.js:1017`, `ui/screens/gameOver.js:587`, `ui/screens/mainMenu.js:745`, `ui/screens/saveLoad.js:1681` | `core/gameStartRecovery.js:17`, `save/saveSystem.js:394`, `systems/scanner.js:1134`, `ui/commandBar.js:274`, `ui/loadingPresenter.js:711`, `ui/loadingPresenter.js:743`, `ui/promptDeck.js:960` |
+| `game:loadingProgress` | `main.js:156`, `main.js:252`, `main.js:316`, `main.js:350`, `main.js:544`, `main.js:1072`, `main.js:1172`, `main.js:1244`, `main.js:1271`, `main.js:1305`, `main.js:1316`, `main.js:1379`, `main.js:1553`, `save/saveSystem.js:7046` | `ui/loadingPresenter.js:662`, `ui/screens/newGame.js:915`, `ui/screens/saveLoad.js:1145` |
+| `game:new` | `main.js:810`, `systems/devSectorJump.js:46`, `ui/physicsVenues.js:28`, `ui/sandbox/sandboxSetup.js:467`, `ui/screens/gameOver.js:613`, `ui/screens/newGame.js:1053`, `ui/screens/raceBoard.js:64` | `audio/audioSystem.js:3579`, `audio/bombAudio.js:458`, `audio/fieldAudio.js:325`, `careers/origins/haulerOriginSystem.js:64`, `core/coreSystem.js:634`, `core/gameStartRecovery.js:16`, `features/breakwaterSpur/presentation.js:35`, `features/stormChase/runtime.js:638`, `main.js:449`, `render/feel.js:1562`, `render/vfx.js:3051`, `render/vfx.js:3062`, `save/saveSystem.js:523`, `sim/killcamTape.js:471`, `systems/aftermathWrecks.js:1307`, `systems/aiEncounter.js:145`, `systems/bombs.js:704`, `systems/cloak.js:107`, `systems/combatOutcome.js:275`, `systems/countermeasures.js:224`, `systems/difficultyDirector.js:168`, `systems/dockingCorridor.js:84`, `systems/encounterDirector.js:373`, `systems/environmentalMachinery.js:287`, `systems/faction_frontier.js:503`, `systems/faction_helix.js:518`, `systems/fields.js:492`, `systems/impulseCharges.js:241`, `systems/killReplay.js:363`, `systems/massSeed.js:210`, `systems/massSeed.js:213`, `systems/masslineSnares.js:137`, `systems/masslineTelemetry.js:125`, `systems/mines.js:120`, `systems/mining.js:328`, `systems/planetRuntime.js:214`, `systems/presentationOrchestrator.js:295`, `systems/reactiveMatter.js:537`, `systems/rockCore.js:91`, `systems/salvageActions.js:146`, `systems/scanner.js:1133`, `systems/scissorwake.js:73`, `systems/shieldPylons.js:244`, `systems/ships.js:1987`, `systems/special500Spectacle.js:206`, `systems/surrenderRecovery.js:107`, `systems/survivorPod.js:730`, `systems/swarmFortify.js:182`, `systems/swarmLegendaries.js:124`, `systems/tetherGameplay.js:373`, `systems/titles.js:603`, `systems/tumbleStates.js:145`, `ui/aftermathChoicePrompt.js:116`, `ui/capitalBossOverlayMount.js:718`, `ui/commandBar.js:273`, `ui/hudLayout.js:123`, `ui/loadingPresenter.js:710`, `ui/loadingPresenter.js:742`, `ui/moralTrapPrompt.js:44`, `ui/promptDeck.js:959`, `ui/screens/crucibleLabControls.js:577`, `ui/uiRoot.js:858`, `ui/uiRoot.js:1857`, `ui/voiceArbiter.js:541`, `ui/wreckChoicePrompt.js:68` |
+| `game:newGame` | `core/newGameBoot.js:294` | `audio/audioSystem.js:3580`, `audio/bombAudio.js:459`, `audio/fieldAudio.js:326`, `core/coreSystem.js:635`, `core/physics.js:233`, `features/derelictExpedition/runtime.js:153`, `render/npcJobSignatureVfx.js:903`, `render/shipMicroMotion.js:1749`, `render/vfx.js:3052`, `render/vfx.js:3063`, `save/saveSystem.js:530`, `systems/aftermathWrecks.js:1308`, `systems/bombs.js:707`, `systems/cloak.js:108`, `systems/collisionConsequences.js:137`, `systems/combatOutcome.js:282`, `systems/countermeasures.js:225`, `systems/difficultyDirector.js:169`, `systems/faction_frontier.js:504`, `systems/faction_helix.js:519`, `systems/fieldDepletion.js:757`, `systems/fields.js:495`, `systems/fragileCargo.js:415`, `systems/lossInvestigation.js:131`, `systems/lossLedger.js:468`, `systems/masslineTelemetry.js:126`, `systems/moistureLoss.js:85`, `systems/onboarding.js:705`, `systems/plants/orphanWreck.js:104`, `systems/salvageActions.js:147`, `systems/scanReveal.js:67`, `systems/survivorPod.js:729`, `systems/tumbleStates.js:146`, `systems/wingMorale.js:203`, `ui/cargoConscience.js:148`, `ui/uiRoot.js:918`, `world/adventureXp.js:98` |
+| `game:over` | `systems/combat.js:794`, `systems/combat.js:957` | `ui/confirm.js:336`, `ui/uiRoot.js:1822` |
 | `game:retryStart` | `ui/loadingPresenter.js:624` | `core/gameStartRecovery.js:19` |
-| `game:save` | `ui/input.js:705`, `ui/input.js:1012`, `ui/screens/saveLoad.js:1714` | `save/saveSystem.js:374` |
-| `game:scenePrepared` | `core/newGameBoot.js:324` | `systems/missions.js:660`, `systems/onboarding.js:668`, `ui/loadingPresenter.js:759`, `ui/sandbox/sandboxSetup.js:521` |
-| `game:startFailed` | `main.js:1377`, `ui/loadingPresenter.js:731` | `core/gameStartRecovery.js:18`, `ui/loadingPresenter.js:709`, `ui/sandbox/sandboxSetup.js:524`, `ui/sandbox/sandboxSetup.js:722`, `ui/screens/crucibleLabControls.js:579`, `ui/screens/newGame.js:914`, `ui/screens/saveLoad.js:1151` |
-| `game:started` | `main.js:967` | `audio/audioSystem.js:3545`, `careers/origins/haulerOriginSystem.js:63`, `core/coreSystem.js:571`, `features/towjaw/runtime.js:288`, `save/saveSystem.js:517`, `save/saveSystem.js:550`, `sim/killcamTape.js:470`, `systems/automation.js:655`, `systems/collisionConsequences.js:136`, `systems/combat.js:469`, `systems/economyContracts.js:257`, `systems/factionPresence.js:518`, `systems/faction_helix.js:520`, `systems/factions.js:349`, `systems/flight.js:83`, `systems/flightV3.js:225`, `systems/heat.js:411`, `systems/masslineSnares.js:138`, `systems/missions.js:612`, `systems/onboarding.js:691`, `systems/presentationAdapters.js:343`, `systems/presentationOrchestrator.js:296`, `systems/sectorSim.js:134`, `systems/ships.js:2178`, `systems/story.js:168`, `systems/surrenderRecovery.js:108`, `systems/survivalDraft.js:224`, `systems/tetherGameplay.js:367`, `systems/wingmen.js:176`, `ui/alerts.js:588`, `ui/commandBar.js:272`, `ui/sandbox/sandboxSetup.js:516`, `ui/sandbox/sandboxSetup.js:715`, `ui/screens/crucibleLabControls.js:578`, `ui/uiRoot.js:834`, `ui/uiRoot.js:1773`, `ui/uiRoot.js:1809`, `ui/uiRoot.js:1819` |
-| `gamepad:connected` | `systems/gamepad.js:1300` | — |
-| `gamepad:disconnected` | `systems/gamepad.js:1248` | — |
-| `gate:range` | `core/physics.js:1731`, `core/physics.js:1735` | `render/authoredMotion.js:1231`, `systems/onboarding.js:884`, `systems/presentationOrchestrator.js:190`, `ui/alerts.js:569` |
+| `game:save` | `ui/input.js:693`, `ui/input.js:1010`, `ui/screens/saveLoad.js:1714` | `save/saveSystem.js:374` |
+| `game:scenePrepared` | `core/newGameBoot.js:367` | `systems/missions.js:726`, `systems/onboarding.js:681`, `ui/loadingPresenter.js:759`, `ui/sandbox/sandboxSetup.js:528` |
+| `game:startFailed` | `main.js:1503`, `ui/loadingPresenter.js:731` | `core/gameStartRecovery.js:18`, `ui/loadingPresenter.js:709`, `ui/sandbox/sandboxSetup.js:531`, `ui/sandbox/sandboxSetup.js:729`, `ui/screens/crucibleLabControls.js:579`, `ui/screens/newGame.js:914`, `ui/screens/saveLoad.js:1151` |
+| `game:started` | `main.js:1090` | `audio/audioSystem.js:3585`, `careers/origins/haulerOriginSystem.js:63`, `core/coreSystem.js:636`, `features/towjaw/runtime.js:288`, `main.js:419`, `save/saveSystem.js:517`, `save/saveSystem.js:550`, `sim/killcamTape.js:470`, `systems/automation.js:655`, `systems/collisionConsequences.js:136`, `systems/combat.js:469`, `systems/economyContracts.js:257`, `systems/factionPresence.js:518`, `systems/faction_helix.js:520`, `systems/factions.js:349`, `systems/flight.js:83`, `systems/flightV3.js:225`, `systems/heat.js:411`, `systems/masslineSnares.js:138`, `systems/missions.js:678`, `systems/onboarding.js:704`, `systems/presentationAdapters.js:343`, `systems/presentationOrchestrator.js:296`, `systems/sectorSim.js:134`, `systems/ships.js:2178`, `systems/story.js:168`, `systems/surrenderRecovery.js:108`, `systems/survivalDraft.js:224`, `systems/tetherGameplay.js:374`, `systems/wingmen.js:176`, `ui/alerts.js:626`, `ui/commandBar.js:272`, `ui/sandbox/sandboxSetup.js:523`, `ui/sandbox/sandboxSetup.js:722`, `ui/screens/crucibleLabControls.js:578`, `ui/uiRoot.js:859`, `ui/uiRoot.js:1812`, `ui/uiRoot.js:1848`, `ui/uiRoot.js:1858` |
+| `gamepad:connected` | `systems/gamepad.js:1357` | — |
+| `gamepad:disconnected` | `systems/gamepad.js:1305` | — |
+| `gate:range` | `core/physics.js:1947`, `core/physics.js:1951` | `render/authoredMotion.js:1231`, `systems/onboarding.js:897`, `systems/presentationOrchestrator.js:190`, `ui/alerts.js:607` |
 | `gate:verdict` | `systems/gateControlDirector.js:144` | `render/infrastructureMotion.js:292` |
 | `gateThree:bondLapsed` | `systems/gateThreeWeir.js:434` | — |
 | `gateThree:bonded` | `systems/gateThreeWeir.js:652` | — |
@@ -776,41 +784,41 @@
 | `gravedigger:vigilDeparting` | `systems/gravedigger.js:790` | — |
 | `gravedigger:vigilInbound` | `systems/gravedigger.js:722` | — |
 | `gravedigger:vigilPosted` | `systems/gravedigger.js:687` | — |
-| `gyre:absorbTick` | — | `systems/gamepad.js:1066` |
-| `gyre:ballGrave` | — | `systems/gamepad.js:1045` |
-| `gyre:beamOn` | — | `systems/gamepad.js:1004` |
-| `gyre:caught` | — | `systems/gamepad.js:1046` |
-| `gyre:dropped` | — | `systems/gamepad.js:1075` |
-| `gyre:full` | — | `systems/gamepad.js:1043` |
-| `gyre:fuseLow` | — | `systems/gamepad.js:1044` |
-| `gyre:snagged` | — | `systems/gamepad.js:1005` |
-| `gyre:strained` | — | `systems/gamepad.js:1090` |
-| `gyre:thrown` | — | `systems/gamepad.js:1028` |
-| `gyre:windup` | — | `systems/gamepad.js:1015` |
+| `gyre:absorbTick` | — | `systems/gamepad.js:1112` |
+| `gyre:ballGrave` | — | `systems/gamepad.js:1091` |
+| `gyre:beamOn` | — | `systems/gamepad.js:1050` |
+| `gyre:caught` | — | `systems/gamepad.js:1092` |
+| `gyre:dropped` | — | `systems/gamepad.js:1121` |
+| `gyre:full` | — | `systems/gamepad.js:1089` |
+| `gyre:fuseLow` | — | `systems/gamepad.js:1090` |
+| `gyre:snagged` | — | `systems/gamepad.js:1051` |
+| `gyre:strained` | — | `systems/gamepad.js:1136` |
+| `gyre:thrown` | — | `systems/gamepad.js:1074` |
+| `gyre:windup` | — | `systems/gamepad.js:1061` |
 | `harasser:disengaged` | `systems/encounterDirector.js:3330` | `systems/barkDirector.js:904`, `systems/barkDirector.js:1024` |
-| `hazard:changed` | `systems/world.js:1180`, `systems/world.js:7763` | `ui/alerts.js:711` |
-| `hazard:enter` | `systems/environmentalMachinery.js:1558`, `systems/world.js:7634` | `data/hazardLanguage.js:174`, `render/shipMicroMotion.js:1756`, `render/vfx.js:3068`, `ui/alerts.js:631` |
-| `hazard:exit` | `systems/environmentalMachinery.js:1569`, `systems/world.js:7644` | `data/hazardLanguage.js:175`, `render/shipMicroMotion.js:1757`, `render/vfx.js:3069`, `ui/alerts.js:642` |
-| `heat:changed` | `systems/heat.js:935` | `audio/audioSystem.js:3188`, `render/vfx.js:3047`, `systems/barkDirector.js:918`, `systems/lawSecurity.js:447`, `systems/onboarding.js:823`, `systems/onboarding.js:826`, `systems/titles.js:610` |
+| `hazard:changed` | `systems/world.js:1199`, `systems/world.js:8145` | `ui/alerts.js:749` |
+| `hazard:enter` | `systems/environmentalMachinery.js:1558`, `systems/world.js:8016` | `data/hazardLanguage.js:174`, `render/shipMicroMotion.js:1756`, `render/vfx.js:3080`, `ui/alerts.js:669` |
+| `hazard:exit` | `systems/environmentalMachinery.js:1569`, `systems/world.js:8026` | `data/hazardLanguage.js:175`, `render/shipMicroMotion.js:1757`, `render/vfx.js:3081`, `ui/alerts.js:680` |
+| `heat:changed` | `systems/heat.js:935` | `audio/audioSystem.js:3227`, `render/vfx.js:3059`, `systems/barkDirector.js:918`, `systems/lawSecurity.js:447`, `systems/onboarding.js:836`, `systems/onboarding.js:839`, `systems/titles.js:610` |
 | `heat:clear` | — | `systems/heat.js:415` |
 | `heat:scrubRequested` | `data/encounters/1212-the-clean-sheet.js:328`, `systems/fenceDesk.js:352` | `systems/heat.js:451` |
-| `heist:capsuleLaunched` | `systems/heistFacilities.js:1057` | `systems/missions.js:886` |
+| `heist:capsuleLaunched` | `systems/heistFacilities.js:1057` | `systems/missions.js:966` |
 | `heist:capsuleResumed` | `systems/heistFacilities.js:1521` | — |
-| `heist:captureFork` | `systems/heistFacilities.js:2060` | `systems/missions.js:895` |
-| `heist:counterweight` | `systems/heistFacilities.js:3201` | `systems/missions.js:906` |
+| `heist:captureFork` | `systems/heistFacilities.js:2060` | `systems/missions.js:975` |
+| `heist:counterweight` | `systems/heistFacilities.js:3201` | `systems/missions.js:986` |
 | `heist:counterweightSceneReceipt` | `systems/heistFacilities.js:3524`, `systems/heistFacilities.js:3532`, `systems/heistFacilities.js:3537`, `systems/heistFacilities.js:3559` | — |
-| `heist:facilityCandidate` | `systems/heistFacilities.js:1947` | `systems/missions.js:891` |
+| `heist:facilityCandidate` | `systems/heistFacilities.js:1947` | `systems/missions.js:971` |
 | `heist:launchCue` | `systems/heistFacilities.js:451`, `systems/heistFacilities.js:3896` | — |
 | `heist:launchScheduleReceipt` | `systems/heistFacilities.js:591`, `systems/heistFacilities.js:600`, `systems/heistFacilities.js:604`, `systems/heistFacilities.js:618` | — |
 | `heist:launchScheduleReleased` | `systems/heistFacilities.js:2509` | — |
-| `heist:monitorScan` | `systems/heistFacilities.js:3853` | `systems/missions.js:899` |
+| `heist:monitorScan` | `systems/heistFacilities.js:3853` | `systems/missions.js:979` |
 | `heist:observed` | `systems/heistFacilities.js:2720` | — |
 | `heist:receiverAborted` | `systems/heistFacilities.js:2451` | — |
 | `heist:receiverCommitted` | `systems/heistFacilities.js:2432` | `systems/npcJobsRuntime.js:1261` |
 | `heist:receiverPrepared` | `systems/heistFacilities.js:2370` | — |
 | `heist:requestLaunchSchedule` | — | `systems/heistFacilities.js:326` |
 | `heist:routineReceipt` | `systems/heistFacilities.js:1810` | — |
-| `heist:shipmentUnit` | `systems/heistFacilities.js:1925` | `systems/missions.js:902` |
+| `heist:shipmentUnit` | `systems/heistFacilities.js:1925` | `systems/missions.js:982` |
 | `helix:appealHeard` | `systems/faction_helix.js:1471`, `systems/faction_helix.js:1481` | — |
 | `helix:auditBegun` | `systems/faction_helix.js:1549` | — |
 | `helix:auditEvaded` | `systems/faction_helix.js:1616` | — |
@@ -844,10 +852,10 @@
 | `history:deadNoted` | `systems/historyWear.js:65` | — |
 | `history:decal` | `systems/historyWear.js:90` | `systems/ships.js:2168` |
 | `history:trinket` | `systems/historyWear.js:85` | `systems/ships.js:2164` |
-| `hud:firstUse` | `systems/onboarding.js:1346`, `systems/tetherGameplay.js:2223`, `systems/tetherGameplay.js:2294` | — |
+| `hud:firstUse` | `systems/onboarding.js:1359`, `systems/tetherGameplay.js:2304`, `systems/tetherGameplay.js:2375` | — |
 | `hud:layoutChanged` | `ui/hudLayout.js:86` | `save/saveSystem.js:587`, `ui/stuntCallout.js:898` |
 | `hud:phase` | `systems/story.js:361`, `systems/story.js:391`, `systems/story.js:394`, `systems/story.js:760` | — |
-| `hud:recallObjective` | `ui/input.js:794` | — |
+| `hud:recallObjective` | `ui/input.js:782` | — |
 | `hud:tagFlicker` | `systems/story.js:735` | — |
 | `hull:fractured` | `systems/hullFracture.js:589` | `render/authoredMotion.js:1174` |
 | `hullBurst:activated` | `systems/hullBurst.js:231` | — |
@@ -879,22 +887,22 @@
 | `industrialDisasters:poses` | `features/industrialDisasters/workerAdapter.js:118` | — |
 | `industrialDisasters:signal` | `features/industrialDisasters/runtime.js:264` | — |
 | `industrialDisasters:status` | `features/industrialDisasters/runtime.js:456` | — |
-| `industry:haulRequested` | `systems/environmentalMachinery.js:1137` | `systems/traffic.js:2023` |
-| `input:worldGestureCancelled` | `systems/input.js:1491`, `ui/worldObjectInteraction.js:230` | `systems/masslineThrow.js:180` |
-| `interdiction:triggered` | `systems/encounterScripts.js:613`, `systems/world.js:7049` | `render/authoredMotion.js:1186`, `systems/presentationOrchestrator.js:198`, `systems/sectorSim.js:144` |
+| `industry:haulRequested` | `systems/environmentalMachinery.js:1137` | `systems/traffic.js:2025` |
+| `input:worldGestureCancelled` | `systems/input.js:1533`, `ui/worldObjectInteraction.js:279` | `systems/masslineThrow.js:181` |
+| `interdiction:triggered` | `systems/encounterScripts.js:613`, `systems/world.js:7431` | `render/authoredMotion.js:1186`, `systems/presentationOrchestrator.js:198`, `systems/sectorSim.js:144` |
 | `intervention:available` | `systems/intervention.js:268` | — |
 | `intervention:closed` | `systems/intervention.js:326` | — |
 | `intervention:jumperRipped` | `systems/intervention.js:448` | — |
 | `intervention:logged` | `systems/intervention.js:144` | — |
-| `jump:arrive` | `systems/world.js:6976` | `render/authoredMotion.js:1234`, `render/feel.js:1765`, `render/infrastructureMotion.js:307`, `render/shipMicroMotion.js:1761`, `render/vfx.js:3074`, `save/saveSystem.js:578`, `systems/gateControlDirector.js:75`, `systems/onboarding.js:901`, `systems/presentationOrchestrator.js:196`, `systems/sectorSim.js:168` |
-| `jump:chargeAbort` | `systems/world.js:6995`, `systems/world.js:7129`, `systems/world.js:7222`, `systems/world.js:7288` | `audio/audioSystem.js:3167`, `render/authoredMotion.js:1235`, `render/shipMicroMotion.js:1762`, `systems/gateControlDirector.js:76`, `systems/presentationOrchestrator.js:195`, `systems/routeFollower.js:423`, `ui/galaxyMap.js:3156`, `ui/toasts.js:954` |
-| `jump:chargeStart` | `systems/world.js:7204`, `systems/world.js:7248` | `render/authoredMotion.js:1232`, `render/feel.js:1755`, `render/shipMicroMotion.js:1758`, `systems/cloak.js:55`, `systems/cruise.js:70`, `systems/gateControlDirector.js:73`, `systems/missions.js:676`, `systems/presentationOrchestrator.js:192`, `systems/story.js:239`, `ui/galaxyMap.js:3155` |
-| `jump:chargeTick` | `systems/world.js:6900` | `render/authoredMotion.js:1226`, `render/shipMicroMotion.js:1759`, `systems/presentationOrchestrator.js:193` |
-| `jump:departurePreflight` | `systems/world.js:7186` | `systems/story.js:238` |
-| `jump:interdictionWarning` | `systems/world.js:6926` | — |
-| `jump:start` | `systems/world.js:6931` | `audio/audioSystem.js:3166`, `render/authoredMotion.js:1233`, `render/feel.js:1759`, `render/infrastructureMotion.js:300`, `render/shipMicroMotion.js:1760`, `systems/economy.js:1831`, `systems/gateControlDirector.js:74`, `systems/mining.js:311`, `systems/presentationOrchestrator.js:194`, `systems/sectorSim.js:167` |
-| `jump:unfiledConfirmed` | `systems/world.js:7268` | `systems/story.js:240` |
-| `kesslerPod:weighed` | `systems/kesslerScale.js:367` | `systems/missions.js:729` |
+| `jump:arrive` | `systems/world.js:7357` | `render/authoredMotion.js:1234`, `render/feel.js:1773`, `render/infrastructureMotion.js:307`, `render/shipMicroMotion.js:1761`, `render/vfx.js:3086`, `save/saveSystem.js:578`, `systems/gateControlDirector.js:75`, `systems/onboarding.js:914`, `systems/presentationOrchestrator.js:196`, `systems/sectorSim.js:168` |
+| `jump:chargeAbort` | `systems/world.js:7377`, `systems/world.js:7511`, `systems/world.js:7604`, `systems/world.js:7670` | `audio/audioSystem.js:3206`, `render/authoredMotion.js:1235`, `render/shipMicroMotion.js:1762`, `systems/gateControlDirector.js:76`, `systems/presentationOrchestrator.js:195`, `systems/routeFollower.js:423`, `ui/galaxyMap.js:3157`, `ui/toasts.js:998` |
+| `jump:chargeStart` | `systems/world.js:7586`, `systems/world.js:7630` | `render/authoredMotion.js:1232`, `render/feel.js:1763`, `render/shipMicroMotion.js:1758`, `systems/cloak.js:73`, `systems/cruise.js:70`, `systems/gateControlDirector.js:73`, `systems/missions.js:742`, `systems/presentationOrchestrator.js:192`, `systems/story.js:239`, `ui/galaxyMap.js:3156` |
+| `jump:chargeTick` | `systems/world.js:7223` | `render/authoredMotion.js:1226`, `render/shipMicroMotion.js:1759`, `systems/presentationOrchestrator.js:193` |
+| `jump:departurePreflight` | `systems/world.js:7568` | `systems/story.js:238` |
+| `jump:interdictionWarning` | `systems/world.js:7252` | — |
+| `jump:start` | `systems/world.js:7257` | `audio/audioSystem.js:3205`, `render/authoredMotion.js:1233`, `render/feel.js:1767`, `render/infrastructureMotion.js:300`, `render/shipMicroMotion.js:1760`, `systems/economy.js:1831`, `systems/gateControlDirector.js:74`, `systems/mining.js:315`, `systems/presentationOrchestrator.js:194`, `systems/sectorSim.js:167` |
+| `jump:unfiledConfirmed` | `systems/world.js:7650` | `systems/story.js:240` |
+| `kesslerPod:weighed` | `systems/kesslerScale.js:367` | `systems/missions.js:795` |
 | `kilnback:caskReleased` | `systems/kilnback.js:163` | — |
 | `kilnback:caskSalvaged` | `systems/kilnback.js:224` | — |
 | `kilnback:coolantReleased` | `systems/kilnback.js:212` | — |
@@ -924,9 +932,9 @@
 | `lamplighter:wayfarerInbound` | `systems/lamplighter.js:966` | — |
 | `lamplighter:wayfarerLost` | `systems/lamplighter.js:1281` | — |
 | `lamplighter:wayfarerTurned` | `systems/lamplighter.js:999` | — |
-| `landmark:artifactRecovered` | `systems/missionObjectiveOps.js:953` | `systems/world.js:890` |
+| `landmark:artifactRecovered` | `systems/missionObjectiveOps.js:958` | `systems/world.js:909` |
 | `lane:facadeMiss` | `runtime/laneSystemFacades.js:58` | — |
-| `lanternWard:serviceCommitted` | — | `systems/missions.js:614` |
+| `lanternWard:serviceCommitted` | — | `systems/missions.js:680` |
 | `lastShift:archive` | `ui/lastShiftPrompt.js:92`, `ui/lastShiftPrompt.js:102` | — |
 | `lastShift:archived` | `systems/lastShift.js:408` | — |
 | `lastShift:cancelRecovery` | `ui/lastShiftPrompt.js:104` | — |
@@ -952,7 +960,7 @@
 | `law:impoundRecovered` | — | `systems/custodyConsequences.js:61`, `systems/heat.js:425`, `ui/impoundPayPrompt.js:70` |
 | `law:impoundReleased` | — | `ui/impoundPayPrompt.js:71` |
 | `law:impoundWorked` | — | `systems/custodyConsequences.js:60` |
-| `law:incidentOpened` | — | `systems/plants/paperTrail.js:76`, `systems/plants/witness.js:92`, `systems/traffic.js:1925` |
+| `law:incidentOpened` | — | `systems/plants/paperTrail.js:76`, `systems/plants/witness.js:92`, `systems/traffic.js:1927` |
 | `law:incidentResolved` | — | `systems/barkDirector.js:913` |
 | `law:killedAdjudicated` | — | `systems/factions.js:389` |
 | `law:obligationNoted` | — | `ui/impoundPayPrompt.js:79` |
@@ -987,10 +995,10 @@
 | `longBerth:restoreOffer` | `systems/longBerth.js:254` | `ui/longBerthPrompt.js:79` |
 | `longBerth:stage` | `systems/longBerth.js:291` | `systems/crew.js:111` |
 | `longBerth:trophy` | `systems/longBerth.js:312` | `systems/crew.js:114` |
-| `loot:drop` | `systems/combat.js:895`, `systems/lootShards.js:1163`, `systems/stuntGrammar.js:202` | `systems/mining.js:305` |
-| `loot:magnetCaptured` | `systems/lootShards.js:739` | `audio/audioSystem.js:3075` |
-| `loot:manifestPayload` | `systems/lootShards.js:1272` | `systems/missions.js:989`, `systems/traffic.js:1902`, `systems/traffic.js:1907` |
-| `loot:overflowConverted` | `systems/mining.js:2962` | `audio/audioSystem.js:3074` |
+| `loot:drop` | `systems/combat.js:895`, `systems/lootShards.js:1213`, `systems/stuntGrammar.js:202` | `systems/mining.js:309` |
+| `loot:magnetCaptured` | `systems/lootShards.js:765` | `audio/audioSystem.js:3114` |
+| `loot:manifestPayload` | `systems/lootShards.js:1338` | `systems/missions.js:1069`, `systems/traffic.js:1904`, `systems/traffic.js:1909` |
+| `loot:overflowConverted` | `systems/mining.js:2979` | `audio/audioSystem.js:3113` |
 | `lossInvestigation:closed` | `systems/lossInvestigation.js:331` | — |
 | `lossInvestigation:promoted` | `systems/lossInvestigation.js:194` | `systems/lossInvestigation.js:129` |
 | `lossLedger:claimSurvey` | `systems/scanReveal.js:172` | `systems/lossLedger.js:464` |
@@ -1004,48 +1012,47 @@
 | `mail:delivered` | `systems/mail.js:238` | — |
 | `manifest:changed` | `systems/manifestGame.js:10` | `ui/screens/manifest.js:152` |
 | `manifest:completed` | `systems/manifestGame.js:17` | — |
-| `map:sectorCharted` | `systems/world.js:5623` | `systems/economy.js:1740` |
+| `map:sectorCharted` | `systems/world.js:5933` | `systems/economy.js:1740` |
 | `massSeed:cleared` | `systems/massSeed.js:783` | — |
 | `massSeed:collapsed` | `systems/massSeed.js:603`, `systems/massSeed.js:653`, `systems/massSeed.js:735`, `systems/massSeed.js:766` | `render/authoredMotion.js:1225` |
-| `massSeed:collapsing` | `systems/massSeed.js:602`, `systems/massSeed.js:624`, `systems/massSeed.js:719`, `systems/massSeed.js:763` | `audio/audioSystem.js:3392` |
+| `massSeed:collapsing` | `systems/massSeed.js:602`, `systems/massSeed.js:624`, `systems/massSeed.js:719`, `systems/massSeed.js:763` | `audio/audioSystem.js:3431` |
 | `massSeed:deployDenied` | `systems/massSeed.js:249` | — |
-| `massSeed:deployed` | `systems/massSeed.js:349` | `audio/audioSystem.js:3376`, `render/authoredMotion.js:1222`, `render/vfx.js:3113`, `systems/onboarding.js:1125` |
+| `massSeed:deployed` | `systems/massSeed.js:349` | `audio/audioSystem.js:3415`, `render/authoredMotion.js:1222`, `render/vfx.js:3125`, `systems/onboarding.js:1138` |
 | `massSeed:destroyed` | `systems/massSeed.js:762` | — |
-| `massSeed:locked` | `systems/massSeed.js:489` | `audio/audioSystem.js:3384`, `render/authoredMotion.js:1223`, `render/vfx.js:3119` |
-| `massSeed:locking` | `systems/massSeed.js:554` | `audio/audioSystem.js:3380`, `render/vfx.js:3118` |
-| `massSeed:stakeCast` | `systems/massSeed.js:383` | `render/vfx.js:3114` |
-| `massSeed:stakeReleased` | `systems/massSeed.js:403`, `systems/massSeed.js:440` | `render/vfx.js:3117` |
-| `massSeed:staked` | `systems/massSeed.js:414` | `render/vfx.js:3116` |
-| `massSeed:tetherCut` | `systems/massSeed.js:681` | `audio/audioSystem.js:3397`, `render/authoredMotion.js:1224` |
-| `massSeed:warning` | `systems/massSeed.js:516` | `audio/audioSystem.js:3388` |
-| `massline:bridleCut` | `systems/tetherGameplay.js:1124` | `ui/stuntCallout.js:1054` |
-| `massline:bridleEnded` | `systems/tetherGameplay.js:1061`, `systems/tetherGameplay.js:1079`, `systems/tetherGameplay.js:1298` | `ui/masslineHud.js:1400` |
-| `massline:bridleEndpointSelected` | `systems/tetherGameplay.js:918` | — |
-| `massline:bridleLinked` | `systems/tetherGameplay.js:972` | — |
-| `massline:bridleSetupEnded` | `systems/tetherGameplay.js:1134` | — |
-| `massline:cadenceChanged` | `systems/tetherGameplay.js:2849` | — |
-| `massline:flailOffer` | `systems/tetherGameplay.js:543`, `systems/tetherGameplay.js:766` | `systems/rockCore.js:94` |
-| `massline:npcCounterplay` | `systems/tetherGameplay.js:3054` | `systems/barkDirector.js:1012` |
-| `massline:npcLineCut` | `systems/tetherGameplay.js:1991` | — |
-| `massline:playerLineCut` | `systems/tetherGameplay.js:2114` | `systems/gamepad.js:1002` |
+| `massSeed:locked` | `systems/massSeed.js:489` | `audio/audioSystem.js:3423`, `render/authoredMotion.js:1223`, `render/vfx.js:3133` |
+| `massSeed:locking` | `systems/massSeed.js:554` | `audio/audioSystem.js:3419`, `render/vfx.js:3132` |
+| `massSeed:stakeCast` | `systems/massSeed.js:383` | `render/vfx.js:3126` |
+| `massSeed:stakeReleased` | `systems/massSeed.js:403`, `systems/massSeed.js:440` | `render/vfx.js:3131` |
+| `massSeed:staked` | `systems/massSeed.js:414` | `render/vfx.js:3130` |
+| `massSeed:tetherCut` | `systems/massSeed.js:681` | `audio/audioSystem.js:3436`, `render/authoredMotion.js:1224` |
+| `massSeed:warning` | `systems/massSeed.js:516` | `audio/audioSystem.js:3427` |
+| `massline:bridleCut` | `systems/tetherGameplay.js:1142` | `ui/stuntCallout.js:1054` |
+| `massline:bridleEnded` | `systems/tetherGameplay.js:1079`, `systems/tetherGameplay.js:1097`, `systems/tetherGameplay.js:1316` | `ui/masslineHud.js:1449` |
+| `massline:bridleEndpointSelected` | `systems/tetherGameplay.js:936` | — |
+| `massline:bridleLinked` | `systems/tetherGameplay.js:990` | — |
+| `massline:bridleSetupEnded` | `systems/tetherGameplay.js:1152` | — |
+| `massline:cadenceChanged` | `systems/tetherGameplay.js:2930` | — |
+| `massline:flailOffer` | `systems/tetherGameplay.js:550`, `systems/tetherGameplay.js:779` | `systems/rockCore.js:94` |
+| `massline:npcCounterplay` | `systems/tetherGameplay.js:3135` | `systems/barkDirector.js:1012` |
+| `massline:npcLineCut` | `systems/tetherGameplay.js:2072` | — |
+| `massline:playerLineCut` | `systems/tetherGameplay.js:2195` | `systems/gamepad.js:1048` |
 | `massline:recovered` | `systems/tumbleStates.js:267` | — |
 | `massline:recovering` | `systems/tumbleStates.js:698` | — |
-| `massline:releaseCancelled` | `systems/masslineThrow.js:265` | `audio/audioSystem.js:3062` |
-| `massline:releaseValidated` | `systems/masslineThrow.js:781` | `systems/plants/otherSide.js:139`, `systems/plants/towWatch.js:95`, `systems/presentationOrchestrator.js:169` |
-| `massline:releaseWindow` | `systems/masslineThrow.js:351` | `ui/stuntCallout.js:1018` |
-| `massline:rideStarted` | `systems/tetherGameplay.js:2267` | `ui/stuntCallout.js:1019` |
-| `massline:selfSling` | `systems/masslineThrow.js:811` | `systems/flightV3.js:249`, `systems/onboarding.js:1089`, `ui/stuntCallout.js:904` |
-| `massline:snareArmed` | `systems/masslineSnares.js:239` | `audio/audioSystem.js:3368`, `render/authoredMotion.js:1163` |
-| `massline:snareCaught` | `systems/masslineSnares.js:434` | `systems/gamepad.js:993` |
-| `massline:snareCut` | `systems/masslineSnares.js:727` | `audio/audioSystem.js:3372` |
+| `massline:releaseCancelled` | `systems/masslineThrow.js:266` | `audio/audioSystem.js:3101` |
+| `massline:releaseValidated` | `systems/masslineThrow.js:801` | `systems/plants/otherSide.js:140`, `systems/plants/towWatch.js:95`, `systems/presentationOrchestrator.js:169` |
+| `massline:releaseWindow` | `systems/masslineThrow.js:352` | `ui/stuntCallout.js:1018` |
+| `massline:rideStarted` | `systems/tetherGameplay.js:2348` | `ui/stuntCallout.js:1019` |
+| `massline:selfSling` | `systems/masslineThrow.js:830` | `systems/flightV3.js:249`, `systems/onboarding.js:1102`, `ui/stuntCallout.js:904` |
+| `massline:snareArmed` | `systems/masslineSnares.js:239` | `audio/audioSystem.js:3407`, `render/authoredMotion.js:1163` |
+| `massline:snareCaught` | `systems/masslineSnares.js:434` | `systems/gamepad.js:1039` |
+| `massline:snareCut` | `systems/masslineSnares.js:727` | `audio/audioSystem.js:3411` |
 | `massline:snareDeployed` | `systems/masslineSnares.js:341`, `systems/masslineSnares.js:686` | `render/authoredMotion.js:1157` |
 | `massline:snareEnded` | `systems/masslineSnares.js:729` | `render/authoredMotion.js:1161` |
-| `massline:sweepImpact` | `systems/masslineImpacts.js:367` | `render/vfx.js:3035`, `systems/masslineImpactDamage.js:60`, `systems/presentationOrchestrator.js:156`, `ui/stuntCallout.js:1053` |
+| `massline:sweepImpact` | `systems/masslineImpacts.js:367` | `render/vfx.js:3047`, `systems/masslineImpactDamage.js:60`, `systems/presentationOrchestrator.js:156`, `ui/stuntCallout.js:1053` |
 | `massline:threat` | `systems/masslineThreats.js:273` | `systems/presentationOrchestrator.js:132` |
-| `massline:throw` | `systems/masslineThrow.js:723` | `systems/lootShards.js:603`, `systems/mines.js:117`, `systems/missions.js:866`, `systems/onboarding.js:738`, `systems/swarmDrops.js:99`, `systems/tumbleStates.js:129`, `ui/stuntCallout.js:1021` |
-| `massline:tumbleEnd` | `systems/tumbleStates.js:697` | `render/feel.js:1850`, `render/shipMicroMotion.js:1754` |
-| `massline:tumbled` | `systems/tumbleStates.js:562` | `render/feel.js:1836` |
-| `massline:whipSnap` | `systems/masslineThrow.js:832` | — |
+| `massline:throw` | `systems/masslineThrow.js:743` | `systems/lootShards.js:629`, `systems/mines.js:117`, `systems/missions.js:932`, `systems/onboarding.js:751`, `systems/swarmDrops.js:99`, `systems/tumbleStates.js:129`, `ui/stuntCallout.js:1021` |
+| `massline:tumbleEnd` | `systems/tumbleStates.js:697` | `render/feel.js:1858`, `render/shipMicroMotion.js:1754` |
+| `massline:tumbled` | `systems/tumbleStates.js:562` | `render/feel.js:1844` |
 | `matter:refused` | `matter/collectorKnot.js:97`, `systems/gyreSnare.js:2280`, `systems/gyreSnare.js:2748` | `ui/arsenalDenials.js:31` |
 | `mercyService:completed` | `response/mercyService/live.js:226` | — |
 | `mercyService:failedForward` | `response/mercyService/live.js:272` | — |
@@ -1090,65 +1097,66 @@
 | `meridian:warrantPosted` | `systems/faction_meridian.js:1453` | — |
 | `meridian:writPosted` | `systems/faction_meridian.js:1550` | — |
 | `meridian:writSettled` | `systems/faction_meridian.js:1647` | — |
-| `mines:armed` | `systems/mines.js:255`, `systems/mines.js:325`, `systems/mines.js:369` | `audio/audioSystem.js:3029`, `render/ordnanceMotionPresentation.js:314` |
-| `mines:capReached` | `systems/mines.js:149` | `audio/audioSystem.js:3106` |
-| `mines:detonated` | `systems/mines.js:550` | `audio/audioSystem.js:3016` |
+| `mines:armed` | `systems/mines.js:255`, `systems/mines.js:325`, `systems/mines.js:369` | `audio/audioSystem.js:3068`, `render/ordnanceMotionPresentation.js:314` |
+| `mines:capReached` | `systems/mines.js:149` | `audio/audioSystem.js:3145` |
+| `mines:detonated` | `systems/mines.js:550` | `audio/audioSystem.js:3055` |
 | `mines:expired` | `systems/mines.js:242` | `systems/survivalAnnounce.js:449` |
 | `mines:placeRequest` | `systems/encounterScripts.js:153`, `systems/encounterScripts/weirAmbush.js:241`, `systems/impoundGrudge.js:990`, `systems/survivalArena.js:1818`, `systems/swarmEvents.js:281` | `systems/mines.js:116` |
 | `mines:placed` | `systems/mines.js:220` | `systems/survivalArena.js:1430` |
 | `mines:released` | `systems/mines.js:384`, `systems/mines.js:587` | `systems/survivalAnnounce.js:450` |
-| `mines:struck` | `systems/mines.js:487` | `render/vfx.js:3127` |
+| `mines:struck` | `systems/mines.js:487` | `render/vfx.js:3141` |
 | `mines:triggered` | `systems/mines.js:539` | — |
-| `mines:turned` | `systems/mines.js:329` | `render/vfx.js:3128` |
-| `mining:beamLocked` | `systems/mining.js:1161` | — |
-| `mining:bulkHaulDelivered` | `systems/mining.js:2786` | `systems/missions.js:800`, `ui/prompts/bulkHaulTag.js:146` |
-| `mining:bulkRequiresTether` | `systems/mining.js:1175` | `systems/presentationOrchestrator.js:226`, `ui/prompts/bulkHaulTag.js:143` |
-| `mining:heatChanged` | `systems/mining.js:941` | `ui/miningHud.js:210` |
+| `mines:turned` | `systems/mines.js:329` | `render/vfx.js:3142` |
+| `mining:beamLocked` | `systems/mining.js:1167` | — |
+| `mining:bulkHaulDelivered` | `systems/mining.js:2803` | `systems/missions.js:866`, `ui/prompts/bulkHaulTag.js:146` |
+| `mining:bulkRequiresTether` | `systems/mining.js:1181` | `systems/presentationOrchestrator.js:226`, `ui/prompts/bulkHaulTag.js:143` |
+| `mining:heatChanged` | `systems/mining.js:947` | `ui/miningHud.js:210` |
 | `mining:npcExtraction` | `systems/trafficRecoveryOps.js:686` | `systems/fieldDepletion.js:756` |
-| `mining:podSplit` | `systems/mining.js:2118` | — |
-| `mining:richCoreChargeStart` | `systems/mining.js:2731` | `render/asteroidMotionPresentation.js:528`, `systems/presentationOrchestrator.js:223`, `ui/miningHud.js:213` |
-| `mining:richCoreCompleted` | `systems/mining.js:2764` | `render/asteroidMotionPresentation.js:529`, `systems/presentationOrchestrator.js:224`, `ui/miningHud.js:214` |
-| `mining:richCoreExposed` | `systems/mining.js:2709` | `render/asteroidMotionPresentation.js:527`, `systems/presentationOrchestrator.js:222`, `ui/miningHud.js:212` |
-| `mining:richCoreFizzle` | `systems/mining.js:2768` | `render/asteroidMotionPresentation.js:530`, `systems/presentationOrchestrator.js:225`, `ui/miningHud.js:215` |
-| `mining:seamHit` | `systems/mining.js:3137` | `systems/presentationOrchestrator.js:215` |
-| `mining:start` | `systems/mining.js:494`, `systems/mining.js:548`, `systems/mining.js:609`, `systems/mining.js:750`, `systems/mining.js:2064` | `audio/audioSystem.js:2973`, `render/asteroidMotionPresentation.js:522`, `render/authoredMotion.js:1152`, `render/authoredMotion.js:1179`, `render/vfx.js:3060`, `systems/missions.js:975`, `systems/onboarding.js:731`, `systems/presentationOrchestrator.js:212`, `ui/miningHud.js:208`, `ui/worldObjectInteraction.js:459` |
-| `mining:stop` | `systems/mining.js:882` | `audio/audioSystem.js:2974`, `render/asteroidMotionPresentation.js:523`, `render/authoredMotion.js:1154`, `render/authoredMotion.js:1180`, `render/vfx.js:3061`, `systems/presentationOrchestrator.js:213`, `ui/miningHud.js:209` |
-| `mining:tick` | `systems/automation.js:1229`, `systems/mining.js:1207` | `audio/audioSystem.js:2975`, `render/vfx.js:3062`, `systems/heliosSharedCut.js:62`, `systems/presentationOrchestrator.js:214`, `ui/miningHud.js:211` |
-| `mining:ventBonus` | `systems/mining.js:1005` | `systems/onboarding.js:931`, `ui/miningHud.js:216` |
-| `mining:ventReady` | `systems/mining.js:922` | `systems/presentationOrchestrator.js:219` |
-| `mining:yield` | `balance/careerCohorts.js:2302`, `balance/prospectorPublicRoute.js:524`, `systems/mining.js:1000`, `systems/mining.js:1419`, `systems/mining.js:1492`, `systems/mining.js:2221`, `systems/mining.js:2296`, `systems/mining.js:2761` | `careers/origins/prospectorOrigin.js:636`, `render/authoredMotion.js:1153`, `render/vfx.js:3065`, `systems/encounterDirector.js:417`, `systems/missions.js:783`, `systems/onboarding.js:732`, `systems/presentationOrchestrator.js:220` |
-| `missile:guidanceLost` | `systems/weapons.js:1371` | — |
-| `mission:abandon` | `systems/moralTrap.js:310` | `systems/missions.js:669` |
+| `mining:podSplit` | `systems/mining.js:2135` | — |
+| `mining:richCoreChargeStart` | `systems/mining.js:2748` | `render/asteroidMotionPresentation.js:528`, `systems/presentationOrchestrator.js:223`, `ui/miningHud.js:213` |
+| `mining:richCoreCompleted` | `systems/mining.js:2781` | `render/asteroidMotionPresentation.js:529`, `systems/presentationOrchestrator.js:224`, `ui/miningHud.js:214` |
+| `mining:richCoreExposed` | `systems/mining.js:2726` | `render/asteroidMotionPresentation.js:527`, `systems/presentationOrchestrator.js:222`, `ui/miningHud.js:212` |
+| `mining:richCoreFizzle` | `systems/mining.js:2785` | `render/asteroidMotionPresentation.js:530`, `systems/presentationOrchestrator.js:225`, `ui/miningHud.js:215` |
+| `mining:rockSpent` | `systems/mining.js:1330` | `systems/world.js:765` |
+| `mining:seamHit` | `systems/mining.js:3154` | `systems/presentationOrchestrator.js:215` |
+| `mining:start` | `systems/mining.js:498`, `systems/mining.js:554`, `systems/mining.js:615`, `systems/mining.js:756`, `systems/mining.js:2081` | `audio/audioSystem.js:3012`, `render/asteroidMotionPresentation.js:522`, `render/authoredMotion.js:1152`, `render/authoredMotion.js:1179`, `render/vfx.js:3072`, `systems/missions.js:1055`, `systems/onboarding.js:744`, `systems/presentationOrchestrator.js:212`, `ui/miningHud.js:208`, `ui/worldObjectInteraction.js:508` |
+| `mining:stop` | `systems/mining.js:888` | `audio/audioSystem.js:3013`, `render/asteroidMotionPresentation.js:523`, `render/authoredMotion.js:1154`, `render/authoredMotion.js:1180`, `render/vfx.js:3073`, `systems/presentationOrchestrator.js:213`, `ui/miningHud.js:209` |
+| `mining:tick` | `systems/automation.js:1229`, `systems/mining.js:1213` | `audio/audioSystem.js:3014`, `render/vfx.js:3074`, `systems/heliosSharedCut.js:62`, `systems/presentationOrchestrator.js:214`, `ui/miningHud.js:211` |
+| `mining:ventBonus` | `systems/mining.js:1011` | `systems/onboarding.js:944`, `ui/miningHud.js:216` |
+| `mining:ventReady` | `systems/mining.js:928` | `systems/presentationOrchestrator.js:219` |
+| `mining:yield` | `balance/careerCohorts.js:2302`, `balance/prospectorPublicRoute.js:524`, `systems/mining.js:1006`, `systems/mining.js:1429`, `systems/mining.js:1502`, `systems/mining.js:2238`, `systems/mining.js:2313`, `systems/mining.js:2778` | `careers/origins/prospectorOrigin.js:636`, `render/authoredMotion.js:1153`, `render/vfx.js:3077`, `systems/encounterDirector.js:417`, `systems/missions.js:849`, `systems/onboarding.js:745`, `systems/presentationOrchestrator.js:220`, `world/adventureXp.js:77` |
+| `missile:guidanceLost` | `systems/weapons.js:1447` | — |
+| `mission:abandon` | `systems/moralTrap.js:310` | `systems/missions.js:735` |
 | `mission:abandoned` | — | `systems/contractClauses.js:375` |
-| `mission:accepted` | `systems/missions.js:1618` | `audio/audioSystem.js:3121`, `save/saveSystem.js:579`, `systems/aftermathWrecks.js:1289`, `systems/contractClauses.js:370`, `systems/contractClauses.js:371`, `systems/economy.js:1701`, `systems/encounterDirector.js:419`, `systems/faction_frontier.js:492`, `systems/fenceDesk.js:53`, `systems/moralTrap.js:191`, `systems/onboarding.js:734`, `ui/screens/missionLog.js:2774`, `ui/wreckChoicePrompt.js:51` |
-| `mission:completed` | `missions/lanternWardStory.js:84`, `systems/missions.js:4971`, `systems/missions.js:4991`, `systems/missions.js:5285` | `audio/audioSystem.js:3125`, `balance/careerCohorts.js:2240`, `careers/origins/haulerOriginSystem.js:70`, `save/saveSystem.js:580`, `systems/aftermathWrecks.js:1290`, `systems/claims.js:362`, `systems/contractClauses.js:372`, `systems/contractClauses.js:379`, `systems/crew.js:106`, `systems/economyContracts.js:268`, `systems/encounterDirector.js:428`, `systems/faction_frontier.js:494`, `systems/factions.js:512`, `systems/fenceDesk.js:54`, `systems/lossLedger.js:467`, `systems/onboarding.js:735`, `systems/story.js:261`, `ui/moralTrapPrompt.js:39`, `ui/screens/missionLog.js:2775` |
-| `mission:conditionBroken` | `systems/contractClauses.js:674`, `systems/missions.js:1247`, `systems/missions.js:1361` | `systems/missions.js:940` |
-| `mission:conditionPending` | `systems/missions.js:1427` | — |
-| `mission:conditionProgress` | `systems/contractClauses.js:642`, `systems/missions.js:1230` | — |
-| `mission:conditionSatisfied` | `systems/contractClauses.js:653`, `systems/missions.js:1238`, `systems/missions.js:1354` | `systems/missions.js:937` |
-| `mission:expired` | `systems/missions.js:5815` | `audio/audioSystem.js:3133`, `save/saveSystem.js:582`, `systems/aftermathWrecks.js:1292`, `systems/contractClauses.js:374`, `systems/contractClauses.js:384`, `systems/encounterDirector.js:433`, `systems/factions.js:521`, `systems/fenceDesk.js:60`, `ui/screens/missionLog.js:2777` |
-| `mission:failed` | `systems/missions.js:5731` | `audio/audioSystem.js:3132`, `careers/origins/haulerOriginSystem.js:73`, `save/saveSystem.js:581`, `systems/aftermathWrecks.js:1291`, `systems/contractClauses.js:373`, `systems/encounterDirector.js:429`, `systems/faction_frontier.js:493`, `systems/factions.js:520`, `systems/fenceDesk.js:55`, `systems/story.js:262`, `ui/moralTrapPrompt.js:40`, `ui/screens/missionLog.js:2776` |
+| `mission:accepted` | `systems/missions.js:1716` | `audio/audioSystem.js:3160`, `save/saveSystem.js:579`, `systems/aftermathWrecks.js:1303`, `systems/contractClauses.js:370`, `systems/contractClauses.js:371`, `systems/economy.js:1701`, `systems/encounterDirector.js:419`, `systems/faction_frontier.js:492`, `systems/fenceDesk.js:53`, `systems/moralTrap.js:191`, `systems/onboarding.js:747`, `ui/screens/missionLog.js:2777`, `ui/wreckChoicePrompt.js:51` |
+| `mission:completed` | `missions/lanternWardStory.js:84`, `systems/missions.js:5081`, `systems/missions.js:5101`, `systems/missions.js:5395` | `audio/audioSystem.js:3164`, `balance/careerCohorts.js:2240`, `careers/origins/haulerOriginSystem.js:70`, `save/saveSystem.js:580`, `systems/aftermathWrecks.js:1304`, `systems/claims.js:362`, `systems/contractClauses.js:372`, `systems/contractClauses.js:379`, `systems/crew.js:106`, `systems/economyContracts.js:268`, `systems/encounterDirector.js:428`, `systems/faction_frontier.js:494`, `systems/factions.js:512`, `systems/fenceDesk.js:54`, `systems/lossLedger.js:467`, `systems/onboarding.js:748`, `systems/story.js:261`, `ui/asteroid/asteroidScreen.js:2738`, `ui/moralTrapPrompt.js:39`, `ui/screens/missionLog.js:2778`, `world/adventureXp.js:66` |
+| `mission:conditionBroken` | `systems/contractClauses.js:674`, `systems/missions.js:1344`, `systems/missions.js:1458` | `systems/missions.js:1020` |
+| `mission:conditionPending` | `systems/missions.js:1524` | — |
+| `mission:conditionProgress` | `systems/contractClauses.js:642`, `systems/missions.js:1327` | — |
+| `mission:conditionSatisfied` | `systems/contractClauses.js:653`, `systems/missions.js:1335`, `systems/missions.js:1451` | `systems/missions.js:1017` |
+| `mission:expired` | `systems/missions.js:5925` | `audio/audioSystem.js:3172`, `save/saveSystem.js:582`, `systems/aftermathWrecks.js:1306`, `systems/contractClauses.js:374`, `systems/contractClauses.js:384`, `systems/encounterDirector.js:433`, `systems/factions.js:521`, `systems/fenceDesk.js:60`, `ui/screens/missionLog.js:2780` |
+| `mission:failed` | `systems/missions.js:5841` | `audio/audioSystem.js:3171`, `careers/origins/haulerOriginSystem.js:73`, `save/saveSystem.js:581`, `systems/aftermathWrecks.js:1305`, `systems/contractClauses.js:373`, `systems/encounterDirector.js:429`, `systems/faction_frontier.js:493`, `systems/factions.js:520`, `systems/fenceDesk.js:55`, `systems/story.js:262`, `ui/moralTrapPrompt.js:40`, `ui/screens/missionLog.js:2779` |
 | `mission:forceEvent` | `data/encounters/1206-the-fire-sale.js:124`, `systems/economyContracts.js:883` | `systems/economy.js:1841` |
-| `mission:gateCleared` | `systems/missions.js:4016`, `systems/missions.js:4144` | — |
-| `mission:offerBoarded` | `systems/missionBoardOps.js:1311` | `systems/aftermathWrecks.js:1288`, `systems/economyContracts.js:248` |
-| `mission:offered` | `response/mercyService/live.js:136`, `systems/aftermathWrecks.js:2511`, `systems/alienEcology.js:778`, `systems/careerContracts.js:329`, `systems/e1EncounterRuntime.js:520`, `systems/economyContracts.js:406`, `systems/lossInvestigation.js:284`, `systems/lossLedger.js:380`, `systems/postEndingReplay.js:371`, `systems/salvage.js:1257`, `systems/uniqueWrecks.js:1123` | `systems/economy.js:1700`, `systems/lossInvestigation.js:128`, `systems/missions.js:674`, `systems/survivorPod.js:726` |
-| `mission:setPieceTransition` | `systems/missions.js:4927` | `systems/lossInvestigation.js:130` |
+| `mission:gateCleared` | `systems/missions.js:4124`, `systems/missions.js:4252` | — |
+| `mission:offerBoarded` | `systems/missionBoardOps.js:1314` | `systems/aftermathWrecks.js:1302`, `systems/economyContracts.js:248` |
+| `mission:offered` | `response/mercyService/live.js:136`, `systems/aftermathWrecks.js:2599`, `systems/alienEcology.js:778`, `systems/careerContracts.js:329`, `systems/e1EncounterRuntime.js:520`, `systems/economyContracts.js:406`, `systems/lossInvestigation.js:284`, `systems/lossLedger.js:380`, `systems/postEndingReplay.js:371`, `systems/salvage.js:1257`, `systems/uniqueWrecks.js:1123` | `systems/economy.js:1700`, `systems/lossInvestigation.js:128`, `systems/missions.js:740`, `systems/survivorPod.js:726` |
+| `mission:setPieceTransition` | `systems/missions.js:5037` | `systems/lossInvestigation.js:130` |
 | `mission:setPieceTravelLine` | `systems/missionStoryOps.js:1370` | — |
 | `mission:spawnDeferred` | `systems/missionSpawningOps.js:1440` | — |
 | `mission:targetsProjected` | `systems/missionSpawningOps.js:97` | — |
-| `mission:updated` | `missions/blackFlagMissions.js:183`, `missions/cinderRoute.js:170`, `missions/cinderRoute.js:197`, `missions/dioneTargetPractice.js:248`, `missions/furnaceWorksiteRuntime.js:83`, `systems/contractClauses.js:647`, `systems/contractClauses.js:657`, `systems/contractClauses.js:686`, `systems/missionBoardOps.js:95`, `systems/missionBoardOps.js:271`, `systems/missionBoardOps.js:552`, `systems/missionBoardOps.js:699`, `systems/missionBoardOps.js:1103`, `systems/missionBoardOps.js:1137`, `systems/missionBoardOps.js:1149`, `systems/missionBoardOps.js:1310`, `systems/missionObjectiveOps.js:66`, `systems/missionObjectiveOps.js:113`, `systems/missionObjectiveOps.js:176`, `systems/missionObjectiveOps.js:189`, `systems/missionObjectiveOps.js:205`, `systems/missionObjectiveOps.js:221`, `systems/missionObjectiveOps.js:267`, `systems/missionObjectiveOps.js:309`, `systems/missionObjectiveOps.js:379`, `systems/missionObjectiveOps.js:462`, `systems/missionObjectiveOps.js:493`, `systems/missionObjectiveOps.js:621`, `systems/missionObjectiveOps.js:741`, `systems/missionObjectiveOps.js:750`, `systems/missionObjectiveOps.js:1027`, `systems/missionObjectiveOps.js:1053`, `systems/missionObjectiveOps.js:1124`, `systems/missionObjectiveOps.js:1140`, `systems/missionObjectiveOps.js:1184`, `systems/missionObjectiveOps.js:1205`, `systems/missionObjectiveOps.js:1235`, `systems/missionObjectiveOps.js:1258`, `systems/missionObjectiveOps.js:1365`, `systems/missionObjectiveOps.js:1564`, `systems/missionObjectiveOps.js:2782`, `systems/missionObjectiveOps.js:2925`, `systems/missionObjectiveOps.js:3039`, `systems/missionObjectiveOps.js:3129`, `systems/missionSpawningOps.js:533`, `systems/missionSpawningOps.js:551`, `systems/missionSpawningOps.js:623`, `systems/missionSpawningOps.js:1073`, `systems/missionSpawningOps.js:1404`, `systems/missionSpawningOps.js:1431`, `systems/missionSpawningOps.js:1528`, `systems/missionSpawningOps.js:1658`, `systems/missionSpawningOps.js:1835`, `systems/missionStoryOps.js:171`, `systems/missionStoryOps.js:253`, `systems/missionStoryOps.js:323`, `systems/missionStoryOps.js:527`, `systems/missionStoryOps.js:560`, `systems/missionStoryOps.js:575`, `systems/missionStoryOps.js:589`, `systems/missionStoryOps.js:774`, `systems/missionStoryOps.js:916`, `systems/missionStoryOps.js:964`, `systems/missionStoryOps.js:1050`, `systems/missionStoryOps.js:1632`, `systems/missionStoryOps.js:2393`, `systems/missionStoryOps.js:2585`, `systems/missionStoryOps.js:2643`, `systems/missions.js:527`, `systems/missions.js:539`, `systems/missions.js:549`, `systems/missions.js:773`, `systems/missions.js:1234`, `systems/missions.js:1242`, `systems/missions.js:1263`, `systems/missions.js:1366`, `systems/missions.js:1457`, `systems/missions.js:1471`, `systems/missions.js:1485`, `systems/missions.js:1495`, `systems/missions.js:1508`, `systems/missions.js:1527`, `systems/missions.js:1631`, `systems/missions.js:1872`, `systems/missions.js:1899`, `systems/missions.js:2061`, `systems/missions.js:2364`, `systems/missions.js:3158`, `systems/missions.js:3191`, `systems/missions.js:3237`, `systems/missions.js:3248`, `systems/missions.js:3264`, `systems/missions.js:3690`, `systems/missions.js:3933`, `systems/missions.js:3955`, `systems/missions.js:4030`, `systems/missions.js:4074`, `systems/missions.js:4150`, `systems/missions.js:4222`, `systems/missions.js:4374`, `systems/missions.js:4381`, `systems/missions.js:5270`, `systems/missions.js:5745`, `systems/missions.js:5826`, `systems/wakeHandoffRuntime.js:25`, `systems/workingBattlefieldRuntime.js:148` | `systems/contractClauses.js:393`, `ui/screens/missionLog.js:2773`, `ui/station/screens/contracts.js:1676` |
-| `mission:venueFailure` | `response/mercyService/live.js:283`, `systems/wreckCourt.js:1071` | `systems/missions.js:824` |
-| `mission:venueProof` | `response/mercyService/live.js:227`, `systems/wreckCourt.js:1034` | `systems/missions.js:812` |
-| `mode:changed` | `core/simLaneCommands.js:182`, `main.js:483`, `main.js:1321`, `main.js:1363`, `main.js:1375`, `save/saveSystem.js:6670`, `save/saveSystem.js:6697`, `save/saveSystem.js:7437`, `save/saveSystem.js:7786` | `render/feel.js:1558`, `systems/autoTargetAssist.js:143`, `systems/input.js:1553`, `systems/presentationAdapters.js:342`, `systems/scanner.js:1136`, `ui/contextWheel.js:379`, `ui/loadingPresenter.js:687`, `ui/masslineHud.js:1423`, `ui/screenManager.js:751`, `ui/screens/mainMenu.js:1291`, `ui/uiRoot.js:1230`, `ui/wingmanRadial.js:356` |
-| `module:equipped` | `systems/ships.js:3429` | `systems/onboarding.js:781`, `systems/onboarding.js:791`, `systems/onboarding.js:1141`, `systems/ships.js:1993`, `systems/survivalDraft.js:218`, `systems/world.js:832`, `ui/station/screens/shipworks.js:4543` |
+| `mission:updated` | `missions/blackFlagMissions.js:183`, `missions/cinderRoute.js:170`, `missions/cinderRoute.js:197`, `missions/dioneTargetPractice.js:248`, `missions/furnaceWorksiteRuntime.js:83`, `missions/worksContractRuntime.js:90`, `systems/contractClauses.js:647`, `systems/contractClauses.js:657`, `systems/contractClauses.js:686`, `systems/missionBoardOps.js:97`, `systems/missionBoardOps.js:274`, `systems/missionBoardOps.js:555`, `systems/missionBoardOps.js:702`, `systems/missionBoardOps.js:1106`, `systems/missionBoardOps.js:1140`, `systems/missionBoardOps.js:1152`, `systems/missionBoardOps.js:1313`, `systems/missionObjectiveOps.js:74`, `systems/missionObjectiveOps.js:121`, `systems/missionObjectiveOps.js:184`, `systems/missionObjectiveOps.js:197`, `systems/missionObjectiveOps.js:213`, `systems/missionObjectiveOps.js:229`, `systems/missionObjectiveOps.js:275`, `systems/missionObjectiveOps.js:317`, `systems/missionObjectiveOps.js:387`, `systems/missionObjectiveOps.js:470`, `systems/missionObjectiveOps.js:501`, `systems/missionObjectiveOps.js:629`, `systems/missionObjectiveOps.js:746`, `systems/missionObjectiveOps.js:755`, `systems/missionObjectiveOps.js:1032`, `systems/missionObjectiveOps.js:1058`, `systems/missionObjectiveOps.js:1129`, `systems/missionObjectiveOps.js:1145`, `systems/missionObjectiveOps.js:1189`, `systems/missionObjectiveOps.js:1210`, `systems/missionObjectiveOps.js:1240`, `systems/missionObjectiveOps.js:1263`, `systems/missionObjectiveOps.js:1370`, `systems/missionObjectiveOps.js:1569`, `systems/missionObjectiveOps.js:2787`, `systems/missionObjectiveOps.js:2930`, `systems/missionObjectiveOps.js:3044`, `systems/missionObjectiveOps.js:3134`, `systems/missionSpawningOps.js:533`, `systems/missionSpawningOps.js:551`, `systems/missionSpawningOps.js:623`, `systems/missionSpawningOps.js:1073`, `systems/missionSpawningOps.js:1404`, `systems/missionSpawningOps.js:1431`, `systems/missionSpawningOps.js:1528`, `systems/missionSpawningOps.js:1658`, `systems/missionSpawningOps.js:1835`, `systems/missionStoryOps.js:171`, `systems/missionStoryOps.js:253`, `systems/missionStoryOps.js:323`, `systems/missionStoryOps.js:527`, `systems/missionStoryOps.js:560`, `systems/missionStoryOps.js:575`, `systems/missionStoryOps.js:589`, `systems/missionStoryOps.js:774`, `systems/missionStoryOps.js:916`, `systems/missionStoryOps.js:964`, `systems/missionStoryOps.js:1050`, `systems/missionStoryOps.js:1632`, `systems/missionStoryOps.js:2393`, `systems/missionStoryOps.js:2585`, `systems/missionStoryOps.js:2643`, `systems/missions.js:469`, `systems/missions.js:590`, `systems/missions.js:602`, `systems/missions.js:612`, `systems/missions.js:839`, `systems/missions.js:1331`, `systems/missions.js:1339`, `systems/missions.js:1360`, `systems/missions.js:1463`, `systems/missions.js:1554`, `systems/missions.js:1568`, `systems/missions.js:1582`, `systems/missions.js:1592`, `systems/missions.js:1605`, `systems/missions.js:1624`, `systems/missions.js:1729`, `systems/missions.js:1970`, `systems/missions.js:1997`, `systems/missions.js:2163`, `systems/missions.js:2467`, `systems/missions.js:3263`, `systems/missions.js:3296`, `systems/missions.js:3345`, `systems/missions.js:3356`, `systems/missions.js:3372`, `systems/missions.js:3798`, `systems/missions.js:4041`, `systems/missions.js:4063`, `systems/missions.js:4138`, `systems/missions.js:4182`, `systems/missions.js:4258`, `systems/missions.js:4330`, `systems/missions.js:4482`, `systems/missions.js:4489`, `systems/missions.js:5380`, `systems/missions.js:5855`, `systems/missions.js:5936`, `systems/wakeHandoffRuntime.js:25`, `systems/workingBattlefieldRuntime.js:148` | `systems/contractClauses.js:393`, `ui/screens/missionLog.js:2776`, `ui/station/screens/contracts.js:1679` |
+| `mission:venueFailure` | `response/mercyService/live.js:283`, `systems/wreckCourt.js:1071` | `systems/missions.js:890` |
+| `mission:venueProof` | `response/mercyService/live.js:227`, `systems/wreckCourt.js:1034` | `systems/missions.js:878` |
+| `mode:changed` | `core/simLaneCommands.js:182`, `main.js:495`, `main.js:1445`, `main.js:1489`, `main.js:1501`, `save/saveSystem.js:6670`, `save/saveSystem.js:6697`, `save/saveSystem.js:7437`, `save/saveSystem.js:7786` | `main.js:647`, `render/feel.js:1566`, `systems/autoTargetAssist.js:143`, `systems/input.js:1595`, `systems/presentationAdapters.js:342`, `systems/scanner.js:1136`, `ui/contextWheel.js:382`, `ui/loadingPresenter.js:687`, `ui/masslineHud.js:1472`, `ui/screenManager.js:754`, `ui/screens/mainMenu.js:1291`, `ui/uiRoot.js:1269`, `ui/wingmanRadial.js:356` |
+| `module:equipped` | `systems/ships.js:3429` | `systems/onboarding.js:794`, `systems/onboarding.js:804`, `systems/onboarding.js:1154`, `systems/ships.js:1993`, `systems/survivalDraft.js:218`, `systems/world.js:849`, `ui/station/screens/shipworks.js:4543` |
 | `module:fitRefused` | `systems/ships.js:2082`, `systems/ships.js:2088`, `systems/ships.js:2746`, `systems/ships.js:3360`, `systems/ships.js:3439` | `ui/station/screens/shipworks.js:4547`, `ui/station/screens/shipworks.js:4570`, `ui/station/screens/shipworks.js:4579` |
 | `module:granted` | `systems/ships.js:2374`, `systems/ships.js:2850`, `systems/ships.js:2861` | — |
-| `module:purchased` | `systems/ships.js:2822` | `systems/onboarding.js:941` |
+| `module:purchased` | `systems/ships.js:2822` | `systems/onboarding.js:954` |
 | `module:sold` | `systems/ships.js:2735` | — |
-| `module:unequipped` | `systems/ships.js:2235`, `systems/ships.js:3474` | `systems/ships.js:1994`, `systems/survivalDraft.js:219`, `systems/world.js:833`, `ui/station/screens/shipworks.js:4567` |
+| `module:unequipped` | `systems/ships.js:2235`, `systems/ships.js:3474` | `systems/ships.js:1994`, `systems/survivalDraft.js:219`, `systems/world.js:850`, `ui/station/screens/shipworks.js:4567` |
 | `moisture:loss` | `systems/moistureLoss.js:208` | — |
 | `moment:amended` | `systems/bulletTime.js:278` | `ui/clipCaptureRuntime.js:111` |
-| `moment:holyShit` | — | `render/feel.js:1825`, `systems/gamepad.js:1124` |
+| `moment:holyShit` | — | `render/feel.js:1833`, `systems/gamepad.js:1181` |
 | `moralMemory:remember` | `data/encounters/1211-the-forecastle-vote.js:437`, `data/encounters/1211-the-forecastle-vote.js:444` | `systems/encounterDirector.js:404` |
 | `moralMemory:vengefulReturn` | `systems/e1EncounterRuntime.js:530` | `systems/encounterDirector.js:406` |
 | `moralTrap:choose` | `ui/moralTrapPrompt.js:78` | `systems/moralTrap.js:190` |
@@ -1163,33 +1171,33 @@
 | `namedAce:appeared` | `systems/encounterScripts.js:3901` | — |
 | `namedAce:fled` | — | `systems/encounterDirector.js:444` |
 | `nav:abortRoute` | — | `systems/routeFollower.js:415` |
-| `nav:autopilot` | `systems/flight.js:408`, `systems/flightV3.js:1552`, `systems/flightV3.js:1859`, `systems/missions.js:2441`, `systems/missions.js:2463`, `systems/world.js:7399` | `systems/routeFollower.js:418` |
-| `nav:engageRoute` | `systems/routeFollower.js:413`, `ui/screens/starmap.js:1823` | `systems/routeFollower.js:408` |
+| `nav:autopilot` | `systems/flight.js:408`, `systems/flightV3.js:1552`, `systems/flightV3.js:1864`, `systems/missions.js:2544`, `systems/missions.js:2566`, `systems/world.js:7781` | `systems/routeFollower.js:418`, `ui/input.js:424` |
+| `nav:engageRoute` | `systems/routeFollower.js:413`, `ui/screens/starmap.js:1825` | `systems/routeFollower.js:408` |
 | `nav:flyToBerth` | — | `ui/input.js:427` |
-| `nav:routeBrake` | — | `audio/audioSystem.js:3240` |
-| `nav:waypoint` | `features/industrialDisasters/runtime.js:307`, `save/saveSystem.js:8571`, `systems/claims.js:1906`, `systems/claims.js:1914`, `systems/encounterDirector.js:2684`, `systems/encounterDirector.js:2696`, `systems/missionObjectiveOps.js:150`, `systems/missionObjectiveOps.js:1317`, `systems/missionStoryOps.js:2991`, `systems/missions.js:693`, `systems/missions.js:2353`, `systems/missions.js:2496`, `systems/missions.js:2531`, `systems/world.js:7398`, `ui/market/tradeLogic.js:573` | `render/authoredMotion.js:1182` |
+| `nav:routeBrake` | — | `audio/audioSystem.js:3279` |
+| `nav:waypoint` | `features/industrialDisasters/runtime.js:307`, `save/saveSystem.js:8571`, `systems/claims.js:1906`, `systems/claims.js:1914`, `systems/encounterDirector.js:2684`, `systems/encounterDirector.js:2696`, `systems/missionObjectiveOps.js:158`, `systems/missionObjectiveOps.js:1322`, `systems/missionStoryOps.js:2991`, `systems/missions.js:759`, `systems/missions.js:2456`, `systems/missions.js:2599`, `systems/missions.js:2634`, `systems/world.js:7780`, `ui/market/tradeLogic.js:573` | `render/authoredMotion.js:1182` |
 | `nemesis:encounterRejected` | `nemesis/encounterHost.js:135` | — |
 | `nemesis:encounterStarted` | `nemesis/encounterHost.js:205` | — |
 | `nemesis:escaped` | `nemesis/encounterHost.js:131` | — |
 | `nemesis:spare` | `ui/nemesisComms.js:69` | — |
 | `nest:waspsLaunched` | `data/encounters/705-the-nest.js:458` | — |
 | `news:headline` | `systems/aftermathWrecks.js:897`, `systems/aftermathWrecks.js:997`, `systems/e1EncounterRuntime.js:329`, `systems/lastShift.js:403`, `systems/nemesisSignals.js:25`, `systems/presentationOrchestrator.js:1364`, `systems/trafficCausalChainOps.js:2800`, `systems/trafficRecoveryOps.js:336`, `ui/marketNews.js:298` | — |
-| `news:publish` | `data/encounters/1311-eris-last-pod.js:266`, `data/encounters/1311-eris-last-pod.js:294`, `data/encounters/362-the-salvage-watch.js:344`, `data/encounters/362-the-salvage-watch.js:360`, `data/encounters/362-the-salvage-watch.js:451`, `data/encounters/365-the-grandee.js:102`, `data/encounters/365-the-grandee.js:166`, `data/encounters/365-the-grandee.js:196`, `data/encounters/367-the-salvage-tail.js:274`, `data/encounters/367-the-salvage-tail.js:319`, `data/encounters/367-the-salvage-tail.js:345`, `systems/aftermathWrecks.js:905`, `systems/aftermathWrecks.js:1015`, `systems/blindWelderRuntime.js:162`, `systems/choirReliefBerth.js:368`, `systems/choirReliefBerth.js:408`, `systems/claims.js:2449`, `systems/claims.js:2657`, `systems/claims.js:3141`, `systems/claims.js:3188`, `systems/crSituationKit.js:69`, `systems/driftAuctionRuntime.js:194`, `systems/driftAuctionRuntime.js:211`, `systems/driftAuctionRuntime.js:403`, `systems/eighthBellRuntime.js:140`, `systems/factions.js:360`, `systems/factions.js:613`, `systems/glueMeetMassRuntime.js:110`, `systems/heliosClaimOpening.js:123`, `systems/heliosClaimOpening.js:159`, `systems/impoundGrudge.js:682`, `systems/impoundLot.js:1390`, `systems/memorialThief.js:136`, `systems/npcJobsRuntime.js:1636`, `systems/presentationOrchestrator.js:1371`, `systems/runawayKilnRuntime.js:193`, `systems/runawayKilnRuntime.js:210`, `systems/special500Director.js:286`, `systems/special500Spectacle.js:136`, `systems/trafficCausalChainOps.js:2300`, `systems/trafficJobOps.js:983`, `systems/uniqueWrecks.js:670`, `systems/uniqueWrecks.js:2058`, `systems/uniqueWrecks.js:2137`, `systems/world.js:1189`, `systems/world.js:5589`, `systems/worldClock.js:222`, `systems/worldPressure.js:446`, `ui/watchlistHud.js:77` | — |
-| `news:render` | `ui/hud.js:2394` | — |
+| `news:publish` | `data/encounters/1311-eris-last-pod.js:266`, `data/encounters/1311-eris-last-pod.js:294`, `data/encounters/362-the-salvage-watch.js:344`, `data/encounters/362-the-salvage-watch.js:360`, `data/encounters/362-the-salvage-watch.js:451`, `data/encounters/365-the-grandee.js:102`, `data/encounters/365-the-grandee.js:166`, `data/encounters/365-the-grandee.js:196`, `data/encounters/367-the-salvage-tail.js:274`, `data/encounters/367-the-salvage-tail.js:319`, `data/encounters/367-the-salvage-tail.js:345`, `systems/aftermathWrecks.js:905`, `systems/aftermathWrecks.js:1015`, `systems/blindWelderRuntime.js:162`, `systems/choirReliefBerth.js:368`, `systems/choirReliefBerth.js:408`, `systems/claims.js:2449`, `systems/claims.js:2657`, `systems/claims.js:3141`, `systems/claims.js:3188`, `systems/crSituationKit.js:69`, `systems/driftAuctionRuntime.js:194`, `systems/driftAuctionRuntime.js:211`, `systems/driftAuctionRuntime.js:403`, `systems/eighthBellRuntime.js:140`, `systems/factions.js:360`, `systems/factions.js:613`, `systems/glueMeetMassRuntime.js:110`, `systems/heliosClaimOpening.js:123`, `systems/heliosClaimOpening.js:159`, `systems/impoundGrudge.js:682`, `systems/impoundLot.js:1390`, `systems/memorialThief.js:136`, `systems/npcJobsRuntime.js:1636`, `systems/presentationOrchestrator.js:1371`, `systems/runawayKilnRuntime.js:193`, `systems/runawayKilnRuntime.js:210`, `systems/special500Director.js:286`, `systems/special500Spectacle.js:136`, `systems/trafficCausalChainOps.js:2300`, `systems/trafficJobOps.js:983`, `systems/uniqueWrecks.js:670`, `systems/uniqueWrecks.js:2058`, `systems/uniqueWrecks.js:2137`, `systems/world.js:1208`, `systems/world.js:5899`, `systems/worldClock.js:222`, `systems/worldPressure.js:446`, `ui/watchlistHud.js:77` | — |
+| `news:render` | `ui/hud.js:2405` | — |
 | `npc:hailed` | `systems/barkDirector.js:2061`, `systems/barkDirector.js:2206` | `render/authoredMotion.js:1217` |
 | `npcJobs:towAssistComplete` | `systems/npcJobsRuntime.js:3879` | `systems/scanner.js:1131` |
-| `npcJobs:towAssistLost` | `systems/npcJobsRuntime.js:3415`, `systems/npcJobsRuntime.js:4022`, `systems/npcJobsRuntime.js:4061` | `systems/missions.js:986`, `systems/scanner.js:1132` |
+| `npcJobs:towAssistLost` | `systems/npcJobsRuntime.js:3415`, `systems/npcJobsRuntime.js:4022`, `systems/npcJobsRuntime.js:4061` | `systems/missions.js:1066`, `systems/scanner.js:1132` |
 | `npcjobs:approach` | — | `features/breakwaterSpur/runtime.js:78` |
 | `npcjobs:arrived` | — | `features/breakwaterSpur/runtime.js:77` |
 | `npcjobs:closeCall` | `systems/npcJobsRuntime.js:5891` | — |
-| `npcjobs:complete` | — | `features/breakwaterSpur/runtime.js:80`, `systems/traffic.js:1898` |
+| `npcjobs:complete` | — | `features/breakwaterSpur/runtime.js:80`, `systems/traffic.js:1900` |
 | `npcjobs:crewResponse` | `systems/npcJobsRuntime.js:7055` | — |
-| `npcjobs:cycle` | — | `systems/traffic.js:1896`, `systems/traffic.js:1897` |
+| `npcjobs:cycle` | — | `systems/traffic.js:1898`, `systems/traffic.js:1899` |
 | `npcjobs:depart` | — | `features/breakwaterSpur/runtime.js:76` |
-| `npcjobs:distress` | `systems/npcJobsRuntime.js:7261` | `systems/traffic.js:1887` |
+| `npcjobs:distress` | `systems/npcJobsRuntime.js:7261` | `systems/traffic.js:1889` |
 | `npcjobs:errand` | `systems/laneErrands.js:376` | — |
-| `npcjobs:hold` | — | `systems/traffic.js:1884` |
-| `npcjobs:load` | — | `features/breakwaterSpur/runtime.js:75`, `systems/traffic.js:1882` |
+| `npcjobs:hold` | — | `systems/traffic.js:1886` |
+| `npcjobs:load` | — | `features/breakwaterSpur/runtime.js:75`, `systems/traffic.js:1884` |
 | `npcjobs:loadEmpty` | `systems/npcJobsRuntime.js:1437`, `systems/npcJobsRuntime.js:1451` | `systems/barkDirector.js:924` |
 | `npcjobs:lotClaimed` | `systems/npcJobsRuntime.js:1444` | `ui/station/barContacts.js:226` |
 | `npcjobs:lotPosted` | `systems/npcJobsRuntime.js:1424` | `ui/station/barContacts.js:225` |
@@ -1199,8 +1207,8 @@
 | `npcjobs:resumed` | `systems/npcJobsRuntime.js:6027` | — |
 | `npcjobs:surveyMarked` | `systems/npcJobsRuntime.js:1595` | — |
 | `npcjobs:threatened` | `systems/npcJobsRuntime.js:6100` | `render/npcJobSignatureVfx.js:711`, `render/npcJobSignatureVfx.js:902` |
-| `npcjobs:unload` | — | `features/breakwaterSpur/runtime.js:79`, `systems/traffic.js:1883` |
-| `npcjobs:work` | — | `systems/traffic.js:1881` |
+| `npcjobs:unload` | — | `features/breakwaterSpur/runtime.js:79`, `systems/traffic.js:1885` |
+| `npcjobs:work` | — | `systems/traffic.js:1883` |
 | `npcjobs:yardDispatch` | `systems/npcJobsRuntime.js:6232` | `systems/stationSideEventDirector.js:107` |
 | `npcjobs:yardDispatchDone` | `systems/npcJobsRuntime.js:6255` | — |
 | `occupation:delivered` | `systems/scavengerOccupationSwitch.js:610` | — |
@@ -1209,24 +1217,24 @@
 | `occupation:recommissioned` | `systems/scavengerOccupationSwitch.js:860` | — |
 | `occupation:settled` | `systems/scavengerOccupationSwitch.js:631` | — |
 | `occupation:switched` | `systems/scavengerOccupationSwitch.js:502` | — |
-| `onboarding:drillFolded` | `systems/onboarding.js:2057` | — |
-| `onboarding:rangePrompt` | `systems/onboarding.js:2635`, `systems/onboarding.js:3581`, `systems/onboarding.js:4979` | — |
-| `onboarding:rosterPrewarm` | `systems/onboarding.js:3221` | — |
-| `onboarding:swingClinic` | `systems/onboarding.js:2640` | — |
-| `optic:beamContact` | `systems/combat.js:1465` | — |
-| `optic:contact` | `systems/weapons.js:3375`, `systems/weapons.js:3441` | `audio/audioSystem.js:2895` |
-| `optic:rekindled` | — | `audio/audioSystem.js:2896` |
-| `orrinWitness:ensureEvidence` | `systems/story.js:1294` | `systems/world.js:839` |
-| `orrinWitness:evidenceEnsured` | `systems/world.js:2788` | `systems/story.js:175` |
+| `onboarding:drillFolded` | `systems/onboarding.js:2070` | — |
+| `onboarding:rangePrompt` | `systems/onboarding.js:2648`, `systems/onboarding.js:3594`, `systems/onboarding.js:4992` | — |
+| `onboarding:rosterPrewarm` | `systems/onboarding.js:3234` | — |
+| `onboarding:swingClinic` | `systems/onboarding.js:2653` | — |
+| `optic:beamContact` | `systems/combat.js:1468` | — |
+| `optic:contact` | `systems/weapons.js:3501`, `systems/weapons.js:3567` | `audio/audioSystem.js:2934` |
+| `optic:rekindled` | — | `audio/audioSystem.js:2935` |
+| `orrinWitness:ensureEvidence` | `systems/story.js:1294` | `systems/world.js:856` |
+| `orrinWitness:evidenceEnsured` | `systems/world.js:2930` | `systems/story.js:175` |
 | `orrinWitness:evidenceRecovered` | `systems/story.js:1407` | — |
 | `orrinWitness:submitted` | `systems/story.js:1435` | — |
 | `pallas:shift` | `systems/pallasWorkLoop.js:136` | — |
-| `pallasHiddenCache:cargoChanged` | `systems/world.js:8679` | — |
-| `pallasHiddenCache:choose` | `ui/recoveryEncounterPrompt.js:394` | `systems/world.js:841` |
-| `pallasHiddenCache:clueRecovered` | `systems/world.js:8475` | — |
-| `pallasHiddenCache:decisionReady` | `systems/world.js:8510` | `ui/recoveryEncounterPrompt.js:497` |
-| `pallasHiddenCache:pickupReady` | `systems/world.js:8639` | — |
-| `pallasHiddenCache:resolved` | `systems/world.js:8593` | `ui/recoveryEncounterPrompt.js:498` |
+| `pallasHiddenCache:cargoChanged` | `systems/world.js:9067` | — |
+| `pallasHiddenCache:choose` | `ui/recoveryEncounterPrompt.js:394` | `systems/world.js:858` |
+| `pallasHiddenCache:clueRecovered` | `systems/world.js:8863` | — |
+| `pallasHiddenCache:decisionReady` | `systems/world.js:8898` | `ui/recoveryEncounterPrompt.js:497` |
+| `pallasHiddenCache:pickupReady` | `systems/world.js:9027` | — |
+| `pallasHiddenCache:resolved` | `systems/world.js:8981` | `ui/recoveryEncounterPrompt.js:498` |
 | `palletJack:drop` | `ui/palletJackPrompt.js:19` | — |
 | `palletJack:lost` | `systems/palletJack.js:382` | — |
 | `palletJack:offer` | `systems/palletJack.js:283` | `ui/palletJackPrompt.js:6` |
@@ -1237,20 +1245,25 @@
 | `patrolBait:cleared` | `systems/patrolBait.js:330` | — |
 | `patrolBait:opened` | `systems/patrolBait.js:262` | — |
 | `patrolBait:voice` | `systems/patrolBait.js:93` | — |
-| `pds:intercept` | `systems/countermeasures.js:470` | `audio/audioSystem.js:2880` |
-| `physics:authorityStalled` | — | `ui/toasts.js:948` |
+| `pds:intercept` | `systems/countermeasures.js:470` | `audio/audioSystem.js:2919` |
+| `physics:authorityStalled` | — | `ui/toasts.js:992` |
 | `physics:contactsCompleted` | — | `systems/collisionConsequences.js:124`, `systems/survivalArena.js:1383` |
-| `physics:impact` | `core/physics.js:2605` | `audio/audioSystem.js:2890`, `features/breakwaterSpur/runtime.js:72`, `features/industrialDisasters/physicalSite.js:505`, `features/rigWorkshop/cargoImpact.js:55`, `gallery/orbital/session.js:118`, `missions/racingOpponents.js:361`, `render/asteroidMotionPresentation.js:518`, `render/feel.js:1802`, `render/shipMicroMotion.js:1755`, `render/vfx.js:2966`, `systems/aftermathWrecks.js:1262`, `systems/asteroidSites.js:876`, `systems/barkDirector.js:1026`, `systems/collisionConsequences.js:123`, `systems/encounterDirector.js:396`, `systems/environmentMaterials.js:217`, `systems/fenderBenderPlant.js:131`, `systems/fields.js:513`, `systems/flightV3.js:240`, `systems/fragileCargo.js:414`, `systems/gamepad.js:985`, `systems/heistFacilities.js:325`, `systems/impulseCharges.js:234`, `systems/lootShards.js:602`, `systems/masslineImpactDamage.js:61`, `systems/missions.js:870`, `systems/npcJobsRuntime.js:1248`, `systems/plants/busDoesntMove.js:147`, `systems/plants/doorstop.js:125`, `systems/plants/ducklings.js:94`, `systems/plants/oneYank.js:128`, `systems/plants/otherSide.js:133`, `systems/plants/snaggedPod.js:112`, `systems/plants/sweepingLine.js:93`, `systems/reactiveMatter.js:530`, `systems/roadRage.js:283`, `systems/roadRage.js:347`, `systems/ships.js:2128`, `systems/survivalArena.js:1382`, `systems/survivalResults.js:530`, `systems/swarmArena.js:911`, `systems/swarmDrops.js:101`, `systems/swarmElites.js:187`, `systems/volatileExposure.js:215`, `testing/lab/titleVerbScenario.js:51`, `testing/motionScenarios.js:1764`, `ui/orrery/hudAdapter.js:672` |
-| `pickup:collected` | `core/physics.js:2357`, `systems/combat.js:657`, `systems/mining.js:1827`, `systems/mining.js:2889`, `systems/uniqueWrecks.js:1919` | `audio/audioSystem.js:3071`, `render/vfx.js:3150`, `save/saveSystem.js:496`, `systems/economy.js:1784`, `systems/encounterDirector.js:378`, `systems/faction_meridian.js:369`, `systems/lawSecurity.js:438`, `systems/mining.js:307`, `systems/missions.js:756`, `systems/onboarding.js:733`, `systems/onboarding.js:822`, `systems/onboarding.js:916`, `systems/plants/busDoesntMove.js:148`, `systems/plants/litter.js:73`, `systems/plants/snaggedPod.js:113`, `systems/presentationOrchestrator.js:227`, `systems/scramblePlant.js:122`, `systems/swarmArena.js:926`, `systems/swarmDrops.js:97`, `systems/swarmEvents.js:119`, `systems/swarmFloor.js:902`, `systems/swarmSupply.js:112`, `systems/tetherGameplay.js:377`, `systems/traffic.js:1899`, `systems/traffic.js:1900`, `systems/traffic.js:1905`, `systems/traffic.js:1909`, `systems/traffic.js:1910`, `systems/traffic.js:1914`, `systems/world.js:842`, `systems/world.js:843`, `systems/world.js:846`, `systems/world.js:861`, `systems/world.js:955` |
-| `pilot:comboDetonated` | `systems/fields.js:1397` | — |
+| `physics:impact` | `core/physics.js:2832` | `audio/audioSystem.js:2929`, `features/breakwaterSpur/runtime.js:72`, `features/industrialDisasters/physicalSite.js:505`, `features/rigWorkshop/cargoImpact.js:55`, `gallery/orbital/session.js:118`, `missions/racingOpponents.js:361`, `render/asteroidMotionPresentation.js:518`, `render/feel.js:1810`, `render/shipMicroMotion.js:1755`, `render/vfx.js:2978`, `systems/aftermathWrecks.js:1276`, `systems/asteroidSites.js:878`, `systems/barkDirector.js:1026`, `systems/collisionConsequences.js:123`, `systems/encounterDirector.js:396`, `systems/environmentMaterials.js:217`, `systems/fenderBenderPlant.js:131`, `systems/fields.js:517`, `systems/flightV3.js:240`, `systems/fragileCargo.js:414`, `systems/gamepad.js:1031`, `systems/heistFacilities.js:325`, `systems/impulseCharges.js:234`, `systems/lootShards.js:628`, `systems/masslineImpactDamage.js:61`, `systems/missions.js:936`, `systems/npcJobsRuntime.js:1248`, `systems/plants/busDoesntMove.js:147`, `systems/plants/doorstop.js:125`, `systems/plants/ducklings.js:94`, `systems/plants/oneYank.js:128`, `systems/plants/otherSide.js:134`, `systems/plants/snaggedPod.js:113`, `systems/plants/sweepingLine.js:93`, `systems/reactiveMatter.js:530`, `systems/roadRage.js:283`, `systems/roadRage.js:347`, `systems/ships.js:2128`, `systems/survivalArena.js:1382`, `systems/survivalResults.js:530`, `systems/swarmArena.js:911`, `systems/swarmDrops.js:101`, `systems/swarmElites.js:187`, `systems/volatileExposure.js:215`, `testing/lab/titleVerbScenario.js:51`, `testing/motionScenarios.js:1764`, `ui/orrery/hudAdapter.js:676` |
+| `pickup:collected` | `core/physics.js:2584`, `systems/combat.js:657`, `systems/mining.js:1844`, `systems/mining.js:2906`, `systems/uniqueWrecks.js:1919` | `audio/audioSystem.js:3110`, `render/vfx.js:3164`, `save/saveSystem.js:496`, `systems/economy.js:1784`, `systems/encounterDirector.js:378`, `systems/faction_meridian.js:369`, `systems/lawSecurity.js:438`, `systems/mining.js:311`, `systems/missions.js:822`, `systems/onboarding.js:746`, `systems/onboarding.js:835`, `systems/onboarding.js:929`, `systems/plants/busDoesntMove.js:148`, `systems/plants/litter.js:73`, `systems/plants/snaggedPod.js:114`, `systems/presentationOrchestrator.js:227`, `systems/scramblePlant.js:122`, `systems/swarmArena.js:926`, `systems/swarmDrops.js:97`, `systems/swarmEvents.js:119`, `systems/swarmFloor.js:902`, `systems/swarmSupply.js:112`, `systems/tetherGameplay.js:384`, `systems/traffic.js:1901`, `systems/traffic.js:1902`, `systems/traffic.js:1907`, `systems/traffic.js:1911`, `systems/traffic.js:1912`, `systems/traffic.js:1916`, `systems/world.js:859`, `systems/world.js:860`, `systems/world.js:863`, `systems/world.js:878`, `systems/world.js:974` |
+| `pilot:comboDetonated` | `systems/fields.js:1411` | — |
+| `pilot:levelUp` | — | `render/vfx.js:3127` |
+| `pilot:nodeRequested` | — | `systems/runSession.js:180` |
+| `pilot:nodeTaken` | — | `render/vfx.js:3128` |
+| `pilot:respecRequested` | — | `systems/runSession.js:181` |
+| `pilot:xpEarned` | `world/adventureXp.js:52` | `systems/runSession.js:179` |
 | `pirateDisengage:surrenderOffer` | — | `ui/pirateParleyPrompt.js:223` |
-| `pirateDisengage:triggered` | `data/encounters/344-opening-hauler-raid.js:124` | `systems/combatOutcome.js:303` |
+| `pirateDisengage:triggered` | `data/encounters/344-opening-hauler-raid.js:124` | `systems/combatOutcome.js:307` |
 | `pirateDisengage:verdict` | `ui/pirateParleyPrompt.js:201` | — |
 | `pirateDisengage:yieldResolved` | — | `ui/pirateParleyPrompt.js:224` |
 | `pirateParley:choose` | `ui/pirateParleyPrompt.js:156` | `systems/pirateParley.js:98` |
 | `pirateParley:demand` | `systems/scanner.js:1885` | `ui/pirateParleyPrompt.js:221` |
-| `pirateParley:resolved` | — | `systems/combatOutcome.js:302`, `ui/pirateParleyPrompt.js:222` |
-| `pirateParley:started` | — | `systems/combatOutcome.js:301` |
+| `pirateParley:resolved` | — | `systems/combatOutcome.js:306`, `ui/pirateParleyPrompt.js:222` |
+| `pirateParley:started` | — | `systems/combatOutcome.js:305` |
 | `pitborn:ballastAccreted` | `systems/faction_pitborn.js:831` | — |
 | `pitborn:ballastHorn` | `systems/faction_pitborn.js:878` | — |
 | `pitborn:ballastNamed` | `systems/faction_pitborn.js:888` | — |
@@ -1293,38 +1306,38 @@
 | `pitborn:tier` | `systems/faction_pitborn.js:707` | — |
 | `pitborn:yardmasterDown` | `systems/faction_pitborn.js:939` | — |
 | `pitborn:yardmasterStripped` | `systems/faction_pitborn.js:934` | — |
-| `planet:bandFirst` | `systems/planetRuntime.js:618` | `systems/onboarding.js:1159` |
-| `planet:collector` | `systems/planetRuntime.js:833` | `audio/audioSystem.js:3113`, `render/authoredMotion.js:1221`, `systems/onboarding.js:1153` |
-| `planet:harvest` | `systems/planetRuntime.js:1006` | `audio/audioSystem.js:3114` |
-| `planet:harvestDenied` | `systems/planetRuntime.js:1013` | `audio/audioSystem.js:3115` |
+| `planet:bandFirst` | `systems/planetRuntime.js:618` | `systems/onboarding.js:1172` |
+| `planet:collector` | `systems/planetRuntime.js:833` | `audio/audioSystem.js:3152`, `render/authoredMotion.js:1221`, `systems/onboarding.js:1166` |
+| `planet:harvest` | `systems/planetRuntime.js:1006` | `audio/audioSystem.js:3153`, `systems/missions.js:950` |
+| `planet:harvestDenied` | `systems/planetRuntime.js:1013` | `audio/audioSystem.js:3154` |
 | `planet:npcHarvest` | `systems/planetRuntime.js:969` | — |
-| `planet:plungeStage` | `systems/planetRuntime.js:711`, `systems/planetRuntime.js:724` | `audio/audioSystem.js:3116` |
-| `planet:recoveryBurn` | `systems/planetRuntime.js:808` | `audio/audioSystem.js:3117` |
+| `planet:plungeStage` | `systems/planetRuntime.js:711`, `systems/planetRuntime.js:724` | `audio/audioSystem.js:3155` |
+| `planet:recoveryBurn` | `systems/planetRuntime.js:808` | `audio/audioSystem.js:3156` |
 | `planet:registered` | `systems/planetRuntime.js:324` | — |
 | `planet:unregistered` | `systems/planetRuntime.js:513` | — |
-| `plants:stalledStringFlash` | `systems/plants/stalledStringPlant.js:308` | — |
+| `plants:stalledStringFlash` | `systems/plants/stalledStringPlant.js:309` | — |
 | `plants:wrongWayStandDown` | `systems/plants/wrongWay.js:309` | — |
-| `player:death` | `systems/combat.js:793`, `systems/combat.js:956`, `systems/world.js:7880` | `audio/audioSystem.js:2971`, `features/stormChase/runtime.js:637`, `render/feel.js:1711`, `render/shipMicroMotion.js:1766`, `render/vfx.js:3059`, `save/saveSystem.js:503`, `sim/killcamTape.js:476`, `systems/aftermathWrecks.js:1259`, `systems/crew.js:125`, `systems/encounterDirector.js:434`, `systems/flightV3.js:245`, `systems/input.js:1551`, `systems/lawSecurity.js:437`, `systems/lossLedger.js:466`, `systems/masslineTelemetry.js:128`, `systems/missions.js:931`, `systems/onboarding.js:765`, `systems/onboarding.js:821`, `systems/shieldPylons.js:246`, `systems/special500DeathBell.js:61`, `systems/special500ReadEverything.js:39`, `systems/surrenderRecovery.js:103`, `systems/survivalResults.js:538`, `systems/survivalRun.js:164`, `systems/survivorPod.js:735`, `systems/tetherGameplay.js:368`, `systems/world.js:817`, `ui/commandBar.js:249`, `ui/confirm.js:335`, `ui/survivalHud.js:490` |
+| `player:death` | `systems/combat.js:793`, `systems/combat.js:956`, `systems/world.js:8262` | `audio/audioSystem.js:3010`, `features/stormChase/runtime.js:637`, `render/feel.js:1719`, `render/shipMicroMotion.js:1766`, `render/vfx.js:3071`, `save/saveSystem.js:503`, `sim/killcamTape.js:476`, `systems/aftermathWrecks.js:1273`, `systems/crew.js:125`, `systems/encounterDirector.js:434`, `systems/flightV3.js:245`, `systems/input.js:1593`, `systems/lawSecurity.js:437`, `systems/lossLedger.js:466`, `systems/masslineTelemetry.js:128`, `systems/missions.js:1011`, `systems/onboarding.js:778`, `systems/onboarding.js:834`, `systems/shieldPylons.js:246`, `systems/special500DeathBell.js:61`, `systems/special500ReadEverything.js:39`, `systems/surrenderRecovery.js:103`, `systems/survivalResults.js:538`, `systems/survivalRun.js:166`, `systems/survivorPod.js:735`, `systems/tetherGameplay.js:375`, `systems/world.js:834`, `ui/commandBar.js:249`, `ui/confirm.js:335`, `ui/survivalHud.js:491` |
 | `player:recoveryFailed` | `systems/combat.js:1009` | `ui/screens/gameOver.js:647` |
 | `player:recoveryRequested` | `ui/screens/gameOver.js:528`, `ui/screens/gameOver.js:541` | `systems/combat.js:428` |
-| `player:respawn` | `systems/combat.js:1093` | `audio/audioSystem.js:2972`, `render/shipMicroMotion.js:1765`, `save/saveSystem.js:504`, `save/saveSystem.js:594`, `sim/killcamTape.js:473`, `systems/flightV3.js:246`, `systems/input.js:1552`, `systems/tetherGameplay.js:369`, `ui/commandBar.js:253`, `ui/screens/gameOver.js:639` |
-| `player:scannedByPatrol` | `systems/economy.js:5651` | `render/authoredMotion.js:1200`, `render/vfx.js:3046`, `systems/lawSecurity.js:453`, `systems/missions.js:921` |
-| `poi:discovered` | `data/encounters/1310-tether-memorial-line.js:217`, `systems/world.js:1218`, `systems/world.js:7473`, `systems/world.js:7571`, `systems/world.js:8191`, `systems/world.js:8221` | `audio/audioSystem.js:3151`, `systems/encounterDirector.js:407`, `systems/world.js:896` |
-| `poi:identified` | `systems/world.js:7578`, `systems/world.js:8222` | `systems/encounterDirector.js:408`, `systems/missions.js:680`, `systems/world.js:897` |
-| `postEndingReplay:cycleCompleted` | — | `systems/sectorSim.js:139`, `ui/screens/missionLog.js:2797` |
-| `postEndingReplay:route` | `systems/postEndingReplay.js:288` | `ui/screens/missionLog.js:2796` |
-| `presentation:audioCue` | `render/vfx.js:6108`, `systems/presentationAdapters.js:317`, `systems/presentationAdapters.js:699` | — |
+| `player:respawn` | `systems/combat.js:1093` | `audio/audioSystem.js:3011`, `render/shipMicroMotion.js:1765`, `save/saveSystem.js:504`, `save/saveSystem.js:594`, `sim/killcamTape.js:473`, `systems/flightV3.js:246`, `systems/input.js:1594`, `systems/tetherGameplay.js:376`, `ui/commandBar.js:253`, `ui/screens/gameOver.js:639` |
+| `player:scannedByPatrol` | `systems/economy.js:5651` | `render/authoredMotion.js:1200`, `render/vfx.js:3058`, `systems/lawSecurity.js:453`, `systems/missions.js:1001` |
+| `poi:discovered` | `data/encounters/1310-tether-memorial-line.js:217`, `systems/world.js:1237`, `systems/world.js:7855`, `systems/world.js:7953`, `systems/world.js:8579`, `systems/world.js:8609` | `audio/audioSystem.js:3190`, `systems/encounterDirector.js:407`, `systems/world.js:915`, `world/adventureXp.js:96` |
+| `poi:identified` | `systems/world.js:7960`, `systems/world.js:8610` | `systems/encounterDirector.js:408`, `systems/missions.js:746`, `systems/world.js:916` |
+| `postEndingReplay:cycleCompleted` | — | `systems/sectorSim.js:139`, `ui/screens/missionLog.js:2800` |
+| `postEndingReplay:route` | `systems/postEndingReplay.js:288` | `ui/screens/missionLog.js:2799` |
+| `presentation:audioCue` | `render/vfx.js:6225`, `systems/presentationAdapters.js:317`, `systems/presentationAdapters.js:699` | — |
 | `presentation:cameraCue` | `systems/presentationAdapters.js:612` | — |
-| `presentation:caption` | `audio/audioSystem.js:7167`, `features/breakwaterSpur/presentation.js:118`, `features/salvageTender/presentation.js:69`, `systems/asteroidSites.js:3615`, `systems/asteroidSites.js:3672`, `systems/factionPresence.js:1250`, `systems/factionPresence.js:1704`, `systems/factionPresence.js:1719`, `systems/factionPresence.js:1737`, `systems/factionPresence.js:1799`, `systems/presentationAdapters.js:799`, `systems/shipjack.js:93`, `systems/story.js:1238`, `systems/story.js:1490` | — |
-| `presentation:cue` | `features/derelictExpedition/runtime.js:600`, `systems/aftermathWrecks.js:1682`, `systems/cargo.js:1595`, `systems/planetRuntime.js:735`, `systems/salvageActions.js:283`, `systems/salvageActions.js:498` | `audio/audioSystem.js:3268`, `render/vfx.js:3144`, `render/vfx.js:3145`, `render/vfx.js:3146`, `systems/presentationAdapters.js:339` |
+| `presentation:caption` | `audio/audioSystem.js:7498`, `features/breakwaterSpur/presentation.js:118`, `features/salvageTender/presentation.js:69`, `systems/asteroidSites.js:3672`, `systems/asteroidSites.js:3729`, `systems/factionPresence.js:1250`, `systems/factionPresence.js:1704`, `systems/factionPresence.js:1719`, `systems/factionPresence.js:1737`, `systems/factionPresence.js:1799`, `systems/presentationAdapters.js:799`, `systems/shipjack.js:93`, `systems/story.js:1238`, `systems/story.js:1490` | — |
+| `presentation:cue` | `features/derelictExpedition/runtime.js:600`, `systems/aftermathWrecks.js:1713`, `systems/cargo.js:1595`, `systems/planetRuntime.js:735`, `systems/salvageActions.js:283`, `systems/salvageActions.js:498` | `audio/audioSystem.js:3307`, `render/vfx.js:3158`, `render/vfx.js:3159`, `render/vfx.js:3160`, `systems/presentationAdapters.js:339` |
 | `presentation:cueApplied` | `systems/presentationAdapters.js:593` | — |
 | `presentation:uiCue` | `systems/presentationAdapters.js:514`, `systems/presentationAdapters.js:777` | — |
-| `presentation:vfxCue` | `data/encounters/1322-the-shadow-ring.js:171`, `features/towjaw/presentation.js:293`, `render/vfx.js:3163`, `systems/bombs.js:1407`, `systems/fields.js:2063`, `systems/fields.js:2417`, `systems/fields.js:3030`, `systems/fields.js:3081`, `systems/hullBurst.js:239`, `systems/hullBurst.js:351`, `systems/hullBurst.js:402`, `systems/hullBurst.js:433`, `systems/hullBurst.js:619`, `systems/massSeed.js:496`, `systems/massSeed.js:612`, `systems/massSeed.js:706`, `systems/massSeed.js:750`, `systems/masslineThrow.js:730`, `systems/missions.js:1645`, `systems/missions.js:5319`, `systems/planetRuntime.js:1036`, `systems/presentationAdapters.js:661`, `systems/special500DockLedger.js:205`, `systems/special500Spectacle.js:167`, `systems/special500Spectacle.js:180`, `systems/tumbleStates.js:564`, `systems/tumbleStates.js:674`, `systems/volatileExposure.js:482`, `systems/volatileExposure.js:556`, `systems/weapons.js:2338`, `systems/weapons.js:2469`, `systems/weapons.js:2601`, `systems/weapons.js:4191` | `render/vfx.js:3149` |
-| `projectile:bank` | — | `render/vfx.js:2960` |
-| `projectile:hit` | `core/physics.js:1458`, `core/physics.js:1487`, `core/physics.js:1678`, `data/encounters/705-the-nest.js:399`, `systems/sectorSim.js:752` | `audio/audioSystem.js:2873`, `combat/tetherWebs.js:61`, `render/vfx.js:2959`, `systems/bombs.js:712`, `systems/combat.js:420`, `systems/gamepad.js:1098`, `systems/missions.js:875` |
-| `projectile:nearMiss` | `core/physics.js:1638` | `audio/audioSystem.js:2876`, `systems/presentationOrchestrator.js:184` |
-| `projectile:ricochet` | — | `render/vfx.js:2961` |
-| `quality:autoEased` | `render/renderer.js:27235` | — |
+| `presentation:vfxCue` | `data/encounters/1322-the-shadow-ring.js:171`, `features/towjaw/presentation.js:293`, `render/vfx.js:3177`, `systems/bombs.js:1407`, `systems/fields.js:2077`, `systems/fields.js:2577`, `systems/fields.js:3190`, `systems/fields.js:3241`, `systems/hullBurst.js:239`, `systems/hullBurst.js:351`, `systems/hullBurst.js:402`, `systems/hullBurst.js:433`, `systems/hullBurst.js:619`, `systems/massSeed.js:496`, `systems/massSeed.js:612`, `systems/massSeed.js:706`, `systems/massSeed.js:750`, `systems/masslineThrow.js:750`, `systems/missions.js:1743`, `systems/missions.js:5429`, `systems/planetRuntime.js:1036`, `systems/presentationAdapters.js:661`, `systems/special500DockLedger.js:205`, `systems/special500Spectacle.js:167`, `systems/special500Spectacle.js:180`, `systems/tumbleStates.js:564`, `systems/tumbleStates.js:674`, `systems/volatileExposure.js:482`, `systems/volatileExposure.js:556`, `systems/weapons.js:2459`, `systems/weapons.js:2590`, `systems/weapons.js:2722`, `systems/weapons.js:4321` | `render/vfx.js:3163` |
+| `projectile:bank` | — | `render/vfx.js:2972` |
+| `projectile:hit` | `core/physics.js:1521`, `core/physics.js:1550`, `core/physics.js:1894`, `data/encounters/705-the-nest.js:399`, `systems/sectorSim.js:752` | `audio/audioSystem.js:2912`, `combat/tetherWebs.js:61`, `render/vfx.js:2971`, `systems/bombs.js:712`, `systems/combat.js:420`, `systems/gamepad.js:1144`, `systems/missions.js:955` |
+| `projectile:nearMiss` | `core/physics.js:1854` | `audio/audioSystem.js:2915`, `systems/presentationOrchestrator.js:184` |
+| `projectile:ricochet` | — | `render/vfx.js:2973` |
+| `quality:autoEased` | `render/renderer.js:27332` | — |
 | `quiet:routeSold` | `data/encounters/702-the-swap.js:52` | — |
 | `quill:archiveRebound` | `systems/quill.js:777` | — |
 | `quill:errandAnswered` | `systems/quill.js:766` | — |
@@ -1337,14 +1350,14 @@
 | `quill:redactorKilled` | `systems/quill.js:908` | — |
 | `quill:redactorSpawned` | `systems/quill.js:799` | — |
 | `quill:redactorWithdrew` | `systems/quill.js:839` | — |
-| `race:abort` | — | `systems/missions.js:955` |
-| `race:ended` | `systems/missions.js:5659` | — |
+| `race:abort` | — | `systems/missions.js:1035` |
+| `race:ended` | `systems/missions.js:5769` | — |
 | `race:launchFailed` | — | `save/saveSystem.js:566` |
-| `race:reset` | — | `systems/missions.js:953` |
-| `race:restart` | `ui/input.js:770` | `systems/missions.js:954` |
-| `race:restarted` | `systems/missions.js:3870` | — |
-| `race:toggleView` | `ui/input.js:762`, `ui/input.js:1666` | — |
-| `range:opened` | `ui/screens/range.js:2725` | `systems/onboarding.js:808` |
+| `race:reset` | — | `systems/missions.js:1033` |
+| `race:restart` | `ui/input.js:758` | `systems/missions.js:1034` |
+| `race:restarted` | `systems/missions.js:3978` | — |
+| `race:toggleView` | `ui/input.js:750`, `ui/input.js:1693` | — |
+| `range:opened` | `ui/screens/range.js:2725` | `systems/onboarding.js:821` |
 | `ravel:cast` | `systems/ravel.js:176` | — |
 | `ravel:destroyed` | `systems/ravel.js:211` | — |
 | `ravel:hit` | `systems/ravel.js:190` | — |
@@ -1354,7 +1367,7 @@
 | `ravel:voice` | `systems/ravel.js:130` | — |
 | `reach:trophyHung` | `data/encounters/705-the-nest.js:267` | — |
 | `recovery:choose` | `ui/recoveryEncounterPrompt.js:333` | — |
-| `recovery:completed` | `systems/onboarding.js:3867` | `ui/recoveryEncounterPrompt.js:492` |
+| `recovery:completed` | `systems/onboarding.js:3880` | `ui/recoveryEncounterPrompt.js:492` |
 | `recovery:vent` | `ui/recoveryEncounterPrompt.js:291` | — |
 | `redKite:aborted` | `systems/redKite.js:177` | — |
 | `redKite:course` | `ui/redKitePrompt.js:18` | — |
@@ -1364,11 +1377,11 @@
 | `redKite:started` | `systems/redKite.js:170` | — |
 | `regionalEcology:applied` | — | `ui/sectorPostcard.js:279` |
 | `regionalEcology:changed` | — | `ui/sectorPostcard.js:280` |
-| `rescue:beat` | `systems/onboarding.js:3836`, `systems/onboarding.js:3896` | — |
-| `rescue:complete` | `systems/onboarding.js:3847` | — |
-| `rescue:started` | `systems/onboarding.js:3280` | `systems/onboarding.js:766` |
+| `rescue:beat` | `systems/onboarding.js:3849`, `systems/onboarding.js:3909` | — |
+| `rescue:complete` | `systems/onboarding.js:3860` | — |
+| `rescue:started` | `systems/onboarding.js:3293` | `systems/onboarding.js:779` |
 | `rescuedWorker:returned` | `systems/rescuedWorkerReturn.js:489` | — |
-| `research:pointsChanged` | `systems/missionObjectiveOps.js:774`, `systems/missionObjectiveOps.js:828`, `systems/missionObjectiveOps.js:862`, `systems/missionObjectiveOps.js:909`, `systems/missionStoryOps.js:2344`, `systems/missions.js:5223`, `systems/missions.js:5239` | `ui/alerts.js:594` |
+| `research:pointsChanged` | `systems/missionObjectiveOps.js:779`, `systems/missionObjectiveOps.js:833`, `systems/missionObjectiveOps.js:867`, `systems/missionObjectiveOps.js:914`, `systems/missionStoryOps.js:2344`, `systems/missions.js:5333`, `systems/missions.js:5349` | `ui/alerts.js:632` |
 | `resonance:patrolQueued` | `systems/encounterDirector.js:3649` | — |
 | `resonance:scanCompleted` | `systems/scanner.js:1570` | `systems/encounterDirector.js:439` |
 | `rhythm:phase` | `systems/encounterDirector.js:658` | — |
@@ -1379,7 +1392,7 @@
 | `rigWorkshop:promptClosed` | `features/rigWorkshop/runtime.js:369` | — |
 | `rookWreck:appraised` | `systems/rookBooth.js:681` | — |
 | `rookWreck:countered` | `systems/rookBooth.js:522` | — |
-| `rookWreck:delivered` | `systems/rookBooth.js:586` | `systems/missions.js:741` |
+| `rookWreck:delivered` | `systems/rookBooth.js:586` | `systems/missions.js:807` |
 | `rookWreck:disputeFiled` | `systems/rookBooth.js:647` | — |
 | `rookWreck:offerLapsed` | `systems/rookBooth.js:490` | — |
 | `rookWreck:padRefused` | `systems/rookBooth.js:663` | — |
@@ -1392,72 +1405,72 @@
 | `ruckus:state` | `systems/ruckus.js:147` | — |
 | `ruckus:voice` | `systems/ruckus.js:141` | — |
 | `rumor:ghostConvoy` | `systems/lossLedger.js:377` | `ui/station/barContacts.js:183` |
-| `run:arenaIntroComplete` | — | `systems/survivalRun.js:149` |
-| `run:awardRequested` | `systems/swarmBrood.js:4132`, `systems/swarmEvents.js:218`, `systems/swarmEvents.js:356`, `ui/sandbox/sandboxSetup.js:1426`, `ui/sandbox/sandboxSetup.js:1441` | `systems/runSession.js:155`, `systems/swarmDrops.js:102` |
-| `run:awarded` | — | `ui/survivalHud.js:453` |
-| `run:beginRequested` | `ui/sandbox/sandboxSetup.js:1338`, `ui/sandbox/sandboxSetup.js:1380` | `systems/runSession.js:151` |
-| `run:breathEndRequested` | — | `systems/survivalRun.js:155` |
+| `run:arenaIntroComplete` | — | `systems/survivalRun.js:151` |
+| `run:awardRequested` | `systems/swarmBrood.js:4132`, `systems/swarmEvents.js:218`, `systems/swarmEvents.js:356`, `ui/sandbox/sandboxSetup.js:1439`, `ui/sandbox/sandboxSetup.js:1454` | `systems/runSession.js:169`, `systems/swarmDrops.js:102` |
+| `run:awarded` | — | `ui/survivalHud.js:454` |
+| `run:beginRequested` | `ui/sandbox/sandboxSetup.js:1345`, `ui/sandbox/sandboxSetup.js:1387` | `systems/runSession.js:165` |
+| `run:breathEndRequested` | — | `systems/survivalRun.js:157` |
 | `run:circuitChoiceApplied` | — | `systems/survivalDraft.js:201` |
-| `run:circuitChoiceRequested` | — | `systems/survivalRun.js:161` |
+| `run:circuitChoiceRequested` | — | `systems/survivalRun.js:163` |
 | `run:draftLockRequested` | — | `systems/survivalDraft.js:209` |
 | `run:draftPickRequested` | `ui/screens/crucibleDraft.js:1190`, `ui/screens/crucibleDraft.js:1195`, `ui/screens/crucibleDraft.js:1449` | `systems/survivalDraft.js:198` |
 | `run:draftRerollRequested` | — | `systems/survivalDraft.js:210` |
-| `run:draftResolved` | — | `systems/survivalRun.js:152`, `ui/loadingPresenter.js:677` |
-| `run:endRequested` | `save/saveSystem.js:7217` | `systems/runSession.js:153` |
-| `run:ended` | — | `audio/audioSystem.js:3088`, `render/feel.js:1563`, `systems/fields.js:494`, `systems/mines.js:123`, `systems/survivalAnnounce.js:455`, `systems/survivalArena.js:1422`, `systems/survivalDraft.js:225`, `systems/survivalResults.js:575`, `systems/survivalRun.js:146`, `systems/survivalWave.js:229`, `systems/swarmArena.js:916`, `systems/swarmChain.js:167`, `systems/swarmDrops.js:106`, `systems/swarmElites.js:191`, `systems/swarmEvents.js:116`, `systems/swarmFortify.js:179`, `systems/swarmJuice.js:170`, `systems/swarmLegendaries.js:123`, `systems/swarmSupply.js:114`, `ui/contextWheel.js:387`, `ui/loadingPresenter.js:686`, `ui/swarmJuiceHud.js:161` |
-| `run:extractionRequested` | `systems/survivalExtraction.js:30` | `systems/survivalRun.js:156` |
-| `run:levelUp` | — | `systems/survivalAnnounce.js:453`, `ui/survivalHud.js:454` |
-| `run:loadoutReady` | `ui/sandbox/sandboxSetup.js:1473` | `systems/ships.js:2183`, `systems/survivalRun.js:147`, `systems/swarmSupply.js:107`, `systems/world.js:892` |
-| `run:modifierChosen` | — | `systems/survivalRun.js:153` |
-| `run:modifierRecordRequested` | `ui/sandbox/sandboxSetup.js:1118` | `systems/runSession.js:157` |
+| `run:draftResolved` | — | `systems/survivalRun.js:154`, `ui/loadingPresenter.js:677` |
+| `run:endRequested` | `save/saveSystem.js:7217` | `systems/runSession.js:167` |
+| `run:ended` | — | `audio/audioSystem.js:3127`, `render/feel.js:1571`, `systems/fields.js:494`, `systems/mines.js:123`, `systems/survivalAnnounce.js:455`, `systems/survivalArena.js:1422`, `systems/survivalDraft.js:225`, `systems/survivalResults.js:575`, `systems/survivalRun.js:148`, `systems/survivalWave.js:229`, `systems/swarmArena.js:916`, `systems/swarmChain.js:167`, `systems/swarmDrops.js:106`, `systems/swarmElites.js:191`, `systems/swarmEvents.js:116`, `systems/swarmFortify.js:179`, `systems/swarmJuice.js:170`, `systems/swarmLegendaries.js:123`, `systems/swarmSupply.js:114`, `ui/contextWheel.js:390`, `ui/loadingPresenter.js:686`, `ui/swarmJuiceHud.js:174` |
+| `run:extractionRequested` | `systems/survivalExtraction.js:30` | `systems/survivalRun.js:158` |
+| `run:levelUp` | — | `systems/survivalAnnounce.js:453`, `ui/survivalHud.js:455` |
+| `run:loadoutReady` | `ui/sandbox/sandboxSetup.js:1486` | `systems/ships.js:2183`, `systems/survivalRun.js:149`, `systems/swarmSupply.js:107`, `systems/world.js:911` |
+| `run:modifierChosen` | — | `systems/survivalRun.js:155` |
+| `run:modifierRecordRequested` | `ui/sandbox/sandboxSetup.js:1125` | `systems/runSession.js:171` |
 | `run:modifierRecorded` | — | `systems/survivalArena.js:1380` |
 | `run:openingLessonReleased` | — | `systems/survivalAnnounce.js:451`, `systems/survivalArena.js:1417`, `systems/swarmArena.js:912` |
-| `run:openingPrepareRequested` | `ui/sandbox/sandboxSetup.js:1474` | `systems/survivalRun.js:148` |
-| `run:partialBankRequested` | `systems/survivalExtraction.js:71` | `systems/survivalRun.js:157` |
-| `run:pilotCardRequested` | — | `systems/runSession.js:160` |
-| `run:pilotRerollRequested` | — | `systems/runSession.js:161` |
+| `run:openingPrepareRequested` | `ui/sandbox/sandboxSetup.js:1487` | `systems/survivalRun.js:150` |
+| `run:partialBankRequested` | `systems/survivalExtraction.js:71` | `systems/survivalRun.js:159` |
+| `run:pilotCardRequested` | — | `systems/runSession.js:174` |
+| `run:pilotRerollRequested` | — | `systems/runSession.js:175` |
 | `run:refitChanged` | — | `ui/screens/crucibleDraft.js:2278` |
 | `run:refitCloseRequested` | `ui/screens/crucibleDraft.js:2372`, `ui/screens/crucibleDraft.js:2389` | `systems/survivalDraft.js:202` |
-| `run:refitClosed` | — | `systems/survivalRun.js:154` |
+| `run:refitClosed` | — | `systems/survivalRun.js:156` |
 | `run:refitFitRequested` | — | `systems/survivalDraft.js:203` |
 | `run:refitSellRequested` | — | `systems/survivalDraft.js:208` |
 | `run:refitStripRequested` | — | `systems/survivalDraft.js:204` |
-| `run:resultsReady` | — | `systems/achievements.js:1206`, `ui/uiRoot.js:1796` |
-| `run:retireRequested` | — | `systems/runSession.js:154` |
+| `run:resultsReady` | — | `systems/achievements.js:1206`, `ui/uiRoot.js:1835` |
+| `run:retireRequested` | — | `systems/runSession.js:168` |
 | `run:roleProblemStamped` | `systems/survivalSwarm.js:258` | — |
 | `run:spendRejected` | — | `systems/survivalDraft.js:214`, `systems/swarmFloor.js:904` |
-| `run:spendRequested` | `systems/swarmCourseTwists.js:224` | `systems/runSession.js:156` |
+| `run:spendRequested` | `systems/swarmCourseTwists.js:224` | `systems/runSession.js:170` |
 | `run:spent` | — | `systems/survivalDraft.js:213`, `systems/swarmFloor.js:903` |
-| `run:started` | — | `audio/audioSystem.js:3087`, `render/feel.js:1559`, `save/saveSystem.js:520`, `sim/killcamTape.js:469`, `systems/combatOutcome.js:291`, `systems/survivalAnnounce.js:435`, `systems/survivalResults.js:520`, `systems/survivalRun.js:144`, `systems/swarmArena.js:919`, `systems/swarmChain.js:170`, `systems/swarmDrops.js:109`, `systems/swarmElites.js:190`, `systems/swarmEvents.js:118`, `systems/swarmFortify.js:177`, `systems/swarmJuice.js:169`, `systems/swarmLegendaries.js:122`, `systems/swarmSupply.js:117`, `systems/travelLanes.js:555`, `ui/contextWheel.js:386`, `ui/survivalHud.js:455`, `ui/swarmJuiceHud.js:160`, `ui/uiRoot.js:1805` |
+| `run:started` | — | `audio/audioSystem.js:3126`, `render/feel.js:1567`, `save/saveSystem.js:520`, `sim/killcamTape.js:469`, `systems/combatOutcome.js:295`, `systems/survivalAnnounce.js:435`, `systems/survivalResults.js:520`, `systems/survivalRun.js:146`, `systems/swarmArena.js:919`, `systems/swarmChain.js:170`, `systems/swarmDrops.js:109`, `systems/swarmElites.js:190`, `systems/swarmEvents.js:118`, `systems/swarmFortify.js:177`, `systems/swarmJuice.js:169`, `systems/swarmLegendaries.js:122`, `systems/swarmSupply.js:117`, `systems/travelLanes.js:555`, `ui/contextWheel.js:389`, `ui/survivalHud.js:456`, `ui/swarmJuiceHud.js:173`, `ui/uiRoot.js:1844` |
 | `run:swarmDeepContinued` | — | `systems/survivalResults.js:576` |
-| `run:swarmDeepRequested` | `ui/screens/crucible.js:4042` | `systems/survivalRun.js:158` |
-| `run:threatRequested` | — | `systems/runSession.js:162` |
-| `run:transitionRequested` | `systems/survivalRun.js:1160` | `systems/runSession.js:152` |
-| `run:transitioned` | — | `systems/fields.js:498`, `systems/mines.js:126`, `systems/survivalAnnounce.js:454`, `systems/survivalDraft.js:197`, `systems/survivalResults.js:574`, `systems/survivalRun.js:145`, `systems/survivalWave.js:228`, `systems/swarmSupply.js:108` |
+| `run:swarmDeepRequested` | `ui/screens/crucible.js:4082` | `systems/survivalRun.js:160` |
+| `run:threatRequested` | — | `systems/runSession.js:176` |
+| `run:transitionRequested` | `systems/survivalRun.js:1234` | `systems/runSession.js:166` |
+| `run:transitioned` | — | `systems/fields.js:502`, `systems/mines.js:126`, `systems/survivalAnnounce.js:454`, `systems/survivalDraft.js:197`, `systems/survivalResults.js:574`, `systems/survivalRun.js:147`, `systems/survivalWave.js:228`, `systems/swarmSupply.js:108` |
 | `run:waveCleared` | — | `systems/fields.js:493`, `systems/mines.js:122`, `systems/survivalAnnounce.js:452`, `systems/survivalArena.js:1416`, `systems/survivalResults.js:528`, `systems/swarmEvents.js:115`, `systems/swarmLegendaries.js:121` |
-| `run:waveIntroComplete` | — | `systems/survivalRun.js:150` |
+| `run:waveIntroComplete` | — | `systems/survivalRun.js:152` |
 | `run:waveMaterialized` | — | `systems/survivalAnnounce.js:438` |
 | `run:wavePlanFailed` | — | `systems/survivalResults.js:539` |
-| `run:wavePlanned` | — | `systems/survivalAnnounce.js:436`, `systems/survivalArena.js:1381`, `systems/survivalWave.js:226`, `systems/swarmArena.js:904`, `systems/swarmFortify.js:178`, `systems/swarmJuice.js:146`, `systems/tetherGameplay.js:378`, `ui/survivalHud.js:475` |
-| `run:waveProgress` | — | `ui/survivalHud.js:476` |
-| `run:waveStarted` | — | `systems/survivalAnnounce.js:437`, `systems/survivalResults.js:525`, `systems/survivalWave.js:227`, `systems/swarmArena.js:905`, `systems/swarmEvents.js:114`, `systems/swarmJuice.js:147`, `ui/swarmJuiceHud.js:159` |
+| `run:wavePlanned` | — | `systems/survivalAnnounce.js:436`, `systems/survivalArena.js:1381`, `systems/survivalWave.js:226`, `systems/swarmArena.js:904`, `systems/swarmFortify.js:178`, `systems/swarmJuice.js:146`, `systems/tetherGameplay.js:385`, `ui/survivalHud.js:476` |
+| `run:waveProgress` | — | `ui/survivalHud.js:477` |
+| `run:waveStarted` | — | `systems/survivalAnnounce.js:437`, `systems/survivalResults.js:525`, `systems/survivalWave.js:227`, `systems/swarmArena.js:905`, `systems/swarmEvents.js:114`, `systems/swarmJuice.js:147`, `ui/swarmJuiceHud.js:172` |
 | `ruud:cut` | `systems/ruud.js:462` | — |
 | `ruud:spared` | `systems/ruud.js:435` | — |
 | `ruud:stamp` | `systems/ruud.js:379` | — |
 | `ruud:voice` | `systems/ruud.js:326`, `systems/ruud.js:378` | — |
 | `sable:demonstrated` | `ui/station/screens/shipworks.js:5591` | — |
 | `salvage:actionRead` | `systems/salvageActions.js:229` | — |
-| `salvage:bayCashedIn` | `systems/cargo.js:1637` | `systems/onboarding.js:925` |
-| `salvage:changed` | `systems/cargo.js:718`, `systems/cargo.js:1640` | `systems/onboarding.js:921` |
-| `salvage:claimJumped` | `systems/mining.js:2428` | `systems/missions.js:976` |
+| `salvage:bayCashedIn` | `systems/cargo.js:1637` | `systems/onboarding.js:938` |
+| `salvage:changed` | `systems/cargo.js:718`, `systems/cargo.js:1640` | `systems/onboarding.js:934` |
+| `salvage:claimJumped` | `systems/mining.js:2445` | `systems/missions.js:1056` |
 | `salvage:communicatorFound` | `systems/salvage.js:1258` | `systems/encounterDirector.js:409`, `systems/story.js:301`, `ui/wreckChoicePrompt.js:50` |
-| `salvage:completed` | `systems/gravedigger.js:1177`, `systems/mining.js:2242`, `systems/mining.js:2293`, `systems/rookBooth.js:600` | `render/vfx.js:3064`, `systems/aftermathWrecks.js:1282`, `systems/lawSecurity.js:445`, `systems/missions.js:798`, `systems/missions.js:977`, `systems/story.js:283`, `systems/world.js:909` |
+| `salvage:completed` | `systems/gravedigger.js:1177`, `systems/mining.js:2259`, `systems/mining.js:2310`, `systems/rookBooth.js:600` | `render/vfx.js:3076`, `systems/aftermathWrecks.js:1296`, `systems/lawSecurity.js:445`, `systems/missions.js:864`, `systems/missions.js:1057`, `systems/story.js:283`, `systems/world.js:928` |
 | `salvage:cookerFlight` | `systems/salvageActions.js:493` | — |
 | `salvage:coreDetonated` | `systems/salvageActions.js:640` | — |
 | `salvage:coreEjected` | `systems/salvageActions.js:280` | `render/authoredMotion.js:1207` |
-| `salvage:cutComplete` | `systems/mining.js:785` | `audio/audioSystem.js:3091`, `render/authoredMotion.js:1176`, `render/vfx.js:3063` |
+| `salvage:cutComplete` | `systems/mining.js:791` | `audio/audioSystem.js:3130`, `render/authoredMotion.js:1176`, `render/vfx.js:3075` |
 | `salvage:fieldVulture` | `systems/e1EncounterRuntime.js:454` | `systems/salvage.js:177` |
-| `salvage:npcExtraction` | `systems/trafficRoleOps.js:2422` | `render/authoredMotion.js:1175` |
+| `salvage:npcExtraction` | `systems/trafficRoleOps.js:2425` | `render/authoredMotion.js:1175` |
 | `salvage:npcUnload` | `features/salvageOutfits/physical.js:487`, `systems/trafficCausalChainOps.js:2522` | `systems/economy.js:1788` |
 | `salvage:placed` | `systems/salvage.js:576` | `systems/lossInvestigation.js:126`, `systems/npcJobsRuntime.js:1219`, `systems/survivorPod.js:710` |
 | `salvage:reactorBurst` | `systems/salvageActions.js:746` | — |
@@ -1488,31 +1501,31 @@
 | `salvageTender:reset` | `features/salvageTender/runtime.js:562`, `features/salvageTender/runtime.js:568` | — |
 | `salvageWatch:repairWork` | `data/encounters/362-the-salvage-watch.js:471` | — |
 | `save:backup` | `save/saveSystem.js:2770` | `ui/screens/saveLoad.js:1197` |
-| `save:completed` | `save/saveSystem.js:2841` | `ui/screens/saveLoad.js:1187`, `ui/toasts.js:56`, `ui/uiRoot.js:619` |
+| `save:completed` | `save/saveSystem.js:2841` | `ui/screens/saveLoad.js:1187`, `ui/toasts.js:56`, `ui/uiRoot.js:644` |
 | `save:dirty` | `features/industrialDisasters/runtime.js:465`, `features/shipbreakingYard/runtime.js:124`, `features/shipbreakingYard/runtime.js:283`, `features/shipbreakingYard/runtime.js:444`, `shipjack/fleetOperations.js:72`, `shipjack/fleetOperations.js:152`, `shipjack/fleetOperations.js:170`, `systems/ruckus.js:91`, `systems/shipjack.js:82` | `save/saveSystem.js:480` |
 | `save:durabilitySettled` | — | `runtime/laneSystemFacades.js:40` |
-| `save:envelopePrepared` | `save/saveSystem.js:5947`, `save/saveSystem.js:6016`, `save/saveSystem.js:6028` | `main.js:306`, `ui/loadingPresenter.js:744` |
-| `save:envelopeSpecPrepared` | `save/saveSystem.js:3402` | `main.js:305`, `ui/screens/saveLoad.js:1211` |
-| `save:error` | `main.js:323`, `main.js:1286`, `main.js:1350`, `save/saveSystem.js:1857`, `save/saveSystem.js:2933`, `save/saveSystem.js:5737`, `save/saveSystem.js:5758`, `save/saveSystem.js:5807`, `save/saveSystem.js:5837`, `save/saveSystem.js:5876`, `save/saveSystem.js:6006`, `save/saveSystem.js:6057`, `save/saveSystem.js:6259`, `save/saveSystem.js:6282`, `save/saveSystem.js:6300`, `save/saveSystem.js:6507`, `save/saveSystem.js:6521`, `save/saveSystem.js:6629`, `save/saveSystem.js:6647`, `save/saveSystem.js:6685`, `save/saveSystem.js:6728`, `save/saveSystem.js:6763`, `save/saveSystem.js:6892`, `save/saveSystem.js:6970`, `save/saveSystem.js:6975`, `save/saveSystem.js:7194`, `save/saveSystem.js:7924`, `save/saveSystem.js:7936`, `save/saveSystem.js:8003`, `save/saveSystem.js:8943`, `save/saveSystem.js:8955`, `save/saveSystem.js:8961`, `save/saveSystem.js:8982`, `save/saveSystem.js:8987`, `save/saveSystem.js:9005`, `save/saveSystem.js:9109`, `save/saveSystem.js:9137`, `ui/screens/saveLoad.js:1791` | `features/derelictExpedition/runtime.js:149`, `features/stormChase/runtime.js:647`, `systems/aftermathWrecks.js:1297`, `systems/asteroidSites.js:875`, `systems/automation.js:650`, `systems/encounterDirector.js:370`, `systems/faction_understory.js:748`, `systems/special500Confessional.js:141`, `systems/survivorPod.js:733`, `systems/traffic.js:1938`, `ui/loadingPresenter.js:718`, `ui/screenManager.js:752`, `ui/screens/mainMenu.js:700`, `ui/screens/mainMenu.js:1301`, `ui/screens/saveLoad.js:1173`, `ui/screens/saveLoad.js:1198`, `ui/uiRoot.js:645` |
-| `save:exportRecovery` | `save/saveSystem.js:8897`, `save/saveSystem.js:8924` | `ui/toasts.js:929` |
-| `save:loadSpeculationTarget` | `ui/screens/gameOver.js:920`, `ui/screens/pause.js:1434`, `ui/screens/saveLoad.js:1286`, `ui/screens/saveLoad.js:1426` | `save/saveSystem.js:413` |
-| `save:loaded` | `save/saveSystem.js:7816` | `audio/audioSystem.js:3527`, `audio/bombAudio.js:460`, `audio/fieldAudio.js:327`, `careers/origins/haulerOriginSystem.js:65`, `combat/kernel.js:205`, `combat/tetherWebs.js:70`, `core/coreSystem.js:560`, `core/physics.js:218`, `features/breakwaterSpur/runtime.js:84`, `features/derelictExpedition/runtime.js:144`, `features/stormChase/runtime.js:642`, `features/towjaw/runtime.js:287`, `main.js:407`, `main.js:415`, `render/feel.js:1556`, `render/shipMicroMotion.js:1748`, `render/vfx.js:3042`, `render/vfx.js:3053`, `save/saveSystem.js:516`, `save/saveSystem.js:554`, `sim/killcamTape.js:472`, `systems/aftermathWrecks.js:1296`, `systems/aiEncounter.js:141`, `systems/asteroidFormations.js:127`, `systems/asteroidSites.js:699`, `systems/asteroidSites.js:865`, `systems/autoTargetAssist.js:158`, `systems/automation.js:637`, `systems/barkDirector.js:878`, `systems/beacons.js:55`, `systems/bombs.js:711`, `systems/collisionConsequences.js:135`, `systems/combat.js:470`, `systems/combatOutcome.js:268`, `systems/contractClauses.js:394`, `systems/countermeasures.js:226`, `systems/difficultyDirector.js:167`, `systems/dockingCorridor.js:85`, `systems/economy.js:1853`, `systems/economyContracts.js:287`, `systems/encounterDirector.js:369`, `systems/environmentalMachinery.js:289`, `systems/factionPresence.js:517`, `systems/factionPresence.js:528`, `systems/faction_archive.js:591`, `systems/faction_frontier.js:498`, `systems/faction_helix.js:508`, `systems/faction_meridian.js:370`, `systems/faction_understory.js:738`, `systems/faction_vael.js:441`, `systems/fields.js:501`, `systems/flight.js:79`, `systems/flightV3.js:213`, `systems/gateControlDirector.js:79`, `systems/heat.js:412`, `systems/heistFacilities.js:337`, `systems/impoundGrudge.js:398`, `systems/impoundLot.js:1097`, `systems/impulseCharges.js:242`, `systems/lawSecurity.js:434`, `systems/lineProgression.js:51`, `systems/longBerth.js:68`, `systems/lossInvestigation.js:132`, `systems/massSeed.js:211`, `systems/massSeed.js:214`, `systems/masslineSnares.js:139`, `systems/masslineTelemetry.js:123`, `systems/mines.js:121`, `systems/mining.js:323`, `systems/missions.js:628`, `systems/npcJobsRuntime.js:1188`, `systems/npcJobsRuntime.js:1196`, `systems/npcJobsRuntime.js:1255`, `systems/npcJobsRuntime.js:1258`, `systems/onboarding.js:696`, `systems/pirateDisguise.js:441`, `systems/planetRuntime.js:215`, `systems/plants/busDoesntMove.js:150`, `systems/plants/deadLane.js:108`, `systems/plants/doorstop.js:127`, `systems/plants/farBerth.js:187`, `systems/plants/mooringAlarms.js:107`, `systems/plants/oneYank.js:130`, `systems/plants/orphanWreck.js:105`, `systems/plants/otherSide.js:141`, `systems/plants/snaggedPod.js:116`, `systems/plants/someonesCourse.js:128`, `systems/plants/sweepingLine.js:95`, `systems/plants/theOtherName.js:94`, `systems/plants/twoNames.js:102`, `systems/plants/yourWake.js:105`, `systems/presentationAdapters.js:346`, `systems/presentationOrchestrator.js:297`, `systems/routeFollower.js:438`, `systems/rubberneckers.js:99`, `systems/runSession.js:167`, `systems/salvageActions.js:145`, `systems/scanner.js:1138`, `systems/scramblePlant.js:124`, `systems/sectorSim.js:133`, `systems/shieldPylons.js:245`, `systems/ships.js:2004`, `systems/stationContactLoadBoundary.js:91`, `systems/stationSideEventDirector.js:106`, `systems/story.js:169`, `systems/survivalArena.js:1443`, `systems/survivalArena.js:1445`, `systems/survivorPod.js:731`, `systems/swarmDrops.js:105`, `systems/swarmFortify.js:185`, `systems/swarmLegendaries.js:126`, `systems/tetherGameplay.js:365`, `systems/titles.js:602`, `systems/traffic.js:1842`, `systems/traffic.js:1895`, `systems/traffic.js:1956`, `systems/traffic.js:1982`, `systems/traffic.js:1992`, `systems/traffic.js:1995`, `systems/travelLanes.js:553`, `systems/tumbleStates.js:144`, `systems/uniqueLootAbilities.js:163`, `systems/wingmen.js:174`, `systems/world.js:877`, `ui/aftermathChoicePrompt.js:116`, `ui/alerts.js:589`, `ui/automationPayoff.js:100`, `ui/bandHud.js:164`, `ui/capitalBossOverlayMount.js:717`, `ui/cargoConscience.js:147`, `ui/hudLayout.js:122`, `ui/loadingPresenter.js:752`, `ui/moralTrapPrompt.js:43`, `ui/screens/mainMenu.js:704`, `ui/uiRoot.js:626`, `ui/uiRoot.js:1821`, `ui/voiceArbiter.js:539`, `ui/wreckChoicePrompt.js:67` |
-| `save:recovered` | `save/saveSystem.js:5683` | `ui/screens/saveLoad.js:1196`, `ui/uiRoot.js:638` |
+| `save:envelopePrepared` | `save/saveSystem.js:5947`, `save/saveSystem.js:6016`, `save/saveSystem.js:6028` | `main.js:314`, `ui/loadingPresenter.js:744` |
+| `save:envelopeSpecPrepared` | `save/saveSystem.js:3402` | `main.js:313`, `ui/screens/saveLoad.js:1211` |
+| `save:error` | `main.js:331`, `main.js:1410`, `main.js:1474`, `save/saveSystem.js:1857`, `save/saveSystem.js:2933`, `save/saveSystem.js:5737`, `save/saveSystem.js:5758`, `save/saveSystem.js:5807`, `save/saveSystem.js:5837`, `save/saveSystem.js:5876`, `save/saveSystem.js:6006`, `save/saveSystem.js:6057`, `save/saveSystem.js:6259`, `save/saveSystem.js:6282`, `save/saveSystem.js:6300`, `save/saveSystem.js:6507`, `save/saveSystem.js:6521`, `save/saveSystem.js:6629`, `save/saveSystem.js:6647`, `save/saveSystem.js:6685`, `save/saveSystem.js:6728`, `save/saveSystem.js:6763`, `save/saveSystem.js:6892`, `save/saveSystem.js:6970`, `save/saveSystem.js:6975`, `save/saveSystem.js:7194`, `save/saveSystem.js:7924`, `save/saveSystem.js:7936`, `save/saveSystem.js:8003`, `save/saveSystem.js:8943`, `save/saveSystem.js:8955`, `save/saveSystem.js:8961`, `save/saveSystem.js:8982`, `save/saveSystem.js:8987`, `save/saveSystem.js:9005`, `save/saveSystem.js:9109`, `save/saveSystem.js:9137`, `ui/screens/saveLoad.js:1791` | `features/derelictExpedition/runtime.js:149`, `features/stormChase/runtime.js:647`, `systems/aftermathWrecks.js:1311`, `systems/asteroidSites.js:877`, `systems/automation.js:650`, `systems/encounterDirector.js:370`, `systems/faction_understory.js:748`, `systems/special500Confessional.js:141`, `systems/survivorPod.js:733`, `systems/traffic.js:1940`, `ui/loadingPresenter.js:718`, `ui/screenManager.js:755`, `ui/screens/mainMenu.js:700`, `ui/screens/mainMenu.js:1301`, `ui/screens/saveLoad.js:1173`, `ui/screens/saveLoad.js:1198`, `ui/uiRoot.js:670` |
+| `save:exportRecovery` | `save/saveSystem.js:8897`, `save/saveSystem.js:8924` | `ui/toasts.js:973` |
+| `save:loadSpeculationTarget` | `ui/screens/gameOver.js:920`, `ui/screens/pause.js:1439`, `ui/screens/saveLoad.js:1286`, `ui/screens/saveLoad.js:1426` | `save/saveSystem.js:413` |
+| `save:loaded` | `save/saveSystem.js:7816` | `audio/audioSystem.js:3567`, `audio/bombAudio.js:460`, `audio/fieldAudio.js:327`, `careers/origins/haulerOriginSystem.js:65`, `combat/kernel.js:205`, `combat/tetherWebs.js:70`, `core/coreSystem.js:625`, `core/physics.js:232`, `features/breakwaterSpur/runtime.js:84`, `features/derelictExpedition/runtime.js:144`, `features/stormChase/runtime.js:642`, `features/towjaw/runtime.js:287`, `main.js:417`, `main.js:426`, `render/feel.js:1564`, `render/shipMicroMotion.js:1748`, `render/vfx.js:3054`, `render/vfx.js:3065`, `save/saveSystem.js:516`, `save/saveSystem.js:554`, `sim/killcamTape.js:472`, `systems/aftermathWrecks.js:1310`, `systems/aiEncounter.js:143`, `systems/asteroidFormations.js:127`, `systems/asteroidSites.js:701`, `systems/asteroidSites.js:867`, `systems/autoTargetAssist.js:158`, `systems/automation.js:637`, `systems/barkDirector.js:878`, `systems/beacons.js:55`, `systems/bombs.js:711`, `systems/collisionConsequences.js:135`, `systems/combat.js:470`, `systems/combatOutcome.js:272`, `systems/contractClauses.js:394`, `systems/countermeasures.js:226`, `systems/difficultyDirector.js:167`, `systems/dockingCorridor.js:85`, `systems/economy.js:1853`, `systems/economyContracts.js:287`, `systems/encounterDirector.js:369`, `systems/environmentalMachinery.js:289`, `systems/factionPresence.js:517`, `systems/factionPresence.js:528`, `systems/faction_archive.js:591`, `systems/faction_frontier.js:498`, `systems/faction_helix.js:508`, `systems/faction_meridian.js:370`, `systems/faction_understory.js:738`, `systems/faction_vael.js:441`, `systems/fields.js:505`, `systems/flight.js:79`, `systems/flightV3.js:213`, `systems/gateControlDirector.js:79`, `systems/heat.js:412`, `systems/heistFacilities.js:337`, `systems/impoundGrudge.js:398`, `systems/impoundLot.js:1097`, `systems/impulseCharges.js:242`, `systems/lawSecurity.js:434`, `systems/lineProgression.js:51`, `systems/longBerth.js:68`, `systems/lossInvestigation.js:132`, `systems/massSeed.js:211`, `systems/massSeed.js:214`, `systems/masslineSnares.js:139`, `systems/masslineTelemetry.js:123`, `systems/mines.js:121`, `systems/mining.js:327`, `systems/missions.js:694`, `systems/npcJobsRuntime.js:1188`, `systems/npcJobsRuntime.js:1196`, `systems/npcJobsRuntime.js:1255`, `systems/npcJobsRuntime.js:1258`, `systems/onboarding.js:709`, `systems/pirateDisguise.js:441`, `systems/planetRuntime.js:215`, `systems/plants/busDoesntMove.js:150`, `systems/plants/deadLane.js:109`, `systems/plants/doorstop.js:127`, `systems/plants/farBerth.js:187`, `systems/plants/mooringAlarms.js:108`, `systems/plants/oneYank.js:130`, `systems/plants/orphanWreck.js:105`, `systems/plants/otherSide.js:142`, `systems/plants/snaggedPod.js:117`, `systems/plants/someonesCourse.js:129`, `systems/plants/sweepingLine.js:95`, `systems/plants/theOtherName.js:94`, `systems/plants/twoNames.js:102`, `systems/plants/yourWake.js:106`, `systems/presentationAdapters.js:346`, `systems/presentationOrchestrator.js:297`, `systems/routeFollower.js:438`, `systems/rubberneckers.js:99`, `systems/runSession.js:186`, `systems/salvageActions.js:145`, `systems/scanner.js:1138`, `systems/scramblePlant.js:124`, `systems/sectorSim.js:133`, `systems/shieldPylons.js:245`, `systems/ships.js:2004`, `systems/stationContactLoadBoundary.js:91`, `systems/stationSideEventDirector.js:106`, `systems/story.js:169`, `systems/survivalArena.js:1443`, `systems/survivalArena.js:1445`, `systems/survivorPod.js:731`, `systems/swarmDrops.js:105`, `systems/swarmFortify.js:185`, `systems/swarmLegendaries.js:126`, `systems/tetherGameplay.js:372`, `systems/titles.js:602`, `systems/traffic.js:1844`, `systems/traffic.js:1897`, `systems/traffic.js:1958`, `systems/traffic.js:1984`, `systems/traffic.js:1994`, `systems/traffic.js:1997`, `systems/travelLanes.js:553`, `systems/tumbleStates.js:144`, `systems/uniqueLootAbilities.js:163`, `systems/wingmen.js:174`, `systems/world.js:896`, `ui/aftermathChoicePrompt.js:116`, `ui/alerts.js:627`, `ui/automationPayoff.js:100`, `ui/bandHud.js:164`, `ui/capitalBossOverlayMount.js:717`, `ui/cargoConscience.js:147`, `ui/hudLayout.js:122`, `ui/loadingPresenter.js:752`, `ui/moralTrapPrompt.js:43`, `ui/screens/mainMenu.js:704`, `ui/uiRoot.js:651`, `ui/uiRoot.js:1860`, `ui/voiceArbiter.js:539`, `ui/wreckChoicePrompt.js:67` |
+| `save:recovered` | `save/saveSystem.js:5683` | `ui/screens/saveLoad.js:1196`, `ui/uiRoot.js:663` |
 | `save:restoreCommitted` | `save/saveSystem.js:7905` | — |
-| `save:restoring` | `save/saveSystem.js:7222` | `core/coreSystem.js:557`, `features/breakwaterSpur/presentation.js:33`, `features/breakwaterSpur/presentation.js:249`, `features/breakwaterSpur/runtime.js:83`, `features/derelictExpedition/runtime.js:138`, `features/stormChase/runtime.js:639`, `main.js:408`, `render/feel.js:1555`, `render/vfx.js:3041`, `render/vfx.js:3052`, `save/saveSystem.js:562`, `systems/aftermathWrecks.js:1295`, `systems/asteroidSites.js:856`, `systems/autoTargetAssist.js:155`, `systems/automation.js:630`, `systems/beacons.js:56`, `systems/cloak.js:80`, `systems/encounterDirector.js:361`, `systems/environmentalMachinery.js:288`, `systems/faction_understory.js:735`, `systems/lawSecurity.js:433`, `systems/masslineTelemetry.js:124`, `systems/missions.js:652`, `systems/missions.js:957`, `systems/npcJobsRuntime.js:1189`, `systems/runSession.js:166`, `systems/salvage.js:167`, `systems/scanner.js:1137`, `systems/spawnBudget.js:54`, `systems/special500Spectacle.js:205`, `systems/stationContactLoadBoundary.js:90`, `systems/stationServices.js:332`, `systems/surrenderRecovery.js:104`, `systems/survivalArena.js:1444`, `systems/survivorPod.js:732`, `systems/swarmFortify.js:184`, `systems/swarmLegendaries.js:125`, `systems/traffic.js:1926`, `systems/world.js:862`, `ui/loadingPresenter.js:749`, `ui/uiRoot.js:1820` |
+| `save:restoring` | `save/saveSystem.js:7222` | `core/coreSystem.js:616`, `features/breakwaterSpur/presentation.js:33`, `features/breakwaterSpur/presentation.js:249`, `features/breakwaterSpur/runtime.js:83`, `features/derelictExpedition/runtime.js:138`, `features/stormChase/runtime.js:639`, `main.js:418`, `render/feel.js:1563`, `render/vfx.js:3053`, `render/vfx.js:3064`, `save/saveSystem.js:562`, `systems/aftermathWrecks.js:1309`, `systems/asteroidSites.js:858`, `systems/autoTargetAssist.js:155`, `systems/automation.js:630`, `systems/beacons.js:56`, `systems/cloak.js:98`, `systems/encounterDirector.js:361`, `systems/environmentalMachinery.js:288`, `systems/faction_understory.js:735`, `systems/lawSecurity.js:433`, `systems/masslineTelemetry.js:124`, `systems/missions.js:718`, `systems/missions.js:1037`, `systems/npcJobsRuntime.js:1189`, `systems/runSession.js:185`, `systems/salvage.js:167`, `systems/scanner.js:1137`, `systems/spawnBudget.js:74`, `systems/special500Spectacle.js:205`, `systems/stationContactLoadBoundary.js:90`, `systems/stationServices.js:332`, `systems/surrenderRecovery.js:104`, `systems/survivalArena.js:1444`, `systems/survivorPod.js:732`, `systems/swarmFortify.js:184`, `systems/swarmLegendaries.js:125`, `systems/traffic.js:1928`, `systems/world.js:879`, `ui/loadingPresenter.js:749`, `ui/uiRoot.js:1859` |
 | `save:slotsValidated` | `save/saveSystem.js:3310` | `ui/screens/saveLoad.js:1186` |
-| `save:started` | `save/saveSystem.js:2081`, `save/saveSystem.js:2186`, `save/saveSystem.js:4175` | `systems/drill.js:819`, `systems/encounterDirector.js:360`, `systems/encounterDirector.js:368`, `ui/screenManager.js:764` |
+| `save:started` | `save/saveSystem.js:2081`, `save/saveSystem.js:2186`, `save/saveSystem.js:4175` | `systems/drill.js:840`, `systems/encounterDirector.js:360`, `systems/encounterDirector.js:368`, `ui/screenManager.js:767` |
 | `scan:capabilityVerdicts` | `systems/scanReveal.js:136` | `ui/signalInvestigationPrompt.js:265` |
-| `scan:completed` | `balance/careerCohorts.js:523`, `balance/prospectorPublicRoute.js:980`, `systems/scanner.js:1379`, `systems/world.js:7477` | `careers/origins/prospectorOrigin.js:633`, `features/breakwaterSpur/runtime.js:70`, `systems/aftermathWrecks.js:1257`, `systems/asteroidFormations.js:153`, `systems/heistFacilities.js:332`, `systems/missions.js:811`, `systems/onboarding.js:746`, `systems/presentationOrchestrator.js:201`, `systems/salvage.js:164`, `systems/salvageActions.js:140`, `systems/story.js:287`, `systems/story.js:288`, `systems/world.js:942` |
-| `scan:debrisCache` | `systems/mining.js:2329`, `systems/scanReveal.js:275` | `systems/presentationOrchestrator.js:211` |
-| `scan:pulse` | `systems/scanner.js:1284` | `render/authoredMotion.js:1151`, `render/shipMicroMotion.js:1775`, `systems/aftermathWrecks.js:1255`, `systems/asteroidSites.js:700`, `systems/buildIdentity.js:305`, `systems/cloak.js:97`, `systems/encounterDirector.js:388`, `systems/pirateDisguise.js:435`, `systems/presentationOrchestrator.js:200`, `systems/scanReveal.js:66`, `systems/world.js:943` |
-| `scan:shipRevealed` | `systems/scanReveal.js:96` | `audio/audioSystem.js:2854`, `systems/buildIdentity.js:304` |
+| `scan:completed` | `balance/careerCohorts.js:523`, `balance/prospectorPublicRoute.js:980`, `systems/scanner.js:1379`, `systems/world.js:7859` | `careers/origins/prospectorOrigin.js:633`, `features/breakwaterSpur/runtime.js:70`, `systems/aftermathWrecks.js:1271`, `systems/asteroidFormations.js:153`, `systems/heistFacilities.js:332`, `systems/missions.js:877`, `systems/onboarding.js:759`, `systems/presentationOrchestrator.js:201`, `systems/salvage.js:164`, `systems/salvageActions.js:140`, `systems/story.js:287`, `systems/story.js:288`, `systems/world.js:961` |
+| `scan:debrisCache` | `systems/mining.js:2346`, `systems/scanReveal.js:275` | `systems/presentationOrchestrator.js:211` |
+| `scan:pulse` | `systems/scanner.js:1284` | `render/authoredMotion.js:1151`, `render/shipMicroMotion.js:1775`, `systems/aftermathWrecks.js:1269`, `systems/asteroidSites.js:702`, `systems/buildIdentity.js:305`, `systems/cloak.js:115`, `systems/encounterDirector.js:388`, `systems/pirateDisguise.js:435`, `systems/presentationOrchestrator.js:200`, `systems/scanReveal.js:66`, `systems/world.js:962` |
+| `scan:shipRevealed` | `systems/scanReveal.js:96` | `audio/audioSystem.js:2893`, `systems/buildIdentity.js:304` |
 | `scan:weakPoint` | `systems/scanner.js:1368` | — |
-| `scan:wreckInvestigated` | `systems/scanReveal.js:178` | `audio/audioSystem.js:3058` |
-| `scan:wreckResolved` | `systems/scanner.js:1323` | `render/vfx.js:3131`, `systems/aftermathWrecks.js:1256`, `systems/lawSecurity.js:444` |
-| `scan:wreckRevealed` | `systems/scanReveal.js:169` | `audio/audioSystem.js:2855`, `systems/presentationOrchestrator.js:210` |
-| `scanner:ghostEscaped` | `systems/scanner.js:1225` | `render/vfx.js:3137`, `systems/presentationOrchestrator.js:207` |
-| `scanner:ghostRevealed` | `systems/scanner.js:1342` | `render/vfx.js:3136` |
+| `scan:wreckInvestigated` | `systems/scanReveal.js:178` | `audio/audioSystem.js:3097` |
+| `scan:wreckResolved` | `systems/scanner.js:1323` | `render/vfx.js:3145`, `systems/aftermathWrecks.js:1270`, `systems/lawSecurity.js:444` |
+| `scan:wreckRevealed` | `systems/scanReveal.js:169` | `audio/audioSystem.js:2894`, `systems/presentationOrchestrator.js:210` |
+| `scanner:ghostEscaped` | `systems/scanner.js:1225` | `render/vfx.js:3151`, `systems/presentationOrchestrator.js:207` |
+| `scanner:ghostRevealed` | `systems/scanner.js:1342` | `render/vfx.js:3150` |
 | `scenario:actorBindings` | `systems/scenarioRuntime.js:143` | — |
 | `scenario:beatEntered` | `systems/scenarioRuntime.js:159` | `systems/presentationOrchestrator.js:100` |
 | `scenario:branchResolved` | `systems/scenarioRuntime.js:581` | `systems/presentationOrchestrator.js:294` |
@@ -1521,21 +1534,21 @@
 | `scenario:factsInitialized` | `systems/scenarioRuntime.js:138` | — |
 | `scenario:loaded` | `systems/scenarioRuntime.js:128` | — |
 | `scenario:safeOpeningDemand` | `systems/scenarioRuntime.js:193` | — |
-| `scenario:scavengerResponse` | `ui/comms.js:858`, `ui/comms.js:859` | `systems/scenarioRuntime.js:31` |
-| `sector:discovered` | `systems/world.js:1419` | `systems/presentationOrchestrator.js:197` |
-| `sector:enter` | `balance/hunterPublicRoute.js:177`, `systems/world.js:1475` | `audio/audioSystem.js:3229`, `audio/bombAudio.js:457`, `audio/fieldAudio.js:324`, `data/hazardLanguage.js:173`, `features/breakwaterSpur/runtime.js:82`, `features/derelictExpedition/runtime.js:135`, `features/towjaw/runtime.js:282`, `render/shipMicroMotion.js:1747`, `render/vfx.js:3037`, `render/vfx.js:3048`, `render/vfx.js:3073`, `save/saveSystem.js:577`, `systems/achievements.js:1192`, `systems/aftermathWrecks.js:1271`, `systems/aiEncounter.js:142`, `systems/asteroidFormations.js:126`, `systems/asteroidSites.js:821`, `systems/automation.js:676`, `systems/bombs.js:703`, `systems/claims.js:354`, `systems/claims.js:356`, `systems/combatOutcome.js:285`, `systems/difficultyDirector.js:170`, `systems/dockingCorridor.js:83`, `systems/economy.js:1812`, `systems/encounterDirector.js:355`, `systems/factionPresence.js:508`, `systems/faction_archive.js:590`, `systems/faction_frontier.js:507`, `systems/faction_understory.js:724`, `systems/fields.js:491`, `systems/heistFacilities.js:304`, `systems/intervention.js:80`, `systems/lossInvestigation.js:127`, `systems/massSeed.js:209`, `systems/masslineSnares.js:135`, `systems/mines.js:119`, `systems/mining.js:322`, `systems/missions.js:951`, `systems/moistureLoss.js:80`, `systems/moralTrap.js:187`, `systems/npcJobsRuntime.js:1177`, `systems/onboarding.js:951`, `systems/plants/deadLane.js:106`, `systems/plants/orphanWreck.js:100`, `systems/plants/someonesCourse.js:126`, `systems/presentationOrchestrator.js:247`, `systems/routeFollower.js:429`, `systems/salvage.js:138`, `systems/salvageActions.js:148`, `systems/scanner.js:1139`, `systems/sectorSim.js:130`, `systems/shieldPylons.js:243`, `systems/story.js:237`, `systems/story.js:286`, `systems/survivalArena.js:1441`, `systems/survivorPod.js:713`, `systems/swarmLegendaries.js:127`, `systems/tetherGameplay.js:372`, `systems/traffic.js:1840`, `systems/travelLanes.js:554`, `systems/wingmen.js:148`, `ui/causeLedger.js:234`, `ui/commandBar.js:259`, `ui/loadingPresenter.js:760`, `ui/moralTrapPrompt.js:41`, `ui/priceForecast.js:85`, `ui/prompts/bulkHaulTag.js:149`, `ui/sectorArrivalPlate.js:72`, `ui/sectorPostcard.js:272`, `ui/securityReadout.js:157`, `ui/watchlistHud.js:91`, `ui/wreckChoicePrompt.js:65` |
-| `sector:exit` | `systems/world.js:1315` | `audio/bombAudio.js:456`, `audio/fieldAudio.js:323`, `core/physics.js:220`, `features/breakwaterSpur/presentation.js:34`, `features/breakwaterSpur/presentation.js:250`, `features/breakwaterSpur/runtime.js:81`, `features/derelictExpedition/runtime.js:132`, `features/stormChase/runtime.js:636`, `render/vfx.js:3038`, `render/vfx.js:3049`, `systems/achievements.js:1198`, `systems/aftermathWrecks.js:1281`, `systems/asteroidSites.js:846`, `systems/automation.js:664`, `systems/bombs.js:702`, `systems/dockingCorridor.js:82`, `systems/encounterDirector.js:357`, `systems/environmentalMachinery.js:286`, `systems/factionPresence.js:513`, `systems/factionPresence.js:516`, `systems/fields.js:490`, `systems/gateControlDirector.js:78`, `systems/heistFacilities.js:323`, `systems/impulseCharges.js:243`, `systems/lawSecurity.js:432`, `systems/massSeed.js:208`, `systems/massSeed.js:212`, `systems/masslineSnares.js:133`, `systems/masslineTelemetry.js:127`, `systems/mines.js:118`, `systems/mining.js:312`, `systems/missions.js:952`, `systems/npcJobsRuntime.js:1176`, `systems/planetRuntime.js:216`, `systems/plants/busDoesntMove.js:149`, `systems/plants/deadLane.js:107`, `systems/plants/doorstop.js:126`, `systems/plants/farBerth.js:186`, `systems/plants/mooringAlarms.js:106`, `systems/plants/oneYank.js:129`, `systems/plants/orphanWreck.js:101`, `systems/plants/otherSide.js:140`, `systems/plants/snaggedPod.js:115`, `systems/plants/someonesCourse.js:127`, `systems/plants/sweepingLine.js:94`, `systems/plants/theOtherName.js:93`, `systems/plants/twoNames.js:101`, `systems/plants/witness.js:94`, `systems/plants/yourWake.js:104`, `systems/reactiveMatter.js:536`, `systems/rubberneckers.js:98`, `systems/scramblePlant.js:123`, `systems/sectorSim.js:129`, `systems/shieldPylons.js:242`, `systems/spawnBudget.js:50`, `systems/stationServices.js:331`, `systems/stationSideEventDirector.js:105`, `systems/surrenderRecovery.js:102`, `systems/survivalArena.js:1442`, `systems/survivorPod.js:739`, `systems/swarmLegendaries.js:128`, `systems/tetherGameplay.js:371`, `systems/traffic.js:1865`, `systems/wingmen.js:160`, `ui/aftermathChoicePrompt.js:116`, `ui/impoundPayPrompt.js:72`, `ui/impoundPayPrompt.js:77`, `ui/impoundPayPrompt.js:82`, `ui/impoundPayPrompt.js:88`, `ui/promptDeck.js:941`, `ui/voiceArbiter.js:540`, `ui/wreckChoicePrompt.js:60` |
-| `sector:membershipCandidate` | `systems/world.js:3011` | — |
+| `scenario:scavengerResponse` | `ui/comms.js:887`, `ui/comms.js:888` | `systems/scenarioRuntime.js:31` |
+| `sector:discovered` | `systems/world.js:1555` | `systems/presentationOrchestrator.js:197`, `world/adventureXp.js:97` |
+| `sector:enter` | `balance/hunterPublicRoute.js:177`, `systems/world.js:1611` | `audio/audioSystem.js:3268`, `audio/bombAudio.js:457`, `audio/fieldAudio.js:324`, `data/hazardLanguage.js:173`, `features/breakwaterSpur/runtime.js:82`, `features/derelictExpedition/runtime.js:135`, `features/towjaw/runtime.js:282`, `render/shipMicroMotion.js:1747`, `render/vfx.js:3049`, `render/vfx.js:3060`, `render/vfx.js:3085`, `save/saveSystem.js:577`, `systems/achievements.js:1192`, `systems/aftermathWrecks.js:1285`, `systems/aiEncounter.js:144`, `systems/asteroidFormations.js:126`, `systems/asteroidSites.js:823`, `systems/automation.js:676`, `systems/bombs.js:703`, `systems/claims.js:354`, `systems/claims.js:356`, `systems/combatOutcome.js:289`, `systems/difficultyDirector.js:170`, `systems/dockingCorridor.js:83`, `systems/economy.js:1812`, `systems/encounterDirector.js:355`, `systems/factionPresence.js:508`, `systems/faction_archive.js:590`, `systems/faction_frontier.js:507`, `systems/faction_understory.js:724`, `systems/fields.js:491`, `systems/heistFacilities.js:304`, `systems/intervention.js:80`, `systems/lossInvestigation.js:127`, `systems/massSeed.js:209`, `systems/masslineSnares.js:135`, `systems/mines.js:119`, `systems/mining.js:326`, `systems/missions.js:1031`, `systems/moistureLoss.js:80`, `systems/moralTrap.js:187`, `systems/npcJobsRuntime.js:1177`, `systems/onboarding.js:964`, `systems/plants/deadLane.js:107`, `systems/plants/orphanWreck.js:100`, `systems/plants/someonesCourse.js:127`, `systems/presentationOrchestrator.js:247`, `systems/routeFollower.js:429`, `systems/salvage.js:138`, `systems/salvageActions.js:148`, `systems/scanner.js:1139`, `systems/sectorSim.js:130`, `systems/shieldPylons.js:243`, `systems/story.js:237`, `systems/story.js:286`, `systems/survivalArena.js:1441`, `systems/survivorPod.js:713`, `systems/swarmLegendaries.js:127`, `systems/tetherGameplay.js:379`, `systems/traffic.js:1842`, `systems/travelLanes.js:554`, `systems/wingmen.js:148`, `ui/causeLedger.js:234`, `ui/commandBar.js:259`, `ui/loadingPresenter.js:760`, `ui/moralTrapPrompt.js:41`, `ui/priceForecast.js:85`, `ui/prompts/bulkHaulTag.js:149`, `ui/sectorArrivalPlate.js:72`, `ui/sectorPostcard.js:272`, `ui/securityReadout.js:157`, `ui/watchlistHud.js:91`, `ui/wreckChoicePrompt.js:65` |
+| `sector:exit` | `systems/world.js:1450` | `audio/bombAudio.js:456`, `audio/fieldAudio.js:323`, `core/coreSystem.js:620`, `core/physics.js:234`, `features/breakwaterSpur/presentation.js:34`, `features/breakwaterSpur/presentation.js:250`, `features/breakwaterSpur/runtime.js:81`, `features/derelictExpedition/runtime.js:132`, `features/stormChase/runtime.js:636`, `render/vfx.js:3050`, `render/vfx.js:3061`, `systems/achievements.js:1198`, `systems/aftermathWrecks.js:1295`, `systems/asteroidSites.js:848`, `systems/automation.js:664`, `systems/bombs.js:702`, `systems/dockingCorridor.js:82`, `systems/encounterDirector.js:357`, `systems/environmentalMachinery.js:286`, `systems/factionPresence.js:513`, `systems/factionPresence.js:516`, `systems/fields.js:490`, `systems/gateControlDirector.js:78`, `systems/heistFacilities.js:323`, `systems/impulseCharges.js:243`, `systems/lawSecurity.js:432`, `systems/massSeed.js:208`, `systems/massSeed.js:212`, `systems/masslineSnares.js:133`, `systems/masslineTelemetry.js:127`, `systems/mines.js:118`, `systems/mining.js:316`, `systems/missions.js:1032`, `systems/npcJobsRuntime.js:1176`, `systems/planetRuntime.js:216`, `systems/plants/busDoesntMove.js:149`, `systems/plants/deadLane.js:108`, `systems/plants/doorstop.js:126`, `systems/plants/farBerth.js:186`, `systems/plants/mooringAlarms.js:107`, `systems/plants/oneYank.js:129`, `systems/plants/orphanWreck.js:101`, `systems/plants/otherSide.js:141`, `systems/plants/snaggedPod.js:116`, `systems/plants/someonesCourse.js:128`, `systems/plants/sweepingLine.js:94`, `systems/plants/theOtherName.js:93`, `systems/plants/twoNames.js:101`, `systems/plants/witness.js:94`, `systems/plants/yourWake.js:105`, `systems/reactiveMatter.js:536`, `systems/rubberneckers.js:98`, `systems/scramblePlant.js:123`, `systems/sectorSim.js:129`, `systems/shieldPylons.js:242`, `systems/spawnBudget.js:70`, `systems/stationServices.js:331`, `systems/stationSideEventDirector.js:105`, `systems/surrenderRecovery.js:102`, `systems/survivalArena.js:1442`, `systems/survivorPod.js:739`, `systems/swarmLegendaries.js:128`, `systems/tetherGameplay.js:378`, `systems/traffic.js:1867`, `systems/wingmen.js:160`, `ui/aftermathChoicePrompt.js:116`, `ui/impoundPayPrompt.js:72`, `ui/impoundPayPrompt.js:77`, `ui/impoundPayPrompt.js:82`, `ui/impoundPayPrompt.js:88`, `ui/promptDeck.js:958`, `ui/voiceArbiter.js:540`, `ui/wreckChoicePrompt.js:60` |
+| `sector:membershipCandidate` | `systems/world.js:3164` | — |
 | `sector:physicalLaw` | `systems/environmentalMachinery.js:854` | — |
 | `sectorWonder:secured` | — | `systems/environmentalMachinery.js:274` |
-| `sectorsim:embodiment` | `systems/sectorSim.js:1027` | `systems/world.js:925` |
-| `sectorsim:fieldAdvanced` | `systems/sectorSim.js:390` | `ui/screens/starmap.js:936` |
-| `sectorsim:impulse` | `systems/aftermathWrecks.js:2561`, `systems/claims.js:1860`, `systems/encounterDirector.js:2928`, `systems/masslineImpacts.js:330`, `systems/mining.js:3054`, `systems/trafficRoleOps.js:1810`, `systems/worldPressure.js:192`, `systems/worldPressure.js:276`, `world/motionFossil.js:187` | `systems/sectorSim.js:138`, `systems/world.js:941` |
-| `sectorsim:intel` | `systems/sectorSim.js:1081` | `systems/world.js:930` |
+| `sectorsim:embodiment` | `systems/sectorSim.js:1027` | `systems/world.js:944` |
+| `sectorsim:fieldAdvanced` | `systems/sectorSim.js:390` | `ui/screens/starmap.js:938` |
+| `sectorsim:impulse` | `systems/aftermathWrecks.js:2649`, `systems/claims.js:1860`, `systems/encounterDirector.js:2928`, `systems/masslineImpacts.js:330`, `systems/mining.js:3071`, `systems/trafficRoleOps.js:1810`, `systems/worldPressure.js:192`, `systems/worldPressure.js:276`, `world/motionFossil.js:187` | `systems/sectorSim.js:138`, `systems/world.js:960` |
+| `sectorsim:intel` | `systems/sectorSim.js:1081` | `systems/world.js:949` |
 | `sectorsim:offlineSummary` | `systems/sectorSim.js:857` | `systems/economy.js:1867` |
-| `sectorsim:reconcile` | `systems/sectorSim.js:810` | `systems/world.js:931` |
+| `sectorsim:reconcile` | `systems/sectorSim.js:810` | `systems/world.js:950` |
 | `sectorsim:tick` | `systems/sectorSim.js:334` | — |
-| `sectorsim:transitOutcome` | `systems/sectorSim.js:763` | `ui/screens/starmap.js:937` |
+| `sectorsim:transitOutcome` | `systems/sectorSim.js:763` | `ui/screens/starmap.js:939` |
 | `sensorGhost:swarm` | `systems/e1EncounterRuntime.js:656` | `systems/scanner.js:1144` |
 | `sensors:playerLit` | `systems/massSignature.js:508` | — |
 | `sensors:playerSignature` | `systems/massSignature.js:444` | — |
@@ -1544,20 +1557,20 @@
 | `sensors:signatureLost` | `systems/massSignature.js:318`, `systems/massSignature.js:330` | — |
 | `sensors:signatureReport` | `systems/massSignature.js:616` | — |
 | `sensors:signatureResolved` | `systems/massSignature.js:312` | — |
-| `service:aborted` | `systems/stationServices.js:424` | `audio/audioSystem.js:3142`, `render/authoredMotion.js:1170`, `systems/economy.js:1818` |
-| `service:completed` | `features/salvageTender/services.js:193`, `systems/blindWelderRuntime.js:142`, `systems/economy.js:4962`, `systems/economy.js:5186`, `systems/economy.js:5237`, `systems/economy.js:5269`, `systems/economy.js:5324`, `systems/economy.js:5365`, `systems/economy.js:5397`, `systems/economy.js:5435`, `systems/stationServices.js:795`, `systems/stationServices.js:814` | `audio/audioSystem.js:3143`, `render/authoredMotion.js:1169`, `render/authoredMotion.js:1173`, `systems/factionPresence.js:526`, `systems/ships.js:2136`, `systems/swarmJuice.js:167` |
-| `service:decantRequest` | `ui/station/stationApp.js:1336` | `systems/stationServices.js:345` |
-| `service:decanted` | `systems/stationServices.js:594` | `audio/audioSystem.js:3144` |
+| `service:aborted` | `systems/stationServices.js:424` | `audio/audioSystem.js:3181`, `render/authoredMotion.js:1170`, `systems/economy.js:1818` |
+| `service:completed` | `features/salvageTender/services.js:193`, `systems/blindWelderRuntime.js:142`, `systems/economy.js:4962`, `systems/economy.js:5186`, `systems/economy.js:5237`, `systems/economy.js:5269`, `systems/economy.js:5324`, `systems/economy.js:5365`, `systems/economy.js:5397`, `systems/economy.js:5435`, `systems/stationServices.js:795`, `systems/stationServices.js:814` | `audio/audioSystem.js:3182`, `render/authoredMotion.js:1169`, `render/authoredMotion.js:1173`, `systems/factionPresence.js:526`, `systems/ships.js:2136`, `systems/swarmJuice.js:167` |
+| `service:decantRequest` | `ui/station/stationApp.js:1338` | `systems/stationServices.js:345` |
+| `service:decanted` | `systems/stationServices.js:594` | `audio/audioSystem.js:3183` |
 | `service:progress` | `systems/stationServices.js:713` | — |
-| `service:queued` | `systems/stationServices.js:549` | `audio/audioSystem.js:3137` |
-| `service:started` | `systems/stationServices.js:697` | `audio/audioSystem.js:3141`, `render/authoredMotion.js:1168` |
+| `service:queued` | `systems/stationServices.js:549` | `audio/audioSystem.js:3176` |
+| `service:started` | `systems/stationServices.js:697` | `audio/audioSystem.js:3180`, `render/authoredMotion.js:1168` |
 | `setPiece:staged` | `render/trailerStaging.js:40` | `ui/discoveryPlate.js:215` |
-| `settings:changed` | `render/renderer.js:11918`, `render/slowFrameOffer.js:165`, `save/saveSystem.js:7946`, `save/saveSystem.js:7948`, `systems/legacyTouch.js:707`, `ui/screens/mainMenu.js:107`, `ui/screens/motionAsk.js:108`, `ui/screens/pause.js:736`, `ui/screens/pause.js:744`, `ui/screens/pause.js:860`, `ui/screens/pause.js:900`, `ui/screens/raceBoard.js:104`, `ui/screens/settings.js:754`, `ui/screens/settings.js:1435`, `ui/screens/settings.js:1496`, `ui/screens/settings.js:1618` | `audio/audioSystem.js:3459`, `features/towjaw/presentation.js:459`, `main.js:406`, `render/vfx.js:3055`, `save/saveSystem.js:474`, `systems/missions.js:958`, `systems/survivalResults.js:527`, `ui/uiRoot.js:1075` |
+| `settings:changed` | `render/renderer.js:11981`, `render/slowFrameOffer.js:165`, `save/saveSystem.js:7946`, `save/saveSystem.js:7948`, `systems/legacyTouch.js:707`, `ui/screens/mainMenu.js:107`, `ui/screens/motionAsk.js:108`, `ui/screens/pause.js:739`, `ui/screens/pause.js:747`, `ui/screens/pause.js:863`, `ui/screens/pause.js:903`, `ui/screens/raceBoard.js:104`, `ui/screens/settings.js:756`, `ui/screens/settings.js:1450`, `ui/screens/settings.js:1511`, `ui/screens/settings.js:1633` | `audio/audioSystem.js:3498`, `features/towjaw/presentation.js:459`, `main.js:416`, `render/vfx.js:3067`, `save/saveSystem.js:474`, `systems/missions.js:1038`, `systems/survivalResults.js:527`, `ui/uiRoot.js:1100` |
 | `settings:restored` | `save/saveSystem.js:8563` | — |
 | `shieldPylon:active` | `systems/shieldPylons.js:487` | — |
 | `shieldPylon:contact` | `systems/shieldPylons.js:459` | — |
 | `shieldPylon:denied` | `systems/shieldPylons.js:375` | — |
-| `shieldPylon:intercepted` | `core/physics.js:1433` | — |
+| `shieldPylon:intercepted` | `core/physics.js:1496` | — |
 | `shieldPylon:linking` | `systems/shieldPylons.js:362` | — |
 | `shieldPylon:overloaded` | `systems/shieldPylons.js:539` | — |
 | `shieldPylon:placed` | `systems/shieldPylons.js:345`, `systems/shieldPylons.js:361` | — |
@@ -1565,37 +1578,37 @@
 | `shieldPylon:retired` | `systems/shieldPylons.js:575` | — |
 | `shieldPylon:strained` | `systems/shieldPylons.js:505` | — |
 | `shieldPylon:warning` | `systems/shieldPylons.js:495` | — |
-| `ship:appearanceChanged` | `systems/ships.js:2603`, `systems/ships.js:3251`, `systems/trafficJobOps.js:424` | `core/coreSystem.js:556`, `render/vfx.js:3043`, `systems/swarmFloor.js:905` |
+| `ship:appearanceChanged` | `systems/ships.js:2603`, `systems/ships.js:3251`, `systems/trafficJobOps.js:424` | `core/coreSystem.js:615`, `render/vfx.js:3055`, `systems/swarmFloor.js:905` |
 | `ship:appearanceSaved` | `systems/ships.js:3253` | `ui/station/screens/shipworks.js:973` |
 | `ship:berthSwitching` | `systems/ships.js:3151` | — |
-| `ship:boostPreKick` | `systems/flightV3.js:951` | `render/authoredMotion.js:1165`, `render/feel.js:1737` |
-| `ship:boostStart` | `systems/flight.js:110`, `systems/flightV3.js:297` | `audio/audioSystem.js:3233`, `render/authoredMotion.js:1166`, `render/vfx.js:3104`, `systems/cruise.js:63`, `systems/onboarding.js:809` |
-| `ship:boostStop` | `systems/flight.js:111`, `systems/flight.js:224`, `systems/flightV3.js:298`, `systems/flightV3.js:1030` | `audio/audioSystem.js:3238`, `render/authoredMotion.js:1167`, `render/vfx.js:3105` |
+| `ship:boostPreKick` | `systems/flightV3.js:2420` | `render/authoredMotion.js:1165`, `render/feel.js:1745` |
+| `ship:boostStart` | `systems/flight.js:110` | `audio/audioSystem.js:3272`, `render/authoredMotion.js:1166`, `render/vfx.js:3116`, `systems/cruise.js:63`, `systems/onboarding.js:822` |
+| `ship:boostStop` | `systems/flight.js:111`, `systems/flight.js:224` | `audio/audioSystem.js:3277`, `render/authoredMotion.js:1167`, `render/vfx.js:3117` |
 | `ship:captured` | `systems/shipControlTransfer.js:98` | `data/encounters/362-the-salvage-watch.js:93`, `data/encounters/362-the-salvage-watch.js:187`, `data/encounters/367-the-salvage-tail.js:141` |
 | `ship:cargoCapChanged` | `systems/ships.js:2596` | — |
-| `ship:controlChanging` | `systems/shipControlTransfer.js:162` | `data/encounters/362-the-salvage-watch.js:98`, `data/encounters/362-the-salvage-watch.js:192`, `data/encounters/367-the-salvage-tail.js:136`, `systems/cruise.js:56`, `systems/flightV3.js:247`, `systems/tetherGameplay.js:370` |
+| `ship:controlChanging` | `systems/shipControlTransfer.js:162` | `data/encounters/362-the-salvage-watch.js:98`, `data/encounters/362-the-salvage-watch.js:192`, `data/encounters/367-the-salvage-tail.js:136`, `systems/cruise.js:56`, `systems/flightV3.js:247`, `systems/tetherGameplay.js:377` |
 | `ship:controlTransferred` | `systems/shipControlTransfer.js:205` | — |
-| `ship:dash` | `systems/flight.js:201`, `systems/flightV3.js:976` | `audio/audioSystem.js:3241`, `render/vfx.js:3106`, `systems/combat.js:432`, `systems/gamepad.js:1095`, `systems/uniqueLootAbilities.js:161` |
-| `ship:deathFlash` | `render/shipMicroMotion.js:2764` | `render/vfx.js:3154` |
-| `ship:deathPop` | `render/shipMicroMotion.js:1420`, `render/shipMicroMotion.js:2754` | `render/vfx.js:3153` |
+| `ship:dash` | `systems/flight.js:201`, `systems/flightV3.js:976` | `audio/audioSystem.js:3280`, `render/vfx.js:3118`, `systems/combat.js:432`, `systems/gamepad.js:1141`, `systems/uniqueLootAbilities.js:161` |
+| `ship:deathFlash` | `render/shipMicroMotion.js:2764` | `render/vfx.js:3168` |
+| `ship:deathPop` | `render/shipMicroMotion.js:1420`, `render/shipMicroMotion.js:2754` | `render/vfx.js:3167` |
 | `ship:livingHullChanged` | `systems/ships.js:2257`, `systems/ships.js:2435`, `systems/story.js:2122` | `systems/barkDirector.js:881` |
 | `ship:loadoutPresetApplied` | `systems/ships.js:3773` | `ui/station/screens/shipworks.js:1004` |
 | `ship:loadoutPresetApplyRejected` | `systems/ships.js:3604`, `systems/ships.js:3622`, `systems/ships.js:3651`, `systems/ships.js:3676`, `systems/ships.js:3743`, `systems/ships.js:3763` | `ui/station/screens/shipworks.js:998` |
 | `ship:loadoutPresetDeleted` | `systems/ships.js:3589` | — |
 | `ship:loadoutPresetSaved` | `systems/ships.js:3560` | — |
 | `ship:massChanged` | `systems/ships.js:2877` | — |
-| `ship:nameChanged` | `systems/ships.js:3276` | `ui/orrery/hudAdapter.js:688` |
+| `ship:nameChanged` | `systems/ships.js:3276` | `ui/orrery/hudAdapter.js:692` |
 | `ship:parkedHoldSwap` | `systems/shipControlTransfer.js:147`, `systems/ships.js:3131` | — |
 | `ship:phaseBlink` | `systems/phaseBlink.js:190`, `systems/phaseBlink.js:331` | `render/phaseBlinkPresentation.js:855` |
-| `ship:purchased` | `systems/ships.js:2929`, `systems/ships.js:2969` | `audio/audioSystem.js:3196`, `systems/impoundLot.js:1098`, `systems/lawSecurity.js:452`, `systems/missions.js:992` |
-| `ship:rcsPulse` | `render/shipMicroMotion.js:1485`, `render/shipMicroMotion.js:2741` | `render/vfx.js:3152` |
+| `ship:purchased` | `systems/ships.js:2929`, `systems/ships.js:2969` | `audio/audioSystem.js:3235`, `systems/impoundLot.js:1098`, `systems/lawSecurity.js:452`, `systems/missions.js:1072` |
+| `ship:rcsPulse` | `render/shipMicroMotion.js:1485`, `render/shipMicroMotion.js:2741` | `render/vfx.js:3166` |
 | `ship:released` | `shipjack/ownedOperations.js:26` | — |
 | `ship:roleContext` | `systems/ships.js:2493` | `systems/presentationAdapters.js:341` |
 | `ship:slotsChanged` | `systems/ships.js:2597` | — |
 | `ship:sold` | `systems/ships.js:3094` | — |
-| `ship:statsChanged` | `systems/ships.js:2595` | `systems/stationServices.js:333`, `systems/world.js:834`, `ui/commandBar.js:254` |
+| `ship:statsChanged` | `systems/ships.js:2595` | `systems/stationServices.js:333`, `systems/world.js:851`, `ui/commandBar.js:254` |
 | `ship:swingDash` | `systems/flightV3.js:977` | `render/shipMicroMotion.js:1769` |
-| `ship:thrust` | `systems/flight.js:435`, `systems/flightV3.js:2354` | `render/vfx.js:3103` |
+| `ship:thrust` | `systems/flight.js:435`, `systems/flightV3.js:2362` | `render/vfx.js:3115` |
 | `shipbreakingYard:action` | `features/shipbreakingYard/presentation.js:79` | — |
 | `shipbreakingYard:close` | `features/shipbreakingYard/runtime.js:131` | — |
 | `shipbreakingYard:cue` | `features/shipbreakingYard/runtime.js:128` | `features/shipbreakingYard/audio.js:18` |
@@ -1623,59 +1636,59 @@
 | `shipjack:yardStarted` | `shipjack/yardOperations.js:241` | — |
 | `ships:grantModule` | `systems/fenceDesk.js:266` | `systems/ships.js:1997` |
 | `signal:investigate` | — | `systems/scanner.js:1126` |
-| `signal:investigated` | `systems/scanner.js:2298` | `systems/missions.js:847`, `systems/presentationOrchestrator.js:204`, `systems/story.js:174`, `systems/world.js:837`, `ui/signalInvestigationPrompt.js:268` |
+| `signal:investigated` | `systems/scanner.js:2298` | `systems/missions.js:913`, `systems/presentationOrchestrator.js:204`, `systems/story.js:174`, `systems/world.js:854`, `ui/signalInvestigationPrompt.js:268` |
 | `signal:investigating` | `systems/scanner.js:1639`, `systems/spectrum/index.js:257` | `ui/signalInvestigationPrompt.js:267` |
 | `signal:receipt` | `systems/scanner.js:2299` | — |
-| `signal:scanResults` | `response/mercyService/live.js:144`, `systems/scanner.js:1380`, `systems/spectrum/index.js:131`, `systems/spectrum/index.js:246` | `systems/missions.js:832`, `systems/presentationOrchestrator.js:202`, `systems/story.js:289`, `systems/story.js:292`, `ui/signalInvestigationPrompt.js:264` |
+| `signal:scanResults` | `response/mercyService/live.js:144`, `systems/scanner.js:1380`, `systems/spectrum/index.js:131`, `systems/spectrum/index.js:246` | `systems/missions.js:898`, `systems/presentationOrchestrator.js:202`, `systems/story.js:289`, `systems/story.js:292`, `ui/signalInvestigationPrompt.js:264` |
 | `signal:surveyFiled` | `systems/v2FlavorRuntime.js:318` | `systems/scanner.js:1127` |
 | `signal:track` | — | `systems/scanner.js:1125` |
 | `signal:tracked` | `systems/scanner.js:1647`, `systems/scanner.js:1670` | `systems/presentationOrchestrator.js:203`, `ui/signalInvestigationPrompt.js:266` |
-| `sim:pause` | `ui/screenManager.js:564` | `audio/audioSystem.js:3475`, `audio/bombAudio.js:463`, `audio/fieldAudio.js:329`, `audio/worldFeelSeams.js:447`, `render/feel.js:1547`, `systems/autoTargetAssist.js:166`, `systems/heliosCuttingCourtesy.js:77`, `systems/input.js:1554`, `ui/masslineHud.js:1409` |
-| `sim:resume` | `core/simLaneMain.js:621`, `ui/screenManager.js:572` | `audio/audioSystem.js:3476`, `ui/masslineHud.js:1412`, `ui/screenManager.js:757` |
-| `site:anchored` | `systems/asteroidSites.js:1615` | — |
-| `site:blueprintApplied` | `systems/asteroidSites.js:2593` | — |
-| `site:chargePressed` | `systems/asteroidSites.js:3421` | — |
-| `site:claimContested` | `systems/asteroidSites.js:3531` | — |
-| `site:clusterBalanced` | `systems/asteroidSites.js:2618` | — |
-| `site:commissioned` | `systems/asteroidSites.js:2364` | — |
-| `site:courierDelivered` | `systems/asteroidSites.js:3943` | — |
-| `site:courierLaunched` | `systems/asteroidSites.js:3831` | `audio/audioSystem.js:3503` |
-| `site:courierLost` | `systems/asteroidSites.js:3927` | — |
-| `site:created` | `systems/asteroidSites.js:1552`, `systems/asteroidSites.js:2557` | — |
-| `site:defenseDeployed` | `systems/asteroidSites.js:2406` | — |
-| `site:directiveUpdated` | `systems/asteroidSites.js:2421` | — |
-| `site:droneCommissioned` | `systems/asteroidSites.js:2464` | — |
-| `site:laneSpilled` | `systems/asteroidSites.js:1950`, `systems/asteroidSites.js:2028` | — |
-| `site:linkCreated` | `systems/asteroidSites.js:2189` | — |
-| `site:linkRemoved` | `systems/asteroidSites.js:2206` | — |
-| `site:linkUpdated` | `systems/asteroidSites.js:2170` | — |
-| `site:lost` | `systems/asteroidSites.js:2952` | `ui/alerts.js:579` |
-| `site:machineInstalled` | `systems/asteroidSites.js:1583` | `audio/audioSystem.js:3502`, `ui/alerts.js:578` |
-| `site:machineMode` | `systems/asteroidSites.js:2049` | — |
-| `site:machineRemoved` | `systems/asteroidSites.js:1967` | `render/authoredMotion.js:1185` |
-| `site:machineStatus` | `systems/asteroidSites.js:3486` | `audio/audioSystem.js:3507`, `ui/alerts.js:574` |
-| `site:podBuilt` | `systems/asteroidSites.js:3345` | — |
-| `site:producing` | `systems/asteroidSites.js:1837` | `render/authoredMotion.js:1184`, `ui/asteroid/asteroidScreen.js:2742` |
-| `site:rematerialized` | `systems/asteroidSites.js:3006` | — |
-| `site:reserveUpdated` | `systems/asteroidSites.js:2123` | — |
-| `site:signatureBand` | `systems/asteroidSites.js:3523` | — |
-| `site:surveyCommitted` | `systems/asteroidSites.js:1755` | `ui/asteroid/asteroidScreen.js:2727` |
-| `site:surveyComplete` | `systems/asteroidSites.js:1706` | `ui/asteroid/asteroidScreen.js:2721` |
-| `site:surveyDetected` | `systems/asteroidSites.js:1696` | `ui/asteroid/asteroidScreen.js:2714` |
-| `siteEvidence:action` | `ui/physicalJobsPrompt.js:79`, `ui/physicalJobsPrompt.js:83` | `systems/asteroidSites.js:677` |
+| `sim:pause` | `ui/screenManager.js:567` | `audio/audioSystem.js:3514`, `audio/bombAudio.js:463`, `audio/fieldAudio.js:329`, `audio/worldFeelSeams.js:447`, `render/feel.js:1555`, `systems/autoTargetAssist.js:166`, `systems/heliosCuttingCourtesy.js:77`, `systems/input.js:1596`, `ui/masslineHud.js:1458` |
+| `sim:resume` | `core/simLaneMain.js:704`, `core/simLaneMain.js:1153`, `ui/screenManager.js:575` | `audio/audioSystem.js:3515`, `ui/masslineHud.js:1461`, `ui/screenManager.js:760` |
+| `site:anchored` | `systems/asteroidSites.js:1662` | — |
+| `site:blueprintApplied` | `systems/asteroidSites.js:2641` | — |
+| `site:chargePressed` | `systems/asteroidSites.js:3478` | — |
+| `site:claimContested` | `systems/asteroidSites.js:3588` | — |
+| `site:clusterBalanced` | `systems/asteroidSites.js:2666` | — |
+| `site:commissioned` | `systems/asteroidSites.js:2412` | — |
+| `site:courierDelivered` | `systems/asteroidSites.js:4000` | `systems/missions.js:947` |
+| `site:courierLaunched` | `systems/asteroidSites.js:3888` | `audio/audioSystem.js:3543` |
+| `site:courierLost` | `systems/asteroidSites.js:3984` | — |
+| `site:created` | `systems/asteroidSites.js:1599`, `systems/asteroidSites.js:2605` | — |
+| `site:defenseDeployed` | `systems/asteroidSites.js:2454` | `systems/missions.js:949` |
+| `site:directiveUpdated` | `systems/asteroidSites.js:2469` | — |
+| `site:droneCommissioned` | `systems/asteroidSites.js:2512` | — |
+| `site:laneSpilled` | `systems/asteroidSites.js:1997`, `systems/asteroidSites.js:2075` | — |
+| `site:linkCreated` | `systems/asteroidSites.js:2236` | `systems/missions.js:948` |
+| `site:linkRemoved` | `systems/asteroidSites.js:2253` | — |
+| `site:linkUpdated` | `systems/asteroidSites.js:2217` | — |
+| `site:lost` | `systems/asteroidSites.js:3000` | `ui/alerts.js:617` |
+| `site:machineInstalled` | `systems/asteroidSites.js:1630` | `audio/audioSystem.js:3542`, `systems/missions.js:946`, `ui/alerts.js:616` |
+| `site:machineMode` | `systems/asteroidSites.js:2096` | — |
+| `site:machineRemoved` | `systems/asteroidSites.js:2014` | `render/authoredMotion.js:1185` |
+| `site:machineStatus` | `systems/asteroidSites.js:3543` | `audio/audioSystem.js:3547`, `ui/alerts.js:612` |
+| `site:podBuilt` | `systems/asteroidSites.js:3400` | — |
+| `site:producing` | `systems/asteroidSites.js:1884` | `render/authoredMotion.js:1184`, `ui/asteroid/asteroidScreen.js:2882` |
+| `site:rematerialized` | `systems/asteroidSites.js:3054` | — |
+| `site:reserveUpdated` | `systems/asteroidSites.js:2170` | — |
+| `site:signatureBand` | `systems/asteroidSites.js:3580` | — |
+| `site:surveyCommitted` | `systems/asteroidSites.js:1802` | `ui/asteroid/asteroidScreen.js:2867` |
+| `site:surveyComplete` | `systems/asteroidSites.js:1753` | `ui/asteroid/asteroidScreen.js:2861` |
+| `site:surveyDetected` | `systems/asteroidSites.js:1743` | `ui/asteroid/asteroidScreen.js:2854` |
+| `siteEvidence:action` | `ui/physicalJobsPrompt.js:79`, `ui/physicalJobsPrompt.js:83` | `systems/asteroidSites.js:679` |
 | `siteEvidence:closed` | `systems/machineWork.js:79`, `systems/machineWork.js:123`, `systems/machineWork.js:149`, `systems/machineWork.js:263`, `world/motionFossil.js:112`, `world/motionFossil.js:147`, `world/motionFossil.js:258` | — |
 | `siteEvidence:offer` | `systems/alienEcology.js:885`, `systems/machineWork.js:88`, `world/motionFossil.js:119` | — |
-| `siteEvidence:result` | `systems/asteroidSites.js:683`, `systems/asteroidSites.js:689` | — |
+| `siteEvidence:result` | `systems/asteroidSites.js:685`, `systems/asteroidSites.js:691` | — |
 | `slate:columnRead` | `systems/slateColumn.js:186` | — |
 | `slate:spike` | `systems/slateColumn.js:162` | — |
 | `solstice:bloom` | `systems/solstice.js:526` | — |
 | `solstice:charged` | `systems/solstice.js:449` | — |
 | `solstice:destroyed` | `systems/solstice.js:361` | — |
 | `solstice:voice` | `systems/solstice.js:291` | — |
-| `spawn:request` | `systems/automation.js:2057` | `systems/world.js:891` |
+| `spawn:request` | `systems/automation.js:2057` | `systems/world.js:910` |
 | `special500:confessional` | `systems/special500Confessional.js:172`, `systems/special500Confessional.js:186` | `ui/special500ConfessionalPrompt.js:84` |
 | `special500:confessionalReceipt` | `systems/special500Confessional.js:160` | `ui/special500ConfessionalPrompt.js:95` |
-| `special500:deathBell` | `systems/special500DeathBell.js:86` | `render/feel.js:1570` |
+| `special500:deathBell` | `systems/special500DeathBell.js:86` | `render/feel.js:1578` |
 | `special500:invoice` | `systems/special500Invoice.js:132` | `ui/special500InvoicePrompt.js:70` |
 | `special500:invoiceReceipt` | `systems/special500Invoice.js:164`, `systems/special500Invoice.js:170`, `systems/special500Invoice.js:190` | `ui/special500InvoicePrompt.js:76` |
 | `special500:karaokeHeard` | `systems/special500ForgeKaraoke.js:88` | — |
@@ -1686,37 +1699,37 @@
 | `station:berthAssigned` | `systems/stationServices.js:676` | — |
 | `station:blockade` | `systems/economy.js:4809` | — |
 | `station:boom` | `systems/economy.js:4776` | — |
-| `station:broadcastTic` | `systems/stationBroadcast.js:430` | `render/vfx.js:3092` |
-| `station:exitRequest` | `ui/screenManager.js:716`, `ui/uiRoot.js:1685` | `ui/station/stationApp.js:1848` |
+| `station:broadcastTic` | `systems/stationBroadcast.js:430` | `render/vfx.js:3104` |
+| `station:exitRequest` | `ui/screenManager.js:719`, `ui/uiRoot.js:1724` | `ui/station/stationApp.js:1850` |
 | `station:grudge` | `systems/economy.js:4608` | — |
 | `station:grudgeCleared` | `systems/economy.js:4646` | — |
 | `station:holding` | `systems/stationServices.js:680` | — |
-| `station:marketTradeIntentRetired` | `ui/station/screens/market.js:1072` | — |
-| `station:marketTradeReceiptRecovered` | `ui/station/screens/market.js:1146` | — |
+| `station:marketTradeIntentRetired` | `ui/station/screens/market.js:1091` | — |
+| `station:marketTradeReceiptRecovered` | `ui/station/screens/market.js:1165` | — |
 | `station:moduleGained` | `systems/claims.js:2442` | `systems/factions.js:544` |
 | `station:navigate` | `ui/screens/automationPanel.js:2159`, `ui/station/screens/bar.js:1096`, `ui/station/screens/bar.js:1101`, `ui/station/screens/industry.js:725`, `ui/station/screens/industry.js:732`, `ui/station/starterWorkdayConversation.js:212` | — |
-| `station:sideEvent` | `systems/stationSideEventDirector.js:339` | `render/infrastructureMotion.js:311`, `render/vfx.js:3091`, `systems/barkDirector.js:948` |
+| `station:sideEvent` | `systems/stationSideEventDirector.js:339` | `render/infrastructureMotion.js:311`, `render/vfx.js:3103`, `systems/barkDirector.js:948` |
 | `station:slammed` | `systems/economy.js:4549` | `systems/sectorSim.js:158` |
 | `station:strike` | `systems/economy.js:4739` | — |
 | `station:throughput` | `systems/claims.js:2403` | `render/authoredMotion.js:1205` |
 | `station:yardChanged` | `systems/stationServices.js:871` | — |
 | `stationContact:changed` | `systems/stationContacts.js:252`, `systems/stationContacts.js:457`, `systems/stationContacts.js:493`, `systems/stationContacts.js:807`, `systems/stationContacts.js:831` | — |
 | `stationContact:counterChanged` | `systems/stationContacts.js:367`, `systems/stationContacts.js:848` | — |
-| `stationContact:counterDelta` | `systems/missions.js:4912` | — |
+| `stationContact:counterDelta` | `systems/missions.js:5022` | — |
 | `stationContact:hailSpoken` | `systems/scanner.js:1814`, `systems/scanner.js:2002` | — |
 | `stationContact:manifestWon` | `systems/manifestGame.js:16` | — |
 | `stationLife:deedNoticed` | `systems/stationContacts.js:753` | — |
 | `stationLife:trafficChanged` | `systems/stationContacts.js:481`, `systems/stationContacts.js:593`, `systems/stationContacts.js:624` | — |
 | `story:beatAdvanced` | `systems/missionStoryOps.js:2370` | `save/saveSystem.js:584`, `systems/story.js:164`, `ui/screens/codex.js:1360` |
 | `story:continuationAccess` | `systems/story.js:2606` | — |
-| `story:elroyResolved` | `systems/missionObjectiveOps.js:1399` | `systems/story.js:165` |
+| `story:elroyResolved` | `systems/missionObjectiveOps.js:1404` | `systems/story.js:165` |
 | `story:kurtzLedger` | `systems/story.js:1795`, `systems/story.js:1806` | `systems/story.js:193` |
 | `story:newGamePlusStarted` | `systems/story.js:2036` | `systems/titles.js:606` |
 | `story:playerChoiceRecorded` | `systems/encounterDirector.js:2733` | `systems/story.js:191` |
-| `story:postEndingContinuity` | `systems/story.js:1693` | `ui/screens/missionLog.js:2794` |
-| `story:postEndingProgress` | `systems/story.js:1663` | `ui/screens/missionLog.js:2793` |
-| `story:replayHookUnlocked` | `systems/story.js:1678` | `ui/screens/missionLog.js:2795` |
-| `story:skimResolved` | `systems/missionStoryOps.js:2091` | `systems/missions.js:728` |
+| `story:postEndingContinuity` | `systems/story.js:1693` | `ui/screens/missionLog.js:2797` |
+| `story:postEndingProgress` | `systems/story.js:1663` | `ui/screens/missionLog.js:2796` |
+| `story:replayHookUnlocked` | `systems/story.js:1678` | `ui/screens/missionLog.js:2798` |
+| `story:skimResolved` | `systems/missionStoryOps.js:2091` | `systems/missions.js:794` |
 | `story:stuntIncidentRecorded` | — | `systems/barkDirector.js:885`, `systems/wingmen.js:172` |
 | `story:stuntIncidentUpdated` | — | `systems/barkDirector.js:884`, `systems/wingmen.js:173` |
 | `story:varianceSeamFailed` | `systems/missionStoryOps.js:2687` | — |
@@ -1728,56 +1741,56 @@
 | `stunt:lineContractCompleted` | `systems/stuntGrammar.js:284` | `ui/stuntCallout.js:919` |
 | `stunt:salvageRights` | `systems/stuntGrammar.js:194` | `ui/stuntCallout.js:917` |
 | `stunt:salvageRightsClaimed` | `systems/stuntGrammar.js:218` | `ui/stuntCallout.js:918` |
-| `stunt:styleBanked` | `systems/stuntGrammar.js:167` | `audio/audioSystem.js:3079`, `ui/stuntCallout.js:903` |
+| `stunt:styleBanked` | `systems/stuntGrammar.js:167` | `audio/audioSystem.js:3118`, `ui/stuntCallout.js:903` |
 | `stunt:trickAmended` | — | `systems/achievements.js:1181`, `systems/bulletTime.js:136`, `systems/survivalResults.js:533`, `systems/titles.js:605`, `ui/stuntCallout.js:902` |
-| `stunt:trickDetected` | — | `audio/audioSystem.js:3078`, `systems/achievements.js:1179`, `systems/bulletTime.js:135`, `systems/killReplay.js:382`, `systems/survivalResults.js:532`, `systems/titles.js:604`, `ui/stuntCallout.js:901`, `ui/toasts.js:688` |
-| `surrender:escaped` | — | `systems/combatOutcome.js:299` |
-| `surrender:secured` | — | `systems/traffic.js:1892` |
-| `surrender:tethered` | — | `systems/traffic.js:1891` |
+| `stunt:trickDetected` | — | `audio/audioSystem.js:3117`, `systems/achievements.js:1179`, `systems/bulletTime.js:135`, `systems/killReplay.js:382`, `systems/survivalResults.js:532`, `systems/titles.js:604`, `ui/stuntCallout.js:901`, `ui/toasts.js:732` |
+| `surrender:escaped` | — | `systems/combatOutcome.js:303` |
+| `surrender:secured` | — | `systems/traffic.js:1894` |
+| `surrender:tethered` | — | `systems/traffic.js:1893` |
 | `survivalArena:installed` | — | `systems/survivalAnnounce.js:457`, `systems/swarmArena.js:922` |
 | `survivalArena:plateTheft` | `systems/foundryPlateTheft.js:79` | `systems/survivalAnnounce.js:458` |
 | `survivalArena:released` | — | `systems/swarmArena.js:923` |
 | `survivalArena:rosterPrewarm` | `systems/survivalArena.js:1787` | — |
-| `survivalArena:stormPresented` | `render/renderer.js:21984` | `systems/survivalArena.js:1434` |
+| `survivalArena:stormPresented` | `render/renderer.js:22061` | `systems/survivalArena.js:1434` |
 | `survivalWave:cohortJoined` | `systems/capitalBossRuntime.js:356` | `systems/survivalWave.js:240` |
-| `survivorPod:boarded` | `systems/survivorPod.js:1334`, `systems/survivorPod.js:1452` | `systems/traffic.js:1920` |
+| `survivorPod:boarded` | `systems/survivorPod.js:1334`, `systems/survivorPod.js:1452` | `systems/traffic.js:1922` |
 | `survivorPod:choose` | `ui/wreckChoicePrompt.js:156` | `systems/survivorPod.js:727` |
 | `survivorPod:delivered` | `systems/trafficRoleOps.js:1282` | `render/authoredMotion.js:1206`, `systems/survivorPod.js:738`, `systems/titles.js:607` |
-| `survivorPod:ejected` | `systems/survivorPod.js:978`, `systems/survivorPod.js:1121` | `render/authoredMotion.js:1189`, `render/vfx.js:3089`, `systems/aftermathWrecks.js:1286`, `systems/lawSecurity.js:431`, `systems/survivorPod.js:737` |
+| `survivorPod:ejected` | `systems/survivorPod.js:978`, `systems/survivorPod.js:1121` | `render/authoredMotion.js:1189`, `render/vfx.js:3101`, `systems/aftermathWrecks.js:1300`, `systems/lawSecurity.js:431`, `systems/survivorPod.js:737` |
 | `survivorPod:heatCooled` | `systems/heat.js:812` | `systems/survivorPod.js:728` |
 | `survivorPod:huntDispatched` | `ai/podHunt.js:188` | — |
 | `survivorPod:huntEnded` | `ai/podHunt.js:244` | — |
 | `survivorPod:promoted` | `systems/survivorPod.js:1858` | — |
 | `survivorPod:ransomed` | — | `systems/fenceDesk.js:63` |
 | `survivorPod:rescueBlocked` | `systems/survivorPod.js:2001`, `systems/survivorPod.js:2040` | `ui/wreckChoicePrompt.js:58` |
-| `survivorPod:rescueSelected` | `systems/survivorPod.js:2016` | `render/authoredMotion.js:1190`, `systems/missions.js:926` |
+| `survivorPod:rescueSelected` | `systems/survivorPod.js:2016` | `render/authoredMotion.js:1190`, `systems/missions.js:1006` |
 | `survivorPod:rescued` | — | `systems/heat.js:441`, `systems/titles.js:608` |
 | `survivorPod:resolved` | `systems/survivorPod.js:1721` | — |
 | `survivorPod:stripBlocked` | `systems/survivorPod.js:1978` | `ui/wreckChoicePrompt.js:59` |
-| `survivorPod:stripped` | `systems/survivorPod.js:2077` | `systems/missions.js:928`, `ui/wreckChoicePrompt.js:57` |
-| `survivorpod:barrel` | — | `render/visualFactory.js:8071` |
-| `survivorpod:crashcollar` | — | `render/visualFactory.js:8083` |
-| `survivorpod:lamp` | — | `render/visualFactory.js:8096` |
-| `survivorpod:mast` | — | `render/visualFactory.js:8090` |
-| `survivorpod:nose` | — | `render/visualFactory.js:8073` |
-| `survivorpod:retroblock` | — | `render/visualFactory.js:8086` |
-| `survivorpod:viewportglass` | — | `render/visualFactory.js:8080` |
-| `survivorpod:viewportring` | — | `render/visualFactory.js:8078` |
+| `survivorPod:stripped` | `systems/survivorPod.js:2077` | `systems/missions.js:1008`, `ui/wreckChoicePrompt.js:57` |
+| `survivorpod:barrel` | — | `render/visualFactory.js:8152` |
+| `survivorpod:crashcollar` | — | `render/visualFactory.js:8164` |
+| `survivorpod:lamp` | — | `render/visualFactory.js:8177` |
+| `survivorpod:mast` | — | `render/visualFactory.js:8171` |
+| `survivorpod:nose` | — | `render/visualFactory.js:8154` |
+| `survivorpod:retroblock` | — | `render/visualFactory.js:8167` |
+| `survivorpod:viewportglass` | — | `render/visualFactory.js:8161` |
+| `survivorpod:viewportring` | — | `render/visualFactory.js:8159` |
 | `swarm:affix` | — | `systems/survivalAnnounce.js:443` |
-| `swarm:announce` | `systems/capitalBossRuntime.js:194`, `ui/stuntCallout.js:938`, `ui/stuntCallout.js:945` | `ui/swarmJuiceHud.js:140` |
-| `swarm:arenaEntered` | `systems/world.js:1406` | `audio/audioSystem.js:3232` |
+| `swarm:announce` | `systems/capitalBossRuntime.js:194`, `ui/stuntCallout.js:938`, `ui/stuntCallout.js:945` | `ui/swarmJuiceHud.js:153` |
+| `swarm:arenaEntered` | `systems/world.js:1542` | `audio/audioSystem.js:3271` |
 | `swarm:arenaLights` | `systems/swarmCourseTwists.js:736` | `render/sectorDimmer.js:32` |
 | `swarm:bonusChip` | `systems/swarmCourseTwists.js:271` | — |
-| `swarm:bossDown` | — | `render/feel.js:1564`, `ui/swarmJuiceHud.js:145` |
-| `swarm:bossHp` | — | `ui/swarmJuiceHud.js:144` |
-| `swarm:bossIntro` | — | `ui/swarmJuiceHud.js:143` |
-| `swarm:bossMilestoneAck` | `ui/screens/crucible.js:4206` | — |
-| `swarm:bossMove` | `ui/capitalBossOverlayMount.js:462`, `ui/capitalBossOverlayMount.js:598`, `ui/toasts.js:834` | `ui/swarmJuiceHud.js:146` |
+| `swarm:bossDown` | — | `render/feel.js:1572`, `ui/swarmJuiceHud.js:158` |
+| `swarm:bossHp` | — | `ui/swarmJuiceHud.js:157` |
+| `swarm:bossIntro` | — | `ui/swarmJuiceHud.js:156` |
+| `swarm:bossMilestoneAck` | `ui/screens/crucible.js:4253` | — |
+| `swarm:bossMove` | `ui/capitalBossOverlayMount.js:462`, `ui/capitalBossOverlayMount.js:598`, `ui/toasts.js:878` | `ui/swarmJuiceHud.js:159` |
 | `swarm:broodAggression` | `systems/swarmBrood.js:4222` | — |
-| `swarm:broodBurst` | `systems/swarmBrood.js:3689`, `systems/swarmBrood.js:3763` | `render/vfx.js:3083` |
+| `swarm:broodBurst` | `systems/swarmBrood.js:3689`, `systems/swarmBrood.js:3763` | `render/vfx.js:3095` |
 | `swarm:broodCounter` | `systems/swarmBrood.js:2415`, `systems/swarmBrood.js:2486`, `systems/swarmBrood.js:3802` | `systems/swarmJuice.js:164` |
 | `swarm:broodDeathPositions` | `systems/swarmBrood.js:4149` | `systems/swarmLegendaries.js:120` |
-| `swarm:broodKills` | `systems/swarmBrood.js:4120` | `render/vfx.js:3086`, `systems/survivalResults.js:524`, `systems/swarmChain.js:166`, `systems/swarmDrops.js:92`, `systems/swarmJuice.js:145`, `systems/swarmSupply.js:106` |
+| `swarm:broodKills` | `systems/swarmBrood.js:4120` | `render/vfx.js:3098`, `systems/survivalResults.js:524`, `systems/swarmChain.js:166`, `systems/swarmDrops.js:92`, `systems/swarmJuice.js:145`, `systems/swarmSupply.js:106` |
 | `swarm:broodProjectileHit` | `systems/swarmBrood.js:3375` | — |
 | `swarm:broodRemains` | `systems/swarmBrood.js:3865` | — |
 | `swarm:broodRemainsSpent` | `systems/swarmBrood.js:3981` | — |
@@ -1785,12 +1798,12 @@
 | `swarm:broodShielded` | `systems/swarmBrood.js:3541` | — |
 | `swarm:broodTelegraph` | `systems/swarmBrood.js:1984` | `systems/survivalAnnounce.js:442` |
 | `swarm:broodTeslaHit` | `systems/swarmBrood.js:3405` | — |
-| `swarm:callinQueued` | — | `ui/contextWheel.js:383` |
-| `swarm:chain` | — | `audio/audioSystem.js:3083`, `systems/survivalResults.js:542`, `systems/swarmElites.js:188`, `systems/swarmJuice.js:150`, `ui/survivalHud.js:484`, `ui/swarmJuiceHud.js:152` |
+| `swarm:callinQueued` | — | `ui/contextWheel.js:386` |
+| `swarm:chain` | — | `audio/audioSystem.js:3122`, `systems/survivalResults.js:542`, `systems/swarmElites.js:188`, `systems/swarmJuice.js:150`, `ui/survivalHud.js:485`, `ui/swarmJuiceHud.js:165` |
 | `swarm:chainBest` | — | `systems/survivalResults.js:563` |
-| `swarm:chainBroken` | — | `audio/audioSystem.js:3086`, `systems/swarmElites.js:189`, `systems/swarmJuice.js:151`, `ui/survivalHud.js:485`, `ui/swarmJuiceHud.js:153` |
-| `swarm:chainShatter` | — | `ui/swarmJuiceHud.js:155` |
-| `swarm:chainTier` | — | `ui/swarmJuiceHud.js:154` |
+| `swarm:chainBroken` | — | `audio/audioSystem.js:3125`, `systems/swarmElites.js:189`, `systems/swarmJuice.js:151`, `ui/survivalHud.js:486`, `ui/swarmJuiceHud.js:166` |
+| `swarm:chainShatter` | — | `ui/swarmJuiceHud.js:168` |
+| `swarm:chainTier` | — | `ui/swarmJuiceHud.js:167` |
 | `swarm:cryoWeather` | — | `systems/swarmJuice.js:168` |
 | `swarm:dropRequested` | `systems/swarmCourseTwists.js:601` | `systems/swarmDrops.js:95` |
 | `swarm:event` | `systems/swarmEvents.js:376` | `ui/encounterChoicePrompt.js:184` |
@@ -1806,74 +1819,74 @@
 | `swarm:hiveSacKilled` | — | `systems/survivalAnnounce.js:445` |
 | `swarm:killPopup` | — | `ui/stuntCallout.js:1107` |
 | `swarm:openingBeatEnded` | — | `systems/swarmArena.js:915` |
-| `swarm:overdrive` | — | `systems/swarmJuice.js:155`, `ui/survivalHud.js:486`, `ui/swarmJuiceHud.js:158` |
-| `swarm:perkTrigger` | — | `ui/orrery/hudAdapter.js:662` |
+| `swarm:overdrive` | — | `systems/swarmJuice.js:155`, `ui/survivalHud.js:487`, `ui/swarmJuiceHud.js:171` |
+| `swarm:perkTrigger` | — | `ui/orrery/hudAdapter.js:666` |
 | `swarm:pressureSpend` | — | `systems/survivalResults.js:531` |
 | `swarm:pressureTelegraph` | — | `systems/survivalAnnounce.js:441` |
-| `swarm:roundClear` | — | `ui/swarmJuiceHud.js:142` |
-| `swarm:roundSlam` | — | `ui/swarmJuiceHud.js:141` |
-| `swarm:scoreboardToggle` | `ui/input.js:748` | `ui/swarmJuiceHud.js:162` |
+| `swarm:roundClear` | — | `ui/swarmJuiceHud.js:155` |
+| `swarm:roundSlam` | — | `ui/swarmJuiceHud.js:154` |
+| `swarm:scoreboardToggle` | `ui/input.js:736` | `ui/swarmJuiceHud.js:175` |
 | `swarm:stallReleased` | — | `systems/survivalAnnounce.js:444` |
 | `swarm:stormDischarge` | — | `systems/swarmJuice.js:159` |
 | `swarm:supplyCollected` | — | `systems/swarmJuice.js:166` |
-| `swarmrepair:crossbar` | — | `render/visualFactory.js:4415`, `render/visualFactory.js:4416` |
-| `swarmrepair:flange` | — | `render/visualFactory.js:4404` |
-| `swarmrepair:weldseam` | — | `render/visualFactory.js:4411` |
-| `tallyho:betLost` | `systems/tallyho.js:783`, `systems/tallyho.js:800`, `systems/tallyho.js:816`, `systems/tallyho.js:828` | — |
-| `tallyho:betPaid` | `systems/tallyho.js:777` | — |
-| `tallyho:betPosted` | `systems/tallyho.js:1126` | — |
-| `tallyho:bountyClaimed` | `systems/tallyho.js:1108` | — |
-| `tallyho:bountyCold` | `systems/tallyho.js:1040` | — |
-| `tallyho:bountyPosted` | `systems/tallyho.js:1070` | — |
-| `tallyho:deed` | `systems/tallyho.js:676` | — |
-| `tallyho:huntCold` | `systems/tallyho.js:833` | — |
-| `tallyho:huntPoached` | `systems/tallyho.js:805` | — |
-| `tallyho:huntPosted` | `systems/tallyho.js:731` | — |
-| `tallyho:huntSlipped` | `systems/tallyho.js:821` | — |
-| `tallyho:ledgerFiled` | `systems/tallyho.js:654` | — |
-| `tallyho:quarryFleeing` | `systems/tallyho.js:1153` | — |
-| `tallyho:rivalDowned` | `systems/tallyho.js:994` | — |
-| `tallyho:rivalLeft` | `systems/tallyho.js:887`, `systems/tallyho.js:1233` | — |
-| `tallyho:rivalPosted` | `systems/tallyho.js:930` | — |
-| `tallyho:sightingFiled` | `systems/tallyho.js:612` | — |
-| `tallyho:standing` | `systems/tallyho.js:681` | — |
-| `tech:researched` | `systems/ships.js:2649` | `audio/audioSystem.js:3192`, `systems/onboarding.js:989`, `systems/ships.js:2001` |
+| `swarmrepair:crossbar` | — | `render/visualFactory.js:4440`, `render/visualFactory.js:4441` |
+| `swarmrepair:flange` | — | `render/visualFactory.js:4429` |
+| `swarmrepair:weldseam` | — | `render/visualFactory.js:4436` |
+| `tallyho:betLost` | `systems/tallyho.js:786`, `systems/tallyho.js:803`, `systems/tallyho.js:819`, `systems/tallyho.js:831` | — |
+| `tallyho:betPaid` | `systems/tallyho.js:780` | — |
+| `tallyho:betPosted` | `systems/tallyho.js:1129` | — |
+| `tallyho:bountyClaimed` | `systems/tallyho.js:1111` | — |
+| `tallyho:bountyCold` | `systems/tallyho.js:1043` | — |
+| `tallyho:bountyPosted` | `systems/tallyho.js:1073` | — |
+| `tallyho:deed` | `systems/tallyho.js:679` | — |
+| `tallyho:huntCold` | `systems/tallyho.js:836` | — |
+| `tallyho:huntPoached` | `systems/tallyho.js:808` | — |
+| `tallyho:huntPosted` | `systems/tallyho.js:734` | — |
+| `tallyho:huntSlipped` | `systems/tallyho.js:824` | — |
+| `tallyho:ledgerFiled` | `systems/tallyho.js:657` | — |
+| `tallyho:quarryFleeing` | `systems/tallyho.js:1156` | — |
+| `tallyho:rivalDowned` | `systems/tallyho.js:997` | — |
+| `tallyho:rivalLeft` | `systems/tallyho.js:890`, `systems/tallyho.js:1236` | — |
+| `tallyho:rivalPosted` | `systems/tallyho.js:933` | — |
+| `tallyho:sightingFiled` | `systems/tallyho.js:615` | — |
+| `tallyho:standing` | `systems/tallyho.js:684` | — |
+| `tech:researched` | `systems/ships.js:2649` | `audio/audioSystem.js:3231`, `systems/onboarding.js:1002`, `systems/ships.js:2001` |
 | `terrainAnchors:replenished` | `systems/terrainAnchors.js:297` | — |
-| `tether:attached` | `combat/attachments.js:563` | `audio/audioSystem.js:3300`, `render/authoredMotion.js:1156`, `render/vfx.js:2953`, `systems/encounterDirector.js:393`, `systems/presentationOrchestrator.js:101`, `systems/scenarioRuntime.js:25`, `systems/surrenderRecovery.js:95`, `systems/survivalArena.js:1431`, `ui/prompts/bulkHaulTag.js:145` |
-| `tether:broke` | `systems/tetherGameplay.js:565`, `systems/tetherGameplay.js:1524`, `systems/tetherGameplay.js:1545`, `systems/tetherGameplay.js:2447` | `audio/audioSystem.js:3327`, `careers/origins/prospectorOrigin.js:645`, `render/shipMicroMotion.js:1777`, `systems/faction_understory.js:720`, `systems/lineProgression.js:50`, `systems/onboarding.js:744`, `systems/onboarding.js:760`, `systems/surrenderRecovery.js:99`, `ui/stuntCallout.js:1028` |
-| `tether:broken` | `combat/attachments.js:683` | `audio/audioSystem.js:3288`, `render/feel.js:1775`, `render/vfx.js:2956`, `systems/encounterDirector.js:394`, `systems/missions.js:863`, `systems/presentationOrchestrator.js:109`, `systems/scenarioRuntime.js:29`, `systems/surrenderRecovery.js:96`, `systems/survivalArena.js:1432`, `systems/tetherGameplay.js:373`, `systems/volatileExposure.js:217`, `ui/masslineHud.js:1392` |
-| `tether:couplerLock` | `systems/tetherGameplay.js:2858` | — |
-| `tether:cut` | `systems/tetherGameplay.js:2176` | `audio/audioSystem.js:3345`, `systems/gamepad.js:988`, `systems/masslineThrow.js:171`, `systems/onboarding.js:759`, `systems/onboarding.js:818`, `systems/onboarding.js:828`, `ui/stuntCallout.js:1022` |
-| `tether:cutDenied` | `systems/tetherGameplay.js:2160` | — |
-| `tether:detached` | — | `systems/missions.js:862` |
-| `tether:latchDenied` | `systems/masslineSnares.js:744`, `systems/tetherGameplay.js:458`, `systems/tetherGameplay.js:645`, `systems/tetherGameplay.js:675`, `systems/tetherGameplay.js:718`, `systems/tetherGameplay.js:723`, `systems/tetherGameplay.js:732`, `systems/tetherGameplay.js:773`, `systems/tetherGameplay.js:1153` | `render/authoredMotion.js:1162`, `systems/onboarding.js:1025`, `testing/lab/proofSixtySeconds.js:1532`, `ui/masslineHud.js:1337` |
-| `tether:latched` | `systems/tetherGameplay.js:545`, `systems/tetherGameplay.js:768`, `systems/tetherGameplay.js:797` | `audio/audioSystem.js:3315`, `careers/origins/prospectorOrigin.js:642`, `systems/fields.js:516`, `systems/flightV3.js:248`, `systems/flybyFocus.js:328`, `systems/gamepad.js:987`, `systems/heistFacilities.js:336`, `systems/lawSecurity.js:439`, `systems/lineProgression.js:48`, `systems/longBerth.js:53`, `systems/masslineThrow.js:177`, `systems/missions.js:861`, `systems/missions.js:908`, `systems/missions.js:978`, `systems/onboarding.js:739`, `systems/onboarding.js:756`, `systems/onboarding.js:807`, `systems/onboarding.js:816`, `systems/onboarding.js:1032`, `systems/onboarding.js:1035`, `systems/onboarding.js:1047`, `systems/onboarding.js:1069`, `systems/surrenderRecovery.js:94`, `systems/survivalAnnounce.js:439`, `systems/survivorPod.js:736`, `systems/swarmArena.js:906`, `testing/lab/proofSixtySeconds.js:1533`, `ui/masslineHud.js:1351`, `ui/prompts/bulkHaulTag.js:144`, `ui/stuntCallout.js:1045` |
-| `tether:lineControlDenied` | `systems/tetherGameplay.js:1827` | — |
+| `tether:attached` | `combat/attachments.js:563` | `audio/audioSystem.js:3339`, `render/authoredMotion.js:1156`, `render/vfx.js:2965`, `systems/encounterDirector.js:393`, `systems/presentationOrchestrator.js:101`, `systems/scenarioRuntime.js:25`, `systems/surrenderRecovery.js:95`, `systems/survivalArena.js:1431`, `ui/prompts/bulkHaulTag.js:145` |
+| `tether:broke` | `systems/tetherGameplay.js:572`, `systems/tetherGameplay.js:1542`, `systems/tetherGameplay.js:1563`, `systems/tetherGameplay.js:2528` | `audio/audioSystem.js:3366`, `careers/origins/prospectorOrigin.js:645`, `render/shipMicroMotion.js:1777`, `systems/faction_understory.js:720`, `systems/lineProgression.js:50`, `systems/onboarding.js:757`, `systems/onboarding.js:773`, `systems/surrenderRecovery.js:99`, `ui/stuntCallout.js:1028` |
+| `tether:broken` | `combat/attachments.js:683` | `audio/audioSystem.js:3327`, `render/feel.js:1783`, `render/vfx.js:2968`, `systems/encounterDirector.js:394`, `systems/missions.js:929`, `systems/presentationOrchestrator.js:109`, `systems/scenarioRuntime.js:29`, `systems/surrenderRecovery.js:96`, `systems/survivalArena.js:1432`, `systems/tetherGameplay.js:380`, `systems/volatileExposure.js:217`, `ui/masslineHud.js:1441` |
+| `tether:couplerLock` | `systems/tetherGameplay.js:2939` | — |
+| `tether:cut` | `systems/tetherGameplay.js:2257` | `audio/audioSystem.js:3384`, `systems/gamepad.js:1034`, `systems/masslineThrow.js:172`, `systems/onboarding.js:772`, `systems/onboarding.js:831`, `systems/onboarding.js:841`, `ui/stuntCallout.js:1022` |
+| `tether:cutDenied` | `systems/tetherGameplay.js:2241` | — |
+| `tether:detached` | — | `systems/missions.js:928` |
+| `tether:latchDenied` | `systems/masslineSnares.js:744`, `systems/tetherGameplay.js:465`, `systems/tetherGameplay.js:653`, `systems/tetherGameplay.js:683`, `systems/tetherGameplay.js:728`, `systems/tetherGameplay.js:734`, `systems/tetherGameplay.js:744`, `systems/tetherGameplay.js:786`, `systems/tetherGameplay.js:1171` | `render/authoredMotion.js:1162`, `systems/onboarding.js:1038`, `testing/lab/proofSixtySeconds.js:1532`, `ui/masslineHud.js:1386` |
+| `tether:latched` | `systems/tetherGameplay.js:552`, `systems/tetherGameplay.js:781`, `systems/tetherGameplay.js:815` | `audio/audioSystem.js:3354`, `careers/origins/prospectorOrigin.js:642`, `systems/fields.js:520`, `systems/flightV3.js:248`, `systems/flybyFocus.js:328`, `systems/gamepad.js:1033`, `systems/heistFacilities.js:336`, `systems/lawSecurity.js:439`, `systems/lineProgression.js:48`, `systems/longBerth.js:53`, `systems/masslineThrow.js:178`, `systems/missions.js:927`, `systems/missions.js:988`, `systems/missions.js:1058`, `systems/onboarding.js:752`, `systems/onboarding.js:769`, `systems/onboarding.js:820`, `systems/onboarding.js:829`, `systems/onboarding.js:1045`, `systems/onboarding.js:1048`, `systems/onboarding.js:1060`, `systems/onboarding.js:1082`, `systems/surrenderRecovery.js:94`, `systems/survivalAnnounce.js:439`, `systems/survivorPod.js:736`, `systems/swarmArena.js:906`, `testing/lab/proofSixtySeconds.js:1533`, `ui/masslineHud.js:1400`, `ui/prompts/bulkHaulTag.js:144`, `ui/stuntCallout.js:1045` |
+| `tether:lineControlDenied` | `systems/tetherGameplay.js:1908` | — |
 | `tether:massWeighed` | `systems/masslineTelemetry.js:338` | `systems/economyContracts.js:266` |
-| `tether:nearBreak` | `combat/attachments.js:1069`, `combat/attachments.js:1092` | `audio/audioSystem.js:3312`, `systems/onboarding.js:745`, `systems/onboarding.js:1071`, `systems/presentationOrchestrator.js:102` |
-| `tether:rebound` | `combat/attachments.js:998` | `audio/audioSystem.js:3356`, `systems/survivalArena.js:1433` |
-| `tether:reel` | `combat/attachments.js:615` | `audio/audioSystem.js:3286`, `systems/missions.js:857`, `systems/onboarding.js:742`, `systems/onboarding.js:757`, `systems/surrenderRecovery.js:97` |
+| `tether:nearBreak` | `combat/attachments.js:1069`, `combat/attachments.js:1092` | `audio/audioSystem.js:3351`, `systems/onboarding.js:758`, `systems/onboarding.js:1084`, `systems/presentationOrchestrator.js:102` |
+| `tether:rebound` | `combat/attachments.js:998` | `audio/audioSystem.js:3395`, `systems/survivalArena.js:1433` |
+| `tether:reel` | `combat/attachments.js:615` | `audio/audioSystem.js:3325`, `systems/missions.js:923`, `systems/onboarding.js:755`, `systems/onboarding.js:770`, `systems/surrenderRecovery.js:97` |
 | `tether:reelPump` | `systems/masslineTelemetry.js:400` | `render/authoredMotion.js:1159`, `ui/stuntCallout.js:1051` |
-| `tether:releaseRated` | `systems/tetherGameplay.js:566`, `systems/tetherGameplay.js:1520`, `systems/tetherGameplay.js:1525`, `systems/tetherGameplay.js:1547`, `systems/tetherGameplay.js:2178` | `audio/audioSystem.js:3287`, `render/feel.js:1828`, `render/vfx.js:2955`, `systems/economy.js:1774`, `systems/gamepad.js:989`, `systems/masslineThrow.js:174`, `systems/missions.js:864`, `systems/presentationOrchestrator.js:168`, `systems/titles.js:609`, `ui/masslineHud.js:1359` |
-| `tether:released` | `systems/tetherGameplay.js:1517`, `systems/tetherGameplay.js:1543`, `systems/tetherGameplay.js:2177` | `render/authoredMotion.js:1160`, `render/shipMicroMotion.js:1776`, `render/vfx.js:2954`, `systems/barkDirector.js:919`, `systems/faction_understory.js:719`, `systems/lineProgression.js:49`, `systems/onboarding.js:743`, `systems/onboarding.js:758`, `systems/onboarding.js:817`, `systems/onboarding.js:827`, `systems/rockCore.js:97`, `systems/surrenderRecovery.js:98`, `systems/tumbleStates.js:133`, `systems/world.js:948` |
-| `tether:snagCleared` | `systems/tetherGameplay.js:2759` | `ui/stuntCallout.js:1020` |
-| `tether:snagged` | `systems/tetherGameplay.js:2612` | `audio/audioSystem.js:3349` |
-| `tether:snapCatch` | `systems/masslineTelemetry.js:478` | `render/authoredMotion.js:1158`, `systems/plants/otherSide.js:134`, `systems/plants/towWatch.js:91`, `ui/stuntCallout.js:1050` |
-| `tether:strain` | `systems/tetherGameplay.js:1891` | `audio/audioSystem.js:3305`, `render/authoredMotion.js:1164`, `systems/missions.js:755`, `systems/onboarding.js:1072` |
-| `tether:tractorCapture` | `systems/tetherGameplay.js:815` | — |
-| `tether:whipImpact` | `systems/masslineImpacts.js:324` | `render/feel.js:1853`, `render/vfx.js:3034`, `systems/collisionConsequences.js:127`, `systems/combat.js:421`, `systems/lineHeads.js:121`, `systems/lineHeads.js:122`, `systems/masslineImpactDamage.js:59`, `systems/missions.js:865`, `systems/onboarding.js:761`, `systems/onboarding.js:819`, `systems/onboarding.js:1073`, `systems/presentationOrchestrator.js:144`, `systems/survivalAnnounce.js:440`, `systems/swarmDrops.js:100`, `systems/tumbleStates.js:128`, `ui/stuntCallout.js:1052` |
-| `tether:whipSnap` | `systems/tetherGameplay.js:2305` | `systems/gamepad.js:1003` |
+| `tether:releaseRated` | `systems/tetherGameplay.js:573`, `systems/tetherGameplay.js:1538`, `systems/tetherGameplay.js:1543`, `systems/tetherGameplay.js:1565`, `systems/tetherGameplay.js:2259` | `audio/audioSystem.js:3326`, `render/feel.js:1836`, `render/vfx.js:2967`, `systems/economy.js:1774`, `systems/gamepad.js:1035`, `systems/masslineThrow.js:175`, `systems/missions.js:930`, `systems/presentationOrchestrator.js:168`, `systems/titles.js:609`, `ui/masslineHud.js:1408` |
+| `tether:released` | `systems/tetherGameplay.js:1535`, `systems/tetherGameplay.js:1561`, `systems/tetherGameplay.js:2258` | `render/authoredMotion.js:1160`, `render/shipMicroMotion.js:1776`, `render/vfx.js:2966`, `systems/barkDirector.js:919`, `systems/faction_understory.js:719`, `systems/lineProgression.js:49`, `systems/onboarding.js:756`, `systems/onboarding.js:771`, `systems/onboarding.js:830`, `systems/onboarding.js:840`, `systems/rockCore.js:97`, `systems/surrenderRecovery.js:98`, `systems/tumbleStates.js:133`, `systems/world.js:967` |
+| `tether:snagCleared` | `systems/tetherGameplay.js:2840` | `ui/stuntCallout.js:1020` |
+| `tether:snagged` | `systems/tetherGameplay.js:2693` | `audio/audioSystem.js:3388` |
+| `tether:snapCatch` | `systems/masslineTelemetry.js:478` | `render/authoredMotion.js:1158`, `systems/plants/otherSide.js:135`, `systems/plants/towWatch.js:91`, `ui/stuntCallout.js:1050` |
+| `tether:strain` | `systems/tetherGameplay.js:1972` | `audio/audioSystem.js:3344`, `render/authoredMotion.js:1164`, `systems/missions.js:821`, `systems/onboarding.js:1085` |
+| `tether:tractorCapture` | `systems/tetherGameplay.js:833` | — |
+| `tether:whipImpact` | `systems/masslineImpacts.js:324` | `render/feel.js:1861`, `render/vfx.js:3046`, `systems/collisionConsequences.js:127`, `systems/combat.js:421`, `systems/lineHeads.js:121`, `systems/lineHeads.js:122`, `systems/masslineImpactDamage.js:59`, `systems/missions.js:931`, `systems/onboarding.js:774`, `systems/onboarding.js:832`, `systems/onboarding.js:1086`, `systems/presentationOrchestrator.js:144`, `systems/survivalAnnounce.js:440`, `systems/swarmDrops.js:100`, `systems/tumbleStates.js:128`, `ui/stuntCallout.js:1052` |
+| `tether:whipSnap` | `systems/tetherGameplay.js:2386` | `systems/gamepad.js:1049` |
 | `title:arrivalGreeted` | `ui/station/stationArrival.js:213` | `systems/titles.js:611` |
 | `title:holdResolved` | — | `systems/titles.js:598` |
-| `touch:guide` | `ui/screens/pause.js:1182` | — |
-| `touch:uiAction` | `systems/legacyTouch.js:637` | `ui/input.js:1300` |
+| `touch:guide` | `ui/screens/pause.js:1187` | — |
+| `touch:uiAction` | `systems/legacyTouch.js:637` | `ui/input.js:1316` |
 | `towlineTable:assistAccepted` | `systems/towlineTable.js:202` | — |
 | `towlineTable:assistFulfilled` | `systems/towlineTable.js:226` | — |
 | `towlineTable:cleanupAccepted` | `systems/towlineTable.js:159` | — |
 | `towlineTable:offer` | `systems/towlineTable.js:261` | `ui/towlineTablePrompt.js:7` |
 | `traffic:anvilSpillReturned` | `systems/anvilWork.js:700` | — |
 | `traffic:anvilTransfer` | `systems/anvilWork.js:801` | — |
-| `traffic:ceresCausalChain` | — | `audio/audioSystem.js:3069` |
+| `traffic:ceresCausalChain` | — | `audio/audioSystem.js:3108` |
 | `traffic:freightTallied` | `systems/trafficRoleOps.js:981` | — |
 | `traffic:haulerRegroup` | `systems/trafficRoleOps.js:1818` | `systems/barkDirector.js:939` |
 | `traffic:nearMiss` | — | `systems/barkDirector.js:943` |
@@ -1882,94 +1895,94 @@
 | `traffic:passengerLinerSuspended` | `systems/trafficCausalChainOps.js:2682` | — |
 | `traffic:richSeamHelpReserved` | `systems/trafficRecoveryOps.js:572` | `systems/barkDirector.js:925` |
 | `traffic:spillNoticed` | `systems/trafficRoleOps.js:1742` | `systems/barkDirector.js:923` |
-| `traffic:vesselRelinquished` | `systems/traffic.js:1736` | — |
-| `travelLanes:slingRingPass` | — | `ui/toasts.js:698` |
-| `tutorial:finished` | `systems/onboarding.js:2478` | `systems/achievements.js:1210`, `systems/missions.js:613`, `systems/presentationAdapters.js:344`, `systems/story.js:187` |
-| `tutorial:say` | `systems/onboarding.js:1962` | `audio/audioSystem.js:3415`, `systems/story.js:227` |
-| `ui:abandonMission` | `ui/screens/missionLog.js:2646` | `systems/missions.js:666` |
-| `ui:acceptMission` | `ui/adventureDecisions.js:431` | `systems/missions.js:665` |
+| `traffic:vesselRelinquished` | `systems/traffic.js:1738` | — |
+| `travelLanes:slingRingPass` | — | `ui/toasts.js:742` |
+| `tutorial:finished` | `systems/onboarding.js:2491` | `systems/achievements.js:1210`, `systems/missions.js:679`, `systems/presentationAdapters.js:344`, `systems/story.js:187` |
+| `tutorial:say` | `systems/onboarding.js:1975` | `audio/audioSystem.js:3454`, `systems/story.js:227` |
+| `ui:abandonMission` | `ui/screens/missionLog.js:2649` | `systems/missions.js:732` |
+| `ui:acceptMission` | `ui/adventureDecisions.js:431` | `systems/missions.js:731` |
 | `ui:applyLoadoutPreset` | `ui/station/screens/shipworks.js:5027` | `systems/ships.js:2096` |
 | `ui:bulkHaulTag` | `ui/prompts/bulkHaulTag.js:185` | — |
 | `ui:bulkHaulTagCleared` | `ui/prompts/bulkHaulTag.js:204` | — |
 | `ui:buy` | — | `systems/economy.js:1722` |
-| `ui:buyModule` | — | `systems/onboarding.js:984`, `systems/ships.js:2071` |
+| `ui:buyModule` | — | `systems/onboarding.js:997`, `systems/ships.js:2071` |
 | `ui:buyPayload` | `ui/station/screens/shipworks.js:5601` | `systems/bombs.js:713` |
 | `ui:buyShip` | `ui/station/screens/shipworks.js:5269` | `systems/ships.js:2034` |
-| `ui:cancel` | `ui/input.js:1599`, `ui/input.js:1614` | `ui/screens/crucibleDraft.js:1345`, `ui/swarmFortifyPanel.js:144` |
-| `ui:clearTarget` | `ui/input.js:892` | `ui/uiRoot.js:1497` |
-| `ui:closeAll` | `main.js:1269`, `ui/loadingPresenter.js:644`, `ui/screens/crucible.js:3799`, `ui/screens/crucible.js:4197` | `ui/uiRoot.js:1492` |
-| `ui:closeCargo` | `ui/input.js:610`, `ui/input.js:842`, `ui/input.js:1549` | — |
-| `ui:closeComms` | `ui/input.js:836` | — |
-| `ui:closeFieldBuild` | `ui/input.js:824` | `ui/uiRoot.js:947` |
-| `ui:closeScreen` | `ui/pilotCards.js:464` | `ui/uiRoot.js:1486` |
+| `ui:cancel` | `ui/input.js:1626`, `ui/input.js:1641` | `ui/screens/crucibleDraft.js:1345`, `ui/swarmFortifyPanel.js:144` |
+| `ui:clearTarget` | `ui/input.js:881` | `ui/uiRoot.js:1536` |
+| `ui:closeAll` | `main.js:1393`, `ui/loadingPresenter.js:644`, `ui/screens/crucible.js:3839`, `ui/screens/crucible.js:4244` | `ui/uiRoot.js:1531` |
+| `ui:closeCargo` | `ui/input.js:598`, `ui/input.js:830`, `ui/input.js:1572` | — |
+| `ui:closeComms` | `ui/input.js:824` | — |
+| `ui:closeFieldBuild` | `ui/input.js:812` | `ui/uiRoot.js:972` |
+| `ui:closeScreen` | `ui/pilotCards.js:466` | `ui/uiRoot.js:1525` |
 | `ui:confessionalChoose` | `ui/special500ConfessionalPrompt.js:76` | `systems/special500Confessional.js:135` |
 | `ui:confessionalReady` | `ui/special500ConfessionalPrompt.js:101`, `ui/special500ConfessionalPrompt.js:118`, `ui/special500ConfessionalPrompt.js:122`, `ui/special500ConfessionalPrompt.js:124` | `systems/special500Confessional.js:136` |
-| `ui:confirm` | `ui/input.js:1557`, `ui/input.js:1609` | `audio/audioSystem.js:3521` |
-| `ui:contextWheelToggle` | `ui/orrery/hudAdapter.js:577` | `ui/contextWheel.js:374` |
+| `ui:confirm` | `ui/input.js:1584`, `ui/input.js:1636` | `audio/audioSystem.js:3561` |
+| `ui:contextWheelToggle` | `ui/orrery/hudAdapter.js:577` | `ui/contextWheel.js:377` |
 | `ui:convoyShareBuy` | — | `systems/economy.js:1771` |
-| `ui:cycleComponent` | `ui/targetPanel.js:1017`, `ui/targetPanel.js:1021` | `ui/uiRoot.js:1501` |
-| `ui:cycleTarget` | `ui/input.js:887`, `ui/input.js:1681` | `ui/uiRoot.js:1496` |
+| `ui:cycleComponent` | `ui/targetPanel.js:1031`, `ui/targetPanel.js:1035` | `ui/uiRoot.js:1540` |
+| `ui:cycleTarget` | `ui/input.js:876`, `ui/input.js:1711` | `ui/uiRoot.js:1535` |
 | `ui:deleteLoadoutPreset` | `ui/station/screens/shipworks.js:5073` | `systems/ships.js:2097` |
-| `ui:endgameChoose` | `systems/missions.js:1534`, `ui/station/barContacts.js:1492` | `systems/story.js:243` |
+| `ui:endgameChoose` | `systems/missions.js:1631`, `ui/station/barContacts.js:1492` | `systems/story.js:243` |
 | `ui:endgameConfirm` | — | `systems/story.js:244` |
-| `ui:endgameDecline` | `ui/comms.js:809` | `systems/story.js:245` |
-| `ui:endgameDepartAshfall` | `ui/comms.js:826` | `systems/story.js:254` |
-| `ui:endgameSandbox` | `ui/screens/missionLog.js:2496` | `systems/story.js:251` |
-| `ui:endgameStayAshfall` | `ui/comms.js:827` | `systems/story.js:255` |
-| `ui:endgameUnfiledJump` | `ui/screens/missionLog.js:2500` | `systems/story.js:252` |
+| `ui:endgameDecline` | `ui/comms.js:838` | `systems/story.js:245` |
+| `ui:endgameDepartAshfall` | `ui/comms.js:855` | `systems/story.js:254` |
+| `ui:endgameSandbox` | `ui/screens/missionLog.js:2499` | `systems/story.js:251` |
+| `ui:endgameStayAshfall` | `ui/comms.js:856` | `systems/story.js:255` |
+| `ui:endgameUnfiledJump` | `ui/screens/missionLog.js:2503` | `systems/story.js:252` |
 | `ui:endgameUnfiledJumpConfirm` | — | `systems/story.js:253` |
-| `ui:endingArchiveOpen` | `ui/screens/pause.js:1207` | `systems/story.js:247` |
+| `ui:endingArchiveOpen` | `ui/screens/pause.js:1212` | `systems/story.js:247` |
 | `ui:entityDrawer` | `ui/entityLinks.js:370`, `ui/entityLinks.js:388`, `ui/entityLinks.js:459` | `ui/globalFind.js:232` |
 | `ui:entityRoute` | `ui/entityLinks.js:245` | `systems/routeFollower.js:411` |
 | `ui:factionPresenceService` | `ui/station/serviceQuotes.js:87` | `systems/factionPresence.js:523` |
-| `ui:fitModule` | — | `systems/onboarding.js:981`, `systems/ships.js:2073` |
+| `ui:fitModule` | — | `systems/onboarding.js:994`, `systems/ships.js:2073` |
 | `ui:fitPayload` | `ui/station/screens/shipworks.js:5611` | `systems/bombs.js:714` |
 | `ui:fleetOrder` | `ui/screens/automationPanel.js:2211` | `systems/automation.js:608`, `systems/wingmen.js:169` |
 | `ui:forwardSlipBuy` | — | `systems/economy.js:1772` |
-| `ui:globalFind` | `ui/input.js:670`, `ui/input.js:804` | `ui/globalFind.js:228` |
+| `ui:globalFind` | `ui/input.js:658`, `ui/input.js:792` | `ui/globalFind.js:228` |
 | `ui:heliosBay7Scan` | — | `systems/story.js:295` |
 | `ui:kurtzInteract` | `ui/station/barContacts.js:260` | `systems/story.js:294` |
 | `ui:loadingHidden` | `ui/loadingPresenter.js:428` | `ui/screens/mainMenu.js:1004` |
 | `ui:manifestAction` | `ui/screens/manifest.js:172` | — |
 | `ui:manifestOpen` | `ui/screens/manifest.js:168` | — |
 | `ui:manifestStart` | `ui/screens/manifest.js:65` | — |
-| `ui:navigate` | `ui/input.js:1562`, `ui/input.js:1585`, `ui/input.js:1590`, `ui/input.js:1656` | — |
-| `ui:popScreen` | `ui/galaxyMap.js:3609`, `ui/screens/achievements.js:272`, `ui/screens/automationPanel.js:1203`, `ui/screens/clips.js:355`, `ui/screens/credits.js:184`, `ui/screens/crucible.js:2597`, `ui/screens/crucible.js:4041`, `ui/screens/crucible.js:4164`, `ui/screens/crucibleDraft.js:2371`, `ui/screens/localmap.js:887`, `ui/screens/manifest.js:223`, `ui/screens/replay.js:305`, `ui/screens/starmap.js:739`, `ui/screens/statistics.js:175`, `ui/screens/techTree.js:347`, `ui/swarmFortifyPanel.js:125`, `ui/swarmFortifyPanel.js:145` | `ui/uiRoot.js:1482` |
+| `ui:navigate` | `ui/input.js:1589`, `ui/input.js:1612`, `ui/input.js:1617`, `ui/input.js:1683` | — |
+| `ui:popScreen` | `ui/galaxyMap.js:3610`, `ui/screens/achievements.js:272`, `ui/screens/automationPanel.js:1203`, `ui/screens/clips.js:355`, `ui/screens/credits.js:184`, `ui/screens/crucible.js:2637`, `ui/screens/crucible.js:4081`, `ui/screens/crucible.js:4211`, `ui/screens/crucibleDraft.js:2371`, `ui/screens/localmap.js:887`, `ui/screens/manifest.js:223`, `ui/screens/pilotTree.js:210`, `ui/screens/replay.js:305`, `ui/screens/starmap.js:741`, `ui/screens/statistics.js:175`, `ui/screens/techTree.js:347`, `ui/swarmFortifyPanel.js:125`, `ui/swarmFortifyPanel.js:145` | `ui/uiRoot.js:1521` |
 | `ui:prepareBombRack` | `systems/ships.js:3761`, `ui/station/screens/shipworks.js:5132` | `systems/bombs.js:724` |
 | `ui:previewBombRackPreparation` | `systems/ships.js:3672`, `ui/station/screens/shipworks.js:4056`, `ui/station/screens/shipworks.js:5088` | `systems/bombs.js:721` |
-| `ui:purchaseFrontierRumor` | `ui/station/screens/bar.js:909` | `systems/world.js:894` |
-| `ui:purchaseSurveyData` | `ui/station/screens/bar.js:1087` | `systems/world.js:893` |
-| `ui:pushScreen` | `main.js:640`, `systems/capitalBossRuntime.js:220`, `systems/story.js:1449`, `ui/loadingPresenter.js:478`, `ui/loadingPresenter.js:645`, `ui/mapAuthority.js:148`, `ui/pilotCards.js:594`, `ui/pilotCards.js:703`, `ui/screens/crucible.js:3800`, `ui/screens/crucible.js:3801`, `ui/screens/crucible.js:4198`, `ui/screens/crucibleDraft.js:92`, `ui/screens/crucibleDraft.js:1200`, `ui/screens/gameOver.js:554`, `ui/screens/starmap.js:747`, `ui/signalInvestigationPrompt.js:260`, `ui/station/barContacts.js:1002`, `ui/station/cinderDepartureConversation.js:117`, `ui/station/cinderReturnConversation.js:77`, `ui/station/furnaceDetailConversation.js:46`, `ui/station/heliosCampaignHandoff.js:167`, `ui/station/screens/bar.js:976`, `ui/station/screens/bar.js:1081`, `ui/station/screens/industry.js:719`, `ui/station/stationApp.js:669` | `ui/uiRoot.js:1458` |
-| `ui:replaceScreen` | `ui/screens/crucible.js:4046`, `ui/screens/crucible.js:4171`, `ui/screens/crucible.js:4191`, `ui/screens/motionAsk.js:118` | `ui/uiRoot.js:1491` |
+| `ui:purchaseFrontierRumor` | `ui/station/screens/bar.js:909` | `systems/world.js:913` |
+| `ui:purchaseSurveyData` | `ui/station/screens/bar.js:1087` | `systems/world.js:912` |
+| `ui:pushScreen` | `main.js:754`, `systems/capitalBossRuntime.js:220`, `systems/story.js:1449`, `ui/loadingPresenter.js:478`, `ui/loadingPresenter.js:645`, `ui/mapAuthority.js:148`, `ui/pilotCards.js:596`, `ui/pilotCards.js:705`, `ui/screens/crucible.js:3840`, `ui/screens/crucible.js:3841`, `ui/screens/crucible.js:4149`, `ui/screens/crucible.js:4245`, `ui/screens/crucibleDraft.js:92`, `ui/screens/crucibleDraft.js:1200`, `ui/screens/gameOver.js:554`, `ui/screens/starmap.js:749`, `ui/signalInvestigationPrompt.js:260`, `ui/station/barContacts.js:1002`, `ui/station/cinderDepartureConversation.js:117`, `ui/station/cinderReturnConversation.js:77`, `ui/station/furnaceDetailConversation.js:46`, `ui/station/heliosCampaignHandoff.js:167`, `ui/station/screens/bar.js:976`, `ui/station/screens/bar.js:1081`, `ui/station/screens/industry.js:719`, `ui/station/stationApp.js:671` | `ui/uiRoot.js:1497` |
+| `ui:replaceScreen` | `ui/screens/crucible.js:4086`, `ui/screens/crucible.js:4218`, `ui/screens/crucible.js:4238`, `ui/screens/motionAsk.js:118` | `ui/uiRoot.js:1530` |
 | `ui:restockBombRack` | — | `systems/bombs.js:717` |
 | `ui:saveLoadoutPreset` | `ui/station/screens/shipworks.js:4999` | `systems/ships.js:2095` |
-| `ui:screenTop` | `ui/screenManager.js:379` | `systems/onboarding.js:771`, `ui/bandHud.js:170`, `ui/comms.js:155`, `ui/kit/temperature.js:46`, `ui/wingmanRadial.js:360` |
+| `ui:screenTop` | `ui/screenManager.js:382` | `systems/onboarding.js:784`, `ui/bandHud.js:170`, `ui/comms.js:155`, `ui/kit/temperature.js:46`, `ui/wingmanRadial.js:360` |
 | `ui:sell` | — | `systems/economy.js:1723` |
 | `ui:sellModule` | — | `systems/ships.js:2072` |
 | `ui:sellPayload` | `ui/station/screens/shipworks.js:5621` | `systems/bombs.js:716` |
-| `ui:service` | `balance/careerCohorts.js:752`, `balance/courierPublicRoute.js:315`, `balance/hunterPublicRoute.js:389`, `balance/prospectorPublicRoute.js:305`, `ui/adventureDecisions.js:552`, `ui/station/stationApp.js:1322`, `ui/station/stationApp.js:1369`, `ui/station/stationApp.js:1410` | `systems/economy.js:1815` |
+| `ui:service` | `balance/careerCohorts.js:752`, `balance/courierPublicRoute.js:315`, `balance/hunterPublicRoute.js:389`, `balance/prospectorPublicRoute.js:305`, `ui/adventureDecisions.js:552`, `ui/station/stationApp.js:1324`, `ui/station/stationApp.js:1371`, `ui/station/stationApp.js:1412` | `systems/economy.js:1815` |
 | `ui:setActiveShip` | `ui/station/screens/shipworks.js:5276`, `ui/station/screens/shipworks.js:5421` | `systems/ships.js:2070` |
-| `ui:setCourse` | `data/encounters/1210-the-deadweight.js:284`, `features/breakwaterSpur/runtime.js:300`, `features/breakwaterSpur/runtime.js:303`, `features/breakwaterSpur/runtime.js:308`, `features/cinderglassJob/runtime.js:349`, `features/cinderglassJob/runtime.js:369`, `features/rigWorkshop/jobs.js:339`, `features/rigWorkshop/jobs.js:347`, `features/rigWorkshop/jobs.js:360`, `features/rigWorkshop/runtime.js:332`, `features/rigWorkshop/runtime.js:484`, `features/salvageTender/runtime.js:384`, `features/shipbreakingYard/runtime.js:519`, `features/shipbreakingYard/runtime.js:525`, `systems/borrowedSun.js:608`, `systems/economy.js:5009`, `systems/economy.js:5036`, `systems/factionPresence.js:1730`, `systems/ilexArk.js:40`, `systems/missions.js:2434`, `systems/missions.js:2519`, `systems/palletJack.js:291`, `systems/redKite.js:61`, `systems/scanner.js:1669`, `systems/scanner.js:1701`, `systems/scanner.js:1797`, `systems/scanner.js:2025`, `systems/shipjack.js:428`, `systems/tallyThree.js:118`, `systems/towlineTable.js:34`, `ui/contactHailPrompt.js:215`, `ui/galaxyMap.js:3164`, `ui/galaxyMap.js:3179`, `ui/galaxyMap.js:9162`, `ui/input.js:411`, `ui/market/tradeLogic.js:575`, `ui/radar.js:1928`, `ui/radar.js:1941`, `ui/screens/footprint.js:1677`, `ui/screens/footprint.js:1688`, `ui/screens/localmap.js:1222`, `ui/screens/starmap.js:1800`, `ui/screens/starmap.js:1813`, `ui/screens/starmap.js:1817`, `ui/station/cinderDepartureConversation.js:109`, `ui/station/cinderReturnConversation.js:81`, `ui/station/heliosCampaignHandoff.js:169` | `systems/world.js:828` |
-| `ui:setShipAppearance` | `ui/screens/raceBoard.js:366`, `ui/station/screens/shipworks.js:4926` | `systems/ships.js:2099` |
+| `ui:setCourse` | `data/encounters/1210-the-deadweight.js:284`, `features/breakwaterSpur/runtime.js:300`, `features/breakwaterSpur/runtime.js:303`, `features/breakwaterSpur/runtime.js:308`, `features/cinderglassJob/runtime.js:349`, `features/cinderglassJob/runtime.js:369`, `features/rigWorkshop/jobs.js:339`, `features/rigWorkshop/jobs.js:347`, `features/rigWorkshop/jobs.js:360`, `features/rigWorkshop/runtime.js:332`, `features/rigWorkshop/runtime.js:484`, `features/salvageTender/runtime.js:384`, `features/shipbreakingYard/runtime.js:519`, `features/shipbreakingYard/runtime.js:525`, `systems/borrowedSun.js:608`, `systems/economy.js:5009`, `systems/economy.js:5036`, `systems/factionPresence.js:1730`, `systems/ilexArk.js:40`, `systems/missions.js:2537`, `systems/missions.js:2622`, `systems/palletJack.js:291`, `systems/redKite.js:61`, `systems/scanner.js:1669`, `systems/scanner.js:1701`, `systems/scanner.js:1797`, `systems/scanner.js:2025`, `systems/shipjack.js:428`, `systems/tallyThree.js:118`, `systems/towlineTable.js:34`, `ui/contactHailPrompt.js:215`, `ui/galaxyMap.js:3165`, `ui/galaxyMap.js:3180`, `ui/galaxyMap.js:9164`, `ui/input.js:412`, `ui/market/tradeLogic.js:575`, `ui/radar.js:1944`, `ui/radar.js:1957`, `ui/screens/footprint.js:1677`, `ui/screens/footprint.js:1688`, `ui/screens/localmap.js:1222`, `ui/screens/starmap.js:1802`, `ui/screens/starmap.js:1815`, `ui/screens/starmap.js:1819`, `ui/station/cinderDepartureConversation.js:109`, `ui/station/cinderReturnConversation.js:81`, `ui/station/heliosCampaignHandoff.js:169` | `systems/world.js:845` |
+| `ui:setShipAppearance` | `ui/screens/raceBoard.js:377`, `ui/station/screens/shipworks.js:4926` | `systems/ships.js:2099` |
 | `ui:setShipName` | `ui/station/screens/shipworks.js:5334` | `systems/ships.js:2102` |
 | `ui:shipjack` | `ui/blackFlag.js:86`, `ui/blackFlag.js:115`, `ui/blackFlag.js:118`, `ui/blackFlag.js:125`, `ui/blackFlag.js:212`, `ui/blackFlagRegistry.js:143`, `ui/blackFlagRegistry.js:146`, `ui/blackFlagRegistry.js:155` | — |
 | `ui:standbyFeeChoose` | `ui/special500InvoicePrompt.js:65` | `systems/special500Invoice.js:71` |
 | `ui:talkContact` | `ui/station/screens/bar.js:281` | `systems/fenceDesk.js:61`, `systems/special500PortraitBuoys.js:121`, `systems/special500Sommelier.js:26`, `systems/story.js:296` |
-| `ui:targetNearestHostileToPlayer` | `combat/autoTargetMode.js:66`, `combat/autoTargetMode.js:256` | `ui/uiRoot.js:1502` |
+| `ui:targetNearestHostileToPlayer` | `combat/autoTargetMode.js:66`, `combat/autoTargetMode.js:256` | `ui/uiRoot.js:1541` |
 | `ui:toast` | `features/counterweightCircuit/runtime.js:507`, `features/counterweightCircuit/runtime.js:551`, `systems/scanner.js:2022`, `systems/scanner.js:2028` | — |
-| `ui:toggleCargo` | `ui/input.js:967` | — |
-| `ui:toggleComms` | `ui/bandHud.js:241`, `ui/input.js:992` | — |
-| `ui:toggleFieldBuild` | `ui/input.js:777` | `ui/uiRoot.js:946` |
-| `ui:toggleOverview` | `ui/input.js:975` | — |
-| `ui:trackMission` | `ui/galaxyMap.js:5051`, `ui/galaxyMap.js:5210`, `ui/screens/missionLog.js:2492`, `ui/screens/missionLog.js:2564`, `ui/screens/missionLog.js:2625`, `ui/station/cinderDepartureConversation.js:116`, `ui/station/furnaceDetailConversation.js:45`, `ui/station/heliosCampaignHandoff.js:166`, `ui/station/screens/contracts.js:1670` | `systems/missions.js:670` |
+| `ui:toggleCargo` | `ui/input.js:965`, `ui/input.js:1576`, `ui/input.js:1705` | — |
+| `ui:toggleComms` | `ui/bandHud.js:241`, `ui/input.js:990` | — |
+| `ui:toggleFieldBuild` | `ui/input.js:765` | `ui/uiRoot.js:971` |
+| `ui:toggleOverview` | `ui/input.js:973` | — |
+| `ui:trackMission` | `ui/galaxyMap.js:5053`, `ui/galaxyMap.js:5212`, `ui/screens/missionLog.js:2495`, `ui/screens/missionLog.js:2567`, `ui/screens/missionLog.js:2628`, `ui/station/cinderDepartureConversation.js:116`, `ui/station/furnaceDetailConversation.js:45`, `ui/station/heliosCampaignHandoff.js:166`, `ui/station/screens/contracts.js:1673` | `systems/missions.js:736` |
 | `ui:transferParkedCargo` | `ui/station/screens/shipworks.js:5442` | — |
-| `ui:undock` | — | `ui/input.js:1299` |
+| `ui:undock` | — | `ui/input.js:1315` |
 | `ui:unfitModule` | — | `systems/ships.js:2087` |
 | `ui:unfitPayload` | `ui/station/screens/shipworks.js:5631` | `systems/bombs.js:715` |
 | `ui:unlockTech` | `ui/screens/techTree.js:854` | `systems/ships.js:2098` |
 | `ui:upgradeBombRack` | `ui/station/screens/shipworks.js:5255` | `systems/bombs.js:718` |
 | `ui:wingOrder` | `ui/wingmanRadial.js:283` | `systems/automation.js:612` |
-| `ui:wingmanRadial` | `ui/input.js:983` | `ui/wingmanRadial.js:354` |
+| `ui:wingmanRadial` | `ui/input.js:981` | `ui/wingmanRadial.js:354` |
 | `understory:accessTier` | `systems/faction_understory.js:1325` | — |
 | `understory:blacklisted` | `systems/faction_understory.js:1934` | — |
 | `understory:buyCover` | — | `systems/faction_understory.js:722` |
@@ -1990,31 +2003,31 @@
 | `understory:markedStash` | `systems/faction_understory.js:1850` | — |
 | `understory:noticeChanged` | `systems/faction_understory.js:1905`, `systems/faction_understory.js:1957` | — |
 | `understory:payDebt` | — | `systems/faction_understory.js:723` |
-| `understory:playerGrowth` | `systems/faction_understory.js:1070`, `systems/faction_understory.js:1189` | `systems/missions.js:732` |
+| `understory:playerGrowth` | `systems/faction_understory.js:1070`, `systems/faction_understory.js:1189` | `systems/missions.js:798` |
 | `understory:sporeSkin` | `systems/faction_understory.js:1307` | — |
 | `understory:whisperPosted` | `systems/faction_understory.js:1723` | — |
 | `understory:whisperVerified` | `systems/faction_understory.js:1796` | — |
 | `uniqueLoot:choirBellPulse` | `systems/uniqueLootAbilities.js:395` | — |
 | `uniqueLoot:nestbreakerSplit` | `systems/uniqueLootAbilities.js:333` | — |
 | `uniqueLoot:paleCoilBlink` | `systems/uniqueLootAbilities.js:251` | — |
-| `uniqueWreck:bearingFixed` | `systems/uniqueWrecks.js:1724` | `audio/audioSystem.js:3150`, `systems/missions.js:944`, `ui/discoveryPlate.js:217` |
+| `uniqueWreck:bearingFixed` | `systems/uniqueWrecks.js:1724` | `audio/audioSystem.js:3189`, `systems/missions.js:1024`, `ui/discoveryPlate.js:217` |
 | `uniqueWreck:blackBoxRecovered` | `systems/uniqueWrecks.js:1758` | — |
 | `uniqueWreck:choiceBlocked` | `systems/uniqueWrecks.js:1886` | — |
-| `uniqueWreck:choose` | `systems/missionObjectiveOps.js:1071`, `systems/uniqueWreckEncounterScripts.js:123`, `ui/recoveryEncounterPrompt.js:353` | — |
+| `uniqueWreck:choose` | `systems/missionObjectiveOps.js:1076`, `systems/uniqueWreckEncounterScripts.js:123`, `ui/recoveryEncounterPrompt.js:353` | — |
 | `uniqueWreck:complicationScheduled` | `systems/uniqueWrecks.js:993` | — |
-| `uniqueWreck:complicationTriggered` | `systems/uniqueWrecks.js:1014`, `systems/uniqueWrecks.js:1188`, `systems/uniqueWrecks.js:1376` | `systems/missions.js:945` |
-| `uniqueWreck:decisionReady` | `systems/uniqueWrecks.js:1820` | `systems/missions.js:947`, `ui/recoveryEncounterPrompt.js:493` |
-| `uniqueWreck:encounterActivated` | `systems/uniqueWrecks.js:1235` | `systems/missions.js:946` |
+| `uniqueWreck:complicationTriggered` | `systems/uniqueWrecks.js:1014`, `systems/uniqueWrecks.js:1188`, `systems/uniqueWrecks.js:1376` | `systems/missions.js:1025` |
+| `uniqueWreck:decisionReady` | `systems/uniqueWrecks.js:1820` | `systems/missions.js:1027`, `ui/recoveryEncounterPrompt.js:493` |
+| `uniqueWreck:encounterActivated` | `systems/uniqueWrecks.js:1235` | `systems/missions.js:1026` |
 | `uniqueWreck:encounterCompleted` | `systems/uniqueWrecks.js:1265` | — |
 | `uniqueWreck:encounterRequested` | `systems/uniqueWrecks.js:743`, `systems/uniqueWrecks.js:1190` | — |
-| `uniqueWreck:resolved` | `systems/uniqueWrecks.js:2056` | `systems/missions.js:948`, `systems/traffic.js:1919`, `ui/recoveryEncounterPrompt.js:494` |
+| `uniqueWreck:resolved` | `systems/uniqueWrecks.js:2056` | `systems/missions.js:1028`, `systems/traffic.js:1921`, `ui/recoveryEncounterPrompt.js:494` |
 | `uniqueWreck:rumorHeard` | `systems/trafficJobOps.js:1146`, `ui/station/screens/bar.js:1030` | — |
-| `uniqueWreck:rumorRecorded` | `systems/uniqueWrecks.js:864` | `systems/missions.js:943` |
+| `uniqueWreck:rumorRecorded` | `systems/uniqueWrecks.js:864` | `systems/missions.js:1023` |
 | `uniqueWreck:salvaged` | `systems/uniqueWrecks.js:2057` | — |
-| `uniqueWreck:scanBlocked` | `systems/uniqueWrecks.js:1703` | `systems/world.js:899` |
+| `uniqueWreck:scanBlocked` | `systems/uniqueWrecks.js:1703` | `systems/world.js:918` |
 | `uniqueWreck:storyRewardDisposed` | `systems/uniqueWrecks.js:2148` | — |
 | `uniqueWreck:storyRewardGranted` | `systems/uniqueWrecks.js:1985` | `systems/factions.js:357` |
-| `v2:flavorPresented` | `systems/v2FlavorRuntime.js:388` | `systems/missions.js:844`, `ui/bandHud.js:161` |
+| `v2:flavorPresented` | `systems/v2FlavorRuntime.js:388` | `systems/missions.js:910`, `ui/bandHud.js:161` |
 | `vael:clauseDone` | `systems/faction_vael.js:1599` | — |
 | `vael:clauseFailed` | `systems/faction_vael.js:1626` | — |
 | `vael:clauseLapsed` | `systems/faction_vael.js:1636` | — |
@@ -2054,7 +2067,7 @@
 | `vael:writRecalled` | `systems/faction_vael.js:1119` | — |
 | `vael:writServed` | `systems/faction_vael.js:1181` | — |
 | `vael:writTelegraph` | `systems/faction_vael.js:1157` | — |
-| `verb:used` | `systems/onboarding.js:5265` | — |
+| `verb:used` | `systems/onboarding.js:5278` | — |
 | `verge:appealDenied` | `systems/faction_verge.js:1854` | — |
 | `verge:appealGranted` | `systems/faction_verge.js:1845` | — |
 | `verge:checkpointChallenged` | `systems/faction_verge.js:740` | — |
@@ -2091,39 +2104,39 @@
 | `vesper:performance` | `systems/vesper.js:271` | — |
 | `vesper:phraseProgress` | `systems/vesper.js:263` | — |
 | `vesper:voice` | `systems/vesper.js:103`, `systems/vesper.js:189` | — |
-| `vestaOreCache:cargoChanged` | `systems/world.js:8439` | — |
-| `vestaOreCache:choose` | `ui/recoveryEncounterPrompt.js:373` | `systems/world.js:840` |
-| `vestaOreCache:clueRecovered` | `systems/world.js:8260` | — |
-| `vestaOreCache:decisionReady` | `systems/world.js:8291` | `ui/recoveryEncounterPrompt.js:495` |
-| `vestaOreCache:pickupReady` | `systems/world.js:8402` | — |
-| `vestaOreCache:resolved` | `systems/world.js:8359` | `ui/recoveryEncounterPrompt.js:496` |
-| `voice:clear` | `ui/voiceArbiter.js:949`, `ui/voiceArbiter.js:996` | `ui/alerts.js:515` |
-| `voice:dismiss` | `ui/bindings.js:104`, `ui/input.js:814` | `ui/voiceArbiter.js:428` |
-| `voice:say` | `audio/audioSystem.js:3060`, `audio/audioSystem.js:5739`, `features/breakwaterSpur/runtime.js:113`, `features/salvageOutfits/presentation.js:96`, `systems/achievements.js:1027`, `systems/mines.js:153`, `systems/mines.js:337`, `systems/mines.js:510`, `systems/plants/afterHoursCoach.js:398`, `systems/plants/anselsDish.js:156`, `systems/plants/badMagnetPlant.js:144`, `systems/plants/borrowedBoost.js:339`, `systems/plants/carriedWord.js:360`, `systems/plants/chasedThiefPlant.js:351`, `systems/plants/darkStretchPlant.js:335`, `systems/plants/kidMechanic.js:157`, `systems/plants/kindChecker.js:277`, `systems/plants/loanerGunPlant.js:106`, `systems/plants/movingHousePlant.js:323`, `systems/plants/onTheCallPlant.js:109`, `systems/plants/ownFaultPlant.js:395`, `systems/plants/pl107EmptySlot.js:124`, `systems/plants/pl129SomebodysCrate.js:110`, `systems/plants/pl171RattleInB.js:125`, `systems/plants/pl172ShadeMarket.js:215`, `systems/plants/pl179KesslersNumber.js:112`, `systems/plants/pl183TheWeather.js:146`, `systems/plants/pl192AgainMaybe.js:110`, `systems/plants/pl214PyrrhaBox.js:246`, `systems/plants/pl257GutterRun.js:250`, `systems/plants/pl260FiftiethVisit.js:111`, `systems/plants/pl333NoQuestionsShelf.js:278`, `systems/plants/pl334WindBreakChain.js:210`, `systems/plants/pl335DawnLine.js:243`, `systems/plants/pl336LampKeeper.js:164`, `systems/plants/pl337HonorUrn.js:181`, `systems/plants/pl338TowPost.js:174`, `systems/plants/pl339SignalMirror.js:186`, `systems/plants/pl340EchoCount.js:191`, `systems/plants/pl341RestringBuoys.js:209`, `systems/plants/pl342BleedVent.js:179`, `systems/plants/pl343LiftBell.js:193`, `systems/plants/pl344NeedsList.js:216`, `systems/plants/pl345KettleWindow.js:181`, `systems/plants/pl346FixedRope.js:209`, `systems/plants/pl347SmallHullDrum.js:215`, `systems/plants/pl348SeamKitchen.js:203`, `systems/plants/pl349MercyTug.js:209`, `systems/plants/pl350KeyWall.js:238`, `systems/plants/pl351SamplePad.js:242`, `systems/plants/pl352ChalkedName.js:226`, `systems/plants/pl353CleanStamp.js:201`, `systems/plants/pl355TheUnit.js:139`, `systems/plants/pl362NameOnPlate.js:208`, `systems/plants/pl362NameOnPlate.js:232`, `systems/plants/rescueDividend.js:455`, `systems/plants/reversedRobberyPlant.js:186`, `systems/plants/spareBed.js:377`, `systems/plants/sponsorshipPlant.js:190`, `systems/plants/umbrellaCrane.js:385`, `systems/plants/veteranTapPlant.js:130`, `systems/survivalAnnounce.js:539`, `systems/survivalAnnounce.js:1199`, `systems/world.js:1016`, `systems/world.js:1038`, `ui/alerts.js:379`, `ui/hud.js:686` | `ui/voiceArbiter.js:427` |
-| `voice:surface` | `ui/voiceArbiter.js:954`, `ui/voiceArbiter.js:1006` | `audio/audioSystem.js:3410`, `systems/barkDirector.js:882`, `systems/heliosCuttingCourtesy.js:84`, `systems/heliosSharedCut.js:57`, `systems/story.js:183`, `ui/alerts.js:514`, `ui/voiceArbiter.js:538` |
+| `vestaOreCache:cargoChanged` | `systems/world.js:8827` | — |
+| `vestaOreCache:choose` | `ui/recoveryEncounterPrompt.js:373` | `systems/world.js:857` |
+| `vestaOreCache:clueRecovered` | `systems/world.js:8648` | — |
+| `vestaOreCache:decisionReady` | `systems/world.js:8679` | `ui/recoveryEncounterPrompt.js:495` |
+| `vestaOreCache:pickupReady` | `systems/world.js:8790` | — |
+| `vestaOreCache:resolved` | `systems/world.js:8747` | `ui/recoveryEncounterPrompt.js:496` |
+| `voice:clear` | `ui/voiceArbiter.js:949`, `ui/voiceArbiter.js:996` | `ui/alerts.js:553` |
+| `voice:dismiss` | `ui/bindings.js:104`, `ui/input.js:802` | `ui/voiceArbiter.js:428` |
+| `voice:say` | `audio/audioSystem.js:3099`, `audio/audioSystem.js:6070`, `features/breakwaterSpur/runtime.js:113`, `features/salvageOutfits/presentation.js:96`, `systems/achievements.js:1027`, `systems/mines.js:153`, `systems/mines.js:337`, `systems/mines.js:510`, `systems/plants/afterHoursCoach.js:399`, `systems/plants/anselsDish.js:156`, `systems/plants/badMagnetPlant.js:145`, `systems/plants/borrowedBoost.js:340`, `systems/plants/carriedWord.js:361`, `systems/plants/chasedThiefPlant.js:352`, `systems/plants/darkStretchPlant.js:336`, `systems/plants/kidMechanic.js:157`, `systems/plants/kindChecker.js:278`, `systems/plants/loanerGunPlant.js:107`, `systems/plants/movingHousePlant.js:324`, `systems/plants/onTheCallPlant.js:110`, `systems/plants/ownFaultPlant.js:396`, `systems/plants/pl107EmptySlot.js:124`, `systems/plants/pl129SomebodysCrate.js:110`, `systems/plants/pl171RattleInB.js:126`, `systems/plants/pl172ShadeMarket.js:216`, `systems/plants/pl179KesslersNumber.js:112`, `systems/plants/pl183TheWeather.js:146`, `systems/plants/pl192AgainMaybe.js:111`, `systems/plants/pl214PyrrhaBox.js:247`, `systems/plants/pl257GutterRun.js:250`, `systems/plants/pl260FiftiethVisit.js:111`, `systems/plants/pl333NoQuestionsShelf.js:279`, `systems/plants/pl334WindBreakChain.js:211`, `systems/plants/pl335DawnLine.js:244`, `systems/plants/pl336LampKeeper.js:165`, `systems/plants/pl337HonorUrn.js:182`, `systems/plants/pl338TowPost.js:175`, `systems/plants/pl339SignalMirror.js:187`, `systems/plants/pl340EchoCount.js:192`, `systems/plants/pl341RestringBuoys.js:210`, `systems/plants/pl342BleedVent.js:180`, `systems/plants/pl343LiftBell.js:194`, `systems/plants/pl344NeedsList.js:217`, `systems/plants/pl345KettleWindow.js:182`, `systems/plants/pl346FixedRope.js:210`, `systems/plants/pl347SmallHullDrum.js:216`, `systems/plants/pl348SeamKitchen.js:204`, `systems/plants/pl349MercyTug.js:210`, `systems/plants/pl350KeyWall.js:239`, `systems/plants/pl351SamplePad.js:243`, `systems/plants/pl352ChalkedName.js:227`, `systems/plants/pl353CleanStamp.js:202`, `systems/plants/pl355TheUnit.js:139`, `systems/plants/pl362NameOnPlate.js:208`, `systems/plants/pl362NameOnPlate.js:232`, `systems/plants/rescueDividend.js:456`, `systems/plants/reversedRobberyPlant.js:187`, `systems/plants/spareBed.js:378`, `systems/plants/sponsorshipPlant.js:191`, `systems/plants/umbrellaCrane.js:386`, `systems/plants/veteranTapPlant.js:131`, `systems/survivalAnnounce.js:539`, `systems/survivalAnnounce.js:1199`, `systems/world.js:1035`, `systems/world.js:1057`, `ui/alerts.js:417`, `ui/hud.js:691` | `ui/voiceArbiter.js:427` |
+| `voice:surface` | `ui/voiceArbiter.js:954`, `ui/voiceArbiter.js:1006` | `audio/audioSystem.js:3449`, `systems/barkDirector.js:882`, `systems/heliosCuttingCourtesy.js:84`, `systems/heliosSharedCut.js:57`, `systems/story.js:183`, `ui/alerts.js:552`, `ui/voiceArbiter.js:538` |
 | `vultures:departed` | — | `systems/barkDirector.js:899` |
 | `vultures:dispatch` | — | `systems/barkDirector.js:897` |
 | `vultures:race` | — | `systems/barkDirector.js:898` |
 | `warrant:acceptPayment` | `ui/warrantOfferPrompt.js:93` | — |
 | `watch:changed` | `ui/entityLinks.js:285`, `ui/entityLinks.js:329` | `ui/watchlistHud.js:89` |
-| `weapons:debrisOrbitClaimed` | `systems/weapons.js:2697` | — |
-| `weapons:inertialShunt` | `systems/weapons.js:644` | `ui/stuntCallout.js:1057` |
-| `weapons:mineArmed` | `systems/weapons.js:2379` | `audio/audioSystem.js:3030` |
-| `weapons:mineDeployed` | `systems/weapons.js:2336` | `render/vfx.js:3030` |
-| `weapons:mineDetonated` | `systems/weapons.js:2463` | — |
-| `weapons:mineExpired` | `systems/weapons.js:2373` | `render/vfx.js:3031`, `systems/presentationOrchestrator.js:286` |
-| `weapons:momentumSinkPlanted` | `systems/weapons.js:610` | `audio/audioSystem.js:3063` |
-| `weapons:momentumSinkReleased` | `systems/weapons.js:1926` | `audio/audioSystem.js:3064` |
-| `weapons:mortarDetonated` | `systems/weapons.js:2597` | — |
-| `weapons:mortarLanded` | `systems/weapons.js:2535` | — |
-| `weapons:vent` | `systems/weapons.js:1092`, `systems/weapons.js:1115`, `systems/weapons.js:1141`, `systems/weapons.js:1156` | `audio/audioSystem.js:3170`, `render/shipMicroMotion.js:1751`, `render/vfx.js:3090`, `systems/ships.js:2150` |
+| `weapons:debrisOrbitClaimed` | `systems/weapons.js:2818` | — |
+| `weapons:inertialShunt` | `systems/weapons.js:703` | `ui/stuntCallout.js:1057` |
+| `weapons:mineArmed` | `systems/weapons.js:2500` | `audio/audioSystem.js:3069` |
+| `weapons:mineDeployed` | `systems/weapons.js:2457` | `render/vfx.js:3042` |
+| `weapons:mineDetonated` | `systems/weapons.js:2584` | — |
+| `weapons:mineExpired` | `systems/weapons.js:2494` | `render/vfx.js:3043`, `systems/presentationOrchestrator.js:286` |
+| `weapons:momentumSinkPlanted` | `systems/weapons.js:669` | `audio/audioSystem.js:3102` |
+| `weapons:momentumSinkReleased` | `systems/weapons.js:2036` | `audio/audioSystem.js:3103` |
+| `weapons:mortarDetonated` | `systems/weapons.js:2718` | — |
+| `weapons:mortarLanded` | `systems/weapons.js:2656` | — |
+| `weapons:vent` | `systems/weapons.js:1168`, `systems/weapons.js:1191`, `systems/weapons.js:1217`, `systems/weapons.js:1232` | `audio/audioSystem.js:3209`, `render/shipMicroMotion.js:1751`, `render/vfx.js:3102`, `systems/ships.js:2150` |
 | `weather:ionBlackout` | `systems/environmentalMachinery.js:1688`, `systems/environmentalMachinery.js:1885` | — |
 | `web:linked` | `combat/tetherWebs.js:161` | — |
 | `weighing:overMass` | `data/encounters/700-the-weighing.js:232` | — |
-| `well:capture` | `systems/fields.js:2911` | — |
-| `well:fling` | `systems/fields.js:2836` | `systems/flightV3.js:226`, `ui/stuntCallout.js:1055` |
-| `well:grind` | `systems/fields.js:2495` | `systems/impulseCharges.js:235` |
-| `well:haulerDragged` | `systems/fields.js:2780` | `systems/traffic.js:1918` |
+| `well:capture` | `systems/fields.js:3071` | — |
+| `well:fling` | `systems/fields.js:2996` | `systems/flightV3.js:226`, `ui/stuntCallout.js:1055` |
+| `well:grind` | `systems/fields.js:2655` | `systems/impulseCharges.js:235` |
+| `well:haulerDragged` | `systems/fields.js:2940` | `systems/traffic.js:1920` |
 | `wexTicket:found` | `systems/wexTicket.js:125` | — |
 | `wingMorale:broken` | `systems/wingMorale.js:289` | — |
 | `wingMorale:enraged` | `systems/wingMorale.js:398` | — |
@@ -2133,53 +2146,53 @@
 | `wingOrder:converted` | `systems/wingmen.js:795` | `ui/wingmanRadial.js:370` |
 | `wingOrder:status` | `systems/automation.js:2707` | `ui/wingmanRadial.js:374` |
 | `wingmen:gap` | `systems/wingmen.js:347` | — |
-| `world:abortJumpCharge` | `systems/story.js:998`, `ui/comms.js:818` | `systems/world.js:825` |
-| `world:ambientArrival` | `systems/world.js:5329` | — |
-| `world:confirmUnfiledJump` | `systems/story.js:253` | `systems/world.js:824` |
-| `world:courtRulingRecorded` | `systems/world.js:757` | — |
-| `world:criticalSpawnDeferred` | `systems/world.js:2616`, `systems/world.js:5370` | — |
-| `world:farActorRestored` | `world/farActorTable.js:1243` | `systems/npcJobsRuntime.js:1179`, `systems/traffic.js:1877` |
-| `world:farActorShelved` | `world/farActorTable.js:1189` | `systems/npcJobsRuntime.js:1178`, `systems/traffic.js:1876` |
-| `world:membership` | `systems/world.js:1427` | `systems/presentationOrchestrator.js:191` |
-| `world:originShift` | `systems/world.js:6826` | — |
-| `world:playerRelocated` | `systems/world.js:5516` | `core/coreSystem.js:568`, `render/vfx.js:3054` |
-| `world:requestJump` | `systems/story.js:982`, `ui/galaxyMap.js:3158`, `ui/screens/starmap.js:1812` | `systems/world.js:822` |
-| `world:requestRoute` | `ui/galaxyMap.js:3177`, `ui/galaxyMap.js:5227`, `ui/galaxyMap.js:9160`, `ui/screens/starmap.js:1799`, `ui/screens/starmap.js:1816` | `systems/world.js:826` |
-| `world:requestSectorScan` | `ui/galaxyMap.js:7558` | `systems/world.js:827` |
-| `world:requestUnfiledJump` | `systems/story.js:950` | `systems/world.js:823` |
-| `world:residency` | `systems/world.js:1647`, `systems/world.js:1714`, `systems/world.js:2860` | — |
-| `world:spawnLimited` | `systems/world.js:5123` | — |
-| `world:stuckCleared` | `systems/world.js:7974` | — |
-| `world:stuckTowAccept` | `ui/stuckTowPrompt.js:52` | `systems/world.js:954` |
-| `world:stuckTowOffer` | `systems/world.js:8007` | `ui/stuckTowPrompt.js:23` |
-| `world:zoneEntered` | `systems/world.js:6853` | `data/hazardLanguage.js:176` |
-| `world:zoneExited` | `systems/world.js:6867` | `data/hazardLanguage.js:177` |
-| `worldPressure:auditAnnounced` | `systems/worldPressure.js:237` | `systems/missions.js:753` |
+| `world:abortJumpCharge` | `systems/story.js:998`, `ui/comms.js:847` | `systems/world.js:842` |
+| `world:ambientArrival` | `systems/world.js:5639` | — |
+| `world:confirmUnfiledJump` | `systems/story.js:253` | `systems/world.js:841` |
+| `world:courtRulingRecorded` | `systems/world.js:774` | — |
+| `world:criticalSpawnDeferred` | `systems/world.js:2758`, `systems/world.js:5680` | — |
+| `world:farActorRestored` | `world/farActorTable.js:1257` | `systems/npcJobsRuntime.js:1179`, `systems/traffic.js:1879` |
+| `world:farActorShelved` | `world/farActorTable.js:1202` | `systems/npcJobsRuntime.js:1178`, `systems/traffic.js:1878` |
+| `world:membership` | `systems/world.js:1563` | `systems/presentationOrchestrator.js:191` |
+| `world:originShift` | `systems/world.js:7149` | — |
+| `world:playerRelocated` | `systems/world.js:5826` | `core/coreSystem.js:633`, `render/vfx.js:3066` |
+| `world:requestJump` | `systems/story.js:982`, `ui/galaxyMap.js:3159`, `ui/screens/starmap.js:1814` | `systems/world.js:839` |
+| `world:requestRoute` | `ui/galaxyMap.js:3178`, `ui/galaxyMap.js:5229`, `ui/galaxyMap.js:9162`, `ui/screens/starmap.js:1801`, `ui/screens/starmap.js:1818` | `systems/world.js:843` |
+| `world:requestSectorScan` | `ui/galaxyMap.js:7560` | `systems/world.js:844` |
+| `world:requestUnfiledJump` | `systems/story.js:950` | `systems/world.js:840` |
+| `world:residency` | `systems/world.js:1787`, `systems/world.js:1855`, `systems/world.js:3002` | — |
+| `world:spawnLimited` | `systems/world.js:5433` | — |
+| `world:stuckCleared` | `systems/world.js:8356` | — |
+| `world:stuckTowAccept` | `ui/stuckTowPrompt.js:52` | `systems/world.js:973` |
+| `world:stuckTowOffer` | `systems/world.js:8389` | `ui/stuckTowPrompt.js:23` |
+| `world:zoneEntered` | `systems/world.js:7176` | `data/hazardLanguage.js:176` |
+| `world:zoneExited` | `systems/world.js:7190` | `data/hazardLanguage.js:177` |
+| `worldPressure:auditAnnounced` | `systems/worldPressure.js:237` | `systems/missions.js:819` |
 | `worldPressure:auditDelayed` | `systems/worldPressure.js:352` | — |
 | `worldPressure:colossusRemains` | `systems/worldPressure.js:381` | — |
-| `worldPressure:gateClosed` | `systems/worldPressure.js:278` | `systems/missions.js:754` |
+| `worldPressure:gateClosed` | `systems/worldPressure.js:278` | `systems/missions.js:820` |
 | `worldPressure:scaffoldSpawned` | `systems/worldPressure.js:437` | — |
 | `worldPressure:slowGray` | `systems/worldPressure.js:300` | — |
 | `worldPressure:tideChanged` | `systems/worldPressure.js:208` | — |
-| `worldSite:failureReceipt` | `systems/asteroidSites.js:1405` | `systems/presentationOrchestrator.js:300` |
-| `worldSite:operationReceipt` | `systems/asteroidSites.js:1289` | `audio/worldFeelSeams.js:446`, `systems/economy.js:1707`, `systems/presentationOrchestrator.js:301`, `systems/traffic.js:2014` |
-| `wreck:ruptureFired` | `render/visualFactory.js:361`, `render/visualFactory.js:380` | `systems/aftermathWrecks.js:1264` |
+| `worldSite:failureReceipt` | `systems/asteroidSites.js:1407` | `systems/presentationOrchestrator.js:300` |
+| `worldSite:operationReceipt` | `systems/asteroidSites.js:1291` | `audio/worldFeelSeams.js:446`, `systems/economy.js:1707`, `systems/presentationOrchestrator.js:301`, `systems/traffic.js:2016` |
+| `wreck:ruptureFired` | `render/visualFactory.js:375`, `render/visualFactory.js:394` | `systems/aftermathWrecks.js:1278` |
 | `wreckCourt:action` | `ui/physicalJobsPrompt.js:33` | — |
 | `wreckCourt:lawFact` | `systems/wreckCourt.js:1031` | `systems/heat.js:357` |
 | `wreckCourt:opened` | `systems/wreckCourt.js:950` | — |
 | `wreckCourt:result` | `systems/wreckCourt.js:894` | — |
 | `wreckCourt:ruled` | `systems/wreckCourt.js:1032` | — |
-| `wreckCourt:worldFact` | `systems/wreckCourt.js:1030` | `systems/world.js:750` |
-| `wreckEcology:decayed` | `systems/aftermathWrecks.js:3590` | — |
-| `wreckEcology:departed` | `systems/aftermathWrecks.js:1626` | `systems/barkDirector.js:896` |
-| `wreckEcology:rivalPressured` | `systems/aftermathWrecks.js:1587` | `systems/barkDirector.js:895` |
-| `wreckEcology:scavenged` | `systems/aftermathWrecks.js:1669` | `systems/barkDirector.js:894` |
-| `wreckEcology:seeded` | `systems/aftermathWrecks.js:3264` | — |
-| `wreckEcology:spawned` | `systems/aftermathWrecks.js:3488` | `systems/npcJobsRuntime.js:1209` |
-| `wreckField:source` | `systems/factionPresence.js:1178`, `systems/salvage.js:595`, `systems/uniqueWrecks.js:1595` | `systems/aftermathWrecks.js:1261` |
+| `wreckCourt:worldFact` | `systems/wreckCourt.js:1030` | `systems/world.js:767` |
+| `wreckEcology:decayed` | `systems/aftermathWrecks.js:3678` | — |
+| `wreckEcology:departed` | `systems/aftermathWrecks.js:1657` | `systems/barkDirector.js:896` |
+| `wreckEcology:rivalPressured` | `systems/aftermathWrecks.js:1618` | `systems/barkDirector.js:895` |
+| `wreckEcology:scavenged` | `systems/aftermathWrecks.js:1700` | `systems/barkDirector.js:894` |
+| `wreckEcology:seeded` | `systems/aftermathWrecks.js:3352` | — |
+| `wreckEcology:spawned` | `systems/aftermathWrecks.js:3576` | `systems/npcJobsRuntime.js:1209` |
+| `wreckField:source` | `systems/factionPresence.js:1178`, `systems/salvage.js:595`, `systems/uniqueWrecks.js:1595` | `systems/aftermathWrecks.js:1275` |
 | `wreckMarket:rates` | `systems/rookBooth.js:460` | — |
-| `wreckMission:choiceApplied` | `systems/missionObjectiveOps.js:1510` | — |
-| `wreckMission:choose` | `ui/wreckChoicePrompt.js:165` | `systems/missions.js:924` |
+| `wreckMission:choiceApplied` | `systems/missionObjectiveOps.js:1515` | — |
+| `wreckMission:choose` | `ui/wreckChoicePrompt.js:165` | `systems/missions.js:1004` |
 
 ## Events with no statically indexed emitter
 
@@ -2230,6 +2243,8 @@
 - `encounter:castAnnounced` — 1 subscriber(s)
 - `encounter:predationTelegraph` — 1 subscriber(s)
 - `endgame:loopBack` — 1 subscriber(s)
+- `entity:destroyedBatch` — 1 subscriber(s)
+- `entity:spawnedBatch` — 1 subscriber(s)
 - `environment:detonated` — 1 subscriber(s)
 - `environment:fractured` — 1 subscriber(s)
 - `fence:routeLegDue` — 1 subscriber(s)
@@ -2307,6 +2322,10 @@
 - `optic:rekindled` — 1 subscriber(s)
 - `physics:authorityStalled` — 1 subscriber(s)
 - `physics:contactsCompleted` — 2 subscriber(s)
+- `pilot:levelUp` — 1 subscriber(s)
+- `pilot:nodeRequested` — 1 subscriber(s)
+- `pilot:nodeTaken` — 1 subscriber(s)
+- `pilot:respecRequested` — 1 subscriber(s)
 - `pirateDisengage:surrenderOffer` — 1 subscriber(s)
 - `pirateDisengage:yieldResolved` — 1 subscriber(s)
 - `pirateParley:resolved` — 2 subscriber(s)
@@ -2557,14 +2576,16 @@
 - `cargo:cinderglassReceived` — 1 emitter(s)
 - `cargo:fragileLost` — 1 emitter(s)
 - `cargo:hotDockSpill` — 1 emitter(s)
-- `cargo:jettison` — 3 emitter(s)
+- `cargo:jettison` — 4 emitter(s)
 - `cargo:jettisonSealed` — 1 emitter(s)
+- `cargo:mergeStacks` — 1 emitter(s)
+- `cargo:moveStack` — 1 emitter(s)
 - `cargo:parkedTransfer` — 1 emitter(s)
 - `cargo:persistentAdded` — 1 emitter(s)
 - `cargo:radiationCooked` — 1 emitter(s)
 - `cargo:sealedFreightJettisoned` — 1 emitter(s)
-- `cargo:sortBag` — 1 emitter(s)
-- `cargo:splitStack` — 1 emitter(s)
+- `cargo:sortBag` — 2 emitter(s)
+- `cargo:splitStack` — 2 emitter(s)
 - `cargo:tallyThreeDelivered` — 1 emitter(s)
 - `cargo:vesselFreightReleased` — 1 emitter(s)
 - `cargo:volatileCorrosive` — 1 emitter(s)
@@ -2623,6 +2644,8 @@
 - `claim:specialized` — 1 emitter(s)
 - `claim:trophyHeadGranted` — 1 emitter(s)
 - `claims:migrated` — 1 emitter(s)
+- `cloak:ambush` — 1 emitter(s)
+- `cloak:vanished` — 1 emitter(s)
 - `coldburnRey:playerDelivered` — 1 emitter(s)
 - `coldburnRey:raceSettled` — 1 emitter(s)
 - `collector:absorbed` — 1 emitter(s)
@@ -2733,6 +2756,7 @@
 - `factionPresence:serviceAction` — 1 emitter(s)
 - `factionPresence:spawned` — 3 emitter(s)
 - `field:opportunity` — 1 emitter(s)
+- `field:slotRestocked` — 1 emitter(s)
 - `fields:deployDenied` — 1 emitter(s)
 - `fields:hitchCut` — 1 emitter(s)
 - `fields:hitchLatched` — 1 emitter(s)
@@ -2962,7 +2986,6 @@
 - `massline:npcLineCut` — 1 emitter(s)
 - `massline:recovered` — 1 emitter(s)
 - `massline:recovering` — 1 emitter(s)
-- `massline:whipSnap` — 1 emitter(s)
 - `mercyService:completed` — 1 emitter(s)
 - `mercyService:failedForward` — 1 emitter(s)
 - `mercyService:order` — 1 emitter(s)
@@ -3279,14 +3302,11 @@
 - `site:claimContested` — 1 emitter(s)
 - `site:clusterBalanced` — 1 emitter(s)
 - `site:commissioned` — 1 emitter(s)
-- `site:courierDelivered` — 1 emitter(s)
 - `site:courierLost` — 1 emitter(s)
 - `site:created` — 2 emitter(s)
-- `site:defenseDeployed` — 1 emitter(s)
 - `site:directiveUpdated` — 1 emitter(s)
 - `site:droneCommissioned` — 1 emitter(s)
 - `site:laneSpilled` — 2 emitter(s)
-- `site:linkCreated` — 1 emitter(s)
 - `site:linkRemoved` — 1 emitter(s)
 - `site:linkUpdated` — 1 emitter(s)
 - `site:machineMode` — 1 emitter(s)
@@ -3389,7 +3409,7 @@
 - `ui:navigate` — 4 emitter(s)
 - `ui:shipjack` — 8 emitter(s)
 - `ui:toast` — 4 emitter(s)
-- `ui:toggleCargo` — 1 emitter(s)
+- `ui:toggleCargo` — 3 emitter(s)
 - `ui:toggleComms` — 2 emitter(s)
 - `ui:toggleOverview` — 1 emitter(s)
 - `ui:transferParkedCargo` — 1 emitter(s)

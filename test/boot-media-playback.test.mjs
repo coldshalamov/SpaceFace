@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createBootMediaPlayback, BOOT_MEDIA } from '../src/ui/bootMediaPlayback.js';
 
 class Video extends EventTarget {
@@ -50,13 +51,13 @@ test('hundreds of starts never seek, reload, or restart a playing cinematic', as
   assert.equal(f.video.loads, 1); assert.equal(f.video.plays, 1);
   assert.deepEqual(f.video.seeks, []); assert.equal(f.video.currentTime, 6.1); f.ctl.destroy();
 });
-test('first handoff adopts the parse-time stream without reloading or seeking', async () => {
+test('a mint-failure wire fallback is adopted without reloading or seeking', async () => {
   for (const readyState of [0, 4]) {
     const f = fixture({ startOffset: () => 9.25 });
     f.video.currentSrc = `http://localhost/${BOOT_MEDIA.normal}`;
     f.video.readyState = readyState;
     f.video.time = readyState ? 0.15 : 0;
-    f.video.paused = false; // the HTML already called play(), which may still be pending
+    f.video.paused = false; // the entry fallback already called play(), which may still be pending
     f.ctl.start();
     f.video.duration = 17.5;
     f.video.event('loadedmetadata');
@@ -273,4 +274,124 @@ test('destroy revokes minted memory', async () => {
   f.ctl.destroy();
   assert.equal(f.timers.size, 0);
   assert.deepEqual(f.revoked, ['blob:mint-1']);
+});
+
+// ---------------------------------------------------------------------------
+// Parse-time mint handoff: the entry markup starts fetching the ordinary clip
+// before the module graph exists; the controller adopts that promise and the
+// first session plays from memory instead of the boot-contended wire.
+function parseMintFixture() {
+  const video = new Video(), timers = new Map(), revoked = []; let serial = 0, mints = 0, fetches = 0;
+  let grant; const preflight = new Promise((resolve) => { grant = resolve; });
+  const host = { setTimeout(fn) { const id = ++serial; timers.set(id, fn); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    fetch: () => { fetches++; return Promise.reject(new Error('must not re-fetch')); },
+    URL: { createObjectURL: () => `blob:parse-${++mints}`, revokeObjectURL(u) { revoked.push(u); } },
+    __SF_BOOT_MOVIE_MINT__: preflight };
+  const ctl = createBootMediaPlayback({ video, host });
+  return { video, ctl, timers, revoked, grant, fetches: () => fetches,
+    mint() { grant({ size: 8 }); } };
+}
+/** Fire every armed timer of a mint-style fixture (same shape as fixture().deadline). */
+function fireTimers(f) {
+  const pending = [...f.timers.entries()];
+  f.timers.clear();
+  for (const [, fn] of pending) fn();
+}
+test('a parse-time mint is adopted, never re-fetched, and outranks the wire stream', async () => {
+  const f = parseMintFixture();
+  f.video.currentSrc = `http://localhost/${BOOT_MEDIA.normal}`;
+  f.video.time = 4.2; f.video.paused = false; // the parse-time kick is already playing the wire
+  f.mint(); await microtasks(); await microtasks(); // the mint lands before the controller starts
+  f.ctl.start(); await microtasks();
+  assert.equal(f.video.src, 'blob:parse-1', 'a resident mint outranks adopting the wire stream');
+  assert.equal(f.fetches(), 0, 'the adopted promise is the only download');
+  assert.equal(f.video.loads, 1);
+  f.video.event('loadedmetadata');
+  assert.deepEqual(f.video.seeks, [4.2], 'the swap resumes the wire-parked frame, not a restart');
+  assert.equal(f.video.paused, false); f.ctl.destroy();
+});
+test('a stall that outlives the grace moves a playing movie onto a resident mint', async () => {
+  const f = mintFixture(); f.ctl.start(); await microtasks();
+  f.video.present(8); f.video.present(8.1); // proven playback on the wire
+  f.mint(); await microtasks(); await microtasks();
+  assert.equal(f.video.src, BOOT_MEDIA.normal, 'a playing movie keeps the wire while it plays');
+  f.video.event('waiting'); // the wire stalls for good
+  const grace = [...f.timers.keys()];
+  assert.equal(grace.length, 1, 'the stall arms one bounded rescue');
+  fireTimers(f); await microtasks();
+  assert.equal(f.video.src, 'blob:mint-1', 'a long stall takes the transport over at once');
+  assert.equal(f.video.loads, 2);
+  f.video.event('loadedmetadata');
+  assert.deepEqual(f.video.seeks.slice(-1), [8.1], 'memory resumes from the standing frame');
+  f.ctl.destroy();
+});
+test('a brief stall rides out without paying the mint reload', async () => {
+  const f = mintFixture(); f.ctl.start(); await microtasks();
+  f.video.present(8); f.video.present(8.1);
+  f.mint(); await microtasks(); await microtasks();
+  f.video.event('waiting');
+  f.video.event('playing'); // recovered inside the grace window
+  fireTimers(f); await microtasks();
+  assert.equal(f.video.src, BOOT_MEDIA.normal, 'no reload for a hiccup');
+  assert.equal(f.video.loads, 1);
+  f.video.present(8.2); f.video.present(8.3);
+  assert.equal(f.ctl.inspect().status, 'video'); f.ctl.destroy();
+});
+test('the mint landing mid-stall rescues an unproven movie without waiting out the grace', async () => {
+  const f = mintFixture(); f.ctl.start(); await microtasks();
+  f.video.event('waiting'); // wire dead before a single frame presented
+  f.mint(); await microtasks(); await microtasks();
+  assert.equal(f.video.src, 'blob:mint-1', 'the mint takes over the moment it lands');
+  fireTimers(f); // the grace would have fired later; the takeover already happened
+  assert.equal(f.video.loads, 2); f.ctl.destroy();
+});
+test('the markup mint handoff is adopted without a reload or restart', async () => {
+  const f = parseMintFixture();
+  f.mint(); await microtasks(); await microtasks();
+  // The inline entry script moved the element onto the mint before this controller existed.
+  f.video.currentSrc = f.video.src = 'blob:parse-1';
+  f.video.time = 3.5; f.video.paused = false;
+  f.ctl.start(); await microtasks();
+  assert.equal(f.video.loads, 0, 'an element already playing the mint is left alone');
+  assert.equal(f.video.plays, 0);
+  assert.deepEqual(f.video.seeks, []);
+  f.video.present(3.6); f.video.present(3.7);
+  assert.equal(f.ctl.inspect().status, 'video'); f.ctl.destroy();
+});
+test("a quiet variant mints its own URL and never adopts the normal clip's stash", async () => {
+  const video = new Video(), timers = new Map(); let serial = 0; const revoked = [];
+  const host = { setTimeout(fn) { const id = ++serial; timers.set(id, fn); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    fetch: () => Promise.resolve({ ok: true, blob: () => Promise.resolve({ size: 5 }) }),
+    URL: { createObjectURL: () => 'blob:own-mint', revokeObjectURL(u) { revoked.push(u); } },
+    // the entry markup minted the NORMAL clip before settings chose the quiet one
+    __SF_BOOT_MOVIE_MINT_URL__: 'blob:normal-stash' };
+  const ctl = createBootMediaPlayback({ video, host, flashReduced: () => true });
+  ctl.start(); await microtasks(); await microtasks(); await microtasks();
+  assert.notEqual(video.src, 'blob:normal-stash', 'the normal clip stash is never the quiet source');
+  assert.notEqual(video.src, BOOT_MEDIA.normal, 'the normal clip itself is never selected');
+  video.event('loadedmetadata');
+  ctl.stop(); await microtasks();
+  assert.equal(video.src, 'blob:own-mint', 'the transport is the quiet clip mint, not the normal stash');
+  ctl.destroy();
+});
+
+// Owner ruling, 2026-11-21: a slightly slower load is the right price for a loading movie
+// that never hitches. The entry markup therefore never streams the clip — it waits on the
+// parse-time mint and plays from memory; the wire is only the mint-failure fallback.
+test('the entry markup never wire-streams the boot movie', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const video = html.match(/<video id="boot-intro-video"[^>]*>/)?.[0] || '';
+  assert.match(video, /preload="none"/, 'the element must not pre-stream the clip');
+  assert.match(html, /data-boot-visual-state="poster"/, 'the veil starts in poster state for the mint wait');
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map((m) => m[1]).find((body) => body.includes('__SF_BOOT_MOVIE_MINT__')) || '';
+  assert.match(inline, /__SF_BOOT_MOVIE_MINT__ = window\.fetch/, 'the parse-time mint fetch exists');
+  assert.match(inline, /__SF_BOOT_MOVIE_MINT_URL__ = window\.URL\.createObjectURL/, 'playback sources the minted copy');
+  assert.match(inline, /__SF_BOOT_MOVIE_CTL_ACTIVE__/, 'a late mint defers to the controller');
+  // No unconditional wire kick: every play() in the inline script sits inside a mint branch.
+  const plays = [...inline.matchAll(/video\.play\(\)/g)].length;
+  const guarded = [...inline.matchAll(/if \(blob && window\.URL\)|No mint on this host/g)].length;
+  assert.ok(plays > 0 && plays === guarded, 'every inline play is a mint or fallback branch, never a wire kick');
 });
