@@ -31,7 +31,6 @@ export function stationFrameHtml() {
       <span class="sxb-berth__lamp" aria-hidden="true"></span>
       <div class="so-station-mark">${stationSealHtml()}</div>
       <div class="so-station-title dp-title"><p class="sxb-berth__ident dp-title__eyebrow" data-live="1"></p><h1 class="sxb-berth__name dp-title__name"></h1><div class="dp-title__rule" aria-hidden="true"></div></div>
-      <button type="button" class="so-command-trigger dp-key dp-key--small" aria-haspopup="dialog" aria-controls="so-command-palette">${stationIcon('search')}<span>Find a service</span><kbd class="dp-kbd">Ctrl K</kbd></button>
       <div class="sxb-tape">
         <p class="sxb-berth__news"></p>
         <article class="sxb-event" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>

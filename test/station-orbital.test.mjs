@@ -60,8 +60,8 @@ test('commodity identity and labels escape markup', () => {
   const html=marketRowHtml({id:'x" onmouseover="bad',name:'<img src=x>',buy:2,sell:1,stock:5});
   assert.doesNotMatch(html,/<img|data-cmdty="x" onmouseover/);assert.match(html,/&lt;img/);
 });
-test('station and market frame expose stable command / analysis / execution hooks', () => {
-  assert.match(stationFrameHtml(),/so-command-trigger/);assert.match(stationFrameHtml(),/data-act="undock"/);
+test('station and market frame expose stable analysis / execution hooks without the retired command palette', () => {
+  assert.doesNotMatch(stationFrameHtml(),/so-command-trigger/);assert.match(stationFrameHtml(),/data-act="undock"/);
   assert.match(marketFrameHtml(),/sx-mkt__analysis/);assert.match(marketFrameHtml(),/sx-mkt__console/);
 });
 test('station controller loads the new stylesheet on the default docking path', async () => {

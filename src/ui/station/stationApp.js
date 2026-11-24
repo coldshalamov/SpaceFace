@@ -392,11 +392,6 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const dockRail = createStationRow({ row: dock.el.querySelector('.sx-dock__group--nav') });
   let shown = true;
   const effects = createStationEffects({ root: rootEl, app, body: bodyEl, dock: dock.el, credits: creditsEl, getState: state });
-  // The Ctrl+K "Find a service" palette is retired (08_INTERFACE §7): four doors and a Service
-  // strip leave nothing to search for. Its trigger leaves the head and the keystroke opens nothing.
-  const retiredFinder = app.querySelector('.so-command-trigger');
-  if (retiredFinder && typeof retiredFinder.remove === 'function') retiredFinder.remove();
-  else if (retiredFinder) retiredFinder.hidden = true;
   // Comms and Help are not places either. The receipt lane (.sx-comms) stays: purchases and
   // payouts still say themselves there; only the two keys leave the foot.
   if (commsToggle) commsToggle.hidden = true;
