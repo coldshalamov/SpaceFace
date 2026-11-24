@@ -202,6 +202,15 @@ Object3D.prototype.updateMatrixWorld = function ( force ) {
 		if ( !force && child.matrixWorldNeedsUpdate === false
 			&& child.userData.sfMatrixFrozen === true ) continue;
 
+		if ( Object3D._sfPresentedMatrixPass === true && child.visible === false
+			&& !child.isCamera && !child.isLight && !child.isBone ) {
+
+			child.matrixWorldNeedsUpdate = true;
+			spacefaceUnfreezeStaticAncestors( child );
+			continue;
+
+		}
+
 		child.updateMatrixWorld( force );
 
 	}

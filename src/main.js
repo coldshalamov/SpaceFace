@@ -408,7 +408,9 @@ async function boot() {
     // on the bus; this is deliberately independent of the environment drain.
     ctx.achievements = installAchievements({ bus, state, telemetry });
     let eventTrace;
-    SF_DEBUG_ONLY: if (SF_DEBUG) eventTrace = createDeterministicEventTrace(bus, state);
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && /[?&]trace=1(?:&|$)/.test(location.search || '')) {
+      eventTrace = createDeterministicEventTrace(bus, state);
+    }
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
