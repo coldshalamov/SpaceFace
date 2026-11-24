@@ -42,6 +42,10 @@ test('native draft stock mirrors real purchase, refusal and held-card custody', 
     const stableSnapshot = state.survivalDraftPublic;
     await send();
     assert.equal(state.survivalDraftPublic, stableSnapshot, 'paused frames reuse unchanged native stock');
+    // 6726efe18b: every Swarm run starts at zero — no stake purse reaches the wallet — so the
+    // opening shelf prices against 0 credits and nothing is affordable. Fund the wallet through
+    // the run's own award seam (the same seam the purse used) so the purchase path stays real.
+    await send({ kind: 'busEmit', emit: 'run:awardRequested', payload: { credits: 300, reason: 'test:purse' } });
     const buy = facade.currentOffers().find(row => row.available && Number.isInteger(row.slotIndex) && row.price > 0);
     assert.ok(buy, 'the actual opening stock offers a legal purchase');
     const held = facade.currentOffers().find(row => row.id !== buy.id && Number.isInteger(row.slotIndex) && !row.purchased);

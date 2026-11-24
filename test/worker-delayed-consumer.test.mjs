@@ -6,6 +6,7 @@ import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { laneDomEvent } from '../src/core/simLaneCommands.js';
+import { createPoseTableWriter } from '../src/core/simPoseTable.js';
 
 // Execute the production browser adapter and main transport with a deterministic scheduler.
 // Only the authoritative host is replaced: these checks isolate transport pressure from physics
@@ -78,6 +79,9 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
     self: { postMessage(reply) { posts.push(structuredClone(reply)); receive?.(structuredClone(reply)); } },
     nowNs: () => BigInt(Math.floor(now * 1e6)),
     bindSabJournalArena: () => null,
+    // The eval'd adapter strips its imports; worker-local clock now builds a real pose-table
+    // writer (private buffer, transfer mode) — inject the same binding the import provides.
+    createPoseTableWriter,
     loadModelTruthCensus: async () => {},
     createSimHost: () => ({
       init: async () => ({}), finalize: async () => ({}), shutdown() {},
@@ -214,14 +218,27 @@ test('true one-shot backlog remains bounded and its pressure is reported before 
       spawnInfos: Array.from({ length: 200 }, (_, i) => info(9000 + tick * 200 + i)),
     }),
   });
+  // Arm the heartbeat-hold guard exactly once: in production rAF beats always precede a stall,
+  // so a dead consumer means beats STOP — 1 s later the hold parks the clock and the durable
+  // queue freezes. Without a first beat the guard cannot tell a stall from a page that never
+  // presented, and the queue would grow forever on this harness only.
+  f.lane.runner.heartbeat();
   await f.until(1000);
-  assert.equal(f.clock.backpressured, true, 'actual durable events still stop an unconsumed producer');
-  assert.ok(f.clock.durableCount >= 4096 && f.clock.durableCount < 4096 + 442);
+  assert.equal(f.clock.backpressured, true, 'durable pressure is still reported while rows retain');
+  // NO-FREEZE (173afdeea4): durable rows are never shed, so the queue keeps retaining past the
+  // pressure flag — the bound is the heartbeat hold parking the producer, not a row ceiling.
+  assert.ok(f.clock.durableCount >= 4096,
+    `the durable queue must reach the pressure flag: ${f.clock.durableCount}`);
   assert.equal(f.clock.latestReply.clockDiagnostics.backpressured, true, 'diagnostics reflect pressure after merging');
   assert.equal(f.clock.backpressureEpisodes, 1);
-  const stopped = f.clock.stepCount;
   await f.until(2000);
-  assert.equal(f.clock.stepCount, stopped, 'a stopped consumer cannot grow the durable queue indefinitely');
+  assert.equal(f.clock.heartbeatHeld, true,
+    'one second of missing beats parks the producer (the bound on a stopped consumer)');
+  const stopped = f.clock.stepCount;
+  const durableFrozen = f.clock.durableCount;
+  await f.until(2500);
+  assert.equal(f.clock.stepCount, stopped, 'a held producer cannot grow the durable queue indefinitely');
+  assert.equal(f.clock.durableCount, durableFrozen, 'the durable queue freezes with the producer');
   await f.pause();
   await f.releaseAcks();
   assert.deepEqual(f.seenEvents, Array.from({ length: f.generatedEvents() / 300 }, (_, i) => i * 300 + 1),
@@ -241,15 +258,16 @@ test('a heartbeat recovers a lost reply credit without waiting for a journal reb
   await f.until(500);
   const applied = f.posts.filter(message => message.kind === 'clockTick').at(-1);
   assert.ok(applied);
-  assert.equal(f.clock.unackedSequences.length, 4);
+  // 173afdeea4: the reply window is 2 in flight (was 4) — replies stop flooding a busy main.
+  assert.equal(f.clock.unackedSequences.length, 2);
   assert.equal(f.deliveredAcks(), 0);
   assert.equal(f.state.tick, applied.stateTick);
   assert.ok(f.clock.stepCount > f.state.tick, 'authoritative motion outlasted the reply window');
 
   await f.sampleHeartbeat(applied.clockSequence, applied.journalEnd, 1);
-  assert.equal(f.clock.unackedSequences.length, 4, 'a stale lifecycle cannot release current credits');
+  assert.equal(f.clock.unackedSequences.length, 2, 'a stale lifecycle cannot release current credits');
   await f.sampleHeartbeat(applied.clockSequence + 1, applied.journalEnd, 0);
-  assert.equal(f.clock.unackedSequences.length, 4, 'a future watermark cannot release current credits');
+  assert.equal(f.clock.unackedSequences.length, 2, 'a future watermark cannot release current credits');
   await f.sampleHeartbeat(applied.clockSequence, applied.journalEnd, 0);
   await f.until(600);
   assert.ok(f.state.tick > applied.stateTick, 'the next pose arrives without the watchdog');
