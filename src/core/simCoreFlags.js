@@ -89,6 +89,12 @@ const DEFAULTS = Object.freeze({
    * DEFAULT ON. Result-identical; off restores the generic delivery for matched A/B runs.
    */
   fieldLeanDelivery: true,
+  /**
+   * Tactical perception keys each remembered contact by one cached string per (kind, id) instead
+   * of building two strings per contact per think (AI lane, 2026-11-23). DEFAULT ON. Same keys,
+   * so result-identical; off restores the per-contact string build for matched A/B runs.
+   */
+  aiContactKeyCache: true,
 });
 
 let overrides = null;
