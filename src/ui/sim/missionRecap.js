@@ -133,11 +133,17 @@ export function playerFacingContractTitle(m) {
   return (m && (m.title || m.name)) || prettyType(m && m.type) || 'Contract';
 }
 
-/** Rewrite a saved summary line that still carries the filing title. */
-export function playerFacingObjectiveSummary(text) {
+/** Rewrite a saved summary line that still carries the filing title.
+ *  New cards already store Recover/Deliver from playerFacingContractTitle; this is only
+ *  the fallback for old cards. Pass the live mission (or true) when the sample is aboard
+ *  so Load can say Deliver. */
+export function playerFacingObjectiveSummary(text, mission = null) {
   const src = String(text || '');
   if (!src) return '';
-  return src.replace(INTERNAL_47A_TITLE, 'Recover the 47-A sample');
+  if (!INTERNAL_47A_TITLE.test(src)) return src;
+  const recovered = mission === true
+    || (mission && typeof mission === 'object' && mission.params && mission.params.sampleRecovered === true);
+  return src.replace(INTERNAL_47A_TITLE, recovered ? 'Deliver the 47-A sample' : 'Recover the 47-A sample');
 }
 
 /** Build a human-readable objective description from the mission instance. */
