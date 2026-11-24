@@ -374,6 +374,14 @@ function hasContinueFade() {
   return !!document.querySelector?.('.sf-continue-fade');
 }
 
+/** True when the title's authored still is the picture, so title-field draws are wasted.
+ *  Motion ask stands on the same scene and lets the plate step aside when live. */
+function titleFieldPlateCovers(state) {
+  const stack = state && state.ui && state.ui.screenStack;
+  const top = Array.isArray(stack) && stack.length ? stack[stack.length - 1] : null;
+  return top !== 'motionAsk';
+}
+
 export function uiStageRequestFor(state) {
   if (!state || !state.ui) return null;
   if (canvasIsProtectedDuringFreeze(state)) return null;
@@ -487,10 +495,11 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
     // An adopted stage the flight frame never got to warm (the player docked on the very frame it
     // finished preparing) takes its warm-up here, under the plate — exactly where it used to be.
     if (stage.warmupPending === true) warmupStage(stage, renderer);
-    // title-field sits under the authored still (titleDoorsLayouts keeps that plate opaque).
-    // Warm-up still compiles and draws once; later frames are GPU spent on a picture nobody
-    // sees. The lab replay (title-attract) is the picture, so it keeps presenting.
-    if (stage.id === 'title-field') {
+    // title-field sits under the authored still on the title (titleDoorsLayouts keeps that
+    // plate opaque). Warm-up still compiles and draws once; later frames are GPU spent on a
+    // picture nobody sees. Motion ask shares the scene and lets the plate step aside, so it
+    // keeps presenting. The lab replay is title-attract, not this skip.
+    if (stage.id === 'title-field' && titleFieldPlateCovers(state)) {
       if (!stage.hullDrawn) publishStatus(request, stage.liveFailed ? 'unavailable' : 'loading');
       else publishStatus(request, canvasIsVisible(renderer, stage) ? 'live' : 'plate');
       return true;

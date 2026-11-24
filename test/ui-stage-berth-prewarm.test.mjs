@@ -176,6 +176,28 @@ test('a title that finishes preparing under New Game defers its warm draw until 
   assert.equal(ops(log, 'render').length, drawsBefore + 1, 'covered title-field does not draw every frame');
 });
 
+test('motion ask keeps presenting title-field after the warm draw', async (t) => {
+  reset(); t.after(reset);
+  const log = [];
+  setUiStagePartLoaderForTest(stubPartLoader(log));
+  const renderer = stubRenderer(log);
+  const state = flightState(log);
+  state.mode = 'menu';
+  state.ui.dockInRange = false;
+  state.ui.screenStack = ['motionAsk'];
+  state.ui.stageRequest = { scene: 'title-field', hullDefId: 'ship_kestrel' };
+  const render = { renderer };
+  presentUiStage({ render, state });
+  await settle(() => uiStageReport().hullDrawn === true, 'motion-ask title-field hull');
+  presentUiStage({ render, state });
+  const afterWarm = ops(log, 'render').length;
+  assert.ok(afterWarm >= 1, 'motion ask has drawn the field');
+  presentUiStage({ render, state });
+  assert.equal(ops(log, 'render').length, afterWarm + 1, 'motion ask presents title-field every frame');
+  presentUiStage({ render, state });
+  assert.equal(ops(log, 'render').length, afterWarm + 2, 'motion ask does not freeze on the warm frame');
+});
+
 test('releasing a stage during prop admission does not start its hull load afterward', async (t) => {
   t.after(reset);
   const calls = [];
