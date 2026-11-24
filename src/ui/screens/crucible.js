@@ -3969,10 +3969,14 @@ export function buildShareBand(result) {
 
   if (code || (ghost && ghost.text)) {
     // One explainer for the whole register — two per-item notes were what pushed the ghost row
-    // under the ledger's clip edge.
-    band.appendChild(el('p', 'k-t-fine k-38 sf-crres__share-note',
-      'Same seed, same build, same rules — another machine reproduces this run; the recorded hull races you there. '
-      + 'A code selects itself when you touch it.'));
+    // under the ledger's clip edge. The sentence only claims a recorded hull when there is one
+    // (DEMO-SWARM-UX-2: never contradict the fields that actually exist).
+    const note = code && ghost && ghost.text
+      ? 'Same seed, same build, same rules — another machine reproduces this run; the recorded hull races you there. A code selects itself when you touch it.'
+      : code
+        ? 'Same seed, same build, same rules — another machine reproduces this run. A code selects itself when you touch it.'
+        : 'The recorded hull races you there. A code selects itself when you touch it.';
+    band.appendChild(el('p', 'k-t-fine k-38 sf-crres__share-note', note));
   }
 
   if (code) {
