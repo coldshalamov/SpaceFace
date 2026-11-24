@@ -98,7 +98,7 @@ import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from '
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
-import { createReadyPackagedBodyCache } from './readyPackagedBodies.js';
+import { createReadyPackagedBodyCache, readyBodyMaterialSource } from './readyPackagedBodies.js';
 import { getAssetResidency } from './assetResidency.js';
 import { primeDrawnCullStamps } from './visualCullRadius.js';
 import {
@@ -5141,6 +5141,100 @@ export function hulkEmberIntensityAt(ageS) {
   return HULK_EMBER_PEAK * left * left;
 }
 
+// COLD HULKS SHARE ONE DEAD MATERIAL SET. Each hulk clones its hull's materials so its own ember
+// can cool on its own clock. Six seconds after the kill the ember is spent and every hulk of that
+// hull is in the same state for the rest of its life, but each kept its private clones: in a
+// Foundry fight five wasp hulks on screen were 64 draws through 86 distinct materials (referee
+// census 2026-11-22), a material change on every draw. A spent hulk now hands its leaves to the
+// one cold material shared by every spent hulk cloned from the same live material and drops its
+// own clones, so the draw list sorts those leaves together. Same colours, same programs.
+const HULK_DEAD_SOURCE = new WeakMap(); // dead clone -> the live material it was cloned from
+const COLD_HULK_MATERIAL = new WeakMap(); // live material -> the cold dead material its spent hulks share
+const COLD_HULK_PRIVATE = new WeakMap(); // reversibly settled hulk root -> { ember, slots } (measurement only)
+
+export function hulkEmberSpent(ember, simTime) {
+  return !!ember && (Number(simTime) || 0) - (Number(ember.killedAt) || 0) >= HULK_EMBER_SECONDS;
+}
+
+// Which live material a dead clone stands for. A hulk built through the ready-body cache (every
+// hulk after the first of its kind) clones the cached blueprint's materials instead of running
+// deadenPackagedHulk, so its clones are keyed by that blueprint material: every hulk acquired from
+// one blueprint started from the same dead state.
+function coldHulkSourceOf(material) {
+  if (!material) return null;
+  const dead = HULK_DEAD_SOURCE.get(material);
+  if (dead) return dead;
+  // live body clone -> blueprint (captured) -> the captured hulk's dead clone -> its live material
+  const blueprint = readyBodyMaterialSource(material);
+  if (!blueprint) return null;
+  const captured = readyBodyMaterialSource(blueprint) || blueprint;
+  return HULK_DEAD_SOURCE.get(captured) || captured;
+}
+
+/**
+ * Call once the ember is spent. Returns the number of leaves moved onto shared cold materials.
+ * keepPrivate (an in-run on/off measurement only): the hulk's own clones are kept, not disposed,
+ * so unsettleColdHulk can put them back when the switch flips off.
+ */
+export function settleColdHulk(root, { keepPrivate = false } = {}) {
+  const ember = root && root.userData && root.userData.hulkEmber;
+  if (!ember || !Array.isArray(ember.mats)) return 0;
+  const swap = new Map();
+  for (const material of ember.mats) {
+    const source = coldHulkSourceOf(material);
+    if (!source) continue;
+    let cold = COLD_HULK_MATERIAL.get(source);
+    if (!cold) {
+      // The first spent clone becomes the shared one; teardown skips shared assets.
+      cold = material;
+      cold.emissiveIntensity = 0;
+      cold.userData.spacefaceSharedAsset = true;
+      COLD_HULK_MATERIAL.set(source, cold);
+    }
+    if (cold !== material) swap.set(material, cold);
+  }
+  let moved = 0;
+  const privateSlots = keepPrivate ? [] : null;
+  if (swap.size && typeof root.traverse === 'function') {
+    root.traverse((node) => {
+      if (!node || !node.isMesh || !node.material) return;
+      if (Array.isArray(node.material)) {
+        for (let i = 0; i < node.material.length; i++) {
+          const cold = swap.get(node.material[i]);
+          if (cold) { privateSlots?.push(node, i, node.material[i]); node.material[i] = cold; moved++; }
+        }
+      } else {
+        const cold = swap.get(node.material);
+        if (cold) { privateSlots?.push(node, -1, node.material); node.material = cold; moved++; }
+      }
+    });
+    if (!keepPrivate) {
+      for (const material of swap.keys()) {
+        try { material.dispose(); } catch (_) { /* per-material dispose */ }
+      }
+    }
+  }
+  if (privateSlots) COLD_HULK_PRIVATE.set(root, { ember, slots: privateSlots });
+  root.userData.coldHulk = privateSlots ? 'reversible' : 'settled';
+  root.userData.hulkEmber = null;
+  return moved;
+}
+
+/** Undo settleColdHulk({ keepPrivate: true }): the hulk's own clones return and its ember record with them. */
+export function unsettleColdHulk(root) {
+  const cold = root ? COLD_HULK_PRIVATE.get(root) : null;
+  if (!cold) return false;
+  COLD_HULK_PRIVATE.delete(root);
+  const slots = cold.slots;
+  for (let i = 0; i < slots.length; i += 3) {
+    const node = slots[i]; const index = slots[i + 1]; const material = slots[i + 2];
+    if (index < 0) node.material = material; else if (Array.isArray(node.material)) node.material[index] = material;
+  }
+  root.userData.hulkEmber = cold.ember;
+  root.userData.coldHulk = null;
+  return true;
+}
+
 export function updateHulkEmber(ember, simTime) {
   if (!ember || !ember.mats) return;
   const intensity = hulkEmberIntensityAt((Number(simTime) || 0) - (Number(ember.killedAt) || 0));
@@ -5180,6 +5274,7 @@ export function deadenPackagedHulk(group, options = {}) {
           // should share the live hull's already-linked program.
           clone.onBeforeCompile = m.onBeforeCompile;
           clone.customProgramCacheKey = m.customProgramCacheKey;
+          HULK_DEAD_SOURCE.set(clone, m);
           if (clone.color && typeof clone.color.multiplyScalar === 'function') {
             clone.color.multiplyScalar(HULK_COLOR_SCALE);
           }
@@ -5258,6 +5353,7 @@ export function* deadenPackagedHulkSteps(group, options = {}) {
             // should share the live hull's already-linked program.
             clone.onBeforeCompile = m.onBeforeCompile;
             clone.customProgramCacheKey = m.customProgramCacheKey;
+            HULK_DEAD_SOURCE.set(clone, m);
             if (clone.color && typeof clone.color.multiplyScalar === 'function') {
               clone.color.multiplyScalar(HULK_COLOR_SCALE);
             }

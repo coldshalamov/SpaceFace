@@ -20,7 +20,8 @@ function harness(mode) {
   const system = Object.create(vfx);
   Object.assign(system, {
     state: { playerId: 1, entities: new Map([[2, npc]]), settings: { video: {} }, render: { scene } },
-    _scene: scene, _energy: { fleet }, _productionThrusterA11y: {}, _factionRgbScratch: {},
+    _scene: scene, _energy: { fleet }, _productionThrusterA11y: {}, _fleetThrusterA11y: {},
+    _factionRgbScratch: {},
     _trailCandidates: [npc], _productionOwnedIds: new Array(2),
     _productionPlumeSockets: [{}, {}], _productionPlumeSocketView: [], _spawnLocalXZ: {},
     _entityLocalXZ: {}, _frameMembrane: null,

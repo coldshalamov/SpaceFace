@@ -92,6 +92,7 @@ import {
   commitTrailStreakInstances,
   createPrecompileTrailSurfaces,
   createRibbonTrail,
+  createRibbonTrailBatch,
   initTrailStreakPool,
   updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
@@ -105,6 +106,7 @@ import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion, entityInd
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
 import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
 import { notePresentationFrame } from './presentationSimClock.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -269,7 +271,7 @@ import {
   collectThrusterTextureIds,
   listThrusterRecipePacks,
 } from './thruster/recipes/registry.js';
-import { PersistentCombatBeamPool, beamViewDistance } from './combat/persistentBeams.js';
+import { PersistentCombatBeamPool, beamViewDistance, createPersistentBeamPrecompileMeshes } from './combat/persistentBeams.js';
 import { isComposedMiningCue, isComposedTravelCue } from './vfx/worldCueRecipes.js';
 import {
   BOLT_VARIANT,
@@ -1103,7 +1105,8 @@ const LOOT_TRAIL_SWARM_REPAIR = '#84ffd2';
 const VFX_RIBBON_TRAILS_HZ = 30;
 // Owner call 2026-08-11: half the long "tube" wake. History still trails past positions, but the
 // retained path is roughly ~half the prior 72×2.4 WU arc so the jet reads as exhaust, not a cable.
-const PLAYER_RIBBON_SEGMENTS = 34;
+// (Player ribbons were retired: the player wake is the unified plasma stream, so only the NPC
+// budget below still feeds live mints — including the shared batch's per-lane history depth.)
 const NPC_RIBBON_SEGMENTS = 24;
 const RIBBON_MIN_SAMPLE_SPACING_WU = 2.0;
 const RIBBON_DISCONTINUITY_FLOOR_WU = 160;
@@ -1453,6 +1456,10 @@ export const vfx = {
     this._socketLocalForward = new THREE.Vector3();
     this._socketForwardQuat = new THREE.Quaternion();
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
+    // rfx socketPoseCache: retained out-struct for _socketWorldPoseCached and the per-update tick
+    // that lets sibling sockets on one view share a single ancestor walk.
+    this._socketPoseOut = { x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 };
+    this._vfxFrameSeq = 0;
     this._driveScratch = {
       drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
       cruise: 0, reverse: 0, retroOnly: false, brake: 0, dashFired: false,
@@ -2121,6 +2128,7 @@ export const vfx = {
     for (const trail of this._ribbonTrails && this._ribbonTrails.values() || []) {
       invokeVfxDisposer(trail, 'ribbon trail');
     }
+    invokeVfxDisposer(this._ribbonBatch, 'ribbon trail batch');
 
     // Release CPU-side pools and back-references as well as scene/GPU roots. The destroyed guard
     // makes late render/update callbacks harmless even though the object retains its methods.
@@ -2170,6 +2178,7 @@ export const vfx = {
     this._momentumSinkCandidateStatuses = null;
     this._momentumSinkCandidatePriorities = null;
     this._ribbonTrails = null;
+    this._ribbonBatch = null;
     this._beamDamageCueNext = null;
     this._collisionContactTicks = null;
     this._collisionMediumTicks = null;
@@ -2353,6 +2362,9 @@ export const vfx = {
         add(family && family.rcs && family.rcs.group);
       }
     }
+    // Batched NPC ribbon pool owns ONE mesh for every batched lane; each lane's getMesh() returns
+    // the same object, so `seen` dedupes it either way — add it explicitly for the empty-map case.
+    add(this._ribbonBatch && this._ribbonBatch.mesh);
     for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
     for (const root of roots) {
       if (!root.userData?.openingSubmissionPackage) this._publishOpeningVfxPackage(root);
@@ -3895,6 +3907,7 @@ export const vfx = {
           delete e.view.__vfxTrailSocket;
           delete e.view.__vfxTrailSockets;
           delete e.view.__vfxRcsSockets;
+          delete e.view.__vfxSocketPose;
         }
       }
       return;
@@ -3904,7 +3917,74 @@ export const vfx = {
       delete e.view.__vfxTrailSocket;
       delete e.view.__vfxTrailSockets;
       delete e.view.__vfxRcsSockets;
+      delete e.view.__vfxSocketPose;
     }
+  },
+
+  // Per-view socket world-pose memo (rfx socketPoseCache). A cached entry stays valid while the
+  // renderer's pose-write stamp (root.userData.sfPoseWriteSeq — the same signal
+  // _applyPresentationPose sets on every applied pose) and the socket's composed matrixWorld both
+  // hold — so a parked emitter pays zero matrix walks while a reposed hull recomputes that frame.
+  // Sibling sockets on the same view share one ancestor walk per vfx pass via ancestorsTick.
+  _socketPoseCacheFor(view) {
+    if (!view) return null;
+    const root = view.root || null;
+    const poseSeq = (root && root.userData && root.userData.sfPoseWriteSeq) | 0;
+    let cache = view.__vfxSocketPose;
+    if (!cache || cache.root !== root) {
+      cache = view.__vfxSocketPose = { root, poseSeq, ancestorsTick: -1, poses: new Map() };
+    } else {
+      cache.poseSeq = poseSeq;
+    }
+    return cache;
+  },
+
+  // Decomposed world pose for `socket`, memoized per view. Returns the retained _socketPoseOut
+  // record { x, y, z, qx, qy, qz, qw } — copy fields out before the next call on this instance.
+  _socketWorldPoseCached(socket, view) {
+    if (!socket) return null;
+    const out = this._socketPoseOut
+      || (this._socketPoseOut = { x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 });
+    const cache = (view && frameCostFixOn('socketPoseCache')) ? this._socketPoseCacheFor(view) : null;
+    const elements = socket.matrixWorld && socket.matrixWorld.elements;
+    let entry = cache && cache.poses.get(socket);
+    if (entry && entry.poseSeq === cache.poseSeq && elements) {
+      const m = entry.m;
+      if (m[0] === elements[0] && m[1] === elements[1] && m[2] === elements[2]
+        && m[3] === elements[3] && m[4] === elements[4] && m[5] === elements[5]
+        && m[6] === elements[6] && m[7] === elements[7] && m[8] === elements[8]
+        && m[9] === elements[9] && m[10] === elements[10] && m[11] === elements[11]
+        && m[12] === elements[12] && m[13] === elements[13] && m[14] === elements[14]
+        && m[15] === elements[15]) {
+        out.x = entry.x; out.y = entry.y; out.z = entry.z;
+        out.qx = entry.qx; out.qy = entry.qy; out.qz = entry.qz; out.qw = entry.qw;
+        this._socketWorldPos.set(out.x, out.y, out.z);
+        this._socketWorldQuat.set(out.qx, out.qy, out.qz, out.qw);
+        return out;
+      }
+    }
+    // Ancestors were already refreshed for this view this pass → leaf-only compose is enough.
+    if (cache && cache.ancestorsTick === this._vfxFrameSeq) {
+      socket.updateWorldMatrix(false, false);
+    } else {
+      socket.updateWorldMatrix(true, false);
+      if (cache) cache.ancestorsTick = this._vfxFrameSeq;
+    }
+    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    out.x = this._socketWorldPos.x; out.y = this._socketWorldPos.y; out.z = this._socketWorldPos.z;
+    out.qx = this._socketWorldQuat.x; out.qy = this._socketWorldQuat.y;
+    out.qz = this._socketWorldQuat.z; out.qw = this._socketWorldQuat.w;
+    if (cache) {
+      if (!entry) {
+        entry = { poseSeq: 0, m: new Float64Array(16), x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 };
+        cache.poses.set(socket, entry);
+      }
+      entry.poseSeq = cache.poseSeq;
+      entry.m.set(socket.matrixWorld.elements);
+      entry.x = out.x; entry.y = out.y; entry.z = out.z;
+      entry.qx = out.qx; entry.qy = out.qy; entry.qz = out.qz; entry.qw = out.qw;
+    }
+    return out;
   },
 
   _writeTrailSocketPose(x, y, z, forwardX, forwardY, forwardZ) {
@@ -3924,9 +4004,14 @@ export const vfx = {
     return scratch;
   },
 
-  _trailSocketPoseFromObject(socket) {
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+  _trailSocketPoseFromObject(socket, view) {
+    if (typeof this._socketWorldPoseCached === 'function') {
+      if (!this._socketWorldPoseCached(socket, view)) return null;
+    } else if (socket) {
+      // Probe seam: stub hosts that carry only the decompose scratch keep the pre-cache walk.
+      socket.updateWorldMatrix(true, false);
+      socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    }
     const f = socket.userData && socket.userData.forward || [-1, 0, 0];
     const fx = Array.isArray(f) ? f[0] : f.x;
     const fy = Array.isArray(f) ? f[1] : f.y;
@@ -3955,7 +4040,7 @@ export const vfx = {
 
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
-    if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
+    if (sockets.length) return this._trailSocketPoseFromObject(sockets[0], e && e.view);
     return namedTrailSocketPose(this, e, modelTruthPlumeSocketName(e));
   },
 
@@ -3968,7 +4053,7 @@ export const vfx = {
     this._trailSocketObjects(e);
     const cache = e && e.view && e.view.__vfxTrailSockets;
     if (cache && Array.isArray(cache.wake) && cache.wake.length) {
-      return this._trailSocketPoseFromObject(cache.wake[0]);
+      return this._trailSocketPoseFromObject(cache.wake[0], e && e.view);
     }
     return namedTrailSocketPose(this, e, modelTruthTrailSocketName(e));
   },
@@ -4036,10 +4121,14 @@ export const vfx = {
     return cache;
   },
 
-  _writeRetroSocketPose(socket, sock) {
+  _writeRetroSocketPose(socket, sock, view) {
     if (!socket || !sock) return false;
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    if (typeof this._socketWorldPoseCached === 'function') {
+      if (!this._socketWorldPoseCached(socket, view)) return false;
+    } else {
+      socket.updateWorldMatrix(true, false);
+      socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    }
     const f = socket.userData && socket.userData.forward;
     const arrayForward = Array.isArray(f);
     const fx = arrayForward ? f[0] : (f && f.x);
@@ -4068,10 +4157,14 @@ export const vfx = {
     return true;
   },
 
-  _writeRcsSocketPose(socket, origin, axis) {
+  _writeRcsSocketPose(socket, origin, axis, view) {
     if (!socket || !origin || !axis) return false;
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    if (typeof this._socketWorldPoseCached === 'function') {
+      if (!this._socketWorldPoseCached(socket, view)) return false;
+    } else {
+      socket.updateWorldMatrix(true, false);
+      socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    }
     const f = socket.userData && socket.userData.forward;
     const arrayForward = Array.isArray(f);
     const fx = arrayForward ? f[0] : (f && f.x);
@@ -5084,6 +5177,16 @@ export const vfx = {
     const key = this._collisionPairKey(p && p.aId, p && p.bId, p);
     const previous = this._collisionContactTicks.get(key);
     if (Number.isFinite(previous) && tick - previous < CONTACT_SPARK_COOLDOWN_TICKS) return false;
+    const playerId = this.state && this.state.playerId;
+    const isPlayerContact = playerId != null && (p?.aId === playerId || p?.bId === playerId);
+    if (!isPlayerContact) {
+      if (this._ambientCollisionTick !== tick) {
+        this._ambientCollisionTick = tick;
+        this._ambientCollisionCount = 0;
+      }
+      if (this._ambientCollisionCount >= 4) return false;
+      this._ambientCollisionCount += 1;
+    }
     this._boundedCollisionTickWrite(this._collisionContactTicks, key, tick);
     return true;
   },
@@ -5113,6 +5216,8 @@ export const vfx = {
     if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
     if (this._contactReceipts) this._contactReceipts.clear();
     this._collisionPresentationTick = -1;
+    this._ambientCollisionTick = -1;
+    this._ambientCollisionCount = 0;
   },
 
   _collisionContactAxis(p) {
@@ -5333,6 +5438,16 @@ export const vfx = {
 
   _emitLowCollisionContact(p) {
     if (!this._scene || !p || !p.pos) return false;
+    const video = this.state && this.state.settings && this.state.settings.video;
+    const lowQuality = !!video && (
+      video.particleQuality === 'low'
+      || video.qualityPreset === 'low'
+      || video.qualityPreset === 'integrated'
+      || video.qualityPreset === 'igpu60'
+    );
+    const maxLowContacts = lowQuality ? 6 : 12;
+    if ((this._frameLowContactEmits | 0) >= maxLowContacts) return false;
+    this._frameLowContactEmits = (this._frameLowContactEmits | 0) + 1;
     // The contact seat can draw and still must not skip the slam class or the scar.
     const seated = this._emitCombatContact('contact', p) === true;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -11416,6 +11531,8 @@ export const vfx = {
 
   update(frameDt) {
     if (this._destroyed === true) return;
+    this._frameLowContactEmits = 0;
+    this._vfxFrameSeq = (this._vfxFrameSeq || 0) + 1;
     notePresentationFrame(this.state);
     // Refresh the Tier-1 sink once per frame: spawn paths then pay a single null check.
     const tier1Perf = this.state && this.state.perfRuntime;
@@ -13054,16 +13171,9 @@ export const vfx = {
           continue;
         }
         const width = Math.max(1.45, (entity.radius || 14) * 0.095);
-        const trail = createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width);
+        const trail = this._mintNpcRibbonTrail(entity, width, { compile: true });
+        if (!trail) continue;
         this._ribbonTrails.set(entity.id, trail);
-        // A lazily-created trail carries a never-compiled material and a never-uploaded geometry;
-        // without the pending latch its first thrust frame pays both inside the presented pass
-        // (diag20 GPU brick: unstamped SF_RibbonTrail + a physical,STANDARD link).
-        const trailRender = this.state && this.state.render;
-        const trailMesh = trail && typeof trail.getMesh === 'function' ? trail.getMesh() : null;
-        if (trailMesh && trailRender && typeof trailRender.compileObjectPipelines === 'function') {
-          Promise.resolve(trailRender.compileObjectPipelines(trailMesh)).catch(() => null);
-        }
         ribbons += 1;
       }
     }
@@ -13792,7 +13902,7 @@ export const vfx = {
       const out = this._productionPlumeSockets[i];
       this._productionPlumeSocketView[i] = out;
       let pose = null;
-      if (authored[i]) pose = this._trailSocketPoseFromObject(authored[i]);
+      if (authored[i]) pose = this._trailSocketPoseFromObject(authored[i], player && player.view);
       else if (i === 0) pose = this._trailSocketWorldPose(player);
       if (pose) {
         const local = this._toLocalXZ(pose.x, pose.z, this._spawnLocalXZ);
@@ -13883,7 +13993,7 @@ export const vfx = {
           }
           if (earlierTie) continue;
         }
-        if (!this._writeRcsSocketPose(authoredSocket, origin, axis)) {
+        if (!this._writeRcsSocketPose(authoredSocket, origin, axis, player && player.view)) {
           const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
           origin[0] = local.x; origin[1] = 0; origin[2] = local.z;
           axis[0] = jet.dirX; axis[1] = 0; axis[2] = jet.dirZ;
@@ -13948,7 +14058,7 @@ export const vfx = {
           : (authoredSockets && authoredSockets.retroStarboard);
         let usedAuthored = false;
         if (authoredSocket) {
-          usedAuthored = this._writeRetroSocketPose(authoredSocket, sock);
+          usedAuthored = this._writeRetroSocketPose(authoredSocket, sock, player && player.view);
         }
         if (!usedAuthored) {
           const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
@@ -13982,7 +14092,7 @@ export const vfx = {
           const mounted = held.role === 'reverse-left'
             ? authoredSockets && authoredSockets.retroPort
             : authoredSockets && authoredSockets.retroStarboard;
-          if (!this._writeRetroSocketPose(mounted, sock)) {
+          if (!this._writeRetroSocketPose(mounted, sock, player && player.view)) {
             sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
             sock.y = held.ly || 0;
             sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
@@ -15757,7 +15867,49 @@ export const vfx = {
   _EMBER_DIM: '#7a2a10',
   // Ribbon trails for medium-large ships: maintained per entity, updated each trail tick
   _ribbonTrails: null,
+  // NPC wake fleet batch — one BufferGeometry + one program for every batched ribbon lane
+  // (rfx `ribbonBatch`, default ON). Lanes are checked out per entity id in _ribbonTrails;
+  // the map's dispose() calls are slot checkouts, so joins/leaves never allocate.
+  _ribbonBatch: null,
   _initRibbonTrails() { this._ribbonTrails = new Map(); },
+
+  _ensureRibbonBatch(compile = false) {
+    if (this._ribbonBatch || !this._scene) return this._ribbonBatch;
+    const batch = createRibbonTrailBatch(this._scene, {
+      capacity: RIBBON_NPC_OWNER_CAP,
+      nSeg: NPC_RIBBON_SEGMENTS,
+    });
+    this._ribbonBatch = batch;
+    // Compile once at mint: every lane shares this mesh, so one compileObjectPipelines call
+    // covers the whole cohort (the solo path pays it per mesh).
+    if (compile) {
+      const trailRender = this.state && this.state.render;
+      if (trailRender && typeof trailRender.compileObjectPipelines === 'function') {
+        Promise.resolve(trailRender.compileObjectPipelines(batch.mesh)).catch(() => null);
+      }
+    }
+    return batch;
+  },
+
+  _mintNpcRibbonTrail(entity, width, { compile = false } = {}) {
+    if (frameCostFixOn('ribbonBatch')) {
+      const batch = this._ensureRibbonBatch(compile);
+      // Full batch → null; the caller's update walk treats it like a skipped mint.
+      return batch ? batch.acquire(this._engineColor(entity), width) : null;
+    }
+    const trail = createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width);
+    if (trail && compile) {
+      // A lazily-created trail carries a never-compiled material and a never-uploaded geometry;
+      // without the pending latch its first thrust frame pays both inside the presented pass
+      // (diag20 GPU brick: unstamped SF_RibbonTrail + a physical,STANDARD link).
+      const trailRender = this.state && this.state.render;
+      const trailMesh = typeof trail.getMesh === 'function' ? trail.getMesh() : null;
+      if (trailMesh && trailRender && typeof trailRender.compileObjectPipelines === 'function') {
+        Promise.resolve(trailRender.compileObjectPipelines(trailMesh)).catch(() => null);
+      }
+    }
+    return trail;
+  },
 
   _retireRibbonTrail(entityId, dispose = false) {
     if (!this._ribbonTrails) return;
@@ -15864,12 +16016,10 @@ export const vfx = {
       let trail = this._ribbonTrails.get(e.id);
       if (!trail) {
         const w = Math.max(1.45, (e.radius || 14) * 0.095);
-        trail = createRibbonTrail(
-          this._scene,
-          this._engineColor(e),
-          isPlayer ? PLAYER_RIBBON_SEGMENTS : NPC_RIBBON_SEGMENTS,
-          w,
-        );
+        // Player ribbons were retired above; every live mint here is an NPC wake. The batched
+        // lane shares the fleet geometry; the solo trail mints its own (rfx `ribbonBatch`).
+        trail = this._mintNpcRibbonTrail(e, w);
+        if (!trail) continue;
         this._ribbonTrails.set(e.id, trail);
       }
       // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local.
@@ -16640,6 +16790,13 @@ export function createVfxPrecompileSalvo() {
   precompileTrail.streak.scale.set(0.8, 1, 4);
   group.add(precompileTrail.ribbon);
   group.add(precompileTrail.streak);
+  // Batched fleet-ribbon program (per-vertex tint/shade attributes — a distinct program key
+  // from the solo ribbon). Without a staged exemplar the first live NPC cohort mint links
+  // inside the bloom pass.
+  if (precompileTrail.ribbonBatch) {
+    precompileTrail.ribbonBatch.position.set(16, 1, -4);
+    group.add(precompileTrail.ribbonBatch);
+  }
 
   // Seam markers are instanced, vertex-coloured, additive, double-sided circles. None of the
   // generic sprite or trail probes has that exact program key, so an inactive seam pool can leave
@@ -16688,13 +16845,39 @@ export function createVfxPrecompileSalvo() {
   gasWarm.update(0.016, null);
 
   // Admit the same program key during startup, so the first real rupture does not compile it
-  // inside a combat frame. All four material constructions share this single instanced shader.
-  const ruptureWarm = new ExplosionRupture(group, { capacity: 8 });
-  ruptureWarm.emitPhase('rupture', {
-    sourceType: 'ship', cause: 'generic', serial: 7, classId: 'ordinary',
-    x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0,
-  });
+  // inside a combat frame. All four material constructions share this single instanced shader —
+  // family is attribute-encoded (aShape.x), so one emit already links the program — but the
+  // combat variant matrix is enumerated anyway: it proves each family's admission path in the
+  // warm and stays correct if a family ever splits into its own material or define.
+  const ruptureWarm = new ExplosionRupture(group, { capacity: 32 });
+  const ruptureFamilyEntries = [
+    { materialId: 'fuel' },                                       // fuel
+    { sourceType: 'asteroid' },                                   // mineral
+    { sourceType: 'ship', cause: 'ship_collision' },              // armor
+    { sourceType: 'ship', cause: 'generic' },                     // reactor
+  ];
+  for (const probe of ruptureFamilyEntries) {
+    ruptureWarm.emitPhase('rupture', {
+      serial: 7, classId: 'ordinary', x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0,
+      ...probe,
+    });
+  }
   ruptureWarm.update(0.16);
+
+  // Combat-only pools mint lazily on their first event — the snarl cable's lit flat-shading
+  // instanced program, the NPC service-cable massline ribbon program, and the sustained-beam
+  // core/sheath onBeforeCompile variants all used to link inside a presented combat frame.
+  // A specimen in the salvo resolves each exact program key; the pool itself stays lazy.
+  const tetherWarm = new TetherWebFx(group, (x, z, out) => { out.x = x; out.z = z; return out; });
+  tetherWarm.mesh.setMatrixAt(0, new THREE.Matrix4());
+  tetherWarm.mesh.count = 1;
+  tetherWarm.mesh.instanceMatrix.needsUpdate = true;
+  tetherWarm.mesh.visible = true;
+  const npcCableWarm = new NpcCableFx(group, (x, z, out) => { out.x = x; out.z = z; return out; }, null);
+  if (npcCableWarm.cables && npcCableWarm.cables[0] && npcCableWarm.cables[0].group) {
+    npcCableWarm.cables[0].group.visible = true;
+  }
+  group.add(createPersistentBeamPrecompileMeshes(THREE));
 
   const weaponBolts = createEnergyBoltPrecompileMesh();
   weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';

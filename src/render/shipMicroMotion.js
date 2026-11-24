@@ -2776,6 +2776,23 @@ export function createShipMicroMotionTracker() {
     return craftMotion.get(entityId) || null;
   }
 
+  // Cosmetic-cadence gate (frameCostFixOn('cosmeticCadence')): TRUE while any per-frame channel
+  // needs integrating — combat-critical flinch/recoil/impact, actuator input, tumble reads, dock
+  // clamps, hazard/jump clocks — or before the record exists at all. FALSE only for a craft whose
+  // remaining work is the settled ambient enrichment (idle breath, turret settle, drill spin),
+  // which the renderer may stagger to every Nth frame without changing the authored pose.
+  // `options` is the same object updateCraftMicroMotion receives (entities/tether fields are read
+  // for the tether-lean exemption). Returns without allocating.
+  function craftCombatHot(entity, simTime, options = null) {
+    if (!entity) return true;
+    const rec = craftMotion.get(entity.id);
+    if (!rec) return true; // no record yet: the next update still mints it
+    if (Number.isFinite(simTime)) rec.frameSim = simTime;
+    const speed = entity.vel ? Math.hypot(entity.vel.x || 0, entity.vel.z || 0) : 0;
+    const boosting = !!(entity.flags && entity.flags.boosting);
+    return !craftCosmeticSettled(rec, entity, options, speed, boosting);
+  }
+
   function clearRecordMeshRefs(rec) {
     if (!rec) return;
     // Ownership-checked delete — a displaced entry now names a different rec
@@ -2867,6 +2884,7 @@ export function createShipMicroMotionTracker() {
     releaseMeshSet,
     getRecord,
     peekRecord,
+    craftCombatHot,
   };
 }
 

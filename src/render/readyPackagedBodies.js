@@ -3,6 +3,14 @@ import { motionNodeNameFor } from '../contracts/motionBank.js';
 
 export const READY_BODY_LIMITS = Object.freeze({ templates: 32, nodes: 256, materials: 128, geometryBytes: 64 * 1024 * 1024 });
 
+// Live body clone -> the blueprint material it was cloned from. Every live body acquired from one
+// blueprint clones the same baseline materials, so this is the identity that says two bodies' private
+// materials started equal (cold hulks join one shared dead set through it, visualFactory.js).
+const READY_CLONE_SOURCE = new WeakMap();
+export function readyBodyMaterialSource(material) {
+  return (material && READY_CLONE_SOURCE.get(material)) || null;
+}
+
 function ownedMaterialClone(material) {
   const clone = material.clone();
   clone.onBeforeCompile = material.onBeforeCompile;
@@ -49,6 +57,7 @@ export function createReadyPackagedBodyCache({ residency, limits = READY_BODY_LI
       for (const material of mats) if (!materials.has(material)) {
         if (materials.size >= limits.materials) throw new Error('oversize-ready-body');
         const clone = ownedMaterialClone(material);
+        READY_CLONE_SOURCE.set(clone, material);
         materials.set(material, clone);
       }
       const geometry = source.geometry;
@@ -119,6 +128,7 @@ export function createReadyPackagedBodyCache({ residency, limits = READY_BODY_LI
           let clone = materials.get(material);
           if (!clone) {
             clone = ownedMaterialClone(material);
+            READY_CLONE_SOURCE.set(clone, material);
             patchMaterial?.(clone); materials.set(material, clone);
           }
           return clone;

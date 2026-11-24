@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { ExplosionRupture, explosionRuptureFamily, explosionSourceMaterial } from '../src/render/combat/explosionRupture.js';
 import { PhasedExplosionLifecycle } from '../src/render/combat/phasedExplosions.js';
+import { createPersistentBeamPrecompileMeshes } from '../src/render/combat/persistentBeams.js';
 import { vfx } from '../src/render/vfx.js';
 
 const entry = (extra = {}) => ({
@@ -167,6 +168,36 @@ test('shipping phase dispatch replaces legacy ball layers and retains event illu
   assert.ok(legacy.every(a=>[0,1,2,4].includes(a[0])),'painted body is flash/ring/puff/combustion only: no fresnel');
   assert.ok(owner.activeCount>0);assert.equal(lights.length,2);
   owner.dispose();
+});
+
+test('the precompile salvo family probes admit every rupture construction into one pool', () => {
+  // Mirror of the probe entries in createVfxPrecompileSalvo — the warm enumerates the whole
+  // combat family matrix so no family's admission path can silently fall out of the staged draw.
+  const probes = [
+    { materialId: 'fuel' },
+    { sourceType: 'asteroid' },
+    { sourceType: 'ship', cause: 'ship_collision' },
+    { sourceType: 'ship', cause: 'generic' },
+  ];
+  const owner = new ExplosionRupture(new THREE.Scene(), { capacity: 32 });
+  for (const probe of probes) {
+    owner.emitPhase('rupture', {
+      serial: 7, classId: 'ordinary', x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0, ...probe,
+    });
+  }
+  owner.update(0.16);
+  assert.deepEqual(new Set(owner.records.filter(r => r.alive).map(r => r.kind)), new Set([0, 1, 2, 3]),
+    'mineral/armor/reactor/fuel all stage inside the same warm draw');
+  assert.ok(owner.mesh.visible, 'the warm mesh must actually draw for the program to link');
+  owner.dispose();
+});
+
+test('the beam precompile specimen pins the same program keys the live pool links', () => {
+  const group = createPersistentBeamPrecompileMeshes(THREE);
+  const names = [];
+  group.traverse((o) => { if (o.material && o.material.customProgramCacheKey) names.push(o.material.customProgramCacheKey()); });
+  assert.deepEqual(names.sort(), ['sf-beam-structure-core', 'sf-beam-structure-sheath'],
+    'specimen materials carry the exact live beam role keys');
 });
 
 test('explosive weapon cause never converts known rock into fuel; source substance survives deletion', () => {
