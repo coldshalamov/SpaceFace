@@ -403,9 +403,11 @@ export const swarmJuiceHud = {
       // S5: Tab holds the scoreboard — the live round's honest numbers on the tally card.
       setHidden(dom.tally, false);
       this._text(dom.tallyTitle, `Round ${run.wave || 1}`);
-      const rows = [`Round ${run.wave || 1}`];
+      // The title already names the round; a repeated row was a second 'Round N', and a chain is
+      // a count, not a multiplier (DEMO-SWARM-UX-2).
+      const rows = [];
       const bestBoard = Math.max(this._chainBest, swarmChainBridge.best || 0);
-      if (bestBoard > 0) rows.push(`Best chain ×${bestBoard}`);
+      if (bestBoard > 0) rows.push(`Best chain  ${bestBoard}`);
       dom.tallyRows.forEach((node, i) => {
         setHidden(node, i >= rows.length);
         if (rows[i]) this._text(node, rows[i]);

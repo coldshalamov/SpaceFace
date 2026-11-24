@@ -3933,6 +3933,9 @@ export function buildShareBand(result) {
   // Without a settled record there is nothing honest to share: the old plate printed a run code
   // beside 'No flight record was kept for that run.' (DEMO-SWARM-UX-2 contradiction).
   if (!result) return null;
+  // A Swarm result that has not settled its outcome is an interim plate; the code waits for the
+  // Run Over plate or the finished record. A left run (outcome 'aborted') still shares.
+  if (result.ruleset === SWARM_RULESET && !result.outcome) return null;
   // SWARM-08 B5 — a Circuit run's route is not carried by the current run code, so the plate
   // makes no reproduction claim it cannot honour.
   if (result && (result.circuit || result.recordRules?.circuit)) return null;
