@@ -20,6 +20,7 @@ import { planWave, hashSemanticWavePlan } from '../src/systems/survivalWavePlann
 import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { planArenaInstall } from '../src/systems/survivalArena.js';
 import { combat } from '../src/systems/combat.js';
 
@@ -204,11 +205,13 @@ test('Mirrorjaw materializes with real weapons and dies to Pulse hits through co
   assert.equal(boss.data.lootTableId, BOSS);
   assert.equal(boss.data.runCohort, 'survival');
   assert.ok(boss.data.weapons.length > 0);
-  assert.equal(boss.data.ai.combatDoctrineId, 'brawler_commit');
+  // DUST P6 (BS-7): Mirrorjaw intentionally authors interceptor_flyby; heavy mass steers it via brawler_commit.
+  assert.equal(boss.data.ai.combatDoctrineId, 'interceptor_flyby');
   assert.ok(boss.turnRate < 1, 'a heavy committed hull cannot snap to face the pilot');
   const pulse = WEAPONS.find(w => w.id === 'wpn_pulse_laser_s');
   assert.ok(boss.armorFlat < pulse.dmg);
   assert.equal(boss.shieldRegenRate, 0);
+  noteSwarmPilotAction(h.state);
   let hits = 0;
   while (boss.alive && hits < 500) {
     const applied = combat.onHit({ targetId: boss.id, ownerId: h.state.playerId,
@@ -243,6 +246,7 @@ test('ten wave schedules materialize under the unchanged cap and cleanup waits f
       assert.ok(h.budget.current() > 0 && h.budget.current() <= 24);
       const cohort = h.state.entityList.filter(e => e.alive && e.data?.runWave === wave);
       if (wave === 10) assert.ok(cohort.some(e => e.data.lootTableId === BOSS));
+      noteSwarmPilotAction(h.state);
       for (const entity of cohort) {
         combat.onHit({ targetId: entity.id, ownerId: h.state.playerId, damage: 100000,
           damageType: 'kinetic', weaponId: 'wpn_pulse_laser_s', pos: entity.pos });

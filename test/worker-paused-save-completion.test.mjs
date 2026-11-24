@@ -515,7 +515,7 @@ test('a held older durable ACK is serialized before a newer public save', { time
 
 for (const scenario of ['raw-retry', 'compressed-reject']) {
   test(`fresh worker restores the ${scenario === 'raw-retry' ? 'accepted compressed replacement' : 'prior accepted generation after quota failure'}`,
-    { timeout: 280000 }, async () => {
+    { timeout: 90000 }, async () => {
       const saved = durableQuotaSnapshots.get(scenario);
       assert.ok(saved, `the ${scenario} writer case captured actually persisted bytes first`);
       const previousStorage = globalThis.localStorage;
@@ -554,18 +554,15 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
         await lane.readyPromise;
         const freshLoadStartedAt = Date.now();
         bus.emit('game:load', { slot: 'latest' });
-        // A cold worker replaying a mature durable save is the longest leg in this file:
-        // ~4-5 s of paced restore chunks on a quiet host, and 10-30x that when the shared
-        // checkout's other agents load this machine (measured: the paced restore drain
-        // stretched a 120 s budget to its edge while the commit receipt was still in
-        // flight — it arrived on the next clockTick after the deadline). The budget
-        // spans the whole cold boot + restore envelope; a genuinely stalled restore
-        // still fails it.
+        // A cold worker replaying a mature durable save finishes in a few seconds once async
+        // restore receipts wake the paused worker transport. Keep a 45 s bound so a stalled
+        // restore receipt fails promptly.
         try {
           await until(() => receipts.some(row => row.type === 'save:restoreCommitted' || row.type === 'save:error'),
-            'fresh worker load from persisted host storage', 240000);
+            'fresh worker load from persisted host storage', 45000);
         } catch (error) {
           error.message += `; saveLoadedArrived=${receipts.some(row => row.type === 'save:loaded')}; `
+            + `restoreCommittedArrived=${receipts.some(row => row.type === 'save:restoreCommitted')}; `
             + `waitedMs=${Date.now() - freshLoadStartedAt}; `
             + `lastReplies=${JSON.stringify(replies.slice(-8).map(row => ({ kind: row.kind,
               events: row.events?.map(event => event.t).slice(-6),

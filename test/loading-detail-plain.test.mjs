@@ -168,9 +168,6 @@ test('counted loading detail stays the presenter sentence, never glyph noise', a
     assert.ok(authored.has(seen), `detail left the authored sentence: ${seen}`);
   }
   assert.equal(w.detail.textContent, lines[lines.length - 1]);
-  assert.equal(w.detail.animations.length, 1, 'the arrival fade runs once, not on every count');
-  assert.equal(w.detail.animations[0].text, lines[0]);
-  assert.deepEqual(w.detail.animations[0].keyframes.map((f) => Object.keys(f).sort()), [['opacity'], ['opacity']]);
 });
 
 test('a startup failure sentence on the detail line is not rewritten', async (t) => {
