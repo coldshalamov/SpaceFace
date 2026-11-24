@@ -480,7 +480,7 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
    element stays in the DOM (the terminal art and presenter still write it) but is never shown. */
 #boot-overlay .boot-meta { display:none; }
 /* The loading presenter keeps internal details available for startup diagnostics. */
-#boot-overlay.boot-overlay--orrery .boot-detail:not([data-loading-destination], .boot-error) { display:none; }
+#boot-overlay.boot-overlay--orrery .boot-detail:not([data-loading-destination], .boot-error):empty { display:none; }
 /* the flight HUD and its toasts never draw over the intro splash (or its fade). uiRoot toggles
    the body class beside the element — a document :has() here re-scanned every HUD mutation. */
 body.sf-cinematic-open :is(#hud, #toasts, #alerts) { visibility:hidden !important; }
@@ -565,7 +565,12 @@ html.sf-reduce-motion .boot-dest__art.is-ready { animation:none; transform:none;
 #boot-overlay#boot-overlay[data-loading-scene] .boot-label {
   order:3; margin:24px 0 0; font:600 12px/1.3 "Instrument Sans", system-ui, sans-serif; letter-spacing:.14em;
   text-transform:uppercase; color:rgb(236 230 216 / .8); }
-#boot-overlay#boot-overlay[data-loading-scene] .boot-detail:not([data-loading-destination]) { display:none; }
+#boot-overlay#boot-overlay[data-loading-scene] .boot-detail:not([data-loading-destination]) {
+  order:5; display:block; margin:6px 0 0; min-height:17px;
+  font:500 12px/1.4 "Instrument Sans", system-ui, sans-serif;
+  color:rgb(236 230 216 / .66); text-shadow:0 1px 6px rgb(0 0 0 / .8);
+}
+#boot-overlay#boot-overlay[data-loading-scene] .boot-detail:not([data-loading-destination]):empty { opacity:0; }
 #boot-overlay#boot-overlay[data-loading-scene] .boot-progress-row {
   order:4; position:static; display:flex; align-items:center; gap:12px; width:100%; min-width:0; height:auto; min-height:0; margin:8px 0 0; padding:0; justify-content:flex-start; }
 #boot-overlay#boot-overlay[data-loading-scene] .boot-progress {
