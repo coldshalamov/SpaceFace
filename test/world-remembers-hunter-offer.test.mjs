@@ -108,9 +108,10 @@ for (const seed of SEEDS) {
     assert.equal(spec.id, 'warrant-offer');
     assert.equal(spec.sender, 'WRIT — INES GARROW');
     assert.equal(spec.headline, 'SETTLE THE BOUNTY');
-    assert.equal(spec.detail, `${offer.line} The bounty stands at 1200 cr.`, 'affordable: no purse warning');
+    // 3108a23b96: money away from the dock reads grouped — 1,200, not 1200.
+    assert.equal(spec.detail, `${offer.line} The bounty stands at 1,200 cr.`, 'affordable: no purse warning');
     assert.equal(spec.choices[0].id, 'accept', 'ACCEPT is the first answer (Digit1)');
-    assert.equal(spec.choices[0].label, 'PAY 1200 CR');
+    assert.equal(spec.choices[0].label, 'PAY 1,200 CR');
     assert.equal(spec.deadlineAt, offer.untilT, 'the deck counts down the waves module\'s own deadline');
     assert.equal(spec.deadlineAt, ctx.state.simTime + WARRANT_OFFER_WINDOW_S, 'one window from the hail');
     assert.equal(ctx.state.ui.warrantOfferPrompt.owedCr, 1200);
@@ -155,7 +156,7 @@ for (const seed of SEEDS) {
     assert.equal(ctx.log.refused[0].shortfallCr, 900);
     const hunter = warrantHunterById(WRIT);
     assert.ok(popups.some((p) => p.sender === hunter.name && p.text === hunter.voice.refused[0]), 'Writ says no');
-    assert.ok(ctx.log.toasts.some((t) => /SHORT/.test(t.text) && /1200/.test(t.text) && /300/.test(t.text)));
+    assert.ok(ctx.log.toasts.some((t) => /SHORT/.test(t.text) && /1,200/.test(t.text) && /300/.test(t.text)));
     assert.equal(ctx.deck.resolved.includes('warrant-offer'), false, 'a short purse leaves the channel open');
     assert.equal(ctx.state.ui.warrantOfferPrompt.hunterId, WRIT);
     // The same card can pay once the credits are there; the first refusal did not burn the offer.

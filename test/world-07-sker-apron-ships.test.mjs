@@ -45,7 +45,11 @@ function skerState(seed) {
       if (e) e.alive = false;
     },
   };
-  helpers.spawnEntity({ id: 1, type: 'ship', pos: { x: 0, z: 0 }, data: { name: 'Player' } });
+  // R16/FIRST-HOUR: a spawned hull inside the player's 420 WU pocket is pushed out to the
+  // pocket boundary — traffic lives at stations and on lanes, never on the player. The apron
+  // claim needs a real arrival geometry: the player enters far from the Bazaar's seat, so the
+  // apron seats stay near the station instead of being swept to the pocket edge.
+  helpers.spawnEntity({ id: 1, type: 'ship', pos: { x: 2400, z: 2400 }, data: { name: 'Player' } });
   const station = helpers.spawnEntity({
     id: 10, type: 'station', radius: 80, pos: { x: 0, z: 0 },
     data: { stationId: 'station_sker', name: 'Sker Bazaar' },

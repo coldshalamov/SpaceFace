@@ -18,6 +18,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { MISSION_TUNING } from '../src/data/missions.js';
 import { clauseById } from '../src/data/contractClauses.js';
 import { contractClausesSystem } from '../src/systems/contractClauses.js';
+import { addCargo, slotFitFor } from '../src/systems/cargo.js';
 import { missions } from '../src/systems/missions.js';
 
 class Bus {
@@ -296,7 +297,14 @@ test('a refused mutation falls back to the ordinary failure — no orphan, no ha
   assert.equal(state.missions.active.length, 1, 'clause-bearing delivery accepted');
   // Fill the hold AFTER accept so the restitution successor (replace the 2u lot) fails its cargo
   // capacity preflight. The refused mutation must degrade to the plain failure, never vanish.
-  state.player.cargo.usedVolume = state.player.cargo.capVolume;
+  // 7592bb895f: capacity is the slot bag, not usedVolume — fill every stack so the
+  // successor's 2u of electronics has no room (the accepted contract already loaded 2u).
+  addCargo(state, 'cmdty_salvage_electronics', 1000);
+  addCargo(state, 'cmdty_ore_iron', 1000);
+  assert.ok(
+    slotFitFor(state, 'cmdty_salvage_electronics') < 2,
+    'the hold is genuinely full',
+  );
 
   bus.emit('player:scannedByPatrol', { hasContraband: true, patrolId: 42 });
 

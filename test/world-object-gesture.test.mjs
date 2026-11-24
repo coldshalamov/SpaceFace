@@ -722,12 +722,13 @@ test('the marked recovery rock names the next tool and current wheel key', () =>
     const tag = hudEl.children[0];
     const hint = tag.children.find((child) => child.className === 'sf-woi__hint');
     assert.equal(tag.children[0].textContent, '47-A Recovery Site');
-    assert.equal(hint.textContent, 'Hold Q → Scan');
+    // R17: Scan and Mine are real bound keys now — the hint names the direct key, not the wheel.
+    assert.equal(hint.textContent, 'C · Scan');
 
     state.onboarding.firedFollowups['seam:scan:hit'] = true;
     state.settings.controls.bindings = { contextWheel: ['KeyG'] };
     tick();
-    assert.equal(hint.textContent, 'Hold G → Mine Beam');
+    assert.equal(hint.textContent, 'G · Mine Beam');
 
     rock.occupantGeneration += 1;
     tick();

@@ -231,8 +231,8 @@ test('three-way split: 2+ responders and valid wreck anchor choose 1 nearest hol
 test('cruise-momentum wreck: hold goes to the nearest responder that can still reach the body', () => {
   const h = bootHarness({
     responderPositions: [
-      { x: 160, z: 0 }, // 10 from the body — nearest, but a Bastion envelope (~41) cannot catch 50
-      { x: 220, z: 0 }, // 70 — a Hornet envelope (72) can
+      { x: 160, z: 0 }, // 10 from the body — nearest, but a Bastion envelope (~57) cannot catch 80
+      { x: 220, z: 0 }, // 70 — a Hornet envelope (100) can
       { x: 300, z: 0 }, // 150 — Bastion again
     ],
   });
@@ -259,7 +259,7 @@ test('cruise-momentum wreck: hold goes to the nearest responder that can still r
   const wreck = h.sim.spawn({
     type: 'wreck',
     pos: { x: 150, z: 0 },
-    vel: { x: 0, z: 50 }, // the body keeps the victim's cruise momentum — nobody out-brakes physics
+    vel: { x: 0, z: 80 }, // the body keeps the victim's cruise momentum — nobody out-brakes physics
     mass: 55,
     hull: 1,
     data: {

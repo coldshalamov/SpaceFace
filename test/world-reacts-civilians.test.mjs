@@ -379,7 +379,10 @@ test('the response is deterministic on a fixed seed — "The civilian hauler pan
 });
 
 test('a live job is interrupted and later resumed — "The civilian hauler panics."', () => {
-  const world = makeWorld({ role: 'hauler', aim: 1.1, worldRecordId: 'rec-job-hauler' });
+  // e2b5567580: job movement went under flight control — a flee turns first, then builds the
+  // escape burn (throttle blends with nose alignment). The fixture's hull already faces away
+  // from the (80,40) threat so the burn engages on the first step.
+  const world = makeWorld({ role: 'hauler', aim: 1.1, rot: Math.atan2(-40, -80), worldRecordId: 'rec-job-hauler' });
   world.hull.data.intent = {
     moveX: 0, moveZ: 0.4, boost: false, fire: false, fireGroup: null, aimAngle: 1.1, brake: false,
   };
@@ -410,7 +413,9 @@ test('a live job is interrupted and later resumed — "The civilian hauler panic
 });
 
 test('a job miner bolts through the job owner — "The civilian hauler panics."', () => {
-  const world = makeWorld({ role: 'miner', aim: 0, worldRecordId: 'rec-job-miner' });
+  // e2b5567580: same turn-first flee — the hull's rot already sits on the escape bearing from
+  // the (60,20) threat, so moveZ/boost read the burn, not the blend-in turn.
+  const world = makeWorld({ role: 'miner', aim: 0, rot: Math.atan2(-20, -60), worldRecordId: 'rec-job-miner' });
   const { bus, sys, jobs, helpers } = boot(world, true);
   const jobId = helpers.npcJobs.assign(world.hull, minerJobSpec());
   spawnHostiles(world, { x: 60, z: 20 });
@@ -427,7 +432,7 @@ test('a job miner bolts through the job owner — "The civilian hauler panics."'
 
 test('a towing job hull keeps its tow and leaves slowly — "The civilian hauler panics."', () => {
   const world = makeWorld({
-    role: 'hauler', carrying: true, aim: 0, worldRecordId: 'rec-job-tow',
+    role: 'hauler', carrying: true, aim: 0, rot: Math.atan2(-10, -70), worldRecordId: 'rec-job-tow',
   });
   const { bus, sys, jobs, helpers } = boot(world, true);
   helpers.npcJobs.assign(world.hull, haulerJobSpec());
