@@ -1,6 +1,5 @@
 import { BOOT_MEDIA, createBootMediaPlayback } from './bootMediaPlayback.js';
 import { formatLoadingClock } from './loadingClockFormat.js';
-import { decrypt } from './orrery/text.js';
 
 const owners = new WeakMap();
 const EMPTY = Object.freeze({ ready: Promise.resolve({ status: 'unavailable' }),
@@ -82,25 +81,26 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
     },
   });
   if (!media) return EMPTY;
-  // Stage-sentence choreography (ORRERY arrival beat, 240 ms): when the presenter rewrites the
-  // detail line, the new sentence resolves out of glyph noise instead of hard-cutting. The detail
-  // span carries no live-region semantics (loadingPresenter keeps polite live on the label only),
-  // so scrambling it is silent to assistive tech; the label's own cut stays immediate and exact.
-  // The startup-failure sentence (detail.boot-error) is exempt — a failure message must land
-  // verbatim at once. The observer ignores the decrypt driver's own writes: only a text that
-  // differs from the current target while no decrypt is live starts a new one.
-  let detailNode = null, detailObserver = null, detailTarget = '', decryptLive = 0;
+  // The detail line is plain text. loadingPresenter rewrites it every few hundred milliseconds
+  // with counted sub-progress ("Compiling the shaders — 12 of 40"). A decrypt on that cadence
+  // never finishes, so the player reads glyph noise for the whole load. The first words may
+  // fade in once; later writes, and a startup-failure sentence, stay exactly as authored.
+  let detailNode = null, detailObserver = null;
   function watchDetail() {
     detailNode = overlay.querySelector?.('[data-loading-detail]') || null;
     if (!detailNode || typeof MutationObserver !== 'function') return;
     detailObserver = new MutationObserver(() => {
       const text = detailNode.textContent || '';
-      if (!text || text === detailTarget || decryptLive > 0) return;
-      if (detailNode.classList?.contains('boot-error')) { detailTarget = text; return; }
-      detailTarget = text;
-      const generation = ++decryptLive;
-      try { decrypt(detailNode, text, { duration: 220 }); } catch { /* decoration never blocks boot */ }
-      setTimeout(() => { if (decryptLive === generation) decryptLive = 0; }, 300);
+      if (!text || detailNode.classList?.contains('boot-error')) return;
+      detailObserver.disconnect();
+      detailObserver = null;
+      if (reduced() || typeof detailNode.animate !== 'function') return;
+      try {
+        detailNode.animate(
+          [{ opacity: 0.45 }, { opacity: 1 }],
+          { duration: 160, easing: 'ease-out', fill: 'none' },
+        );
+      } catch { /* decoration never blocks boot */ }
     });
     detailObserver.observe(detailNode, { childList: true, characterData: true, subtree: true });
   }
