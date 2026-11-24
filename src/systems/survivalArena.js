@@ -2323,12 +2323,13 @@ export const survivalArena = {
     }
     let nearest = Infinity;
     let warning = null;
-    for (const [toyId, plate] of this._roomSolids) {
+    for (const plate of this._roomSolids.values()) {
       if (!plate.alive || !plate.collides || plate.data?.roomDynamic !== false || !plate.data.foundryPlate) continue;
       const hit = predictFoundryPlateContact(plate, pilot, FOUNDRY_APPROACH_HORIZON_S);
       if (!hit || hit.closingSpeed <= minimum || hit.timeToContactS >= nearest) continue;
       nearest = hit.timeToContactS;
-      warning = toyId.startsWith('foundry_rim_') ? 'Rim ahead · Turn clear' : 'Bank plate ahead · Turn clear';
+      // DEMO-SWARM-UX-2: plain words — 'Bank plate' / 'Rim' are internal names for the wall.
+      warning = 'Wall ahead — turn';
     }
     this._setFoundryApproach(warning);
   },

@@ -979,6 +979,11 @@ export const settingsScreen = {
       } else {
         build.note('Modified — the video rows differ from every preset. Pick a quality mode to re-pin them.');
       }
+      // DEMO-SWARM-UX-2: the integrated-GPU fact lives here, once, in Settings — never as a toast
+      // over the first fight beat. It names the picture policy and the row that changes it.
+      if (ctx.state && ctx.state.render && ctx.state.render.gpu && ctx.state.render.gpu.tier === 'integrated') {
+        build.note('Integrated graphics: this machine runs best on the High performance picture. Change it with Quality mode.');
+      }
       // The hardware bundles keep their own row: named pictures for a known machine class,
       // applied by the same applyQualityPreset contract. To leave one, pick a quality mode.
       rowSelect('Hardware preset',

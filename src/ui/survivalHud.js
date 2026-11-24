@@ -263,6 +263,7 @@ export const swarmChainBridge = {
   wave: 0,
   bannerActive: false,
   subCallActive: false,
+  clearActive: false,
   bossHp: null,
   bossMove: '',
   bossInstruction: '',
@@ -519,6 +520,11 @@ export const survivalHud = {
     this._foundryGuidance = new Map();
     this._death = null;
     this._lastTells = [];
+    // The top-centre lane bridge is a singleton; a fresh HUD must not inherit the last run's
+    // banner/clear state (the chain would hide behind a beat nobody is playing).
+    swarmChainBridge.bannerActive = false;
+    swarmChainBridge.subCallActive = false;
+    swarmChainBridge.clearActive = false;
     // The style figure's memo (see update): the three printed numbers it was built from, and the
     // composed line. NaN forces one rebuild on the first frame a combo is live.
     this._stylePts = NaN;
@@ -539,6 +545,7 @@ export const survivalHud = {
     this._xpFlashAt = -1;
     this._levelRideLevel = 0;
     this._levelRideUntil = -1;
+    this._levelRidePending = 0;
     this._pickPulseUntil = -1;
     this._pickPulseAt = -1;
     this._pickDelta = 1;
@@ -577,6 +584,7 @@ export const survivalHud = {
       this._xpFlashAt = -1;
       this._levelRideLevel = 0;
       this._levelRideUntil = -1;
+      this._levelRidePending = 0;
       this._pickPulseUntil = -1;
       this._pickPulseAt = -1;
       this._pickDelta = 1;
@@ -653,6 +661,7 @@ export const survivalHud = {
     this._xpFlashAt = -1;
     this._levelRideLevel = 0;
     this._levelRideUntil = -1;
+    this._levelRidePending = 0;
     this._pickPulseUntil = -1;
     this._pickPulseAt = -1;
     this._roomMultValue = 0;
@@ -1073,7 +1082,18 @@ export const survivalHud = {
     v.xpFracQ = Math.round(xpFrac * 1000) / 1000;
     v.xpFlashing = simTime <= this._xpFlashUntil;
     v.xpFlashAt = this._xpFlashAt;
-    v.levelRideText = simTime <= this._levelRideUntil && this._levelRideLevel > 0
+    // DEMO-SWARM-UX-2: the round-clear summary shows alone first; a level-up card that lands in
+    // the same beat waits for the summary to clear, then takes its own 1.2 s. The level number
+    // and gear are never read through the summary.
+    const clearUp = !!swarmChainBridge.clearActive;
+    if (clearUp && this._levelRideLevel > 0 && simTime <= this._levelRideUntil) {
+      this._levelRidePending = this._levelRideLevel;
+    } else if (!clearUp && this._levelRidePending > 0) {
+      this._levelRideLevel = this._levelRidePending;
+      this._levelRidePending = 0;
+      this._levelRideUntil = simTime + LEVEL_RIDE_S;
+    }
+    v.levelRideText = !clearUp && simTime <= this._levelRideUntil && this._levelRideLevel > 0
       ? `LEVEL ${this._levelRideLevel}` : '';
     const banked = run.pilot && Number.isInteger(run.pilot.banked) ? Math.max(0, run.pilot.banked) : 0;
     const pickPulsing = banked > 0 && simTime <= this._pickPulseUntil;
@@ -1138,8 +1158,10 @@ export const survivalHud = {
       v.bossAria = '';
       v.bossInst = '';
 
+      // DEMO-SWARM-UX-2: `wave_intro` is the round already starting — the header keeps the
+      // round's own number, name and hostiles-left count while the FIGHT word runs below it.
       const betweenRounds = run.phase === 'cleanup' || run.phase === 'draft'
-        || run.phase === 'wave_intro' || run.phase === 'arena_intro' || run.phase === 'refit';
+        || run.phase === 'arena_intro' || run.phase === 'refit';
       if (betweenRounds) {
         const upcomingWave = (run.phase === 'cleanup' || run.phase === 'draft' || run.phase === 'refit')
           ? Math.max(1, (run.wave || 0) + 1)

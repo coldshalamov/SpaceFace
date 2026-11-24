@@ -3930,6 +3930,9 @@ function shareCopyRow(band, { summary, ghostText, ghostField }) {
 }
 
 export function buildShareBand(result) {
+  // Without a settled record there is nothing honest to share: the old plate printed a run code
+  // beside 'No flight record was kept for that run.' (DEMO-SWARM-UX-2 contradiction).
+  if (!result) return null;
   // SWARM-08 B5 — a Circuit run's route is not carried by the current run code, so the plate
   // makes no reproduction claim it cannot honour.
   if (result && (result.circuit || result.recordRules?.circuit)) return null;
@@ -4096,8 +4099,11 @@ export const crucibleResultsScreen = {
 
     if (!result) {
       // No record kept. Say so — a dead player must never be handed a blank plate — and still
-      // offer every way out below.
-      story.appendChild(el('p', 'k-empty sf-crres__empty', 'No flight record was kept for that run.'));
+      // offer every way out below. A live Swarm run is a record still settling: the plate refreshes
+      // into Run Over when it lands, so it says that instead of claiming nothing was kept.
+      const pendingRun = !!(ctx?.state?.run && ctx.state.run.kind === 'survival');
+      story.appendChild(el('p', 'k-empty sf-crres__empty',
+        pendingRun ? 'Reading the run back…' : 'No flight record was kept for that run.'));
     }
 
     for (const id of resultSectionOrder(result)) {
@@ -4542,7 +4548,27 @@ export const crucibleResultsScreen = {
     }
     quiet('Hangar', 'sf-runover__hangar').addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx, true); });
     quiet('Menu', 'sf-runover__menu').addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx); });
+    // DEMO-SWARM-UX-2: the share/debug register (run code, ghost file, copy links) is behind one
+    // Share word on the plate, never on the ordinary route. Opening it hides the run's short rows so
+    // the panel reads alone and the plate never grows past the frame.
+    let shareBand = null;
+    try { shareBand = buildShareBand(result); } catch { shareBand = null; }
+    if (shareBand) {
+      const share = quiet('Share', 'sf-runover__share-toggle');
+      shareBand.hidden = true;
+      if (typeof shareBand.classList?.add === 'function') shareBand.classList.add('sf-runover__share');
+      share.addEventListener('click', () => {
+        const open = !!shareBand.hidden;
+        shareBand.hidden = !open;
+        if (typeof plate.classList?.toggle === 'function') plate.classList.toggle('is-sharing', open);
+        share.textContent = open ? 'Close share' : 'Share';
+      });
+    }
     plate.appendChild(foot);
+    if (shareBand) {
+      if (typeof plate.insertBefore === 'function') plate.insertBefore(shareBand, foot);
+      else plate.appendChild(shareBand);
+    }
     rootEl.appendChild(plate);
     this._runOverKey = (event) => {
       if (event.key !== 'Enter' || event.repeat) return;

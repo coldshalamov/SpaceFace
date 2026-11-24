@@ -194,6 +194,11 @@ export const swarmJuiceHud = {
   _resetModel() {
     resetCalloutVoice();
     this._releaseStageBanner();
+    // The shared lane bridge is a singleton: a fresh run must not inherit the previous run's
+    // "clear owns the beat" / banner state (a test or a retry would hide the first chain).
+    swarmChainBridge.bannerActive = false;
+    swarmChainBridge.subCallActive = false;
+    swarmChainBridge.clearActive = false;
     this._chain = 0;
     this._chainBest = 0;
     this._chainCause = null;
@@ -332,6 +337,9 @@ export const swarmJuiceHud = {
     // Publish live lane + boss state for swarmHudLayer (single-owner top-centre coordination).
     swarmChainBridge.bannerActive = bannerOwnsTop;
     swarmChainBridge.subCallActive = subCallActive;
+    // The clear summary owns the one beat under the header; a level-up card waits for it
+    // (DEMO-SWARM-UX-2: summary first, card second, never both at once).
+    swarmChainBridge.clearActive = beat === 'clear';
     swarmChainBridge.bossHp = this._bossHp;
     swarmChainBridge.bossMove = this._bossMove;
     swarmChainBridge.bossInstruction = this._bossInstruction;
@@ -385,6 +393,11 @@ export const swarmJuiceHud = {
           setHidden(node, !on);
           if (on) this._text(node, `${row.label}  ${row.value}`);
         });
+        // A shorter clear than the last one must not leave its old tail rows on the glass:
+        // that is how 'BEST CHAIN' printed twice under two different rounds.
+        for (let i = this._clear.rows.length; i < dom.tallyRows.length; i++) {
+          setHidden(dom.tallyRows[i], true);
+        }
       }
     } else if (beat === 'board') {
       // S5: Tab holds the scoreboard — the live round's honest numbers on the tally card.
@@ -568,7 +581,8 @@ export const swarmJuiceHud = {
     const ended = p && Number.isFinite(p.chain) ? p.chain : 0;
     if (ended <= 0) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    this._shatter = { text: `CHAIN ${ended} LOST`, until: now + SHATTER_TTL_S };
+    // DEMO-SWARM-UX-2: plain words, not a scoring internal ("CHAIN 44 LOST").
+    this._shatter = { text: `Chain ${ended} — broken`, until: now + SHATTER_TTL_S };
   },
 
   _avoid() {
@@ -747,6 +761,7 @@ export const swarmJuiceHud = {
     this._releaseStageBanner();
     swarmChainBridge.bannerActive = false;
     swarmChainBridge.subCallActive = false;
+    swarmChainBridge.clearActive = false;
   },
 
   _show(dom) {
@@ -892,11 +907,14 @@ body.sf-swarm-hud .sf-sj { z-index:16; }
    seat it cleanly directly beneath the plate regardless of update order. */
 body.sf-swarm-hud .sf-sj__col[data-beat="call"],
 body.sf-swarm-hud .sf-sj__col[data-beat="shatter"],
-.sf-sj[data-layer-owned="1"] .sf-sj__col[data-subcall="1"] { top:calc(84px + var(--sf-safe-inset-top, 0px)); }
+.sf-sj[data-layer-owned="1"] .sf-sj__col[data-subcall="1"] { top:calc(96px + var(--sf-safe-inset-top, 0px)); }
+/* DEMO-SWARM-UX-2: the round header never leaves its seat, so every event word (round banner,
+   FIGHT, clear tally, BOSS DOWN, boss card, calls) is one row BELOW it instead of replacing it. */
+body.sf-swarm-hud .sf-sj__col { top:calc(96px + var(--sf-safe-inset-top, 0px)); }
 @media (max-width: 760px) {
-  body.sf-swarm-hud .sf-sj__col { top:calc(46px + var(--sf-safe-inset-top, 0px)); }
+  body.sf-swarm-hud .sf-sj__col { top:calc(104px + var(--sf-safe-inset-top, 0px)); }
   body.sf-swarm-hud .sf-sj__col[data-beat="call"],
-  body.sf-swarm-hud .sf-sj__col[data-beat="shatter"] { top:calc(96px + var(--sf-safe-inset-top, 0px)); }
+  body.sf-swarm-hud .sf-sj__col[data-beat="shatter"] { top:calc(104px + var(--sf-safe-inset-top, 0px)); }
 }
 .sf-sj__hero { display:flex; flex-direction:column; align-items:center; gap:3px; padding:2px 16px 3px;
   background:linear-gradient(90deg, transparent, rgb(8 10 14 / .74) 16%, rgb(8 10 14 / .74) 84%, transparent); }

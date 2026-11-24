@@ -3,6 +3,8 @@
 // row under the instruments (a second row clips off the bottom of a 720-high screen). Reads a cluster model; writes nothing.
 
 const HULL_BREAK = 'Hull critical — disengage';
+// An arena has nowhere to disengage to: say the state, not an order that cannot be followed.
+const HULL_BREAK_SWARM = 'Hull critical';
 const SHIELD_DOWN = 'Shield down — protect the hull';
 const GUN_HOT = 'Ease fire — the gun is hot';
 const ORDNANCE_EMPTY = 'Out of ordnance — restock';
@@ -16,13 +18,14 @@ function num(value) {
 
 /**
  * @param {object} model cluster update payload (hull, shield, heat, ordnance, speed)
+ * @param {{swarm?: boolean}} [opts] Swarm has no disengage destination
  * @returns {string} the next decision, or '' when nothing needs saying
  */
-export function nextFlightDecision(model) {
+export function nextFlightDecision(model, opts = {}) {
   if (!model || typeof model !== 'object') return '';
   const hullMax = num(model.hullMax);
   const hull = num(model.hull);
-  if (hullMax > 0 && hull / hullMax < 0.3) return HULL_BREAK;
+  if (hullMax > 0 && hull / hullMax < 0.3) return opts.swarm ? HULL_BREAK_SWARM : HULL_BREAK;
   const shieldMax = num(model.shieldMax);
   const shield = num(model.shield);
   if (shieldMax > 0 && shield <= 0) return SHIELD_DOWN;

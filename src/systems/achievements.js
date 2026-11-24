@@ -37,12 +37,26 @@ import {
 } from '../save/sharedPlayerStore.js';
 import { loadCrucibleMeta, recordKey } from './survivalRecords.js';
 import { isOnboardingTeaching } from '../core/onboardingReadModel.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 
 export const ACHIEVEMENTS_FMT = 'spaceface-achievements';
 export const ACHIEVEMENTS_SCHEMA_VERSION = 1;
 export const ACHIEVEMENTS_STORAGE_KEY = 'sf.save.achievements';
 export const ACHIEVEMENT_UNLOCKED_EVENT = 'achievement:unlocked';
 export const ACHIEVEMENT_NOTICE_ID = 'achievement:notice';
+
+/** A live Swarm round in flight: its notice lane belongs to the fight it is fighting. */
+function inLiveSwarmFight(state) {
+  const run = state && state.run;
+  return !!(state && state.mode === 'flight'
+    && run && run.kind === 'survival' && run.ruleset === SWARM_RULESET
+    && run.phase !== 'inactive' && run.phase !== 'ended' && run.phase !== 'victory');
+}
+
+/** Career/adventure deeds count the whole save; they are not earned inside a Swarm round. */
+function lifetimeCategory(category) {
+  return category === 'career' || category === 'adventure';
+}
 export const ACHIEVEMENT_NOTICE_TTL_S = 5;
 const COUNTER_SAVE_DEBOUNCE_MS = 4000;
 const PENDING_NOTICE_CAP = 16;
@@ -1083,7 +1097,13 @@ export function installAchievements({
     }
     if (!fresh.length) return fresh;
     saveNow();
+    // DEMO-SWARM-UX-2: a live Swarm fight only speaks deeds this run can actually earn. A
+    // lifetime career milestone ('Six Figures' at Scrap 0 on a fresh round) is still unlocked and
+    // saved, but its notice waits for Run Over / the results plate instead of interrupting the
+    // first minute of the fight.
+    const midFight = inLiveSwarmFight(state);
     for (const def of fresh) {
+      const quiet = !announce || (midFight && lifetimeCategory(def.category));
       try {
         bus.emit(ACHIEVEMENT_UNLOCKED_EVENT, {
           id: def.id,
@@ -1092,12 +1112,13 @@ export function installAchievements({
           at: bag.unlocked[def.id] ? bag.unlocked[def.id].at : null,
           via: via || null,
           retroactive: !announce,
+          announce: !quiet,
         });
       } catch {
         // a presenter fault must never lose the unlock, which is already saved
       }
     }
-    if (announce) speak(fresh);
+    if (announce) speak(fresh.filter((def) => !(midFight && lifetimeCategory(def.category))));
     mirrorToShell(fresh.map((def) => def.id));
     return fresh;
   }

@@ -10,7 +10,8 @@
 //      In a boss round, the lit Boss Machine-Plate takes this seat with a heavy segmented bar.
 //      Yields cleanly whenever a transient Stage round/boss banner holds the top-centre lane.
 //   3. Directly under the Round/Boss plate — the Chain, only while live: a multiplier (`×2`,
-//      `×3`, ...) that climbs visibly, and at most one short line in Madame Kiln's voice.
+//      `×3`, ...) that climbs visibly, a quiet "· Scrap" once that multiplier pays, and at
+//      most one short line in Madame Kiln's voice.
 //   4. Top right — Scrap (machined chip icon + big tabular numeral), quiet Score beneath it,
 //      and a transient room-kill multiplier (`×2.5`) flash beside Scrap when the room pays.
 //
@@ -336,6 +337,9 @@ export function createSwarmHudLayer() {
     chain.hidden = true;
     const chainRow = mk('div', 'sf-swhud__chain-row', chain);
     const chainMult = mk('span', 'sf-swhud__chain-mult', chainRow);
+    const chainPay = mk('span', 'sf-swhud__chain-pay', chainRow);
+    chainPay.hidden = true;
+    chainPay.textContent = '· Scrap';
     const chainCount = mk('span', 'sf-swhud__chain-count', chainRow);
     const chainLine = mk('span', 'sf-swhud__chain-line', chainRow);
     chainLine.hidden = true;
@@ -370,7 +374,7 @@ export function createSwarmHudLayer() {
       notes, cast, castGlyphs, castLine, castAnswer, guidance, twist, heroCue, mods, death,
       centre, round, roundKicker, roundName, roundSep, roundStat, roundNum, roundUnit,
       boss, bossKicker, bossName, bossPct, bossBurn, bossFill, bossInst,
-      chain, chainMult, chainCount, chainLine, chainFill,
+      chain, chainMult, chainPay, chainCount, chainLine, chainFill,
       purse, roomMult, scrapNum, scoreNum,
     };
     return dom;
@@ -500,9 +504,14 @@ export function createSwarmHudLayer() {
     }
 
     // --- 2. Top-centre Round Plate OR Boss Machine-Plate -------------------------------
-    const hideCentrePlate = !!view.bannerOwnsTop;
-    const showBoss = !hideCentrePlate && !!view.bossVisible;
-    const showRound = !hideCentrePlate && !showBoss;
+    // DEMO-SWARM-UX-2 (Swarm stranger pass, owner demo 2026-11-23): the round header never
+    // leaves its seat. A round banner, clear tally or fight word is an event line ONE row below
+    // it (swarmJuiceHud seats the event column under the plate); the header always keeps
+    // `ROUND N · Name · X left` readable. The sub-lane yields instead, so the chain/quip line
+    // never draws through an event word.
+    const eventLineUp = !!view.bannerOwnsTop;
+    const showBoss = !!view.bossVisible;
+    const showRound = !showBoss;
 
     setHidden(d.round, !showRound);
     if (showRound) {
@@ -533,11 +542,14 @@ export function createSwarmHudLayer() {
       if (hasInst) setText(d.bossInst, view.bossInst);
     }
 
-    // --- 3. Under the Round/Boss plate — Chain (only while live & clear of banners/calls) --
-    const showChain = !hideCentrePlate && !view.subCallActive && !!view.chainVisible;
+    // --- 3. Under the Round/Boss plate — Chain (only while live & clear of events/calls) --
+    const showChain = !eventLineUp && !view.subCallActive && !!view.chainVisible;
     setHidden(d.chain, !showChain);
     if (showChain) {
       setText(d.chainMult, view.chainMult);
+      const pays = !!view.chainMult && view.chainMult !== '×1';
+      setHidden(d.chainPay, !pays);
+      if (pays) setText(d.chainPay, '· Scrap');
       setText(d.chainCount, view.chainCount > 1 ? `· ${view.chainCount}` : '');
       setHidden(d.chainCount, view.chainCount <= 1);
       const hasLine = !!view.chainLine;
@@ -554,7 +566,10 @@ export function createSwarmHudLayer() {
       }
       lastChainBump = view.chainCount;
       setScaleX(d.chainFill, view.chainDepleteQ);
-      setAttr(d.chain, 'aria-label', view.chainAria);
+      const aria = pays && view.chainAria
+        ? view.chainAria.replace(`Chain ${view.chainMult}`, `Chain ${view.chainMult} · Scrap`)
+        : view.chainAria;
+      setAttr(d.chain, 'aria-label', aria);
     } else if (!view.chainVisible) {
       lastChainBump = 0;
     }
@@ -1043,6 +1058,14 @@ export const SWARM_HUD_LAYER_CSS = `
 .sf-swhud__chain-mult[data-bump="b"] { animation: sf-swhud-bump-b .20s cubic-bezier(.2, .9, .3, 1) 1 both; }
 @keyframes sf-swhud-bump-a { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
 @keyframes sf-swhud-bump-b { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.sf-swhud__chain-pay {
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  color: var(--dp-ink-dim, #b7b4a6);
+}
+.sf-swhud__chain-pay[hidden] { display: none; }
 .sf-swhud__chain-count {
   font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
   font-weight: 600;

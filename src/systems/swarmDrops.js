@@ -409,7 +409,7 @@ export const swarmDrops = {
       name: dropDef.name,
       wave: run.wave,
     });
-    this._emit('toast', { text: dropDef.line, kind: 'good', ttl: 2.5 });
+    this._emit('toast', { text: dropDef.line, kind: 'good', quip: true, ttl: 2.5 });
   },
 
   // ---- Full Rack --------------------------------------------------------------------------

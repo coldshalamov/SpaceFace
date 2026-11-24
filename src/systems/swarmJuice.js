@@ -301,7 +301,7 @@ export const swarmJuice = {
     if (count >= 2) {
       const causes = this._recent.map((k) => k.cause);
       if (swarmPileUp(causes)) {
-        this._emit('swarm:announce', { kind: 'pileup', text: `PILE-UP ×${count}`, count });
+        this._emit('swarm:announce', { kind: 'pileup', text: `Pile-up ${count}`, count });
       } else {
         const word = swarmMultiKillWord(count);
         if (word) this._emit('swarm:announce', { kind: 'multikill', text: word, count });
@@ -376,7 +376,7 @@ export const swarmJuice = {
     if (windowCount >= 2) {
       const causes = this._recent.map((k) => k.cause);
       if (swarmPileUp(causes)) {
-        this._emit('swarm:announce', { kind: 'pileup', text: `PILE-UP ×${windowCount}`, count: windowCount });
+        this._emit('swarm:announce', { kind: 'pileup', text: `Pile-up ${windowCount}`, count: windowCount });
       } else {
         const word2 = swarmMultiKillWord(windowCount);
         if (word2) this._emit('swarm:announce', { kind: 'multikill', text: word2, count: windowCount });
@@ -613,7 +613,7 @@ export const swarmJuice = {
     const target = swarmZoneChainTarget(zone);
     if (!(chain >= target)) return;
     this._chainStarZones.add(zone);
-    this._emit('swarm:announce', { kind: 'chainstar', text: `CHAIN STAR · ×${target}`, count: chain });
+    this._emit('swarm:announce', { kind: 'chainstar', text: `Chain ${target} — star`, count: chain });
     this._emit('audio:cue', {
       id: SWARM_MOMENT_CUES.chainTier,
       gain: 0.85,

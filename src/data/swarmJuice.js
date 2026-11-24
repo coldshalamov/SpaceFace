@@ -197,14 +197,15 @@ export const SWARM_SPEED_CLEAR_S = 30;
  */
 export function swarmRoundTally({ flawless = false, durationS = null, kills = 0, bestChain = 0 } = {}) {
   const rows = [];
-  if (flawless === true) rows.push({ id: 'flawless', label: 'FLAWLESS', value: 'NO HULL LOST' });
+  if (flawless === true) rows.push({ id: 'flawless', label: 'Flawless', value: 'no hull lost' });
   if (Number.isFinite(durationS) && durationS <= SWARM_SPEED_CLEAR_S) {
-    rows.push({ id: 'speed', label: 'SPEED CLEAR', value: `${Math.max(0, Math.round(durationS))}s` });
+    rows.push({ id: 'speed', label: 'Cleared in', value: `${Math.max(0, Math.round(durationS))} s` });
   }
   const n = Number.isFinite(kills) ? Math.trunc(kills) : 0;
-  if (n > 0) rows.push({ id: 'kills', label: 'ROOM KILLS', value: `×${n}` });
+  // A count reads as a count (DEMO-SWARM-UX-2): '×' belongs to multipliers only.
+  if (n > 0) rows.push({ id: 'kills', label: 'Room kills', value: `${n}` });
   const chain = Number.isFinite(bestChain) ? Math.trunc(bestChain) : 0;
-  if (chain > 0) rows.push({ id: 'chain', label: 'BEST CHAIN', value: `×${chain}` });
+  if (chain > 0) rows.push({ id: 'chain', label: 'Best chain', value: `${chain}` });
   return rows;
 }
 

@@ -835,10 +835,15 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
             : 'Payload';
           const shortName = rawName.length > 14 ? `${rawName.slice(0, 13).trim()}…` : rawName;
           const interp = body ? resolveMassInterpretation(couplingBodyMass(p), couplingBodyMass(body)) : null;
-          // DEMO-SWARM-UX-2: the grade reads as plain weight, not an unexplained 'Even / Heavy'.
-          const band = interp?.key === 'likely-payload' ? 'light enough to throw'
-            : interp?.key === 'likely-anchor' ? 'too heavy to throw'
-            : interp?.key === 'comparable' ? 'even mass' : '';
+          // DEMO-SWARM-UX-2: in a Swarm fight the grade reads as plain weight, not an
+          // unexplained 'Even / Heavy'. Adventure keeps its own designed Light/Heavy words.
+          const band = isSwarmGlass(liveState)
+            ? (interp?.key === 'likely-payload' ? 'light enough to throw'
+              : interp?.key === 'likely-anchor' ? 'too heavy to throw'
+              : interp?.key === 'comparable' ? 'even mass' : '')
+            : (interp?.key === 'likely-payload' ? 'Light'
+              : interp?.key === 'likely-anchor' ? 'Heavy'
+              : interp?.key === 'comparable' ? 'Even' : '');
           lineTag = band ? `${shortName} · ${band}` : shortName;
         }
         model.shipStatus = { hits, hardpoints, lineTag };
