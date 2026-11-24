@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "29e58fa338750ad2e0fd4d61fc869e95b01184e441e05a179097ef69d5660722",
+    "authoritativeHash": "4dac41d0fdfa01057c5226c239f0e7b268065daaa05a3fe259431ab9333838cc",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -263,6 +263,12 @@
     "2026-11-20 re-record: CARGO-BUILD-1 (R22) joins the serialized hold — player.cargo gains slots/slotCount, derived gains cargoSlots, save meta.version 23->24, seeded capVolume 40->250.",
     "(cont.) sim-golden-diff VERDICT: CONTENT_ONLY, zero motion fields changed; all trace counts identical.",
     "2026-11-20 version-only re-record: the Adventure Pilot Tree migration raises meta.version 25->26.",
-    "(cont.) Pinning CURRENT_VERSION back to 25 reproduces the prior hash aa9a843c517be0cf0f9dfa440c6a5d58efbfbe98a76f307a56dd8618304b389d exactly; no simulated behaviour moved."
+    "(cont.) Pinning CURRENT_VERSION back to 25 reproduces the prior hash aa9a843c517be0cf0f9dfa440c6a5d58efbfbe98a76f307a56dd8618304b389d exactly; no simulated behaviour moved.",
+    "2026-11-24 deliberate re-record: the hash moved for contract wording only. The prior authoritativeHash was 29e58fa338750ad2e0fd4d61fc869e95b01184e441e05a179097ef69d5660722.",
+    "The mover is the plain-words copy pass on CONTRACT_47A_B0_BODY in src/data/narrative.js, committed in the same change as this pin: title/summary/fullText 'Mass Variance Sample' -> 'Weigh the sample'.",
+    "(cont.) missionStoryOps copies title/summary/fullText onto the hashed missions.active row, so contract wording reaches this envelope.",
+    "scripts/sim-golden-diff.mjs --ref 8ef7a7d475 (last commit before the red window): VERDICT CONTENT_ONLY — 3 diffs total, all $.missions.active[0] title/description/summary text. ZERO entity pos/vel/rot/angVel/prevPos fields changed and zero trace counts moved.",
+    "The same pass also renamed the persistent cargo row '47-A ASSAY SAMPLE' -> '47-A SAMPLE'; that field is not in this hashed snapshot and did not move the hash.",
+    "Recorded from a --reload-at 600 run on the working tree that carries the copy: sha256 equals baselineSha256 at 4dac41d0fdfa01057c5226c239f0e7b268065daaa05a3fe259431ab9333838cc."
   ]
 }

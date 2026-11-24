@@ -541,7 +541,7 @@ export const KURTZ = {
 // ── Persistent cargo (Thread B + Choice D) ───────────────────────────────────────────────────
 // These items cannot be sold or jettisoned; the game treats them as PERSONAL EFFECTS.
 export const PERSISTENT_CARGO = [
-  { id: 'cmdty_47a_assay_sample', name: '47-A ASSAY SAMPLE', mass: 0.0031, note: 'SEALED EVIDENCE — CONTRACT 47-A. Deliver to Helios Station.' },
+  { id: 'cmdty_47a_assay_sample', name: '47-A SAMPLE', mass: 0.0031, note: 'SEALED — CONTRACT 47-A. Deliver to Helios Station.' },
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
   // E1 depth-program story items (cargo:persistentAdded grants these into the hold).
   { id: 'depth_vols_black_box', name: 'CAPTAIN VOLS BLACK BOX', mass: 0.0022, note: 'PERSONAL EFFECTS — the Tessera\u2019s previous crew, in their own voice.' },
@@ -556,16 +556,16 @@ export const THREAD_B_FRAGMENT_ID = 'cmdty_unclassified_composite';
 /** B0 contract body — optional deep-read; numbers only, no lore dump. */
 export const CONTRACT_47A_B0_BODY = Object.freeze({
   contractId: '47-A',
-  title: 'Contract 47-A: Mass Variance Sample',
+  title: 'Contract 47-A: Weigh the sample',
   massAcceptT: 12.4,
   massDeliverT: 0,
   authorization: 'APPROVED: VALE, D. / MID-SECTOR ADMIN / REF 44-C',
   code: 'VALE-ALA-47A',
-  summary: 'Mass on accept: 12.4t. Authorization: VALE, D. / REF 44-C. Sample the discrepancy. Deliver to Helios Station.',
+  summary: 'Mass on accept: 12.4t. Authorization: VALE, D. / REF 44-C. Weigh the sample. Deliver to Helios Station.',
   fullText: [
-    'CONTRACT 47-A — MASS VARIANCE / ASSAY RECOVERY',
+    'CONTRACT 47-A — WEIGH THE SAMPLE',
     'MASS ON ACCEPT: 12.4t',
-    'MASS ON DELIVERY: RECONCILED TO LOG',
+    'MASS ON DELIVERY: WEIGHED AND LOGGED',
     'AUTHORIZATION: APPROVED: VALE, D. / MID-SECTOR ADMIN / REF 44-C',
     'CODE: VALE-ALA-47A',
     'STATUS: OPEN / PAYMENT: PENDING',
