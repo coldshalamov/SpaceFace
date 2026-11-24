@@ -15,7 +15,7 @@ const WEAPON = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.
 // The loose rock is the game's first instruction (demo route 2026-11-23): stated plainly, not
 // as an optional side lesson under the tracked 47-A job. Since ef8f2a6 the waypoint names the key
 // it is taught with (taughtVerbLine), so the live line ends in the bracket, not a bare verb.
-const TETHER_LINE = 'Latch the loose rock. (F)';
+const TETHER_LINE = 'Latch the loose rock. (F / RMB)';
 
 function makeState(overrides = {}) {
   const player = makeEntity({

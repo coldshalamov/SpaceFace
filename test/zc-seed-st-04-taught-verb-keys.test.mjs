@@ -21,9 +21,9 @@ test('opening flight prompts name the current default bindings', () => {
   const st = stateWithBindings({});
   assert.equal(taughtVerbLine(st, 'thrust', 'Thrust until speed passes forty.'),
     'Thrust until speed passes forty. (W/↑)');
-  assert.equal(taughtVerbLine(st, 'tether', 'Latch the loose rock.'), 'Latch the loose rock. (F)');
+  assert.equal(taughtVerbLine(st, 'tether', 'Latch the loose rock.'), 'Latch the loose rock. (F / RMB)');
   assert.equal(taughtVerbLine(st, 'tether:target:acquired', 'Latch it. Massline.'),
-    'Latch it. Massline. (F)');
+    'Latch it. Massline. (F / RMB)');
   assert.equal(taughtVerbLine(st, 'burst', 'Fire a short burst into the raider.'),
     'Fire a short burst into the raider. (LMB)');
 });
@@ -46,7 +46,7 @@ test('scanner and mining prompts name the available tool and follow a remap', ()
 test('the label is live: a rebound tether key is the one that prints', () => {
   const st = stateWithBindings({ tether: ['KeyQ'] });
   assert.equal(taughtVerbLine(st, 'tether:target:acquired', 'Latch it. Massline.'),
-    'Latch it. Massline. (Q)');
+    'Latch it. Massline. (Q / RMB)');
 });
 
 test('no label resolves to no suffix — the authored line stands', () => {

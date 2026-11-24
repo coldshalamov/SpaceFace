@@ -163,7 +163,7 @@ test('DEMO-ADV-2: the rope is the tracked instruction on the frame the opening b
   assert.ok(wp, 'the opening owns the objective slot before the first tick');
   assert.equal(wp.onboarding, true, 'the objective is the rail\'s, not the contract\'s');
   assert.equal(wp.markerId, 'onboarding:tether', 'the first instruction is the rope lesson');
-  assert.equal(wp.reason, 'Latch the loose rock. (F)', 'the line names the verb the player is asked for');
+  assert.equal(wp.reason, 'Latch the loose rock. (F / RMB)', 'the line names the verb the player is asked for');
   assert.equal(wp.label, 'Loose rock');
   assert.equal(h.state.onboarding.currentBeat, -1, 'seating the objective does not advance the rail');
   // The first tick writes the same objective, so nothing flickers or restarts.

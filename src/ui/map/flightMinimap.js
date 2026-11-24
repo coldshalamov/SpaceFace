@@ -575,12 +575,10 @@ function drawFrameBezel(ctx, width, height, cut) {
 }
 
 /**
- * The name a contact label shows: its own name when that fits whole, otherwise its plain role word
- * ("Freighter", "Sniper", "Station"). Never clipped, never "…".
+ * The name a contact label shows: its own name when that fits whole, otherwise its plain role
+ * word ("Freighter", "Sniper", "Station"). Never clipped, never "…". An enemy with no name, or
+ * whose name is too long, uses the authored kind word the edge arrow also prints.
  */
-// A Swarm or pirate enemy is called by its own kind everywhere it is named ('Tendril', 'Kraken'),
-// the same word the off-screen edge arrow prints (threatHalo.haloKindWord), so one enemy never
-// wears two names. A full callsign stays only when its first word already is that kind.
 const ENEMY_KIND_WORD = new Map(ENEMY_TYPES.map((row) => [row.id, enemyKindWord(row)]));
 export function contactDisplayName(entity, role, { isSwarm = false } = {}) {
   const data = entity && entity.data;
@@ -589,10 +587,6 @@ export function contactDisplayName(entity, role, { isSwarm = false } = {}) {
   const raw = (data && (data.name || data.callsign || data.enemyName || data.label)) || entity?.name || '';
   const cleaned = String(raw).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/[…]+/g, '').replace(/\s+/g, ' ').trim();
   if (isSwarm && (role === 'civilian' || /^traffic$/i.test(cleaned))) return '';
-  if (kind) {
-    const first = cleaned.split(/\s+/)[0] || '';
-    if (!cleaned || cleaned.length > CONTACT_NAME_MAX || first !== kind) return kind;
-  }
   if (!cleaned) return word;
   return cleaned.length <= CONTACT_NAME_MAX ? cleaned : word;
 }

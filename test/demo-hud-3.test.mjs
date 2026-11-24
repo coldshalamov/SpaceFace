@@ -1,5 +1,5 @@
 // DEMO-HUD-3 — flight HUD words a stranger was misreading.
-// Kind arrows name the hull (Tendril, not The). The tracker key matches the aim chip.
+// Kind arrows name the hull (Tendril, not The). The tracker key matches Help's F / RMB.
 // The contact list stays off while the opening rail is the only voice.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,6 +10,7 @@ import { haloKindWord } from '../src/ui/threatHalo.js';
 import { contactDisplayName } from '../src/ui/map/flightMinimap.js';
 import { setPromptDevice } from '../src/ui/bindings.js';
 import { verbChip, verbChipKey } from '../src/ui/controlPrompts.js';
+import { taughtLatchKey } from '../src/onboarding/verbSpeech.js';
 import {
   contactRosterVisible,
   resolveTrackerActionKey,
@@ -17,7 +18,10 @@ import {
   worldTagCenterCovered,
 } from '../src/ui/hud.js';
 
-const BAD_KIND = new Set(['The', 'Iron', 'Quiet', 'Customs', 'Forge', 'Point-Defense', 'Corsair', 'Fleeing']);
+const BAD_KIND = new Set([
+  'The', 'Iron', 'Quiet', 'Customs', 'Forge', 'Point-Defense', 'Corsair', 'Fleeing',
+  'Tether', 'Screen', 'Nest', 'Jack', 'Moth',
+]);
 
 test('every enemy kind is a short word, never the leading article or adjective', () => {
   assert.ok(ENEMY_TYPES.length > 20);
@@ -36,13 +40,17 @@ test('every enemy kind is a short word, never the leading article or adjective',
   assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'wasp_swarmer')), 'Wasp');
   assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'lancer_sniper')), 'Lancer');
   assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'last_argument')), 'Argument');
-  assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'pd_screen_escort')), 'Screen');
+  assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'pd_screen_escort')), 'Escort');
+  assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'tether_control_raider')), 'Wrangler');
+  assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'nest_carrier')), 'Carrier');
+  assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'pallet_jack')), 'Pallet');
+  assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'mothlight')), 'Mothlight');
   assert.equal(enemyKindWord(ENEMY_TYPES.find((row) => row.id === 'forge_regent')), 'Regent');
   assert.equal(enemyKindWord({ name: 'The Last Argument' }), 'Argument',
     'a row with no authored kind still uses the last word, never The');
 });
 
-test('the edge arrow and the radar print the same kind word', () => {
+test('the edge arrow prints the kind; the radar keeps an authored name that fits', () => {
   const cases = [
     ['brood_tendril', 'The Tendril', 'Tendril'],
     ['yardmaster', 'The Yardmaster', 'Yardmaster'],
@@ -54,24 +62,58 @@ test('the edge arrow and the radar print the same kind word', () => {
   for (const [id, name, want] of cases) {
     const entity = { data: { enemyTypeId: id, name } };
     assert.equal(haloKindWord(entity, 'hostile'), want, `arrow ${name}`);
-    assert.equal(contactDisplayName(entity, 'reach'), want, `radar ${name}`);
+    assert.equal(contactDisplayName(entity, 'reach'), name, `radar keeps ${name}`);
   }
   assert.equal(haloKindWord({ data: {} }, 'the unknown'), 'Hostile');
   assert.equal(haloKindWord({ data: {} }, 'sniper'), 'Sniper');
+  assert.equal(
+    contactDisplayName({ data: { enemyTypeId: 'reaver_pirate', callsign: 'Gray Havoc' } }, 'reach'),
+    'Gray Havoc',
+    'an ace callsign that fits is still the radar name',
+  );
+  assert.equal(
+    contactDisplayName({ data: { enemyTypeId: 'corsair_raider', name: 'RAIDER VEE-TWO' } }, 'reach'),
+    'RAIDER VEE-TWO',
+  );
+  assert.equal(
+    contactDisplayName({ data: { enemyTypeId: 'brood_tendril' } }, 'reach'),
+    'Tendril',
+    'a nameless hull falls back to the kind word',
+  );
+  assert.equal(
+    contactDisplayName({
+      data: { enemyTypeId: 'mule_trader', name: 'Relief-Freighter Choir-Tender' },
+    }, 'reach'),
+    'Trader',
+    'a name that will not fit whole becomes the kind word, never an ellipsis',
+  );
 });
 
-test('the tracker latch key is the aim chip key', (t) => {
+test('the tracker latch key is the taught F / RMB form, not a HUD rewrite to RMB', (t) => {
   t.after(() => setPromptDevice('kbm'));
   const state = { settings: { controls: { bindings: { tether: ['KeyF'] } } } };
   setPromptDevice('kbm');
   const chip = verbChip(state, 'tether', 'LATCH');
-  const keyed = resolveTrackerActionKey(state, 'Latch the loose rock. (F)');
-  assert.equal(chip, 'RMB · LATCH');
-  assert.equal(keyed.key, verbChipKey(state, 'tether'));
-  assert.equal(keyed.key, 'RMB');
+  const taught = taughtLatchKey(state);
+  const keyed = resolveTrackerActionKey(state, 'Latch the loose rock. (F / RMB)');
+  assert.equal(chip, 'RMB · LATCH', 'the aim chip still names the mouse on the rock');
+  assert.equal(taught, 'F / RMB');
+  assert.equal(keyed.key, taught);
+  assert.equal(keyed.key, 'F / RMB');
   assert.equal(keyed.text, 'Latch the loose rock');
+  assert.equal(
+    resolveTrackerActionKey(state, 'Latch the loose rock. (F)').key,
+    'F / RMB',
+    'a leftover keyboard-only suffix expands to the taught form',
+  );
   assert.equal(resolveTrackerActionKey(state, 'Dock (E)').key, 'E',
     'a line that is not the latch keeps its own key');
+  assert.equal(
+    resolveTrackerActionKey(state, 'Latch the raider (F / RMB) or fly away'),
+    null,
+    'a raid line that names both choices is not rewritten into a trailing key cap',
+  );
+  assert.equal(verbChipKey(state, 'tether'), 'RMB');
 });
 
 test('a GUNS tag whose hull centre sits on an instrument drops its words', () => {
@@ -101,6 +143,7 @@ test('the tracker second line wraps to two lines instead of a one-line ellipsis'
   const rule = css.slice(css.indexOf('.sf-mt-compact-readings'), css.indexOf('.sf-mt-compact-readings') + 420);
   assert.match(rule, /line-clamp:\s*2/);
   assert.match(rule, /white-space:\s*normal/);
+  assert.match(rule, /overflow-wrap:\s*anywhere/);
   assert.doesNotMatch(rule, /white-space:\s*nowrap/);
   assert.doesNotMatch(rule, /text-overflow:\s*ellipsis/);
 });

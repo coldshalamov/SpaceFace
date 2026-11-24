@@ -301,7 +301,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'pd_screen_escort', name: 'Point-Defense Screen', kind: 'Screen', shipId: 'ship_bastion',
+    id: 'pd_screen_escort', name: 'Point-Defense Screen', kind: 'Escort', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 9],
     // FB-018: the screen is the row's identity, not an override table entry — the escort holds
@@ -422,7 +422,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'tether_control_raider', name: 'Tether-Control Raider', kind: 'Tether', shipId: 'ship_hornet',
+    id: 'tether_control_raider', name: 'Tether-Control Raider', kind: 'Wrangler', shipId: 'ship_hornet',
     silhouette: 'corsair_blade', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [5, 11],
     combatDoctrineId: 'tether_control_raider',
@@ -718,7 +718,7 @@ export const ENEMY_TYPES = [
   // mounts between the door tracks, and its "flood" is the score's wasp wing. The belly is
   // the soft arc: the doors and the bays behind them all live underneath.
   {
-    id: 'nest_carrier', name: 'Nest Carrier', kind: 'Nest', shipId: 'ship_atlas',
+    id: 'nest_carrier', name: 'Nest Carrier', kind: 'Carrier', shipId: 'ship_atlas',
     silhouette: 'trader_haul', factionId: 'faction_reach',
     aiArchetype: 'miniboss_capital', levelRange: [8, 12],
     combatDoctrineId: 'capital_broadside',
@@ -942,8 +942,8 @@ const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
 const KIND_BY_ID = Object.freeze({
   last_argument: 'Argument',
   kilnback: 'Kilnback',
-  mothlight: 'Moth',
-  pallet_jack: 'Jack',
+  mothlight: 'Mothlight',
+  pallet_jack: 'Pallet',
   enemy_iron_kraken: 'Kraken',
   enemy_iron_kraken_colossus: 'Colossus',
 });

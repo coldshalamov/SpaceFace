@@ -367,7 +367,7 @@ function starterLoadoutRows(starter) {
 // rock, throw it, dock at Helios, take a job). Rendered as four static kit rows under the loadout
 // (check-new-game-first-run-rail); the fourth row follows the picked hull's own Helios ticket.
 const FIRST_MINUTES = [
-  ['Latch the loose rock', 'F or right mouse on the marked rock beside you. One verb at a time.'],
+  ['Latch the loose rock', 'F / RMB on the marked rock beside you. One verb at a time.'],
   ['Throw it at the wreck', 'Swing round, aim, and tap the Line again to let go.'],
   ['Dock at Helios', 'Press E and the autopilot flies you to the berth.'],
   ['Take a job', 'Pick work from the Helios Jobs board, then undock and do it.'],

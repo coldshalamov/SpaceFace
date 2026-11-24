@@ -142,6 +142,7 @@ import {
 import { getStage } from './stage.js';
 import { counted, pluralWord } from './numberFormat.js';
 import { verbChipKey } from './controlPrompts.js';
+import { taughtLatchKey } from '../onboarding/verbSpeech.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 
@@ -1439,21 +1440,23 @@ function threatArcPath(a, r = 48, s = 0.28) {
 }
 // A tracker line that ends in a real key token: words (trailing full stop dropped) + the key.
 // Progress marks ('1/3') and prose asides ('Field Build') are not keys.
-const TRACKER_KEY_SUFFIX = /^(.*?)[.\s]*\(((?:[A-Z0-9]|F\d{1,2}|RMB|LMB|MMB|Space|Tab|Shift|Ctrl|Alt|Enter|Esc))\)\s*$/;
+const TRACKER_KEY_TOKEN = '(?:[A-Z0-9]|F\\d{1,2}|RMB|LMB|MMB|Space|Tab|Shift|Ctrl|Alt|Enter|Esc)';
+const TRACKER_KEY_SUFFIX = new RegExp(`^(.*?)[.\\s]*\\((${TRACKER_KEY_TOKEN}(?:\\s*\\/\\s*${TRACKER_KEY_TOKEN})*)\\)\\s*$`);
 export function splitTrackerActionKey(actionLine) {
   const line = actionLine == null ? '' : String(actionLine);
   const keyed = TRACKER_KEY_SUFFIX.exec(line);
   if (!keyed) return null;
   return { text: keyed[1], key: keyed[2] };
 }
-// A latch line's key cap uses the aim chip's resolver (verbChipKey). Keyboard copy says F and
-// the chip on the rock says RMB; the tracker names the chip's key so one verb has one label.
+// A latch line's key cap is the form Help and the loading card already teach (F / RMB).
+// The line's author writes that form; leftover keyboard-only suffixes are expanded here
+// so the tracker never names a different key than the spoken beat.
 const TRACKER_LATCH_LINE = /\blatch\b/i;
 export function resolveTrackerActionKey(state, actionLine) {
   const keyed = splitTrackerActionKey(actionLine);
   if (!keyed || !TRACKER_LATCH_LINE.test(keyed.text)) return keyed;
-  const chip = verbChipKey(state, 'tether');
-  return chip ? { text: keyed.text, key: chip } : keyed;
+  const taught = taughtLatchKey(state) || verbChipKey(state, 'tether');
+  return taught ? { text: keyed.text, key: taught } : keyed;
 }
 /** True when a world tag's subject centre already sits inside a HUD avoid rect. */
 export function worldTagCenterCovered(x, y, rects) {
@@ -2558,8 +2561,8 @@ export function createHud(ctx, alerts) {
   const mtCompact = document.createElement('div');
   mtCompact.className = 'sf-mt-compact';
   const mtAction = document.createElement('div'); mtAction.className = 'sf-mt-compact-action';
-  // The opening's taught-verb line names its key in brackets ('Latch the loose rock. (F)'); the
-  // line prints the words and the key as a key cap, the way every other prompt shows a key.
+  // The opening's taught-verb line names its key in brackets ('Latch the loose rock. (F / RMB)');
+  // the line prints the words and the key as a key cap, the way every other prompt shows a key.
   const mtActionText = document.createElement('span');
   const mtActionKey = document.createElement('kbd');
   mtActionKey.className = 'dp-kbd sf-mt-key';

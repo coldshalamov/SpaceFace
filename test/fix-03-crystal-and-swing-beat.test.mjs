@@ -303,7 +303,7 @@ test('the swing objective follows a live latch and returns to the rock after a b
   const rock = rescueActor(h, 'rock');
   const wreck = rescueActor(h, 'derelict');
   const attachments = h.state.combat.attachments.byId;
-  assert.equal(h.state.nav.waypoint.reason, 'Latch the loose rock with Q.');
+  assert.equal(h.state.nav.waypoint.reason, 'Latch the loose rock with Q / RMB.');
   assert.deepEqual(h.state.nav.waypoint.pos, { x: rock.pos.x, z: rock.pos.z });
 
   attachments.lesson = { ownerId: h.state.playerId, targetId: rock.id, state: 'active' };
@@ -321,7 +321,7 @@ test('the swing objective follows a live latch and returns to the rock after a b
   delete attachments.lesson;
   h.bus.emit('tether:broke', { targetId: rock.id });
   tickRail(h);
-  assert.equal(h.state.nav.waypoint.reason, 'Latch the loose rock with Q.');
+  assert.equal(h.state.nav.waypoint.reason, 'Latch the loose rock with Q / RMB.');
   assert.deepEqual(h.state.nav.waypoint.pos, { x: rock.pos.x, z: rock.pos.z });
 });
 
