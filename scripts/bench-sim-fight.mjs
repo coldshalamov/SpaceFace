@@ -129,6 +129,9 @@ async function runArm(label, flags) {
     await send(0, key('keydown', 'KeyW'), { kind: 'domEvent', d: { type: 'mousedown', button: 0 } });
     const powers = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'];
     const times = [];
+    // Process CPU per step beside wall time: on a machine shared with other agents a step's wall
+    // time swings with their load, its CPU time much less.
+    const cpuTimes = [];
     const ents = []; const ships = [];
     let deaths = 0; let spawned = 0;
     lane.host.bus.on('entity:destroyed', () => { deaths++; });
@@ -148,10 +151,13 @@ async function runArm(label, flags) {
       if (sub === 6) { if (turn) commands.push(key('keyup', turn)); if (beat % 3 === 0) commands.push(key('keyup', power)); }
       keepAlive();
       const t0 = now();
+      const c0 = process.cpuUsage();
       await send(1, ...commands);
       const dt = now() - t0;
+      const c1 = process.cpuUsage(c0);
       if (i >= WARM) {
         times.push(dt);
+        cpuTimes.push((c1.user + c1.system) / 1000);
         if (i % 30 === 0) {
           ents.push(state.entityList.length);
           let s = 0; for (const e of state.entityList) if (e && e.alive !== false && e.type === 'ship') s++;
@@ -166,6 +172,7 @@ async function runArm(label, flags) {
     out.meanMs = r2(times.reduce((a, b) => a + b, 0) / Math.max(1, times.length));
     out.p50 = r2(q(sorted, 0.5)); out.p95 = r2(q(sorted, 0.95)); out.p99 = r2(q(sorted, 0.99)); out.max = r2(sorted.at(-1) || 0);
     out.over16 = times.filter((t) => t > 16.7).length;
+    out.cpuMeanMs = r2(cpuTimes.reduce((a, b) => a + b, 0) / Math.max(1, cpuTimes.length));
     // Worst 10 s window (600 ticks): what world speed a 60 Hz clock could hold through it.
     let worst = 0;
     for (let i = 0; i + 600 <= times.length; i += 60) {
@@ -222,7 +229,7 @@ async function runArm(label, flags) {
 }
 
 function line(o) {
-  return `${String(o.label).padEnd(10)} step mean ${String(o.meanMs).padStart(6)}  p50 ${String(o.p50).padStart(6)}  p95 ${String(o.p95).padStart(6)}  p99 ${String(o.p99).padStart(6)}  max ${String(o.max).padStart(6)}  worst10s ${String(o.worst10sMeanMs).padStart(6)}  >16.7ms ${String(o.over16).padStart(4)}/${o.ticks}  ents ${o.entsMean}/${o.entsMax} ships ${o.shipsMean}/${o.shipsMax} deaths ${o.deaths} spawned ${o.spawned} wave ${o.run ? o.run.wave : '-'} ${o.physics ? `bodies ${o.physics.bodies} dyn ${o.physics.dynamic}` : ''}${o.hash ? ' hash ' + o.hash : ''}${o.census ? ' | census: ' + o.census.map(([k, n]) => k + ' ' + n).join(', ') : ''}`;
+  return `${String(o.label).padEnd(10)} step mean ${String(o.meanMs).padStart(6)} cpu ${String(o.cpuMeanMs).padStart(6)}  p50 ${String(o.p50).padStart(6)}  p95 ${String(o.p95).padStart(6)}  p99 ${String(o.p99).padStart(6)}  max ${String(o.max).padStart(6)}  worst10s ${String(o.worst10sMeanMs).padStart(6)}  >16.7ms ${String(o.over16).padStart(4)}/${o.ticks}  ents ${o.entsMean}/${o.entsMax} ships ${o.shipsMean}/${o.shipsMax} deaths ${o.deaths} spawned ${o.spawned} wave ${o.run ? o.run.wave : '-'} ${o.physics ? `bodies ${o.physics.bodies} dyn ${o.physics.dynamic}` : ''}${o.hash ? ' hash ' + o.hash : ''}${o.census ? ' | census: ' + o.census.map(([k, n]) => k + ' ' + n).join(', ') : ''}`;
 }
 
 const results = [];
@@ -270,7 +277,7 @@ if (AB) {
     }
   }
   const med = (arr) => { const s = arr.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
-  for (const k of ['meanMs', 'p50', 'p95', 'worst10sMeanMs']) {
+  for (const k of ['meanMs', 'cpuMeanMs', 'p50', 'p95', 'worst10sMeanMs']) {
     const off = med(results.filter((x) => x.label === 'OFF').map((x) => x[k]));
     const on = med(results.filter((x) => x.label === 'ON').map((x) => x[k]));
     console.log(`  ${k.padEnd(16)} OFF ${off}  ON ${on}  (${r2((on - off) / off * 100)} %)`);

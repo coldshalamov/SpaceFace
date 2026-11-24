@@ -194,7 +194,8 @@ for (let i = 0; i < total; i++) {
     const recs = o && o.dynamicRecords ? [...o.dynamicRecords] : [];
     for (const rec of recs) {
       const e = rec.entity; if (!e) continue; n++;
-      const k = e.type === 'pickup' || e.type === 'payload' ? `${e.type}:${(e.data && (e.data.kind || e.data.commodityId)) || '-'}` : e.type;
+      const k = e.type === 'pickup' || e.type === 'payload' ? `${e.type}:${(e.data && (e.data.kind || e.data.commodityId)) || '-'}`
+        : e.type === 'asteroid' && e.data && e.data.materialFragment === true ? 'asteroid:fragment' : e.type;
       byType[k] = (byType[k] || 0) + 1;
       if (rec.body && rec.body.isSleeping && rec.body.isSleeping()) asleep++;
       const v = e.vel ? Math.hypot(e.vel.x || 0, e.vel.z || 0) : 0;
