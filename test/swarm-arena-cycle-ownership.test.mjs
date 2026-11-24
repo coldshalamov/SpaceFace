@@ -6,9 +6,9 @@
 // same wave. Ownership of WHAT the token builds lives one seam later — survivalArena's
 // planArenaInstallBody dispatches on `run.arenaId`, and each law arena's own module
 // (lagrangeCrucible, cinderSluiceArena, cryoDriftArena, stormLatticeArena, asteroidMillArena,
-// theHiveArena) translates the token into its own machinery. Helios Core and the catalog's
-// law-less rooms (ceres_belt, tethys_hub) read the generic phase table — the documented
-// fallback, not an override.
+// theHiveArena) translates the token into its own machinery. Helios Core reads the generic
+// phase table — the documented fallback, not an override. Ceres Belt and Tethys Hub are
+// authored side rooms (AUDIT-R3): their own notes and furniture at every token, idle included.
 //
 // This file pins that contract end to end:
 //   (a) every law arena resolves every vocabulary token into its own non-inert machinery;
@@ -111,16 +111,28 @@ test('every law arena resolves every vocabulary token into its own machinery —
 });
 
 test('the documented fallback: law-less arenas read the generic table — and idle stays honest', () => {
-  for (const arenaId of LAW_LESS_ARENAS) {
+  // AUDIT-R3 dressed the two catalog side rooms: they keep their own notes and furniture at
+  // every token, idle included. Only Helios Core still reads the generic phase table.
+  const SIDE_ROOM_ARENAS = LAW_LESS_ARENAS.filter((id) => id === 'ceres_belt' || id === 'tethys_hub');
+  const GENERIC_ARENAS = LAW_LESS_ARENAS.filter((id) => !SIDE_ROOM_ARENAS.includes(id));
+  for (const arenaId of GENERIC_ARENAS) {
     for (const token of SWARM_ARENA_PHASE_CYCLE) {
       const install = installFor(arenaId, token);
       assert.notEqual(install.note, 'inert room', `${arenaId} reads the generic grammar`);
       assert.ok(machineryCount(install) > 0);
     }
   }
-  // No law module means no idle law to keep: a law-less room's idle is the honest nothing.
-  // The Foundry is the one authored exception — its idle is the bank room itself.
-  for (const arenaId of LAW_LESS_ARENAS.filter((id) => id !== FOUNDRY_ARENA_ID)) {
+  for (const arenaId of SIDE_ROOM_ARENAS) {
+    for (const token of SWARM_ARENA_PHASE_CYCLE) {
+      const install = installFor(arenaId, token);
+      assert.notEqual(install.note, 'inert room', `${arenaId} keeps its authored side room`);
+      assert.ok(listArenaToys(install).length > 0, `${arenaId} ships its own furniture`);
+    }
+  }
+  // No law module means no idle law to keep: a generic law-less room's idle is the honest
+  // nothing. The Foundry is the one authored exception — its idle is the bank room itself —
+  // and the side rooms keep their furniture at idle too.
+  for (const arenaId of GENERIC_ARENAS.filter((id) => id !== FOUNDRY_ARENA_ID)) {
     assert.equal(installFor(arenaId, 'idle').note, 'inert room', `${arenaId} idle is honestly empty`);
   }
   const foundryIdle = installFor(FOUNDRY_ARENA_ID, 'idle');
@@ -157,11 +169,17 @@ test('wave 2 deals furnace_active everywhere — and installs seven different ro
   const owners = [...LAW_ARENA_IDS, FOUNDRY_ARENA_ID];
   const notes = new Set(owners.map((id) => installs[id].note));
   assert.equal(notes.size, owners.length, 'every owner renders the beat in its own words');
-  // The law-less arenas share Helios' generic grammar — same reading, minus the authored furniture.
-  for (const arenaId of LAW_LESS_ARENAS.filter((id) => id !== FOUNDRY_ARENA_ID)) {
+  // The generic law-less arenas share Helios' grammar — same reading, minus the authored
+  // furniture. The side rooms (AUDIT-R3) read the beat in their own words, with their own furniture.
+  const SIDE_ROOM_IDS = LAW_LESS_ARENAS.filter((id) => id === 'ceres_belt' || id === 'tethys_hub');
+  for (const arenaId of LAW_LESS_ARENAS.filter((id) => !SIDE_ROOM_IDS.includes(id) && id !== FOUNDRY_ARENA_ID)) {
     assert.equal(installs[arenaId].note, installs[FOUNDRY_ARENA_ID].note);
     assert.equal(listArenaToys(installs[arenaId]).length, 0, 'no Foundry furniture off Foundry');
   }
+  assert.equal(installs.ceres_belt.note, 'worked claim', 'the Ceres claim works the beat its own way');
+  assert.ok(listArenaToys(installs.ceres_belt).length > 0, 'the claim ships its racks and beacon');
+  assert.equal(installs.tethys_hub.note, 'exchange toll lane', 'the Tethys hub tolls the beat its own way');
+  assert.ok(listArenaToys(installs.tethys_hub).length > 0, 'the toll lane ships its gates');
 
   // Foundry: the centre shove plus the furnace and the bank plates.
   const foundry = installs[FOUNDRY_ARENA_ID];

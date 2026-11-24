@@ -265,21 +265,24 @@ test('a valid snapshot under different fixed-step or integration settings falls 
 });
 
 
-test('unrepresented retired projectile pool requires non-exact reconstruction before subsequent reuse', async () => {
+test('a retired pooled body serializes disabled, adopts clean and never rejoins the pool', async () => {
   const ship = actor(1), projectile = actor(2, 500);
   projectile.type = 'projectile'; projectile.data = {}; projectile.physicsBody.material = 'projectile';
   const source = await ownerFor([ship, projectile]), target = await ownerFor([]);
   try {
     projectile.alive = false; source.syncFromEntities([ship]);
-    assert.equal([...source._ghostProjectilePool.values()].flat().length, 1);
+    assert.equal([...source._retiredBodyPool.values()].flat().length, 1);
     const current = clone(ship);
-    assert.equal(target.adoptWorldSnapshot(clone(source.exportWorldSnapshot()), [current]), false);
-    target.rebuildWorldFromEntities([current]);
+    // The retired body is disabled baggage inside takeSnapshot's bytes. Pool ownership is
+    // not serialized, so adoption drops it rather than forcing scalar fallback — a
+    // generalized pool would otherwise poison every save that follows a kill wave.
+    assert.equal(target.adoptWorldSnapshot(clone(source.exportWorldSnapshot()), [current]), true);
+    assert.equal(target.world.bodies.len(), 1);
+    assert.equal(target.records.get(1).body.isValid(), true);
+    assert.equal([...target._retiredBodyPool.values()].flat().length, 0);
     const incoming = clone(projectile); incoming.alive = true; incoming.id = 3;
     target.syncFromEntities([current, incoming]); target.step(DT);
-    assert.equal(target.world.bodies.len(), 2);
     assert.equal(target.records.get(3).body.isValid(), true);
-    assert.equal([...target._ghostProjectilePool.values()].flat().length, 0);
   } finally { source.dispose(); target.dispose(); }
 });
 

@@ -44,12 +44,14 @@ test('cover UVs preserve video proportions on ultrawide and portrait screens',()
   const portrait=signalCover(390,844,1920,1080);assert(portrait[0]<.27);assert.equal(portrait[1],1);
   assert(signalCover(0,0,0,0).every(Number.isFinite));
 });
-test('native media is ready before the game graph; live title optics remain optional afterwards',()=>{
+test('native media proof is attached before the game graph; live title optics remain optional afterwards',()=>{
   const src=readFileSync(new URL('../src/ui/bootEntry.js',import.meta.url),'utf8');
-  const media=src.indexOf('await Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready])');
-  const main=src.indexOf("await import('../main.js')");
+  // LOAD-TIME-1: the graph evaluates in parallel with the film proof, so the proof is
+  // observed (void), never awaited ahead of main.js.
+  const media=src.indexOf('void Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready])');
+  const main=src.indexOf("import('../main.js')");
   const title=src.indexOf("import('./introSignalRemixBoot.js')");
-  assert(media>=0 && main>media && title>main);
+  assert(media>=0 && main>=0 && media>main && title>media, 'graph import starts, proof attaches beside it, title optics come after');
   assert(src.includes('.catch(() => { /* Decoration cannot block boot. */ });'));
   assert(!src.includes('bootstrapLoadingTerminal'));
 });

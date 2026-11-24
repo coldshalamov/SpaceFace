@@ -122,7 +122,9 @@ test('different-sector restore retires old payloads before a sliced exit tail ca
     const seen = [];
     h.bus.on('sector:exit', () => seen.push('first'));
     h.bus.on('sector:exit', () => seen.push('tail'));
-    h.bus.setEmitSliceBudget('sector:exit', 1);
+    // Core's deferred-spawn teardown listener now occupies the head of sector:exit, so the
+    // budget that runs "the first listener, not the tail" is 2, not 1.
+    h.bus.setEmitSliceBudget('sector:exit', 2);
     const materialize = h.owner._applyResidencyPlan;
     h.owner._applyResidencyPlan = (...args) => {
       assert.deepEqual(seen, ['first'], 'the real exit listener tail is still pending');

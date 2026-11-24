@@ -84,8 +84,8 @@ test('pirate disengage empty quiet latch wakes on pirate spawn', () => {
     state.entityIndex.ships = ships;
     state.entityIndex.version = (state.entityIndex.version | 0) + 1;
   }
-  if (typeof pirateDisengage._onEntitySpawned === 'function') {
-    pirateDisengage._onEntitySpawned({ entity: pirate });
+  if (typeof pirateDisengage._onEntitySpawnedBatch === 'function') {
+    pirateDisengage._onEntitySpawnedBatch({ receipts: [{ id: pirate.id, entity: pirate }], count: 1 });
   }
   assert.equal(pirateDisengage._combatantsQuiet, null);
 

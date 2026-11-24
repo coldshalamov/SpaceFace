@@ -85,8 +85,8 @@ test('bounty hunt empty quiet latch wakes on hunter spawn and normalizes', () =>
     state.entityIndex.version = (state.entityIndex.version | 0) + 1;
   }
   // Spawn event should wake; also bump membership.
-  if (typeof bountyHunt._onEntitySpawned === 'function') {
-    bountyHunt._onEntitySpawned({ entity: hunter });
+  if (typeof bountyHunt._onEntitySpawnedBatch === 'function') {
+    bountyHunt._onEntitySpawnedBatch({ receipts: [{ id: hunter.id, entity: hunter }], count: 1 });
   }
   assert.equal(bountyHunt._huntersQuiet, null);
 

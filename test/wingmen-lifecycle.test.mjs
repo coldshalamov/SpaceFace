@@ -29,7 +29,9 @@ function createHarness() {
     pos: { x: 40, z: 0 },
     radius: 8,
     mass: 30,
-    data: { isWingman: true },
+    // The recycled-id marker check only despawns hulls that carry the fleet link
+    // _spawnWingmenSteps stamps at materialization — the fixture must link both ways.
+    data: { isWingman: true, wingmanOf: 'fleet-wing-1' },
   });
   state.automation.fleet = [{
     id: 'fleet-wing-1',
