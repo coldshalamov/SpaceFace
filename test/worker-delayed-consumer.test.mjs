@@ -67,7 +67,7 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   bus.on('fixture:one-shot', event => seenEvents.push(event.id));
   bus.on('physics:impact', event => seenImpacts.push(event.id));
   const context = vm.createContext({
-    performance: { now: () => now },
+    performance: { now: () => now, timeOrigin: 0 },
     setTimeout(fn, delay) {
       const key = ++nextTimer;
       timers.set(key, { fn, at: now + delay });
@@ -131,6 +131,12 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   };
   const lane = createSimLaneRuntime({ state, registry: {}, bus,
     flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
+    // Both clock origins are controlled here: the worker adapter runs on the vm
+    // performance clock (timeOrigin 0, now driven by this harness) and the main
+    // lane stamps heartbeats from the same fake timebase through this injection.
+    // The emitted stamp therefore rides the queue intact — a bad main timestamp
+    // cannot be laundered into a passing one by delivery.
+    pumpScheduler: { nowMs: () => now, timeOriginMs: 0 },
     channelFactory: () => ({
       post(message) {
         if (message.kind === 'clockAck') {
@@ -149,6 +155,9 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   t.after(async () => { lane.close(); await settle(); });
   return {
     state, lane, posts, seenEvents, seenImpacts, batches, appliedCommands, timerDelays, clock: context.fixture.clock,
+    send,
+    now: () => now,
+    skip(ms) { now += Math.max(0, ms); },
     maxPendingTimers: () => maxPendingTimers,
     generatedEvents: () => eventId, deliveredAcks: () => deliveredAcks,
     async until(elapsedMs) {
@@ -164,6 +173,20 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
         await settle();
       }
       now = Math.max(now, target);
+    },
+    // Fire exactly one pending timer turn, whatever is due next. Ordering probes use this
+    // to run a worker timer BEFORE a queued heartbeat batch drains (timer-first delivery).
+    async stepTimer() {
+      const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+      if (!next) return false;
+      if (next[1].wakeAt == null) next[1].wakeAt = next[1].at + (wakeDelays[wakes++] || 0);
+      timers.delete(next[0]);
+      now = Math.max(now, next[1].wakeAt);
+      next[1].fn();
+      await settle();
+      await onWake?.({ clock: context.fixture.clock, lane, state, now, setOwnerScale, settle });
+      await settle();
+      return true;
     },
     async releaseAcks() {
       holdAcks = false;
@@ -205,6 +228,41 @@ test('delayed consumer keeps cheap worker ticking with one latest scalar row per
   assert.equal(f.state.fuel.current, newestTick);
   assert.deepEqual(f.seenEvents, Array.from({ length: f.generatedEvents() }, (_, i) => i + 1));
   assert.equal(f.clock.sentAwaitingAck, false);
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('continuous production heartbeats keep worker congestion as honest catch-up debt', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  assert.ok(f.clock.stepCount >= 5);
+
+  // Block the worker event loop for 1.4 s of fake time while the main thread keeps
+  // producing frames. In the real browser those beats queue behind the blocked worker;
+  // deliver that queued batch afterwards with their original production stamps.
+  const stepsBefore = f.clock.stepCount;
+  const shedBefore = f.clock.shedStepCount;
+  f.skip(1400);
+  const endAt = f.now();
+  let lastSent = f.clock.lastHeartbeatSentAtMs;
+  assert.ok(lastSent > 0);
+  for (let sentAt = lastSent + 1000 / 60; sentAt <= endAt; sentAt += 1000 / 60) {
+    f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
+    lastSent = sentAt;
+  }
+  await f.releaseAcks();
+
+  assert.equal(f.clock.heartbeatHolds, 0,
+    'continuously produced beats prove the page was alive, so no dead-page hold is recorded');
+  assert.equal(f.clock.heartbeatHeld, false);
+  assert.ok(f.clock.lastHeartbeatProductionGapMs <= 20,
+    `the queued production stream stayed at frame cadence (gap ${f.clock.lastHeartbeatProductionGapMs})`);
+
+  await f.until(f.now() - 1000 + 50);
+  assert.ok(f.clock.stepCount > stepsBefore, 'the worker resumes stepping after its event loop unblocks');
+  assert.ok(f.clock.shedStepCount > shedBefore,
+    'the 1.4 s congestion interval remains bounded catch-up debt instead of being silently deleted');
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
@@ -401,6 +459,158 @@ test('pause discards whole old debt and resume does not charge the hidden wall i
   assert.ok(f.clock.stepCount - pausedSteps >= 5 && f.clock.stepCount - pausedSteps <= 7);
   assert.equal(f.clock.shedStepCount, 0, 'the hidden interval is excluded, not reported as overload');
   assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
+});
+
+test('timer-first continuous delivery releases the provisional hold and recovers promptly', async t => {
+  // Ordering probe: the worker's overdue timer runs BEFORE the queued heartbeat batch
+  // drains. Continuous production means the hold is transport congestion, never a dead
+  // page — it must park without destroying debt, refuse release on stale beats, and
+  // replace the coarse 100 ms recheck the moment a current beat lands.
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  assert.ok(f.clock.stepCount >= 5);
+
+  // The worker event loop blocks for 1.2 s while the main thread keeps producing frames.
+  f.skip(1200);
+  const congestedUntil = f.now();
+  const beats = [];
+  for (let sentAt = 1000 + 1000 / 60; sentAt <= congestedUntil; sentAt += 1000 / 60) beats.push(sentAt);
+  const stale = beats.filter(sentAt => congestedUntil - sentAt > 1000);
+  const fresh = beats.filter(sentAt => congestedUntil - sentAt <= 1000);
+  assert.ok(stale.length > 10 && fresh.length > 10, 'the batch has both stale and current production');
+
+  // Timer-first: one overdue fixed-step timer fires before any queued beat is consumed.
+  assert.equal(await f.stepTimer(), true, 'an overdue clock timer is pending');
+  assert.equal(f.clock.heartbeatHeld, true, 'the timer parks stepping while production is unproven');
+  assert.equal(f.clock.heartbeatHolds, 1, 'the parking episode is counted at entry, not deferred');
+  assert.equal(f.clock.heartbeatSilences, 0, 'continuous production is never producer silence');
+  const stepsHeld = f.clock.stepCount;
+
+  // Stale beats only prove the cadence of old frames. They must not release the hold.
+  for (const sentAt of stale) f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
+  assert.equal(f.clock.heartbeatHeld, true, 'a stale queued beat cannot release the provisional hold');
+  assert.equal(f.clock.stepCount, stepsHeld, 'stepping stays parked on stale production');
+  assert.equal(f.clock.heartbeatSilences, 0, 'frame-cadence gaps confirm no silence');
+
+  // The current tail of the same batch proves production is alive now: release at once,
+  // with the parked 100 ms recheck replaced by a prompt wake.
+  for (const sentAt of fresh) f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
+  assert.equal(f.clock.heartbeatHeld, false, 'a current beat releases the hold');
+  assert.equal(f.clock.heartbeatSilences, 0);
+
+  const shedBefore = f.clock.shedStepCount;
+  // Recovery must not wait another coarse recheck: 40 ms is well inside the 100 ms park cycle.
+  await f.until(f.now() - 1000 + 40);
+  assert.ok(f.clock.stepCount > stepsHeld,
+    'stepping resumes promptly instead of waiting out the parked recheck');
+  assert.ok(f.clock.shedStepCount > shedBefore,
+    'the congestion interval stays honest capped catch-up debt, not deleted time');
+  assert.equal(f.clock.heartbeatSilences, 0, 'no production time was discarded as dead-page time');
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('a late-drained restart after a true producer gap keeps the live suffix as capped catch-up debt', async t => {
+  // The receipt probe: last pre-gap beat at 1100, the page resumes production at 2200, but
+  // the blocked worker only consumes the batch at 3000 — and a timer parks stepping before
+  // the messages drain. The live suffix after the restart must survive as ordinary capped
+  // debt (and shed accounting) instead of vanishing into a receipt-time reset.
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  // The last frame the page produced before dying, stamped exactly at 1100.
+  f.send({ kind: 'laneHeartbeat', sentAtMs: 1100, clockKind: 'performance' });
+
+  f.skip(1900); // now = 3000: the worker was blocked across the stall AND the restart.
+  assert.equal(await f.stepTimer(), true, 'timer-first: one overdue turn runs before the batch');
+  assert.equal(f.clock.heartbeatHeld, true, 'the hold engages while the restart is still queued');
+  assert.equal(f.clock.heartbeatHolds, 1);
+  const stepsBeforeDrain = f.clock.stepCount;
+  const shedBeforeDrain = f.clock.shedStepCount;
+
+  // The page resumed at 2200 producing at frame cadence; the whole batch drains late at 3000.
+  for (let sentAt = 2200; sentAt <= 3000; sentAt += 1000 / 60) {
+    f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
+  }
+  assert.equal(f.clock.heartbeatHeld, false, 'the confirmed restart releases the hold');
+  assert.equal(f.clock.heartbeatSilences, 1, 'the dead interval is producer silence, not worker parking');
+  assert.equal(f.clock.heartbeatHolds, 1, 'the one parking episode is neither lost nor double-counted');
+  // 1100 ms of production gap less the 1000 ms grace window = 100 ms deliberately discarded.
+  assert.ok(Math.abs(f.clock.heartbeatSilenceMs - 100) < 1,
+    `only the silence past the grace window is discarded (got ${f.clock.heartbeatSilenceMs})`);
+  // The anchor moved to the producer restart in worker coordinates (timeOrigin 0 here),
+  // not to message receipt time — the live suffix [2200, 3000] is still owed.
+  assert.ok(Math.abs(f.clock.anchorMs - 2200) < 1,
+    `anchor follows the producer restart, not receipt time (got ${f.clock.anchorMs})`);
+
+  // One tick turn accrues the suffix through the ordinary cap path: the grace second plus
+  // the 800 ms live suffix exceed the 1 s debt cap, so the excess surfaces in shed accounting
+  // instead of vanishing unattributed — the original bug zeroed it at receipt.
+  assert.equal(await f.stepTimer(), true);
+  assert.ok(f.clock.shedStepCount - shedBeforeDrain >= 40,
+    `the live suffix stays inside capped debt accounting (shed +${f.clock.shedStepCount - shedBeforeDrain})`);
+  assert.ok(f.clock.stepCount > stepsBeforeDrain, 'the world resumes stepping after the restart');
+
+  await f.until(f.now() - 1000 + 100);
+  const diagnostics = f.lane.getDiagnostics().workerClockLastDiagnostics;
+  assert.ok(diagnostics.heartbeatSilences >= 1, 'main-side diagnostics project producer silence');
+  assert.ok(diagnostics.heartbeatSilenceMs >= 100, 'main-side diagnostics project discarded silence time');
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('a deliberate pause does not become a dead-page hold across reactivation', async t => {
+  // Hidden-page probe: beats stop while the clock is intentionally paused. Reactivation is
+  // itself main-thread liveness, so the first timer of the new active period must not age
+  // the pre-pause beat into a dead-page hold before the next heartbeat can even arrive.
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  assert.ok(f.clock.stepCount >= 5);
+
+  await f.pause();
+  f.skip(3000); // hidden for three seconds: no frames, no beats, by design
+  await f.resume();
+
+  // The reactivation timer fires before any new-period beat can be delivered.
+  assert.equal(await f.stepTimer(), true);
+  assert.equal(f.clock.heartbeatHeld, false,
+    'deliberate paused time is not charged as dead-page time');
+  assert.equal(f.clock.heartbeatHolds, 0, 'no hold is attributed across the intentional boundary');
+  assert.equal(f.clock.heartbeatSilences, 0);
+  const stepsAtResume = f.clock.stepCount;
+
+  // Once foreground production actually resumes, the new period steps at cadence.
+  f.lane.runner.heartbeat();
+  await f.until(f.now() - 1000 + 100);
+  assert.ok(f.clock.stepCount > stepsAtResume, 'the reactivated clock resumes stepping');
+  assert.equal(f.clock.heartbeatHolds, 0);
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('mixed-format beats fall back to receipt time without re-tripping the guard', async t => {
+  // Clock-format transition probe: once an unstamped (or clock-incompatible) beat arrives,
+  // the producer stamp baseline must be abandoned. Otherwise the timer keeps aging the old
+  // stamp and the guard holds repeatedly even though fresh unstamped beats keep landing.
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  f.send({ kind: 'laneHeartbeat', sentAtMs: 1100, clockKind: 'performance' });
+  assert.ok(f.clock.lastHeartbeatSentAtMs > 0, 'a stamped baseline is established');
+
+  // The stream switches to unstamped legacy beats at a slow but live cadence.
+  for (let elapsed = 200; elapsed <= 1400; elapsed += 200) {
+    f.send({ kind: 'laneHeartbeat' });
+    await f.until(elapsed);
+  }
+  assert.equal(f.clock.lastHeartbeatSentAtMs, 0, 'the incompatible format clears the stamp baseline');
+  assert.equal(f.clock.heartbeatHolds, 0,
+    'fresh unstamped beats are not aged against a stale producer stamp');
+  assert.equal(f.clock.heartbeatHeld, false);
+  assert.equal(f.lane.getDiagnostics().error, null);
 });
 
 test('stopped presentation heartbeats hold the world until foreground beats resume', async t => {

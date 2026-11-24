@@ -431,6 +431,16 @@ function nowMs() {
     ? performance.now() : Date.now();
 }
 
+function heartbeatClockKind() {
+  return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function'
+    && Number.isFinite(performance.timeOrigin)) ? 'performance' : 'date';
+}
+
+function wallNowMs() {
+  return heartbeatClockKind() === 'performance'
+    ? performance.timeOrigin + performance.now() : Date.now();
+}
+
 function viewportSize() {
   const w = (typeof window !== 'undefined' && window && Number.isFinite(window.innerWidth))
     ? window.innerWidth : 0;
@@ -497,6 +507,14 @@ export function createSimLaneRuntime({
   const workerPumpClearTimeout = typeof pumpScheduler?.clearTimeout === 'function'
     ? pumpScheduler.clearTimeout
     : (handle) => clearTimeout(handle);
+  // The heartbeat stamp needs the producer's epoch-comparable monotonic clock so
+  // the worker can translate it into its own timebase through performance.timeOrigin.
+  // Production uses the realm clock; a deterministic transport fixture injects a
+  // controlled timebase so the emitted stamp exercises the real conversion path
+  // instead of being rewritten at the queue. Single ordered sender, FIFO delivery.
+  const heartbeatStampClock = pumpScheduler && typeof pumpScheduler.nowMs === 'function'
+    && Number.isFinite(pumpScheduler.timeOriginMs)
+    ? { nowMs: pumpScheduler.nowMs, timeOriginMs: pumpScheduler.timeOriginMs } : null;
   for (const w of resolved.warnings) console.warn(`[simLane] ${w}`);
   console.info('[simLane] worker lane active — the sim realm runs the whole authoritative step');
 
@@ -2423,6 +2441,10 @@ export function createSimLaneRuntime({
         heartbeatAgeMs: bounded(d.heartbeatAgeMs),
         heartbeatHeldMs: bounded(d.heartbeatHeldMs, Number.MAX_SAFE_INTEGER),
         heartbeatHeldTurns: bounded(d.heartbeatHeldTurns),
+        heartbeatProductionGapMs: bounded(d.heartbeatProductionGapMs, Number.MAX_SAFE_INTEGER),
+        heartbeatProcessingLagMs: bounded(d.heartbeatProcessingLagMs, Number.MAX_SAFE_INTEGER),
+        heartbeatSilences: bounded(d.heartbeatSilences),
+        heartbeatSilenceMs: bounded(d.heartbeatSilenceMs, Number.MAX_SAFE_INTEGER),
         owedTicks: bounded(d.owedTicks, Number.MAX_SAFE_INTEGER),
         perfWindow: laneBoundedPerfWindow(d.perfWindow),
         commands: bounded(d.commands),
@@ -3499,7 +3521,13 @@ export function createSimLaneRuntime({
       const episode = openFreeze;
       const sampleId = episode && !episode.sampleRequested ? episode.motionSampleId : null;
       const appliedAck = episode && !acksWithheld() ? workerClockAppliedAck : null;
-      const beat = { kind: 'laneHeartbeat' };
+      const beat = {
+        kind: 'laneHeartbeat',
+        sentAtMs: heartbeatStampClock
+          ? heartbeatStampClock.timeOriginMs + heartbeatStampClock.nowMs()
+          : wallNowMs(),
+        clockKind: heartbeatStampClock ? 'performance' : heartbeatClockKind(),
+      };
       if (sampleId != null) beat.motionSampleId = sampleId;
       if (appliedAck) {
         // Retry the applied watermark on foreground beats during a stall. A
