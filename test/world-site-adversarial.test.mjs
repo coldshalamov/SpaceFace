@@ -139,7 +139,9 @@ test('live mining dispatches authored repair and cut to asteroidSites without pr
   fireAt(h, 'cargo_brace', 12, 32);
   assert.equal(JSON.stringify(h.state.sites.worldById[SITE_ID]), before.record);
   assert.equal([...h.state.entities.values()].filter((entity) => entity.alive !== false).length, before.entities);
-  assert.equal(h.bus.events.length, before.events);
+  // SFQ-B099: a replay unlatches the held beam so a finished job cannot keep the tool on —
+  // the only lawful edge is the beam going dark; no receipt or owner intent may re-emit.
+  assert.deepEqual(h.bus.events.slice(before.events).map((event) => event.name), ['mining:stop']);
   assert.equal(h.state.player.credits, before.credits);
   assert.equal(JSON.stringify(h.state.player.reputation), before.reputation);
   assert.equal(payloadCount(h), 1);
@@ -253,7 +255,8 @@ test('receiver settlement through mining emits owner intents once and never clai
 
   const afterSettlementEvents = h.bus.events.length;
   fireAt(h, 'receiver_collar', 24, 1);
-  assert.equal(h.bus.events.length, afterSettlementEvents, 'same-tick replay emits neither success nor owner intents');
+  assert.deepEqual(h.bus.events.slice(afterSettlementEvents).map((event) => event.name), ['mining:stop'],
+    'same-tick replay emits neither success nor owner intents — only the held beam going dark');
 });
 
 test('held partial world-site beam emits one mining start edge', () => {

@@ -1145,7 +1145,9 @@ function rotatedOffset(offset, rotation) {
   const angle = finite(rotation);
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
-  return { x: x * cos - z * sin, z: x * sin + z * cos };
+  // `+ 0` canonicalizes the -0 a zero offset picks up from a negative cosine — JSON has no
+  // -0, so a durable pose carrying one can never round-trip to itself.
+  return { x: x * cos - z * sin + 0, z: x * sin + z * cos + 0 };
 }
 
 function initialPayloadMotion(manifest, payload, stageId = null) {

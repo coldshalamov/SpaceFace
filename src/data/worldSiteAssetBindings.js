@@ -223,9 +223,9 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   // authority, so the visual center is the mouth itself.
   place_breakaway_fork: binding({
     partId: 'place_breakaway_fork', assetId: 'SF_PLACE_BREAKAWAY_FORK',
-    sourceSha256: '45a72f3d578576159aa7b9e2c7cde8adce155e5a58b0d80eaa6ab9df979a14c3',
-    releaseSha256: '1be8538072134f1669e9396ba6afc3601412f4fe6ca73108dfc0c2804cde2bfc',
-    sourceBytes: 1216060, releaseBytes: 440552,
+    sourceSha256: '4a68d5a83bbc754ffc3d1af70df7a6236b69867b79ab0332e4b36d5d4799ff64',
+    releaseSha256: '15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054',
+    sourceBytes: 1636244, releaseBytes: 441304,
     rootName: 'SF_PLACE_BREAKAWAY_FORK_ROOT', visualCenterXZ: { x: 0, z: 0 },
     socketBindings: forkSockets,
   }),

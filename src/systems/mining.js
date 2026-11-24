@@ -50,6 +50,7 @@ import {
   setPickupAcceptanceRetry,
   writePickupRemainder,
 } from '../core/pickupAcceptance.js';
+import { pickupCustodyIdentity } from '../core/pickupCustody.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
@@ -2962,6 +2963,10 @@ export const mining = {
     // Only loot the vacuum is allowed to pull (the same test as the homing write): owned chips,
     // marked salvage, site and custody freight keep their own rules. Credit chips are credits.
     if (data.claimedCargo === true || data.physicalCustodyOnly === true) return false;
+    // A custody-identified pod (freight annotation, salvor claim, named owner) is somebody's
+    // property: converting it to silent player cash bypasses the custody/law adjudication the
+    // contact gate exists to run, and destroys the pod the claim-holder is flying to reach.
+    if (pickupCustodyIdentity(data)) return false;
     if (data.npcMiningSource && typeof data.npcMiningSource === 'object') return false;
     if (data.worldSiteId || data.richLotSource || data.heistFacilityRole) return false;
     if (isCreditChipPickup(data)) return false;
