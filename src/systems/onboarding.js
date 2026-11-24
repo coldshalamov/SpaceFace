@@ -1674,17 +1674,28 @@ export const onboarding = {
   // the tick's write is a no-op. Nothing here speaks, stamps progress or moves currentBeat — the
   // rail owns all three.
   //
-  // A scenario slice owns its own cast and its own nav (the 47-A sim, the labs): its authored beats
-  // are the instruction, so no seat. _begin reads the boot payload; the worker lane hands the
-  // contract through helpers instead and state.scenario only activates on its first authoring beat,
-  // so all three are read here.
+  // Scenario slices never reach here: `_begin` stages the rescue rail only when the boot payload
+  // names no scenario, and the rescue gate below is the same fact read from state.
   _seatOpeningObjective() {
     const st = this.state;
     const ob = st && st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav || ob.currentBeat >= 0) return false;
     if (!ob.rescue || !ob.rescue.active) return false;
-    if (this.helpers && this.helpers.scenarioContract) return false;
-    if (st.scenario && st.scenario.active) return false;
+    // A scenario slice owns its own cast and its own nav (the 47-A sim, the labs): its authored
+    // beats are the instruction, so no seat. Two facts matter, and the first version of this seat
+    // got both wrong in production:
+    //
+    //  • `helpers.scenarioContract` is the 47-A contract DOCUMENT every boot loads (main.js), not a
+    //    signal that this run is a slice — it is present on an ordinary New Game too. It cannot be
+    //    the guard.
+    //  • `state.scenario.active` is an OBJECT (id, hash, beat window) written by scenarioRuntime's
+    //    first flight tick, not a boolean — truthiness is true on every production run. The slice
+    //    signal is the boot payload, which is what `_begin` already reads to decide whether the
+    //    rescue rail stages at all.
+    //
+    // So: no seat only when the rail itself did not start, which is exactly what the rescue gate
+    // above and the boot payload already express. (`_begin` calls this only when the boot payload
+    // names no scenario slice, so the slice case never reaches here.)
     const beat = BEATS[0];
     if (!beat) return false;
     if (beat.key === 'tether') {
@@ -5541,6 +5552,15 @@ export const onboarding = {
     if (this._setMissingThreeWaypoint(force)) return;
     const beat = BEATS[ob.currentBeat];
     const existing = st.nav.waypoint;
+    // DEMO-ADV-2 (item 1, review): the seat wrote the first beat's objective before the first
+    // frame. While the first-run splash still gates B0 no beat is current, so `beat` is undefined
+    // and the tail below read "no target" and nulled the seat — the tracker fell back to the
+    // tracked 47-A contract for the splash's whole life, which is the flicker. The seat IS the
+    // write the first unblocked tick makes, so leave it standing; the beat's own entry replaces it.
+    if (ob.currentBeat < 0) {
+      const firstKey = BEATS[0] && BEATS[0].key;
+      if (firstKey && existing?.onboarding === true && existing.markerId === `onboarding:${firstKey}`) return;
+    }
     if (beat?.key === 'tether') {
       const away = !tetherLessonIsLocal(st, this);
       const tracked = trackedActiveMission(st);
