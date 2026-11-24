@@ -1438,12 +1438,36 @@ test('one Again press on a Run Over plate with a running replay starts the next 
       firePlateConfirm(doc, 'Enter', root);
       const launches = named(emitted, 'game:new');
       assert.equal(launches.length, 1, 'one Enter both ends the film and starts the next run');
+      assert.equal(named(emitted, 'ui:closeAll').length, 1, 'Again closes the Run Over plate right away instead of sitting over the loading screen');
       assert.equal(launches[0].payload.crucibleLaunch, true);
       assert.equal(killcamStageRequestFor(state), null, 'the first press ended the running replay');
       assert.equal(state.ui.stageRequest, null);
       assert.equal(root.dataset.kStage, 'plate');
       assert.equal(again.disabled, true, 'Again does not queue a second launch from the same plate');
+      assert.equal((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0), 0,
+        'the plate removes its document key listener on launch so flight Space/Enter stays free');
+
+      // Simulate cached plate re-show via onShow, then onHide / empty screenStack cleanup.
+      state.ui.screenStack = ['crucibleResults'];
+      crucibleResultsScreen.onShow();
+      assert.ok((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0) > 0,
+        'onShow re-arms the plate key listener when the cached plate returns');
+      crucibleResultsScreen.onHide();
+      assert.equal((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0), 0,
+        'onHide tears down the document key listener');
+      // Even if a caller leaves an empty screenStack while hidden/unmounted, Space is never hijacked.
+      state.ui.screenStack = [];
+      crucibleResultsScreen.onShow();
+      const postHideSpace = {
+        key: ' ', code: 'Space', repeat: false, target: {},
+        preventDefault() { this.defaultPrevented = true; },
+        stopPropagation() { this.propagationStopped = true; },
+      };
+      for (const fn of (doc.listeners && doc.listeners.keydown) || []) fn(postHideSpace);
+      assert.equal(postHideSpace.defaultPrevented, undefined,
+        'an empty screenStack during flight never lets Run Over hijack Space');
     } finally {
+      state.ui.screenStack = ['crucibleResults'];
       try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
       globalThis.document = previousDocument;
     }

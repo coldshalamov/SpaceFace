@@ -4028,14 +4028,20 @@ function leaveCrucibleResults(ctx, openHangar = false) {
  * stack still counts as top — that is the first-frame race that swallowed the demo's first
  * Enter. dispose/mount tear the listener down.
  */
-function runOverPlateIsTop(ctx) {
+function runOverPlateIsTop(ctx, screenDef) {
+  if (screenDef && screenDef._plateOpen === false) return false;
   const stack = ctx && ctx.state && ctx.state.ui && ctx.state.ui.screenStack;
-  if (!Array.isArray(stack) || stack.length === 0) return true;
-  return stack[stack.length - 1] === 'crucibleResults';
+  if (Array.isArray(stack)) {
+    // An active empty stack means gameplay or loading (no modal top) — never swallow Space/Enter.
+    if (stack.length === 0) return false;
+    return stack[stack.length - 1] === 'crucibleResults';
+  }
+  return true;
 }
 
 function mountRunOverKeys(screenDef, doc, isTop, confirm) {
   removeRunOverKeys(screenDef, doc);
+  screenDef._runOverKeySpec = { isTop, confirm };
   screenDef._runOverKey = (event) => {
     if (event.key !== 'Enter' && event.key !== ' ' && event.code !== 'Space') return;
     if (event.repeat) return;
@@ -4076,7 +4082,7 @@ function removeRunOverKeys(screenDef, doc) {
 function bindRunOverConfirm(screenDef, rootEl, ctx, button) {
   if (button && button.dataset) button.dataset.padPrimary = 'true';
   const doc = (rootEl && rootEl.ownerDocument) || (typeof document !== 'undefined' ? document : null);
-  mountRunOverKeys(screenDef, doc, () => runOverPlateIsTop(ctx), {
+  mountRunOverKeys(screenDef, doc, () => runOverPlateIsTop(ctx, screenDef), {
     owns: (target) => target === button,
     press: () => { if (button && typeof button.click === 'function') button.click(); },
   });
@@ -4127,6 +4133,8 @@ export const crucibleResultsScreen = {
     // The screen manager mounts a screen once and re-shows the cached root on every later push.
     // The plate's signature is what refresh() compares — a new run always ends at a new mark.
     this._root = rootEl;
+    this._plateOpen = true;
+    this._runOverKeySpec = null;
     this._resultSig = resultVersion(owner);
     rootEl.dataset.stamp = resultStamp(result);
 
@@ -4396,7 +4404,8 @@ export const crucibleResultsScreen = {
       } else if (setup.ghostHash != null) {
         queueGhostPlayback(setup.ghostHash);
       }
-      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) again.disabled = false;
+      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) { again.disabled = false; return; }
+      ctx.bus.emit('ui:closeAll', {});
     });
 
     // The run's Pilot Tree, its path lit (progression lead 2026-11-20): read-only, Back returns here.
@@ -4603,7 +4612,16 @@ export const crucibleResultsScreen = {
         clearQueuedChallenge();
       }
       cue('confirm');
-      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) button.disabled = false;
+      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) {
+        button.disabled = false;
+        return;
+      }
+      // Close the Run Over plate immediately and disarm its confirm key so the loading veil is
+      // visible at once (never sitting behind a stale plate for 8+ s) and Space/Enter stay free
+      // for flight.
+      this._plateOpen = false;
+      removeRunOverKeys(this, doc);
+      if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:closeAll', {});
     };
     again.setAttribute('aria-label', request?.sameSeed ? 'Again: round 1, a fresh layout' : 'Again: back to round 1');
     again.addEventListener('click', () => launch(request, again));
@@ -4672,6 +4690,11 @@ export const crucibleResultsScreen = {
   },
 
   onShow() {
+    this._plateOpen = true;
+    if (this._runOverKeySpec) {
+      const doc = this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+      mountRunOverKeys(this, doc, this._runOverKeySpec.isTop, this._runOverKeySpec.confirm);
+    }
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -4689,6 +4712,8 @@ export const crucibleResultsScreen = {
   },
 
   onHide() {
+    this._plateOpen = false;
+    removeRunOverKeys(this, this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null));
     if (canAnimate()) cue('close');
   },
 
@@ -4706,6 +4731,8 @@ export const crucibleResultsScreen = {
   },
 
   dispose() {
+    this._plateOpen = false;
+    this._runOverKeySpec = null;
     removeRunOverKeys(this, this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null));
     if (this._dialSeat) this._dialSeat.disconnect();
     this._dialSeat = null;
