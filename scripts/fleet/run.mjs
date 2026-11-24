@@ -10,7 +10,8 @@
 //                              Never on acct3: that account is the lead's and only its free SWE-2 is used.
 //   deepseek                   OpenCode 2.x, opencode-go/deepseek-v4.1-flash#max
 //   flash                      Antigravity (agy), gemini-3.8-flash-high
-//   codex                      Codex 0.163, gpt-6.1-sol high — the senior agent (reviews, architecture, 3D, images)
+//   codex                      Codex 0.167, gpt-6.2-sol high — the senior agent (reviews, architecture, 3D, images)
+//   codexro                    the same model in a read-only sandbox for adversarial review/investigation
 //   hydrogen                   agy, gemini-4-hydrogen-xhigh — critic/investigator; reads frames (verify its claims)
 //   grok | grok46 | dsx        cursor-agent, grok-4.7-high | cursor-grok-4.6-high | deepseek-v41-flash-1017-max
 //
@@ -47,7 +48,7 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|glm|neon1|neon2|flash|codex|hydrogen|grok|grok46|dsx> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|glm|neon1|neon2|flash|codex|codexro|hydrogen|grok|grok46|dsx> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
@@ -139,12 +140,15 @@ if (devin) {
   cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'zcode.cmd'), '-p',
     `Read the file ${join(runDir, 'PROMPT.txt')} and follow it exactly. Work in ${REPO}.`,
     '-m', 'glm-5.3', '--provider', 'account:zai-individual-coding-plan', '--mode', 'build', '--effort', 'max', '-C', REPO];
-} else if (backend === 'codex') {
-  // The senior agent (owner, 2026-11-11): GPT 6.1 Sol, high effort, via the npm codex 0.163 shim
+} else if (backend === 'codex' || backend === 'codexro') {
+  // The senior agent (owner, 2026-11-24): GPT 6.2 Sol, high effort, via the npm codex 0.167 shim
   // (the codex.exe on PATH is an old desktop bundle). Prompt on stdin. Use for hard backend /
   // architecture reviews, batched reviews, 3D/Blender work and image/texture/mockup generation.
+  // Reviews run read-only; implementation packets still stay inside the shared checkout rather
+  // than creating worktrees, with exact file ownership doing the collision control.
   cmd = process.execPath;
-  cmdArgs = [CODEX_JS, 'exec', '-m', 'gpt-6.1-sol', '-c', 'model_reasoning_effort="high"', '-s', 'danger-full-access', '-C', REPO, '-'];
+  const sandbox = backend === 'codexro' ? 'read-only' : 'workspace-write';
+  cmdArgs = [CODEX_JS, 'exec', '--ignore-user-config', '-m', 'gpt-6.2-sol', '-c', 'model_reasoning_effort="high"', '-s', sandbox, '-C', REPO, '-'];
 } else if (backend === 'flash') {
   cmd = AGY;
   cmdArgs = ['--print', prompt, '--model', 'gemini-3.8-flash-high', '--dangerously-skip-permissions', '--output-format', 'text'];
@@ -197,7 +201,7 @@ function launch(resume) {
 [fleet] attempt ${attempt}${resume ? ' (resume)' : ''} at ${new Date().toISOString()}
 `);
   const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true, windowsVerbatimArguments: backend === 'grok' || backend === 'grok46' || backend === 'dsx' });
-  if (backend === 'codex') child.stdin.end(prompt); else child.stdin.end();
+  if (backend === 'codex' || backend === 'codexro') child.stdin.end(prompt); else child.stdin.end();
   const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
   child.stdout.on('data', onData);
   child.stderr.on('data', onData);
