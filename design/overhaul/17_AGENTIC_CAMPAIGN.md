@@ -325,6 +325,10 @@ Done when: laying out a new sector/level/encounter is primarily a creative compo
 | CAM-INF-REMOVE-1 | rotating | remove one class of clutter/noise everywhere | INFERENCE remove |
 | CAM-INF-PLANT-1 | rotating | implement one authored plant exactly as written | INFERENCE plant |
 
+## Active evidence backlog
+
+- Hunter-career economy regression: the dirty cohort fixture snapshot showed hunter income falling from about 223 credits/minute to about 31 credits/minute, together with `authority_slice_mismatch:markets`. The fixture noise was cleaned during integration, but the underlying economy/authority question remains a Phase-3 bug until reproduced and fixed.
+
 ## Review loop
 
 Every mutation packet follows the same loop:
