@@ -32,6 +32,7 @@ import {
   collectStartupTextures,
   collectStartupTexturesSteps,
 } from './startupGpuResidency.js';
+import { beginBootWork } from '../core/bootWork.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import {
   captureOpeningResourceIdentitySets,
@@ -1177,6 +1178,26 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       results: [],
     };
   }
+  // Counted sub-work for the loading shell: each unit's compile resolution and each first-draw
+  // touch is one counted item, so the bar and its detail line keep moving through the issue,
+  // link-drain and touch legs instead of parking at a stage ceiling for the whole admission.
+  // Presentation-only — failures and truncation simply leave the counter short.
+  const workOwner = options.renderer || null;
+  const programWork = workOwner ? beginBootWork(workOwner, 'programs', ordered.length) : null;
+  const firstDrawWork = workOwner ? beginBootWork(workOwner, 'first-draws', ordered.length) : null;
+  let programsDone = 0;
+  let firstDrawsDone = 0;
+  const countCompiled = (promise) => (programWork
+    ? Promise.resolve(promise).then((value) => {
+      programsDone += 1;
+      programWork.update(programsDone);
+      return value;
+    })
+    : promise);
+  const countTouched = (count) => {
+    firstDrawsDone = Math.max(firstDrawsDone, count);
+    firstDrawWork?.update(firstDrawsDone);
+  };
   // Without a readiness batch this stays exactly as it was: compile a unit, touch it, yield, next.
   // With one, the shape changes to issue-all / drain-once / touch-all. That matters because
   // `renderer.compile()` under KHR_parallel_shader_compile costs microseconds and only STARTS the
@@ -1193,7 +1214,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     const results = await compileSubjectsAcrossPresents(
       ordered,
       async (subject) => {
-        const compiled = compileOne ? await compileOne(subject) : null;
+        const compiled = await countCompiled(compileOne ? compileOne(subject) : null);
         if (compiled?.contextLost || compiled?.readinessTimedOut || compiled?.incomplete) {
           if (strict) {
             const error = new Error('opening GPU admission incomplete: readiness did not settle');
@@ -1211,6 +1232,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
           if (touched.readinessTimedOut && !touched.contextLost && !touched.cancelled) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
           throw error;
         }
+        if (touchOne) countTouched(firstDrawsDone + 1);
         return { compiled, touched };
       },
       yieldToMain,
@@ -1298,14 +1320,14 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       if (issueKey && seenIssueKeys.has(issueKey)) {
         // Keep `issued` index-aligned with `ordered` so the touch gate still counts this
         // subject as issued — its program is covered by the sibling's in-flight compile.
-        issued.push(Promise.resolve({ skipped: true, reason: 'program-signature-covered' }));
+        issued.push(countCompiled(Promise.resolve({ skipped: true, reason: 'program-signature-covered' })));
         issueDedupeSkips += 1;
         continue;
       }
       if (issueKey) seenIssueKeys.add(issueKey);
       const unitStarted = now();
       const submit = () => (compileOne ? compileOne(subject, compileOptions) : null);
-      issued.push(submitSerial ? submitSerial(submit, submitAdmission) : submit());
+      issued.push(countCompiled(submitSerial ? submitSerial(submit, submitAdmission) : submit()));
       paceDebtMs += now() - unitStarted;
       paceDebtUnits += 1;
       // Pace before the scheduled yield: the pacer drains everything queued so far behind a
@@ -1432,6 +1454,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       for (let offset = 0; offset < group.length; offset++) {
         results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
+      countTouched(results.length);
       if (!submitSerial && paceQueue) await paceQueue();
       if (!touchAlreadyPaced && yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
@@ -1458,6 +1481,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         touched,
         touchError,
       });
+      countTouched(results.length);
       paceDebtMs += now() - touchUnitStarted;
       paceDebtUnits += 1;
       // Same bounded-backlog pacing as the issue loop (see PACE_BUDGET_MS).

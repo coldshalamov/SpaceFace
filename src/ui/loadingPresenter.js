@@ -141,6 +141,30 @@ export function plainStageLabel(stage) {
   if (PLAIN_STAGE_LABELS[id]) return PLAIN_STAGE_LABELS[id];
   return id.startsWith('boot-') ? 'Getting ready' : 'Getting the ship ready';
 }
+// Counted sub-work in player words: the detail line names the pass running and how much of it is
+// done, so a long gate reads as progress rather than a hang (packet DEMO-LOAD-1). cook-step
+// receipts carry no total — they arrive as warm-up milestones instead.
+const WORK_KIND_WORDS = Object.freeze({
+  geometry: 'Placing the scenery',
+  textures: 'Uploading the textures',
+  programs: 'Compiling the shaders',
+  'first-draws': 'Warming the first look',
+  meshes: 'Building the arena',
+});
+export function plainWorkDetail(receipt, work) {
+  if (!receipt) return '';
+  if (receipt.kind === 'cook-step') {
+    const steps = Math.max(0, Number(work && work.milestones) || 0);
+    return steps > 0 ? `Warming up — step ${steps} done` : '';
+  }
+  const words = WORK_KIND_WORDS[receipt.kind] || 'Preparing';
+  const done = Number(receipt.completed);
+  const total = Number(receipt.total);
+  if (Number.isFinite(done) && Number.isFinite(total) && total > 0) {
+    return `${words} — ${done} of ${total}`;
+  }
+  return words;
+}
 
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
   if (!document || !bus || typeof bus.on !== 'function') return NOOP;
@@ -164,7 +188,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let terminalArt = null, retainWorkerArt = false, retainedCanvas = null;
   let retainedPointerMove = null, needsPointerBridge = false;
   let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null, revealCapTimer = null, revealStageTimer = null;
-  let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
+  let workTimer = null, pendingWork = null, pendingWorkReceipt = null, accumulator = null, disposed = false;
   let startupFailure = null, failurePane = null;
   let newGamePending = false;
   let openingArmoryReview = null;
@@ -516,7 +540,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   function clearWork() {
     if (workTimer !== null) clearTimeout(workTimer);
-    workTimer = null; pendingWork = null;
+    workTimer = null; pendingWork = null; pendingWorkReceipt = null;
   }
   function cancelRevealWait() {
     if (revealRaf !== null) cancelRaf?.(revealRaf);
@@ -544,6 +568,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const work = accumulator.accept(receipt);
     if (!work) return;
     pendingWork = work;
+    pendingWorkReceipt = receipt;
     if (workTimer !== null) return;
     const ownerSession = session;
     // Coalesce receipts, not progress animation: 100 texture completions do not post 100 UI writes.
@@ -551,9 +576,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       workTimer = null;
       if (ownerSession !== session || !visible() || !pendingWork || disposed) return;
       const current = pendingWork; pendingWork = null;
+      const latest = pendingWorkReceipt; pendingWorkReceipt = null;
       ring?.report({ ...activeStage, progress: current.progress });
-      if (detail && current.total > 0) {
-        detail.textContent = ''; // no resource counts on screen (doc 20)
+      if (detail && (current.total > 0 || current.milestones > 0)) {
+        const words = plainWorkDetail(latest, current);
+        if (words && detail.textContent !== words) detail.textContent = words;
       }
     }, 80);
   });
@@ -575,7 +602,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     overlay.style.display = 'flex'; overlay.classList.remove('hidden');
     overlay.setAttribute('aria-busy', 'true'); overlay.dataset.loadingStage = String(stage.id || 'loading');
     if (label) label.textContent = plainStageLabel(stage);
-    if (detail) detail.textContent = '';
+    // Stage detail is authored plain language ('3 still staging'); show it — the gate pulse's
+    // heartbeat re-emits the same stage with new words while a long gate runs.
+    if (detail) detail.textContent = typeof stage.detail === 'string' ? stage.detail : '';
     // Row 473: the initial boot stages are the command deck coming up, not a place in the world.
     // The discriminator is the same one the mode:changed handler uses for boot stages.
     const bootStage = String(stage.id || '').startsWith('boot-');

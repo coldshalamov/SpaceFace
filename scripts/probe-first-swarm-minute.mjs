@@ -21,11 +21,13 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
+import { createIsolatedElectronLaunch, buildIsolatedElectronEnv } from './lib/electronTestIsolation.mjs';
+import launchProtocol from './lib/electronLaunchProtocol.cjs';
 import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 import {
@@ -70,6 +72,9 @@ const facts = {
   consoleErrors: [],
   events: [],
   times: {},
+  // DEMO-LOAD-1: where the press -> live-control seconds go. samples rides the pump cadence;
+  // final is read once before the runtime closes (cook ledger, boot timeline, journal).
+  loading: { profile: null, samples: [], final: null },
 };
 
 const rel = (ms = Date.now()) => (pressAt == null ? 0 : Math.round((ms - pressAt) / 100) / 10);
@@ -272,7 +277,7 @@ async function installObservers() {
         'massline:throw', 'massline:releaseValidated', 'massline:releaseWindow', 'massline:releaseCancelled',
         'massline:selfSling', 'massline:flailOffer', 'player:death', 'run:levelUp', 'level:up', 'xp:levelUp',
         'run:waveCleared', 'run:roundCleared', 'survival:waveCleared', 'run:ended', 'toast', 'hud:firstUse',
-        'tutorial:say', 'onboarding:say', 'ui:pushScreen',
+        'tutorial:say', 'onboarding:say', 'ui:pushScreen', 'game:loadingProgress', 'game:new',
       ];
       for (const name of names) {
         try {
@@ -290,6 +295,10 @@ async function installObservers() {
               id: p.id || null,
               wave: p.wave ?? null,
               level: p.level ?? null,
+              progress: p.progress ?? null,
+              ceiling: p.ceiling ?? null,
+              label: p.label || null,
+              detail: p.detail || null,
             });
           });
         } catch (_) { /* the bus is optional during boot */ }
@@ -326,6 +335,78 @@ const takeRafFrames = () => page.evaluate(() => {
   host.frames = 0;
   return n;
 }).catch(() => 0);
+
+// ---------- DEMO-LOAD-1 loading telemetry (read-only) ----------
+// One row per observed change while the shell is up: stage id + the words and percent the player
+// reads, plus the renderer's own cook-step tail so each stall names its wait.
+const readLoadingSample = () => page.evaluate(() => {
+  const st = window.SF && window.SF.state;
+  const overlay = document.getElementById('boot-overlay');
+  const visible = (node) => {
+    if (!node || node.hidden) return false;
+    const cs = getComputedStyle(node);
+    const r = node.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity || 1) > 0.01
+      && r.width > 1 && r.height > 1;
+  };
+  if (!visible(overlay)) return { active: false };
+  const render = st && st.render;
+  const ledger = Array.isArray(render?.openingCookLedger) ? render.openingCookLedger : [];
+  const last = ledger.length ? ledger[ledger.length - 1] : null;
+  const phase = render?.openingFirstPicturePhase || null;
+  return {
+    active: true,
+    mode: st?.mode || null,
+    stageId: overlay.dataset?.loadingStage || null,
+    label: (document.querySelector('[data-loading-label]')?.textContent || '').trim() || null,
+    detail: (document.querySelector('[data-loading-detail]')?.textContent || '').trim() || null,
+    pct: (document.querySelector('[data-loading-pct]')?.textContent || '').trim() || null,
+    cookPhase: phase ? { stage: phase.stage || null, outcome: phase.outcome || null } : null,
+    cookLast: last ? { step: last.step, ms: last.ms, outcome: last.outcome, t: last.t } : null,
+    cookRows: ledger.length,
+    pendingAdmissions: typeof render?.pendingPipelineAdmissions === 'function'
+      ? (Number(render.pendingPipelineAdmissions()) || 0) : null,
+  };
+}).catch(() => ({ active: false }));
+
+let lastLoadingSampleAt = 0;
+let lastLoadingKey = '';
+async function sampleLoading(now = Date.now()) {
+  if (now - lastLoadingSampleAt < 400) return;
+  lastLoadingSampleAt = now;
+  const s = await readLoadingSample();
+  if (!s || s.active !== true) return;
+  const key = `${s.stageId}|${s.label}|${s.detail}|${s.pct}|${s.cookPhase?.stage}|${s.cookPhase?.outcome}|${s.cookRows}|${s.pendingAdmissions}`;
+  if (key === lastLoadingKey) return;
+  lastLoadingKey = key;
+  facts.loading.samples.push({ t: rel(now), at: now, ...s });
+}
+
+async function captureLoadingFinal(tag) {
+  const final = await page.evaluate(() => {
+    const st = window.SF && window.SF.state;
+    const render = st && st.render;
+    const safe = (fn) => { try { return fn(); } catch (_) { return null; } };
+    const timeline = safe(() => window.__SF_BOOT_TIMELINE__ && typeof window.__SF_BOOT_TIMELINE__.table === 'function'
+      ? window.__SF_BOOT_TIMELINE__.table() : null);
+    const journal = safe(() => window.__SF_STARTUP__ && typeof window.__SF_STARTUP__.snapshot === 'function'
+      ? window.__SF_STARTUP__.snapshot() : null);
+    const ledger = safe(() => Array.isArray(render?.openingCookLedger) ? render.openingCookLedger : null);
+    return {
+      timeline, journal, cookLedger: ledger,
+      firstPicturePhase: safe(() => render?.openingFirstPicturePhase) || null,
+      requiredPackageAdmission: safe(() => render?.requiredPackageAdmission) || null,
+      firstPlayableFrameAt: Number.isFinite(render?.firstPlayableFrameAt) ? render.firstPlayableFrameAt : null,
+      veilLiftReason: render?.veilLiftReason || null,
+      programs: render?.renderer?.info?.programs?.length ?? null,
+      geometries: render?.renderer?.info?.memory?.geometries ?? null,
+      textures: render?.renderer?.info?.memory?.textures ?? null,
+    };
+  }).catch(() => null);
+  if (!final) return;
+  if (!facts.loading.final) facts.loading.final = {};
+  facts.loading.final[tag] = final;
+}
 
 const readDiag = () => page.evaluate(() => {
   const d = window.SF && typeof window.SF.simLaneDiag === 'function' ? window.SF.simLaneDiag() : null;
@@ -414,6 +495,7 @@ let wordCount = 0;
 async function pump() {
   const snap = await readScene();
   const now = Date.now();
+  await sampleLoading(now);
   if (now >= nextWordsAt) {
     nextWordsAt = now + 500;
     const rows = await sampleWords();
@@ -1127,17 +1209,39 @@ async function runProbe() {
   provisionElectronRuntime({ root: ROOT });
   const { _electron: electron } = await loadPlaywright();
   if (!electron) throw new Error('this Playwright build has no _electron; cannot drive the desktop build');
-  iso = createIsolatedElectronLaunch({
-    root: ROOT,
-    taskId: 'swarm-minute',
-    timeout: 180_000,
-    baseEnv: {
-      ...process.env,
-      SPACEFACE_EVIDENCE_CONTENT_SIZE: '1280x720',
-      SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1',
-    },
-  });
-  log(`launching isolated Electron (${iso.mode})`);
+  const profileArg = argv.profile ? String(argv.profile) : '';
+  const baseEnv = {
+    ...process.env,
+    SPACEFACE_EVIDENCE_CONTENT_SIZE: '1280x720',
+    SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1',
+  };
+  if (profileArg) {
+    // DEMO-LOAD-1 warm column: a persistent profile keeps Chromium's GPU/shader disk cache
+    // between launches, so a second run on the same name measures the warm path. The dir must
+    // still satisfy the evidence-profile naming contract (probe-*-<6 alnum> under the temp root).
+    const root = launchProtocol.electronEvidenceProfileRoot(os.tmpdir());
+    mkdirSync(root, { recursive: true });
+    const safe = profileArg.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'warm';
+    let h = 2166136261;
+    for (const c of `swarm-minute-${safe}`) { h = (h ^ c.charCodeAt(0)) * 16777619; h >>>= 0; }
+    const dir = path.join(root, `probe-swarm-minute-${safe}-${h.toString(36).padStart(6, '0').slice(-6)}`);
+    mkdirSync(dir, { recursive: true });
+    const userDataDir = path.resolve(dir);
+    iso = {
+      options: { args: ['.'], cwd: ROOT, timeout: 180_000, env: buildIsolatedElectronEnv({ baseEnv, userDataDir }) },
+      mode: 'isolated-evidence',
+      persistent: true,
+      userDataDir,
+      // The cache is the point: never delete the dir, but still require owned-runtime shutdown
+      // before this probe reports success downstream (runtimeClosed is checked by main()).
+      cleanup({ runtimeClosed: closed }) { if (!closed) throw new Error('owned runtime shutdown was not proven'); return true; },
+    };
+    facts.loading.profile = `persistent:${path.basename(userDataDir)}`;
+  } else {
+    iso = createIsolatedElectronLaunch({ root: ROOT, taskId: 'swarm-minute', timeout: 180_000, baseEnv });
+    facts.loading.profile = 'cold:ephemeral';
+  }
+  log(`launching isolated Electron (${iso.mode}${iso.persistent ? ` persistent:${iso.userDataDir}` : ''})`);
   app = await electron.launch(iso.options);
   page = await app.firstWindow({ timeout: 120_000 });
   page.setDefaultTimeout(30_000);
@@ -1275,6 +1379,7 @@ async function runProbe() {
       beat('round-start', `wave ${snap.wave} live in the arena`);
       step('round-live', true, `${facts.times.pressToLiveControlS.toFixed(1)} s after the press (loading gone, no screen up) · scheme ${snap.scheme || '?'} · shield ${Math.round(snap.player.shield ?? -1)}/${Math.round(snap.player.shieldMax ?? -1)} hull ${Math.round(snap.player.hull ?? -1)}/${Math.round(snap.player.hullMax ?? -1)}`);
       await shot('round-start');
+      await captureLoadingFinal('firstLaunch');
       break;
     }
     if (snap.ui?.runOver || snap.phase === 'ended') break;
@@ -1508,6 +1613,7 @@ async function runProbe() {
   if (facts.times.againPressToFirstHostileS == null) facts.times.againPressToFirstHostileS = null;
   await releaseAll();
   await sample10s().catch(() => {});
+  await captureLoadingFinal('again');
   facts.events = await page.evaluate(() => (window.__swarmMinute?.events || []).slice(-500)).catch(() => []);
 }
 
@@ -1602,6 +1708,7 @@ async function main() {
     if (page && !page.isClosed()) await shot('failure').catch(() => {});
   } finally {
     await releaseAll().catch(() => {});
+    await captureLoadingFinal('exit');
     await closeRuntime().catch(() => {});
     if (iso) {
       try {

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { beginBootWork, reportBootWork } from '../src/core/bootWork.js';
 import { save } from '../src/save/saveSystem.js';
 import { createLoadingPresenter } from '../src/ui/loadingPresenter.js';
 
@@ -37,9 +38,10 @@ test('loading presenter replaces a frozen route with stage progress and releases
   assert.equal(overlay.style.display, 'flex');
   assert.equal(overlay.attributes.get('aria-busy'), 'true');
   assert.equal(overlay.dataset.loadingStage, 'authored-visuals');
-  // doc 20: one short plain phrase per phase, no technical detail line
+  // doc 20's plain phrase stands; DEMO-LOAD-1 adds the stage's own plain detail so the line
+  // tells the player which piece of the phase is running instead of sitting blank.
   assert.equal(label.textContent, 'Building the scene');
-  assert.equal(detail.textContent, '');
+  assert.equal(detail.textContent, 'Loading only assets visible at launch');
   assert.equal(progress.style.width, '50%');
 
   bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
@@ -49,6 +51,40 @@ test('loading presenter replaces a frozen route with stage progress and releases
   bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
   assert.equal(overlay.classList.contains('hidden'), true);
   assert.equal(overlay.attributes.get('aria-busy'), 'false');
+  presenter.destroy();
+});
+
+test('counted renderer work paints a plain n-of-m detail under the stage label', async () => {
+  const bus = createBus();
+  const overlay = fakeElement();
+  const label = fakeElement();
+  const detail = fakeElement();
+  const document = {
+    getElementById(id) { return id === 'boot-overlay' ? overlay : null; },
+    querySelector(selector) {
+      return new Map([
+        ['[data-loading-label]', label],
+        ['[data-loading-detail]', detail],
+      ]).get(selector) || null;
+    },
+  };
+  overlay.classList.add('hidden');
+  overlay.style.display = 'none';
+  const rendererOwner = {};
+  const state = { render: rendererOwner, mode: 'loading' };
+  const presenter = createLoadingPresenter({ document, bus, state });
+  bus.emit('game:loadingProgress', {
+    id: 'render-pipelines', progress: 0.78, label: 'Preparing the visuals',
+  });
+  assert.equal(detail.textContent, '', 'a stage without detail still opens on a clean line');
+  const programs = beginBootWork(rendererOwner, 'programs', 40);
+  programs.update(12);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(detail.textContent, 'Compiling the shaders — 12 of 40');
+  programs.update(40);
+  reportBootWork(rendererOwner, { kind: 'cook-step', step: 'wait.prepareLiveSectorBeforeFlight', outcome: 'resolved' });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(detail.textContent, 'Warming up — step 1 done');
   presenter.destroy();
 });
 
@@ -170,7 +206,8 @@ test('canonical game shell and transition wire the shared staged loading present
   assert.match(html, /data-loading-progress/);
   assert.match(main, /createLoadingPresenter\(\{ document, bus, state \}\)/,
     'main wires the presenter with state so the flight handoff can wait for a real presented frame');
-  assert.match(main, /reportProgress:\s*\(stage\)\s*=>\s*bus\.emit\('game:loadingProgress'/);
+  assert.match(main, /reportProgress:\s*\(stage\)\s*=>[\s\S]{0,240}?bus\.emit\('game:loadingProgress'/,
+    'the New Game transition must report its stage publishes through game:loadingProgress');
   assert.match(main, /yieldForPresentation:\s*nextPaint/);
   assert.match(newGame, /createStageHull.*'\.\/stageHull\.js'/,
     'New Game must show the authored starter hull via the shared kit-stage mount');
