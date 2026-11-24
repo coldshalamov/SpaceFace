@@ -81,15 +81,15 @@ const SAMPLE_MS = 60_000;          // one JSONL sample row per minute
 const RAF_HANG_MS = 10_000;        // no rAF frame for this long = hang (requirement 6)
 const PAGE_CALL_TIMEOUT_MS = 20_000; // a page evaluate/wait that never answers = unresponsive page
 
-// Growth ceilings (requirement 7). Baseline = mean of the first 3 samples.
-// - >= SLOPE_MIN_SAMPLES (70 one-minute rows): least-squares slope over the LAST 60 rows.
-//   Unbounded growth = slope's ~95% CI excludes zero AND slope exceeds the per-minute ceiling.
-//   A significant slope under the ceiling is logged as a "watch" note, not a failure.
-// - < 70 rows (e.g. a 1-minute smoke): per-minute rate vs baseline must stay under the same
-//   ceilings. Needs >= 4 rows and >= 1.5 min of elapsed span, else the verdict is
-//   "insufficient data" (passes).
+// Growth ceilings (requirement 7). One rule for every run length, from a smoke to a
+// 12-hour soak: least-squares slope of the metric against elapsed minutes over the
+// last slopeWindow samples (all of them on short runs). Unbounded growth = the
+// slope's ~95% CI excludes zero AND the slope beats the per-minute ceiling —
+// significance first, so an oscillating series (assets streaming in, then settling)
+// cannot read as a leak the way a raw endpoint rate could. A significant slope
+// under the ceiling is logged as a "watch" note, not a failure. Fewer than minRows
+// samples or a span under minElapsedMin reports "insufficient data" (passes).
 const GROWTH = {
-  slopeMinSamples: 70,
   slopeWindow: 60,
   baselineSamples: 3,
   minRows: 4,
@@ -117,6 +117,7 @@ const samples = [];            // per-minute rows (in-memory copy of the JSONL s
 const consoleErrors = new Map();   // normalized text -> { text, count, at }
 const consoleWarnings = new Map();
 const activityLog = [];        // tail of activity outcomes for the summary
+const growthFlagged = new Set(); // metrics already flagged mid-run (final verdict decides)
 
 const relOut = (p) => path.relative(ROOT, p).replace(/\\/g, '/');
 const wallMs = () => (playT0 ? Date.now() - playT0 : 0);
@@ -159,15 +160,23 @@ const waitFn = (fn, arg = null, ms = 15000) =>
 
 // ---------- page instrumentation: a rAF liveness counter independent of the game ----------
 const INIT_SCRIPT = `(() => {
-  const s = window.__soak = { raf: 0, lastRaf: 0, maxGap: 0, gapEma: 0, bigGaps: 0, installedAt: performance.now() };
+  const s = window.__soak = { raf: 0, lastRaf: 0, maxGap: 0, gapEma: 0, bigGaps: 0, installedAt: performance.now(), gaps: [], modeAtFrame: null };
   const loop = (t) => {
     s.raf++;
     if (s.lastRaf) {
       const gap = t - s.lastRaf;
       if (gap > s.maxGap) s.maxGap = gap;
-      if (gap > 10000) s.bigGaps++;
+      if (gap > 10000) {
+        s.bigGaps++;
+        // Where the game was when the stall began: 'loading'/'menu' marks a load
+        // block, 'flight' a genuine in-play stall. The Node side decides which
+        // count as hangs.
+        s.gaps.push({ end: Math.round(t), gap: Math.round(gap), mode: s.modeAtFrame });
+        if (s.gaps.length > 24) s.gaps.shift();
+      }
       s.gapEma = s.gapEma ? s.gapEma + (gap - s.gapEma) * 0.05 : gap;
     }
+    try { s.modeAtFrame = (window.SF && window.SF.state && window.SF.state.mode) || null; } catch (e) { /* keep last */ }
     s.lastRaf = t;
     requestAnimationFrame(loop);
   };
@@ -251,6 +260,7 @@ async function sampleMetrics() {
         maxGap: soak.maxGap ?? null,
         gapEma: soak.gapEma ?? null,
         bigGaps: soak.bigGaps ?? 0,
+        gaps: Array.isArray(soak.gaps) ? soak.gaps.slice(-24) : [],
         now: performance.now(),
       },
     };
@@ -321,18 +331,43 @@ function rowToSample(row) {
   };
 }
 
-// rAF-gap counter at play start: boot (sector cook, shader links) can legitimately block the
-// main thread once or twice before play begins, so hang detection counts NEW >10 s gaps.
-let bigGapsBase = null;
+// rAF-gap bookkeeping. Boot and every relaunch (restart, death recovery, failure-pane
+// Retry, a round handoff's load, a sector jump) can legitimately block the main thread
+// once or twice — the same block the boot itself takes. A blocked load is not a hang:
+// hang = no rAF for >10 s RIGHT NOW at sample time, or a >10 s gap that cannot be
+// attributed to a load — the game mode at the stall's first frame ('loading'/'menu')
+// or a Node-side window the harness opened around a relaunch decides attribution.
+let bigGapsBase = null;        // first sample's gaps belong to the boot — baseline, never counted
+const loadWindows = [];        // {from, until} wall-clock spans where a block is a load
+const markLoadWindow = (spanMs = 120000) => {
+  loadWindows.push({ from: Date.now() - 30000, until: Date.now() + spanMs });
+  if (loadWindows.length > 16) loadWindows.shift();
+};
+const seenGapEnds = new Set();
 
 async function takeSample() {
   const row = await sampleMetrics();
-  if (bigGapsBase == null && row.raf?.bigGaps != null) bigGapsBase = row.raf.bigGaps;
-  // Hang detection (requirement 6): a >10 s rAF gap right now, or a NEW >10 s gap during play.
+  // A sample caught mid-load covers the sampling interval around it.
+  if (row.mode && row.mode !== 'flight') markLoadWindow(60000);
+  // Hang detection (requirement 6): a >10 s rAF gap right now, or a NEW >10 s gap in
+  // play that no load window explains.
   const stall = row.raf?.lastAt != null && row.raf?.now != null ? row.raf.now - row.raf.lastAt : 0;
-  const newBigGaps = (row.raf?.bigGaps ?? 0) - (bigGapsBase ?? 0);
-  if ((stall > RAF_HANG_MS || newBigGaps > 0) && !fatal) {
-    fatal = { reason: `hang: no rAF frame for ${stall > RAF_HANG_MS ? `${Math.round(stall)}ms now` : `${newBigGaps} >10s gap(s) during play`}`, at: wallMs() };
+  const gapList = (row.raf?.gaps || []).filter((g) => g && Number.isFinite(g.end));
+  const fresh = gapList.filter((g) => !seenGapEnds.has(g.end));
+  for (const g of fresh) seenGapEnds.add(g.end);
+  if (bigGapsBase == null) { bigGapsBase = row.raf?.bigGaps ?? 0; fresh.length = 0; }
+  const unexplained = fresh.filter((g) => {
+    if (g.mode && g.mode !== 'flight') return false;                       // stalled inside a load/menu frame
+    const wallEnd = Date.now() - Math.max(0, (row.raf?.now ?? 0) - g.end); // perf-clock gap end -> wall clock
+    return !loadWindows.some((w) => wallEnd >= w.from && wallEnd <= w.until);
+  });
+  if (unexplained.length === 0 && fresh.length > 0) {
+    event('load-stall', `${fresh.length} >10s rAF gap(s) inside a load window (${fresh.map((g) => `${Math.round(g.gap / 1000)}s@${g.mode || '?'}`).join(', ')}) — not a hang`);
+  }
+  if ((stall > RAF_HANG_MS || unexplained.length > 0) && !fatal) {
+    fatal = { reason: stall > RAF_HANG_MS
+      ? `hang: no rAF frame for ${Math.round(stall)}ms now`
+      : `hang: ${unexplained.length} >10s rAF gap(s) in play (${unexplained.map((g) => `${Math.round(g.gap / 1000)}s@${g.mode || '?'}`).join(', ')})`, at: wallMs() };
     event('fatal', fatal.reason);
   }
   if (row.witness?.contextLost && !fatal) {
@@ -353,57 +388,54 @@ function baselineFor(key) {
   const vals = samples.slice(0, GROWTH.baselineSamples).map((s) => metricValue(s, key)).filter((v) => v != null);
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
-function slopeFit(vals) {
-  // least squares over x = 0..n-1 (one x per minute of the window)
-  const n = vals.length;
-  const xs = vals.map((_, i) => i);
-  const xm = xs.reduce((a, b) => a + b, 0) / n;
-  const ym = vals.reduce((a, b) => a + b, 0) / n;
+function slopeFit(pts) {
+  // least squares over [elapsedMinutes, value] pairs — samples are ~1/min but the
+  // clock is the truth (beats can stretch a sampling interval).
+  const n = pts.length;
+  const xm = pts.reduce((a, p) => a + p[0], 0) / n;
+  const ym = pts.reduce((a, p) => a + p[1], 0) / n;
   let sxx = 0; let sxy = 0;
-  for (let i = 0; i < n; i++) { sxx += (xs[i] - xm) ** 2; sxy += (xs[i] - xm) * (vals[i] - ym); }
+  for (const [x, y] of pts) { sxx += (x - xm) ** 2; sxy += (x - xm) * (y - ym); }
   const slope = sxx ? sxy / sxx : 0;
   const intercept = ym - slope * xm;
   let sse = 0;
-  for (let i = 0; i < n; i++) { const r = vals[i] - (intercept + slope * xs[i]); sse += r * r; }
+  for (const [x, y] of pts) { const r = y - (intercept + slope * x); sse += r * r; }
   const se = n > 2 && sxx ? Math.sqrt(sse / (n - 2) / sxx) : 0;
   return { slope, se };
 }
-// ~95% CI half-width: t*se with t≈2.0 (n=60 → t97.5≈2.00; conservative for n>=30)
-const ciExcludesZero = ({ slope, se }) => se > 0 && Math.abs(slope) > 2.0 * se;
+// ~95% CI: |slope| > t*se. t≈1.96+2.5/(n-1) approximates t97.5 across sample counts
+// (≈2.6 at n=5, ≈2.24 at n=10, ≈2.0 at n=60) — tight enough for long windows,
+// honest about the wide uncertainty in a handful of samples.
+const ciExcludesZero = ({ slope, se }, n) =>
+  n >= 3 && (se === 0 ? slope !== 0 : Math.abs(slope) > (1.96 + 2.5 / (n - 1)) * se);
 
 function growthVerdict(key, { ceilingAbs = null, ceilingRel = null } = {}) {
-  const vals = samples.map((s) => metricValue(s, key)).filter((v) => v != null);
+  const pts = samples.map((s) => [s.wallMs / 60000, metricValue(s, key)]).filter((p) => p[1] != null);
+  const vals = pts.map((p) => p[1]);
   const base = baselineFor(key);
   const last = vals.length ? vals[vals.length - 1] : null;
   const out = { key, first: base, mid: vals.length ? vals[Math.floor(vals.length / 2)] : null, last, verdict: 'insufficient data', detail: '' };
-  if (vals.length < GROWTH.minRows || base == null) return out;
-  const ceiling = (v) => Math.max(
+  const spanMin = pts.length > 1 ? pts[pts.length - 1][0] - pts[0][0] : 0;
+  if (vals.length < GROWTH.minRows || base == null || spanMin < GROWTH.minElapsedMin) return out;
+  const cap = Math.max(
     ceilingAbs != null ? ceilingAbs : -Infinity,
     ceilingRel != null && base != null ? base * ceilingRel : -Infinity,
   );
-  const spanMin = (samples[samples.length - 1].wallMs - samples[0].wallMs) / 60000;
-  if (samples.length >= GROWTH.slopeMinSamples) {
-    const win = vals.slice(-GROWTH.slopeWindow);
-    const fit = slopeFit(win);
-    const significant = ciExcludesZero(fit);
-    const cap = ceiling(last ?? base);
-    out.detail = `slope ${fit.slope >= 0 ? '+' : ''}${fit.slope.toFixed(3)}/min over last ${win.length} samples (se ${fit.se.toFixed(3)}, cap ${cap.toFixed(2)}/min)`;
-    if (significant && fit.slope > cap) { out.verdict = 'FAIL'; out.detail = `unbounded growth: ${out.detail}`; }
-    else if (significant && fit.slope > 0) { out.verdict = 'ok (watch)'; out.detail = `significant but under ceiling: ${out.detail}`; }
-    else out.verdict = 'ok';
-    return out;
-  }
-  if (spanMin < GROWTH.minElapsedMin) return out;
-  const rate = ((last ?? base) - base) / spanMin;
-  const cap = ceiling(last ?? base);
-  out.detail = `rate ${rate >= 0 ? '+' : ''}${rate.toFixed(3)}/min vs baseline ${base.toFixed(1)} (cap ${cap.toFixed(2)}/min, ${samples.length} samples — short-run ceiling rule)`;
-  out.verdict = rate > cap ? 'FAIL' : 'ok';
-  if (rate > cap) out.detail = `unbounded growth: ${out.detail}`;
+  const win = pts.slice(-GROWTH.slopeWindow);
+  const fit = slopeFit(win);
+  const significant = ciExcludesZero(fit, win.length);
+  out.detail = `slope ${fit.slope >= 0 ? '+' : ''}${fit.slope.toFixed(3)}/min over ${win.length} samples (se ${fit.se.toFixed(3)}, cap ${cap.toFixed(2)}/min)`;
+  if (significant && fit.slope > cap) { out.verdict = 'FAIL'; out.detail = `unbounded growth: ${out.detail}`; }
+  else if (significant && fit.slope > 0) { out.verdict = 'ok (watch)'; out.detail = `significant but under ceiling: ${out.detail}`; }
+  else out.verdict = 'ok';
   return out;
 }
 
 function allVerdicts() {
   return [
+    // performance.memory is bucketed (it sat flat all run in headless Chromium);
+    // CDP JSHeapUsedSize is the fine-grained series — check whichever exists.
+    growthVerdict('cdpHeapMB', { ceilingAbs: GROWTH.heapMBPerMin }),
     growthVerdict('heapMB', { ceilingAbs: GROWTH.heapMBPerMin }),
     growthVerdict('domNodes', { ceilingRel: GROWTH.relPerMin }),
     growthVerdict('geometries', { ceilingRel: GROWTH.relPerMin }),
@@ -778,6 +810,7 @@ async function actObjective(deadline) {
 // is not offered, leave through the menu and take the ordinary New Game door.
 async function recoverAdventure(deadline) {
   restarts++;
+  markLoadWindow(150000);   // the relaunch below blocks the main thread like the boot did
   event('recover', 'player dead or out of flight — restarting');
   // The gameOver sheet isn't the only death exit: a relaunch can land on the
   // startup-failure pane, whose "Retry" re-runs the same launch.
@@ -877,6 +910,7 @@ async function visitSwarmShop() {
 // public words; fall back to the title's Swarm door like the first entry.
 async function restartSwarm(deadline) {
   restarts++;
+  markLoadWindow(180000);   // the relaunch below blocks the main thread like the boot did
   event('restart', 'run ended — starting another');
   // A relaunch can land on the startup-failure pane — its Retry re-runs the launch.
   if (await clickButtonMatching(/^retry$/i, '[data-startup-failure]')) {
@@ -935,6 +969,7 @@ async function swarmBeat(deadline, beat) {
       const notes = [];
       const up = await takeFirstUpgrade(); if (up) notes.push(up);
       const shop = await visitSwarmShop(); if (shop) notes.push(shop);
+      markLoadWindow(60000);   // the next round's launch has its own short load
       const next = await awaitRoundHandoff(page, {
         previousWave: ph.w || 0, timeoutMs: Math.min(15000, Math.max(2000, deadline - Date.now())),
       }).catch(() => null);
@@ -1036,6 +1071,7 @@ async function main() {
       const paneUp = await evalPage(() => !!document.querySelector('[data-startup-failure]')).catch(() => false);
       const retried = paneUp && await clickButtonMatching(/^retry$/i, '[data-startup-failure]');
       if (retried) {
+        markLoadWindow(300000);
         event('startup-retry', `failure pane Retry (attempt ${attemptNo})`);
         try {
           await waitUntilFlight(page, { timeout: T(600000), active: MODE === 'swarm' });
@@ -1052,6 +1088,7 @@ async function main() {
       }
       const backed = paneUp && await clickButtonMatching(/back to menu/i, '[data-startup-failure]');
       if (!backed) break;
+      markLoadWindow(300000);
       await waitFn(() => {
         const el = document.querySelector('[data-screen="mainMenu"]');
         return !!(el && getComputedStyle(el).display !== 'none');
@@ -1061,9 +1098,13 @@ async function main() {
       await enterMode();
       booted = true;
     } catch (err) {
-      if (!err?.startupFailure) throw err;
+      // waitBootOverlayGone's timeout can MASK the pane: a failure arriving after flight
+      // registered leaves the overlay pinned open and the wait dies as a plain
+      // TimeoutError. The pane itself is the verdict — retry whenever it is up.
+      const paneUp = await evalPage(() => !!document.querySelector('[data-startup-failure]')).catch(() => false);
+      if (!err?.startupFailure && !paneUp) throw err;
       bootError = err;
-      event('startup-failure', `launch attempt ${attemptNo} — ${String(err.startupFailure).slice(0, 140)}`);
+      event('startup-failure', `launch attempt ${attemptNo} — ${String(err.startupFailure || err?.message || err).slice(0, 140)}`);
     }
   }
   if (!booted) throw (bootError || new Error('launch failed without a startup-failure pane'));
@@ -1080,10 +1121,13 @@ async function main() {
       nextSampleAt += SAMPLE_MS;
       const sample = await takeSample();
       if (sample) {
+        // A growth flag does NOT abort the soak — early-run asset streaming can
+        // cross a ceiling and then settle, and the long-window verdict at run end
+        // is the honest call. The event records when it first looked bad.
         for (const v of allVerdicts()) {
-          if (v.verdict === 'FAIL' && !fatal) {
-            fatal = { reason: v.detail || `${v.key} unbounded growth`, at: wallMs() };
-            event('fatal', fatal.reason);
+          if (v.verdict === 'FAIL' && !growthFlagged.has(v.key)) {
+            growthFlagged.add(v.key);
+            event('growth-flag', `${v.key}: ${v.detail} — continuing; the end-of-run verdict decides`);
           }
         }
       }
@@ -1107,7 +1151,7 @@ function printSummary() {
   });
   const fmt = (v, d = 1) => (v == null || !Number.isFinite(v) ? 'n/a' : Number(v.toFixed(d)).toString());
   const metricLines = [
-    ['heapMB', 'JS heap MB'], ['domNodes', 'DOM nodes'], ['geometries', 'GL geometries'],
+    ['heapMB', 'JS heap MB'], ['cdpHeapMB', 'CDP heap MB'], ['domNodes', 'DOM nodes'], ['geometries', 'GL geometries'],
     ['textures', 'GL textures'], ['programs', 'GL programs'], ['entities', 'entities'],
     ['jsEventListeners', 'JS event listeners'], ['drawCalls', 'draw calls'],
     ['frameP95Ms', 'frame p95 ms'], ['workerStepMs', 'worker step ms'],

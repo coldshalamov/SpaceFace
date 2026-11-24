@@ -91,13 +91,14 @@ try {
   // radius. TOWJAW's item shares the same zone and may offer afterward.
   let lastDiag = null;
   const waitStart = Date.now();
+  const t0Offer = (await snap()).simTime;
   let offerButton = page.getByRole('button', { name: /Enter the derelict/ });
   for (;;) {
     const s0 = await snap();
     if (s0 && s0.accepted) break;
     if (await offerButton.count() > 0) break;
-    if (Date.now() - waitStart > 420000) {
-      step('offer wait', false, `no offer after 420s; diag=${JSON.stringify(lastDiag)}; pos=${JSON.stringify(s0 && s0.pos)}`);
+    if (Date.now() - waitStart > 900000 || (s0 && s0.simTime - t0Offer > 420)) {
+      step('offer wait', false, `no offer; diag=${JSON.stringify(lastDiag)}; pos=${JSON.stringify(s0 && s0.pos)}`);
       throw new Error('blackbox offer never arrived');
     }
     lastDiag = await page.evaluate(() => {

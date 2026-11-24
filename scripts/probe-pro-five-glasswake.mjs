@@ -83,13 +83,14 @@ try {
   // the player must hold near the derelict field until the schedule matures.
   let lastDiag = null;
   const waitStart = Date.now();
+  const t0Offer = (await snap()).simTime;
   const offerButton = page.getByRole('button', { name: /Lee Arc|Cross Shear|Return Hook/ }).first();
   for (;;) {
     const s0 = await snap();
     if (s0 && s0.viewPhase && s0.viewPhase !== 'idle' && s0.viewPhase !== 'offered') break;
     if (await offerButton.count() > 0) break;
-    if (Date.now() - waitStart > 560000) {
-      step('offer wait', false, `no offer after 560s; diag=${JSON.stringify(lastDiag)}; pos=${JSON.stringify(s0 && s0.pos)}`);
+    if (Date.now() - waitStart > 1100000 || (s0 && s0.simTime - t0Offer > 520)) {
+      step('offer wait', false, `no offer; diag=${JSON.stringify(lastDiag)}; pos=${JSON.stringify(s0 && s0.pos)}`);
       throw new Error('glasswake offer never arrived');
     }
     lastDiag = await page.evaluate(() => {

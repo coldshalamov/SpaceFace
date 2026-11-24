@@ -82,13 +82,14 @@ try {
   // Wait for the fitter's live ambient offer on the prompt deck.
   let lastDiag = null;
   const waitStart = Date.now();
+  const t0Offer = (await snap()).simTime;
   const offerButton = page.getByRole('button', { name: /Orbital Magazine|Aftershock Core|Load Bridge/ }).first();
   for (;;) {
     const s0 = await snap();
     if (s0 && (s0.catalystId || s0.fitted)) break;
     if (await offerButton.count() > 0) break;
-    if (Date.now() - waitStart > 560000) {
-      step('offer wait', false, `no offer after 560s; diag=${JSON.stringify(lastDiag)}; pos=${JSON.stringify(s0 && s0.pos)}`);
+    if (Date.now() - waitStart > 900000 || (s0 && s0.simTime - t0Offer > 300)) {
+      step('offer wait', false, `no offer; diag=${JSON.stringify(lastDiag)}; pos=${JSON.stringify(s0 && s0.pos)}`);
       throw new Error('kinetic catalysts offer never arrived');
     }
     lastDiag = await page.evaluate(() => {
