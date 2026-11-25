@@ -139,20 +139,10 @@ export class ActionVfx {
     // CW-TELLS: reused lane-admission scratch — filled only when the wedge count is over the cap.
     this._laneScratch=[];
     this._laneAdmitted=new Set();
-    // Cache telegraph recipe clones by (selectedRecipe, life) so hot emit() calls allocate nothing.
-    this._telegraphRecipeCache=new Map();
     this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
       tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
       provenance:'none',sourceProvenance:'none',cmEffect:null,cmUntil:0,cmClosingAt:-1,committedLane:null}));
-  }
-  _telegraphRecipe(selectedRecipe,durationTicks){
-    const life=Math.max(.25,Math.min(4,finite(durationTicks,90)/60+.1));
-    let byLife=this._telegraphRecipeCache.get(selectedRecipe);
-    if(!byLife){byLife=new Map();this._telegraphRecipeCache.set(selectedRecipe,byLife);}
-    let cached=byLife.get(life);
-    if(!cached){cached=Object.freeze({...selectedRecipe,life});if(byLife.size<64)byLife.set(life,cached);}
-    return cached;
   }
   emit(name,p={},state={}){
     if(this.disposed)return false;
@@ -162,7 +152,7 @@ export class ActionVfx {
     p=resolveAdditionalActionVfxReceipt(name,p,state);if(!p)return false;
     const entry=ACTION_VFX_RECIPES[name];if(!entry)return false;
     const selectedRecipe=entry.variants?.[p.kind]??entry;
-    const recipe=name==='ai:telegraph'?this._telegraphRecipe(selectedRecipe,p.durationTicks):selectedRecipe;
+    const recipe=name==='ai:telegraph'?{...selectedRecipe,life:Math.max(.25,Math.min(4,finite(p.durationTicks,90)/60+.1))}:selectedRecipe;
     const id=p.targetId??p.victimId??p.entityId??p.shipId??p.podId??p.asteroidId??p.mineId??p.wreckId??p.ownerId??p.sourceId??p.aId;
     const target=entity(state,id);
     const sourceId=p.sourceId??p.ownerId??p.actorId??p.byId??p.minerId??p.netId

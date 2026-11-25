@@ -178,7 +178,6 @@ class FarPlaneLife {
     this._beamGroup.add(this._beamMesh);
     this.scene.add(this._beamGroup);
     this._beamTargets = [];
-    this._beamsParked = false;
   }
 
   _createFlashes() {
@@ -331,14 +330,6 @@ class FarPlaneLife {
   _drawBeams(localX, localZ) {
     const mesh = this._beamMesh;
     if (!mesh) return;
-    if (this._beamTargets.length === 0) {
-      mesh.visible = false;
-      if (this._beamsParked) return;
-      this._beamsParked = true;
-    } else {
-      mesh.visible = true;
-      this._beamsParked = false;
-    }
     this._beamGroup.position.x = localX;
     this._beamGroup.position.z = localZ;
     for (let i = 0; i < MAX_MINER_BEAMS; i++) {

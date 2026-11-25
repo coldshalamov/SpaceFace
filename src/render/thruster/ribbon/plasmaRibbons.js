@@ -187,10 +187,11 @@ const RIBBON_VERT = /* glsl */`
   }
 
   /**
-   * Centreline of one streamer at a fraction of ITS OWN length. Called for the current station
-   * (evaluating tongue) and neighbour stations (tangent only, skipping redundant tongue noise).
+   * Centreline of one streamer at a fraction of ITS OWN length. Called three times per vertex so the
+   * sheet's own tangent — and therefore its normal, and therefore the grazing term — is exact rather
+   * than approximated from the jet axis.
    */
-  vec3 streamerPoint(float life, float ribbon, float reach, bool needTongue, out float radiusRatio, out float tongue) {
+  vec3 streamerPoint(float life, float ribbon, float reach, out float radiusRatio, out float tongue) {
     float seedA = hash11(ribbon * 7.13 + 1.7);
     float seedB = hash11(ribbon * 3.71 + 9.4);
     float seedC = hash11(ribbon * 11.9 + 4.3);
@@ -247,7 +248,7 @@ const RIBBON_VERT = /* glsl */`
     // Which structures are burning right now. Also travelling, so tongues of flame appear at the lip,
     // run down the jet and burn out — instead of every streamer glowing at a constant value forever,
     // which is what made this read as a still image.
-    tongue = needTongue ? fbm2(vec2(flow * 1.35 + 23.0, evo * 1.4)) : 0.0;
+    tongue = fbm2(vec2(flow * 1.35 + 23.0, evo * 1.4));
 
     // Boost drives the jet longer and tighter rather than fatter: a uniform width multiply is what
     // made boost read as a triangle inflating in place.
@@ -291,9 +292,9 @@ const RIBBON_VERT = /* glsl */`
     float reach = sheetReach(aRibbon);
 
     float rr, tongue, ra, rb, ta, tb;
-    vec3 p = streamerPoint(life, aRibbon, reach, true, rr, tongue);
-    vec3 pPrev = streamerPoint(max(life - ds, 0.0), aRibbon, reach, false, ra, ta);
-    vec3 pNext = streamerPoint(min(life + ds, 1.0), aRibbon, reach, false, rb, tb);
+    vec3 p = streamerPoint(life, aRibbon, reach, rr, tongue);
+    vec3 pPrev = streamerPoint(max(life - ds, 0.0), aRibbon, reach, ra, ta);
+    vec3 pNext = streamerPoint(min(life + ds, 1.0), aRibbon, reach, rb, tb);
 
     vec3 tangent = normalize(pNext - pPrev + vec3(1e-5));
 
@@ -395,8 +396,7 @@ const RIBBON_FRAG = /* glsl */`
     float dilute = 1.0 / max(vRadiusRatio * sqrt(vRadiusRatio), 1.0);
     // The sheet runs out at its rim, so the rim is where you can see through it and the body is not.
     // Deliberately not a gaussian (ban B6) — flat across the body, hard fall at the very edge.
-    float s2 = vSide * vSide;
-    float across = 1.0 - s2 * s2;
+    float across = 1.0 - pow(abs(vSide), 4.0);
     // Mass flow rises with the throttle, so density does too. Held deliberately weak: a firing engine
     // is a firing engine, and the throttle is meant to show up as a longer, wider, hotter jet rather
     // than as the same jet at a different opacity.
