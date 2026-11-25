@@ -219,9 +219,10 @@ function rescueActor(h, slot) {
   return id == null ? null : h.state.entities.get(id);
 }
 
-// Production route order (onboarding.js BEATS): the tether attach leads; the movement
-// drills follow it. Raid/claimed sit between disengage and seam for the full-route tests.
-const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
+// Production route order (onboarding.js BEATS): tether, then the first Helios berth, then
+// raid/claimed/seam/dock; the movement drills wait behind that dock (OPENING-1b —
+// firstHalfHourPace.js: "the flight and gun drills wait behind the first dock").
+const DRILL_KEYS = ['tether', 'berth', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -230,7 +231,23 @@ function driveDrillTo(h, beatKey) {
   const trainerOf = () => (sys._trainerId != null ? st.entities.get(sys._trainerId) : null);
 
   const step = (key) => {
-    if (key === 'thrust') {
+    if (key === 'seam') {
+      tick(h); // entering the beat stages the synthetic training rock (no missions registry here)
+      const rock = st.entities.get(sys._miningRockId);
+      assert.ok(rock && rock.data && rock.data.trainingMining === true, 'seam lesson stages its training rock');
+      // The real mining.js yield payload, landed on the rock itself: three units reach
+      // SEAM_ORE_TARGET and the beat resolves from the deterministic ore read.
+      for (let i = 0; i < 3; i++) {
+        h.bus.emit('mining:yield', {
+          commodityId: 'cmdty_ore_iron', qty: 1, acceptedAmount: 1,
+          pos: { x: rock.pos.x, z: rock.pos.z }, minerId: st.playerId,
+        });
+      }
+      tick(h);
+    } else if (key === 'dock') {
+      h.bus.emit('dock:docked', { stationId: 'station_helios' });
+      tick(h);
+    } else if (key === 'thrust') {
       player.vel.x = 41;
       tick(h);
     } else if (key === 'brake') {
@@ -264,6 +281,13 @@ function driveDrillTo(h, beatKey) {
         h.bus.emit('combat:fire', { ownerId: player.id, weaponId: 'pulse_laser_s' });
       }
       player.data.weapons[0]._heat = 2;
+      tick(h);
+    } else if (key === 'berth') {
+      // The first dock at Helios completes the berth; the raid waits behind it.
+      advanceTime(h);
+      tick(h);
+      h.bus.emit('dock:docked', { stationId: 'station_helios' });
+      assert.ok(h.state.onboarding.beatDoneAt.berth != null, 'docking at Helios completes the berth');
       tick(h);
     } else if (key === 'raid') {
       // The raid beat: latch the staged raider, fling him, and the throw-kill resolves it.
@@ -360,44 +384,6 @@ function completeLeftoverBoost(h) {
   tick(h);
 }
 
-// Thesis-first route: raid + claimed run between the rescue grab and the movement verbs.
-function completeRaid(h) {
-  const st = h.state;
-  advanceTime(h);
-  tick(h);
-  const raid = st.onboarding.raid;
-  assert.ok(raid && raid.ids.raider != null, 'raid lesson stages its raider');
-  const player = st.entities.get(st.playerId);
-  const raider = st.entities.get(raid.ids.raider);
-  h.bus.emit('tether:latched', { targetId: raider.id });
-  raider.vel.x = 200;
-  h.bus.emit('tether:released', { targetId: raider.id });
-  h.bus.emit('entity:killed', { id: raider.id, killerId: player.id, type: 'ship' });
-  tick(h);
-  assert.ok(st.onboarding.beatDoneAt.raid != null, 'a throw kill completes the raid');
-}
-
-function completeClaimed(h) {
-  const st = h.state;
-  advanceTime(h);
-  tick(h);
-  const claimed = st.onboarding.claimed;
-  assert.ok(claimed == null || claimed.resolved || (claimed.ids && claimed.ids.pickups.length >= 1), 'claimed lesson stages its spill');
-  if (claimed && claimed.active) {
-    assert.ok(claimed.ids.pickups.length >= 1, 'claimed spill present');
-  }
-  h.bus.emit('pickup:collected', {
-    pickupId: claimed.ids.pickups[0],
-    collectorId: st.playerId,
-    kind: 'cargo',
-    amount: 4,
-    commodityId: 'cmdty_salvage_electronics',
-    pos: { x: st.entities.get(st.playerId).pos.x, z: st.entities.get(st.playerId).pos.z },
-  });
-  tick(h);
-  assert.ok(st.onboarding.beatDoneAt.claimed != null, 'the claimed beat resolves');
-}
-
 function driveLeftoverRescueAndBoost(h) {
   driveDrillTo(h, 'tether');
   completeSwing(h);
@@ -409,8 +395,6 @@ function driveLeftoverRescueAndBoost(h) {
   tick(h);
   driveDrillTo(h, 'disengage');
   completeGrab(h);
-  completeRaid(h);
-  completeClaimed(h);
   completeLeftoverBoost(h);
 }
 

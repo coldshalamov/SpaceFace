@@ -21,6 +21,7 @@ import { makeShipEntitySpec, fittingsFromDefaultModules } from '../src/systems/s
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
 const SECTOR = 'sector_helios_prime';
+const PATROL_POST_WU = 140; // the patrol spawns (and holds its post) 140 WU off the player
 
 async function rig() {
   const sim = createSimulation({
@@ -40,7 +41,7 @@ async function rig() {
     pos: { x: 0, z: 0 },
   }));
   state.playerId = player.id;
-  const patrol = sim.spawn(makeEnemySpawnSpec('patrol_lawman', 3, { x: 140, z: 0 }, { factionId: 'faction_scn' }));
+  const patrol = sim.spawn(makeEnemySpawnSpec('patrol_lawman', 3, { x: PATROL_POST_WU, z: 0 }, { factionId: 'faction_scn' }));
   const counts = { fires: 0 };
   bus.on('combat:fire', (payload) => { if (payload && payload.ownerId === patrol.id) counts.fires += 1; });
   const distance = () => Math.hypot(patrol.pos.x - player.pos.x, patrol.pos.z - player.pos.z);
@@ -54,7 +55,7 @@ test('a lawful patrol is a lawful patrol on the live backend', async () => {
 });
 
 test('a patrol fires at a wanted player, then stops firing and stops closing once the warrant lapses', async () => {
-  const { sim, state, patrol, counts } = await rig();
+  const { sim, state, patrol, counts, distance } = await rig();
   state.player.heat = 0.6;
   // The patrol flies its owed attack telegraph (engine_flare, f07ab9045abe) and holds fire while
   // its committed aim is off-bore, so the first round lands ~6 s in: the window covers the warning.
@@ -79,6 +80,25 @@ test('a patrol fires at a wanted player, then stops firing and stops closing onc
     `it does not press the attack on a player who is no longer wanted (objective ${objective})`);
   assert.notEqual(decision.maneuver && decision.maneuver.kind, 'intercept',
     'it does not fly an intercept at a player who is no longer wanted');
+  // HOLD at the spawn post. After the warrant lapses the hull is already on HOLD/FORMATION
+  // (not intercept). It brakes in from ~307 WU, crosses 140 around +10 s, reverses at ~131 WU
+  // around +14 s, then station-keeps in a ~10 WU orbit around the post — HOLD arrivalRadius
+  // is 18 WU in src/ai/maneuver.js. A 1 s snapshot during the inbound brake (142 → 139) is
+  // still the return, not a settle. Wait past the first reversal, then sample a full orbit.
+  const POST_HOLD_RADIUS_WU = 18;
+  sim.runTicks(60 * 12);
+  const samples = [];
+  for (let i = 0; i < 6; i++) {
+    sim.runTicks(60);
+    samples.push(distance());
+  }
+  const nearest = Math.min(...samples);
+  const farthest = Math.max(...samples);
+  assert.ok(nearest >= PATROL_POST_WU - POST_HOLD_RADIUS_WU,
+    `it station-keeps at its post, never dives on the player (${nearest.toFixed(1)}–${farthest.toFixed(1)} WU)`);
+  assert.ok(farthest <= PATROL_POST_WU + POST_HOLD_RADIUS_WU,
+    `it remains on the post (${nearest.toFixed(1)}–${farthest.toFixed(1)} WU)`);
+  assert.equal(counts.fires, firesAtLapse, 'still no round once the warrant has lapsed');
   assert.equal(patrol.data.ai.roe, 'lawful_wanted_only');
 });
 
