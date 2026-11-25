@@ -42,8 +42,10 @@ function paint(el) {
     const vw = globalThis.innerWidth || 1440;
     const vh = globalThis.innerHeight || 900;
     // Seat flush on the scroller's bottom fade rim rather than 38px up inside the last text row
-    const leftSeat = r.right > vw - 240;
     const seatTop = Math.max(r.top + 8, Math.min(r.bottom - 22, vh - 98));
+    // Reserve the left seat only near the bottom-right station controls. A full-width
+    // phone list higher up needs its right seat, clear of the row's leading label.
+    const leftSeat = r.right > vw - 240 && seatTop > vh - 180;
     foot.style.top = `${Math.max(0, Math.round(seatTop))}px`;
     foot.style.left = `${Math.max(0, Math.round(leftSeat ? r.left + 14 : Math.max(r.left + 8, r.right - 92)))}px`;
   }

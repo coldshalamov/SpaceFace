@@ -3342,7 +3342,7 @@ export const HUD_CSS = `
      weight as the power bar's key caps rather than the kit's etched one. */
   #hud .sf-mt-compact-action .sf-mt-key { margin-left:8px; height:18px; min-width:18px; padding:0 5px;
     font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-variation-settings:normal;
-    font-weight:700; font-size:11px; letter-spacing:.02em; vertical-align:2px; color:var(--dp-ink, #e8e2d4); }
+    font-weight:700; font-size:12px; letter-spacing:.02em; vertical-align:2px; color:var(--dp-ink, #e8e2d4); }
   #hud .sf-mt-compact-action .sf-mt-key[hidden] { display:none; }
   /* The cap is for the cards, not the lane: #alerts is itself a child of the Stage banner
      (stage.js), and capping it pinned a 460 px lane to the left edge, over the objective card. */

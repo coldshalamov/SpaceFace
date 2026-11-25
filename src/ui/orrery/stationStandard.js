@@ -1172,7 +1172,7 @@ ${P} .sx-bar .sx-choice { position:relative; display:block !important; width:100
   background:linear-gradient(160deg, rgb(13 28 40 / .94), rgb(8 18 27 / .97)) !important;
   box-shadow:inset 3px 0 0 rgb(158 220 233 / .45), inset 0 1px 0 rgb(208 238 250 / .12), 0 4px 12px rgb(0 0 0 / .45) !important;
   clip-path:none !important; font-family:${UI} !important; font-size:15px !important; font-weight:600 !important; letter-spacing:0 !important; text-transform:none !important; color:rgb(${BONE}) !important; cursor:pointer; }
-${P} .sx-bar .sx-choice::before { content:counter(sfch) !important; display:grid !important; place-items:center; position:absolute !important; left:12px !important; top:50% !important; bottom:auto !important; width:22px !important; height:22px !important;
+${P} .sx-bar .sx-choice::before { content:counter(sfch) !important; display:grid !important; place-items:center !important; text-align:center !important; position:absolute !important; left:12px !important; top:50% !important; bottom:auto !important; width:22px !important; height:22px !important;
   margin:-11px 0 0 !important; padding:0 !important; transform:none !important; translate:none !important; scale:none !important;
   background:${KEYCAP_BG} !important; border:${KEYCAP_BORDER} !important; box-shadow:${KEYCAP_SHADOW} !important; border-radius:2px !important;
   font-family:${NUM} !important; font-size:12px !important; line-height:20px !important; font-weight:700 !important; color:${ICE} !important; }
@@ -1747,7 +1747,7 @@ ${PA} .sx-dock__back:focus-visible { outline:2px solid #f2b950; outline-offset:2
 ${PA} .sx-dock__back:active, ${PA} .sx-tile:active { transform:translateY(1px); }
 ${PA} .sx-dock__back-key {
   display:inline-grid; place-items:center; min-width:26px; height:18px; padding:0 4px; margin-left:2px; box-sizing:border-box;
-  border:1px solid rgb(158 220 233 / .26); border-radius:2px; font-size:11px; line-height:16px; color:rgb(158 220 233 / .80);
+  border:1px solid rgb(158 220 233 / .26); border-radius:2px; font-size:12px; line-height:16px; color:rgb(158 220 233 / .80);
 }
 @media (prefers-reduced-motion: reduce) {
   ${PA} :is(.sx-dock__back, .sx-tile, button.sx-dh__vital) { transition:none !important; }

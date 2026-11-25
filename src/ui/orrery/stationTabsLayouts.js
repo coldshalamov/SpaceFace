@@ -339,6 +339,12 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   /* the dossier plate sat 26px in from the left but flush right, its rounded hairline merging into the panel frame: an even
      12px inset on both sides keeps the plate's width (the title still holds one line) and shows all four corners */
   ${D} .sx-ct__dossier { padding-left:12px !important; padding-right:12px !important; }
+  /* the board half is ~105px at 390×844: POSTED HERE's 22px cap and the board's own 22px head pad left one row and no hint of a
+     second, and the dossier's 26px pool sat over the plate. Tighter heads show the first row whole with the next peeking under
+     it (the list reads as a list), and the plate opens nearer its title (ui-polish-534). */
+  ${D} .sx-ct__hang > .fh-legend:not(.sx-ct__yours) { padding-top:8px !important; }
+  ${D} .sx-ct__hang > .sx-ct__board { padding-top:6px !important; }
+  ${D} .sx-ct__dossier { padding-top:10px !important; }
 }
 /* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
    and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
@@ -2108,6 +2114,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count) { display:inline !important; font-size:12px !important; line-height:14px !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { margin-left:.5em !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { display:block !important; margin-top:2px !important; }
+  /* the yard word ("yard holds 32") is its own line under the count: in the shared name/count flow it
+     ran straight on from "short" with no gap and read as "SHORTYARD HOLDS 32"; the 12px name's own space was too thin, so "Iron Ore" read as "IronOre" (ui-polish-532) */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__yard { display:block !important; margin-top:1px !important; line-height:14px !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { word-spacing:.14em !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > .orr-chain__source { display:block !important; box-sizing:border-box; width:fit-content !important; max-width:100% !important; min-height:0 !important; margin-top:0 !important; padding:5px 7px !important; line-height:14px !important; text-align:left !important; white-space:normal !important; overflow-wrap:normal !important; letter-spacing:.04em !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { padding:5px 7px !important; line-height:14px !important; text-align:left !important; letter-spacing:.04em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > :is(.orr-chain__source, .orr-chain__wayout)::before { content:none !important; }
