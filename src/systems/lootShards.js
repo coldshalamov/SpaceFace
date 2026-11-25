@@ -1308,6 +1308,9 @@ export const lootShards = {
       transientSector: false,
     }, this.helpers);
     entity.data.sourceVictimId = victim.id;
+    if (victim.data.openingRockCollateral && typeof victim.data.openingRockCollateral === 'object') {
+      entity.data.openingRockCollateral = { ...victim.data.openingRockCollateral };
+    }
     entity.data.manifestId = typeof manifest.manifestId === 'string' ? manifest.manifestId : null;
     stampCargoIdentity(entity.data, identityFromManifest(manifest, {
       ownerId: manifest.ownerId || victim.id,

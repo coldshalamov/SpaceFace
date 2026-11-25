@@ -675,6 +675,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.subsystemId = subsystemId;
       dp.origin = origin;
       dp.weaponId = weaponId;
+      const collisionPresentation = packet && packet.source && packet.source.collisionPresentation;
+      dp.impactorId = collisionPresentation && collisionPresentation.otherId != null
+        ? collisionPresentation.otherId : null;
+      dp.impactorGeneration = collisionPresentation && collisionPresentation.otherGeneration != null
+        ? collisionPresentation.otherGeneration : null;
       try {
         bus.emit('combat:damage', dp);
       } finally {
@@ -879,6 +884,7 @@ function createDamageEmitPayload() {
     pos: null, approach: null, normal: null,
     factionId: null, factionLawful: false, targetHostileToPlayer: false,
     subsystemId: null, origin: null, weaponId: null,
+    impactorId: null, impactorGeneration: null,
   };
   // Non-enumerable so the pooled scratch never shows up in listener key scans,
   // snapshotDamagePayload spreads, or any serialized copy of the emitted record.

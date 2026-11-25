@@ -16,15 +16,15 @@ function sameRoute() {
   return { legs: [{ from: 'sector_helios_prime', to: 'sector_helios_prime', fuel: 0, charge: 0 }] };
 }
 
-test('a plotted cross-sector route names Engage on the Star Map once and does not fly it', () => {
+test('a plotted cross-sector route names Chart once and does not fly it', () => {
   setPromptDevice('kbm');
-  const label = promptLabel('starmap');
+  const label = promptLabel('localmap');
   assert.equal(plottedRouteEngageTeach(sameRoute(), { mapLabel: label }), '');
   assert.equal(plottedRouteEngageTeach(crossRoute(), { engaged: true, mapLabel: label }), '');
   assert.equal(plottedRouteEngageTeach(null), '');
-  const taught = plottedRouteEngageTeach(crossRoute(), { mapHome: 'Star Map', mapLabel: label });
-  assert.match(taught, /\bEngage\b/);
-  assert.match(taught, /Star Map/);
+  const taught = plottedRouteEngageTeach(crossRoute(), { mapHome: 'Chart', mapLabel: label });
+  assert.match(taught, /Chart/);
+  assert.match(taught, /to jump/);
   assert.ok(taught.includes(label));
 
   const state = createGameState(4242);
@@ -100,6 +100,6 @@ test('an arena launch cannot spend or show the Adventure route hint', () => {
   }
   assert.equal(seen.length, 0);
   state.run.phase = 'inactive';
-  assert.match(speakPlottedRouteTeach(state, bus), /Engage on the Star Map/);
+  assert.match(speakPlottedRouteTeach(state, bus), /Open the Chart .* to jump/);
   assert.equal(seen.length, 1);
 });

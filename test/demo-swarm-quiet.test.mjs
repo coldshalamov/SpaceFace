@@ -100,16 +100,16 @@ test('a Swarm run hides each leaked line; Adventure still says it', () => {
     assert.equal(deathRecoverySubtitle(swarm), '');
     assert.equal(deathRecoverySubtitle(adventure), 'Emergency recovery online…');
 
-    assert.equal(swarmEar.captions.filter((c) => c.text === 'Achievement: Made Contact.').length, 1);
+    assert.equal(swarmEar.captions.filter((c) => c.text === 'On your record: Made Contact.').length, 1);
   } finally {
     swarmEar.ear.destroy();
     adventureEar.ear.destroy();
   }
 
   const strain = resolveMasslineInstrument({ event: 'strain', tension: 0.8, strain: 0.9 });
-  assert.equal(strain.caption, 'Line strain.');
+  assert.equal(strain.caption, "Easy — she's straining.");
   assert.equal(shown(swarm, strain.caption), '');
-  assert.equal(shown(adventure, strain.caption), 'Line strain.');
+  assert.equal(shown(adventure, strain.caption), "Easy — she's straining.");
 
   const bus = createBus();
   const captions = [];
@@ -122,9 +122,9 @@ test('a Swarm run hides each leaked line; Adventure still says it', () => {
   } finally {
     presentationAdapters.dispose();
   }
-  assert.ok(captions.includes('Swing threat detected.'));
-  assert.ok(captions.includes('Target destroyed.'));
-  for (const line of ['Swing threat detected.', 'Target destroyed.']) {
+  assert.ok(captions.includes("Watch out — it's swinging."));
+  assert.ok(captions.includes("That's her done."));
+  for (const line of ["Watch out — it's swinging.", "That's her done."]) {
     assert.equal(shown(swarm, line), '', line);
     assert.equal(shown(adventure, line), line, line);
   }

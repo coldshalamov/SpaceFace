@@ -707,7 +707,7 @@ function buildRapSheetField(player, meta) {
   const parts = [];
   if (info && info.id && info.id !== WANTED_TIER.NONE) {
     parts.push(info.label);
-    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0).replace(/^ · /, '');
+    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0, { player, saved: true }).replace(/^ · /, '');
     if (clock) parts.push(clock);
   }
   if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');

@@ -476,7 +476,7 @@ export function fineWarrantDetail(offer, state) {
   const short = amount > credits;
   const heat = state && state.player ? state.player.heat : 0;
   const clock = (typeof heat === 'number' && isPlayerWanted({ player: { heat } }))
-    ? wantedClearClause(heat)
+    ? wantedClearClause(heat, state)
     : '';
   const explanation = fineWhyClause(state, offer);
   const why = explanation ? `${clock ? '. ' : ' '}${explanation}` : '';

@@ -24,7 +24,7 @@ test('a tracked objective in another sector names the route instead of a false l
   const destination = flightDestinationSurface(state, resolveFlightObjectiveCommand(state));
   assert.match(destination.line, /Target the marked derelict/);
   assert.match(destination.line, /Plot route to Helios Prime/);
-  assert.match(destination.line, /Star Map/);
+  assert.match(destination.line, /M · Chart/);
   assert.match(destination.line, /5m 00s/, 'the active mission timer remains visible');
   assert.doesNotMatch(destination.line, /11\.4|→|ETA/);
   assert.equal(objectiveTravelReadout(state, waypoint).distanceWu, null);

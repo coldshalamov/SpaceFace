@@ -63,6 +63,7 @@ import {
   livingHullWithScar,
   normalizeLivingHull,
 } from '../core/livingHull.js';
+import { isOpeningSettling } from '../onboarding/opportunityAdmission.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import {
   normalizeStoryNewGamePlusRecord,
@@ -677,7 +678,10 @@ export const story = {
     if (!s) return;
     s.flags = s.flags || {};
     const content = BEAT_CONTENT[s.beatIndex];
-    if (content) {
+    // Suppress giant opening dock graffiti around Helios in Act I (beat 0). Once B0 delivers the
+    // 47-A sample and advances to beat 1+, beat airlock lines resume normally.
+    const openingHeliosDock = stationId === 'station_helios' && (s.beatIndex | 0) <= 0;
+    if (content && !openingHeliosDock) {
       for (const g of (content.graffiti || [])) {
         if (g.where === 'bulkhead') continue; // bulkhead shows in flight, not at the airlock
         this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
@@ -2191,12 +2195,16 @@ export const story = {
     entryState.atS = Number(this.state.simTime) || 0;
     entryState.contactId = STORY_ENTRY_CONTACT.id;
     this._coldStartDeferred = false;
-    // Set the previous crew's graffiti on the bulkhead immediately.
-    // Dark humor. They knew they might not make it. They were right.
-    this.bus.emit('graffiti:show', {
-      line: GRAFFITI.GANG_DIDNT_MAKE_IT,
-      where: 'bulkhead', beat: -1,
-    });
+    // Suppress giant bulkhead graffiti during the Helios/Act I opening route so translucent text
+    // does not stretch over the station rim when the pilot undocks on their first job.
+    const openingHelios = isOpeningSettling(this.state)
+      || (this.state.world?.currentSectorId === 'sector_helios_prime' && (s.beatIndex | 0) <= 0);
+    if (!openingHelios) {
+      this.bus.emit('graffiti:show', {
+        line: GRAFFITI.GANG_DIDNT_MAKE_IT,
+        where: 'bulkhead', beat: -1,
+      });
+    }
     // The whole cold start, including the shared Helios berth, is one simTime queue.
     for (const entry of COLD_START) {
       this._scheduleNarrative(entry.delayS || 0, {

@@ -32,6 +32,7 @@ import { pilotHas } from '../data/pilotTree.js';
 import { WEAPONS } from '../data/weapons.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isPloughing, trackPloughReleases, ploughKill } from '../combat/ploughFlight.js';
 import {
   clearPendingSlam,
@@ -1328,6 +1329,7 @@ export function buildCollisionPresentationProvenance(target, other, receipt) {
     // The contacted body — the body the target struck. Law reads it as the impactor it must
     // never let occlude the kill it caused.
     otherId: other && other.id != null ? other.id : null,
+    otherGeneration: other ? (occupantGenerationOf(other) ?? null) : null,
     impact: Object.freeze({
       deltaV: nonNegativeFinite(receipt && receipt.deltaV),
       exchangedMomentum: nonNegativeFinite(receipt && receipt.exchangedMomentum),

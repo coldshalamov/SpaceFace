@@ -290,6 +290,12 @@ function killImpactorId(lethal) {
   return collision && collision.otherId != null ? collision.otherId : null;
 }
 
+function killImpactorGeneration(lethal) {
+  const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
+  const collision = collisionPresentationProvenance(lethal, packet);
+  return collision && collision.otherGeneration != null ? collision.otherGeneration : null;
+}
+
 function collisionPresentationProvenance(lethal, packet) {
   const origin = lethal && lethal.origin;
   const source = packet && packet.source;
@@ -850,6 +856,7 @@ export const combat = {
         : killEndLabelFor(lethal) ? { cause: killEndLabelFor(lethal) } : {}),
       // The collision partner — law's witness sightline must not let it occlude its own kill.
       impactorId: killImpactorId(lethal),
+      impactorGeneration: killImpactorGeneration(lethal),
       ...(lethal?.origin?.kind === 'collision' && lethal?.packet?.source?.chainWitness
         ? { chainWitness: lethal.packet.source.chainWitness } : {}),
       presentation,

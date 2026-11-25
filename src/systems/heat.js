@@ -23,6 +23,7 @@
 import { isRunSealed } from '../core/runSeal.js';
 import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
+import { openingBeforeClaim } from '../onboarding/openingQuiet.js';
 
 const HEAT_MAX = 1;
 const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
@@ -573,6 +574,9 @@ export const heat = {
 
   _onDamage(p) {
     if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
+    // Only the authored opening rock's own thrown collision is lesson collateral. Any other
+    // contact harm — a deliberate ram, a loose world crate, ordinary gunfire — prices normally.
+    if (isOpeningRockCollisionCollateral(this.state, p)) return;
     if (!isWantedHeatVictim(this.state, p, p.targetId)) return;
     // A lawful target still chips while hostile: a lawful unit that only turned hostile because
     // the player fired first must not launder the rest of the assault — without the factionLawful
@@ -967,6 +971,35 @@ export function heatClearSecondsForLevel(level) {
   return HEAT_CLEAR_SECONDS_BY_LEVEL[i] || 0;
 }
 export const THRESHOLD = WANTED_THRESHOLD;
+
+function collisionBodyRadius(entity) {
+  return Math.max(0, Number(entity && entity.radius) || 0);
+}
+
+/**
+ * True only for contact harm attributable to the opening swing lesson's own rock after the
+ * pilot released that rock. The release fact rides the rescue rail (and survives its save
+ * record); the contact evidence is the explicit impactor when a combat receipt carries one,
+ * and the contact receipt must name that same body and generation. It is deliberately not an
+ * opening-crime exemption: gunfire, rams, nearby bodies and unrelated thrown bodies all fail this
+ * read and are priced by the ordinary law.
+ */
+export function isOpeningRockCollisionCollateral(state, payload) {
+  if (!openingBeforeClaim(state)) return false;
+  if (!payload || !payload.origin || payload.origin.kind !== 'collision') return false;
+  const rescue = state && state.onboarding && state.onboarding.rescue;
+  if (!rescue) return false;
+  const releasedId = rescue.rockThrowPayloadId != null ? rescue.rockThrowPayloadId
+    : (rescue.rockReleasedAfterReel === true && rescue.ids ? rescue.ids.rock : null);
+  if (releasedId == null || payload.impactorId == null) return false;
+  if (String(payload.impactorId) !== String(releasedId)) return false;
+  const releasedGeneration = rescue.rockThrowPayloadGeneration;
+  if (releasedGeneration != null) {
+    if (payload.impactorGeneration == null) return false;
+    if (payload.impactorGeneration !== releasedGeneration) return false;
+  }
+  return true;
+}
 
 // WANTED heat is a crime ledger for attacking people and places, not for shooting your own
 // plates, mines, mass-seeds, or other deployed devices. Self-hits (impulse charges, whip recoil)

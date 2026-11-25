@@ -344,7 +344,7 @@ function mtRouteGuidance(state, waypoint) {
   }
   return {
     next: `Plot route to ${mtSectorName(waypoint.sectorId)}`,
-    summary: `${BINDINGS.starmap.label} Star Map`,
+    summary: `${BINDINGS.localmap.label} · Chart`,
   };
 }
 
@@ -913,7 +913,7 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
     const routeGuide = mtRouteGuidance(state, waypoint);
     if (routeGuide) {
       readings = [routeGuide.next, routeGuide.destination,
-        `${BINDINGS.starmap.label} Star Map`, deadline].filter(Boolean).join(' · ');
+        `${BINDINGS.localmap.label} · Chart`, deadline].filter(Boolean).join(' · ');
     } else if (travel.distanceText === 'ROUTE PENDING') {
       const gateFix = resolveObjectiveGatePresentation(state);
       if (gateFix && gateFix.pos) {
@@ -955,7 +955,7 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
       : formatNavigationObjectiveAction(rawAction, wp);
     const readings = routeGuide
       ? [routeGuide.next, routeGuide.destination,
-        `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
+        `${BINDINGS.localmap.label} · Chart`].filter(Boolean).join(' · ')
       : mtReadingsLine(objectiveBearingGlyph(state, displayFix), travel.distanceText,
         travel.etaS == null ? '' : travel.etaText);
     const dest = {
@@ -1280,8 +1280,11 @@ function applyDistanceSpeech(el, distanceText) {
 export const SWARM_QUIET_CAPTIONS = Object.freeze([
   'Ship lost.',
   'Swing threat detected.',
+  "Watch out — it's swinging.",
   'Line strain.',
+  "Easy — she's straining.",
   'Target destroyed.',
+  "That's her done.",
 ]);
 const SWARM_QUIET_CAPTION_SET = new Set(SWARM_QUIET_CAPTIONS);
 
@@ -1321,8 +1324,8 @@ export function speakPlottedRouteTeach(state, bus) {
   const engaged = !!(nav.executor && nav.executor.engaged === true);
   const line = plottedRouteEngageTeach(nav.route, {
     engaged,
-    mapHome: 'Star Map',
-    mapLabel: promptLabel('starmap'),
+    mapHome: 'Chart',
+    mapLabel: promptLabel('localmap'),
   });
   if (!line) return '';
   if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
@@ -5477,23 +5480,50 @@ export function createHud(ctx, alerts) {
   // the accepted receipt's kind, affected party, and witness/jurisdiction basis. Suspicion
   // without a receipt shows no reason at all, never a witness claim.
   let wantedActive = false;
-  if (alerts) {
-    on('heat:changed', (p) => {
-      const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
-      const wanted = v >= 0.15;
-      const reason = wantedKindText(p, state.player);
-      if (wanted && !wantedActive) {
-        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
+  let wantedReason = '';
+  let lastWantedText = '';
+  function wantedContext(packet = null) {
+    if (packet && packet.zone) return { ...state, zone: packet.zone };
+    return state;
+  }
+  function syncWantedAlert(packet = null) {
+    if (!alerts) return;
+    const v = packet && typeof packet.value === 'number'
+      ? packet.value
+      : (state.player && state.player.heat) || 0;
+    const wanted = v >= 0.15;
+    if (packet) wantedReason = wantedKindText(packet, state.player);
+    else if (wanted) wantedReason = wantedKindText(null, state.player) || wantedReason;
+    if (wanted) {
+      const ctxForWanted = wantedContext(packet);
+      if (!wantedActive) {
+        const text = wantedAlertText(v, wantedReason, false, ctxForWanted);
+        alerts.raise({ key: 'wanted', sev: 'danger', text, ttl: Infinity });
         wantedActive = true;
+        lastWantedText = text;
         const teach = noteFirstWantedMark(state, true);
         if (teach) ctx.bus.emit('toast', { text: teach, kind: 'info', ttl: 6 });
-      } else if (wanted && wantedActive) {
-        // refresh the text to show the new tier (raise dedups by key but updates text/sev)
-        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, true), ttl: Infinity });
-      } else if (!wanted && wantedActive) {
-        alerts.clear('wanted');
-        wantedActive = false;
+      } else {
+        // Cooling heat is never an escalation. HUNTERS copy may only come from a live
+        // incoming-response fact; until one is published, the status stays plain WANTED.
+        const text = wantedAlertText(v, wantedReason, false, ctxForWanted);
+        if (text !== lastWantedText) {
+          alerts.raise({ key: 'wanted', sev: 'danger', text, ttl: Infinity });
+          lastWantedText = text;
+        }
       }
+    } else if (wantedActive) {
+      alerts.clear('wanted');
+      wantedActive = false;
+      wantedReason = '';
+      lastWantedText = '';
+    }
+  }
+  if (alerts) {
+    on('heat:changed', (p) => syncWantedAlert(p || {}));
+    on('save:loaded', () => {
+      wantedReason = '';
+      syncWantedAlert(null);
     });
   }
 
@@ -7402,6 +7432,9 @@ export function createHud(ctx, alerts) {
       const fuelState = state.fuel || defaultFuel;
       const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
       syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac);
+      if (slow && (wantedActive || ((state.player && state.player.heat) || 0) >= 0.15)) {
+        syncWantedAlert();
+      }
 
       // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
       // 2 wu/s so a stationary ship shows nothing (never animates at rest).
@@ -7509,6 +7542,7 @@ export function createHud(ctx, alerts) {
     syncSwarmHudClass(false);
     const p = state.entities.get(state.playerId);
     syncSafetyAlerts(p);
+    if (wantedActive || ((state.player && state.player.heat) || 0) >= 0.15) syncWantedAlert();
     if (alerts && alerts.tick) alerts.tick();
     // The seat is only recomputed while the flight HUD ticks. A yield left on <body> after
     // dock, pause, a menu or Run Over kept hiding receipts and speaker cards that arrive there.

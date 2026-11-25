@@ -45,7 +45,13 @@ import {
   isImpoundWorkComplete,
   quoteImpoundBill,
 } from './custodyConsequences.js';
-import { heatLevelFor, isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
+import {
+  heatLevelFor,
+  isPlayerWanted,
+  isOpeningRockCollisionCollateral,
+  wantedTierFor,
+  WANTED_TIER,
+} from './heat.js';
 import { acceptHullPapers } from './impoundLot.js';
 import { createWarrantHunterWaves } from './warrantHunterWaves.js';
 import {
@@ -508,6 +514,9 @@ export const lawSecurity = {
       version: LAW_SECURITY_VERSION,
       unreportedKills: cloneLawPlain(own.unreportedKills) || {},
     };
+    if (own.openingRockCollateral && Object.keys(own.openingRockCollateral).length > 0) {
+      out.openingRockCollateral = cloneLawPlain(own.openingRockCollateral) || {};
+    }
     // reportedIncidents stays lazy: a save that never priced an incident emits no key, matching
     // the live state of a run that never stored a receipt (the sim:compare laziness contract).
     if (own.reportedIncidents != null) {
@@ -564,6 +573,7 @@ export const lawSecurity = {
     if (this._podConeDwell) this._podConeDwell.clear();
     const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
     own.unreportedKills = normalizeUnreportedKillLedger(src.unreportedKills);
+    own.openingRockCollateral = normalizeOpeningRockCollateral(src.openingRockCollateral);
     yield 'law-unreported-kills';
     if (src.reportedIncidents != null) {
       own.reportedIncidents = normalizeReportedIncidentLedger(src.reportedIncidents);
@@ -1136,9 +1146,9 @@ export const lawSecurity = {
     // can, a wreck). A thrown body carries its responsible actor's id instead; only that actor can
     // be an aggressor (owner 2026-11-19: a bumped crate opened a navy intercept in the tutorial).
     if (payload.origin?.kind === 'collision' && INERT_IMPACTOR_TYPES.has(attacker.type)) return;
-    // OPENING-1b: the tutorial swing must never criminalise a new pilot - until the raid is done, harm the
-    // pilot (or their thrown rock) does opens no law case. The first consequence is the claimed-salvage choice.
-    if (attacker.id === state.playerId && openingBeforeClaim(state)) return;
+    // OPENING-1b: the authored swing rock's own thrown contact is lesson collateral. Every
+    // other player-caused harm — gunfire, a ram, or an unrelated thrown body — is adjudicated.
+    if (attacker.id === state.playerId && isOpeningRockCollisionCollateral(state, payload)) return;
     const player = entityById(state, state.playerId);
 
     this._observeInspectionCollateral(payload, attacker, target);
@@ -2966,6 +2976,7 @@ export const lawSecurity = {
     const ownerId = data.ownerId;
     if (ownerId == null || String(ownerId) !== String(source.minerWorldRecordId)) return null;
     if (sameLawEntityId(ownerId, state.playerId)) return null;
+    if (isOpeningRockCollateralLot(state, entity)) return null;
     const pos = finiteLawPoint(entity.pos) || finiteLawPoint(payload && payload.pos);
     if (!pos) return null;
     const chipId = cleanLawId(`chip:${entity.id}`);
@@ -2988,7 +2999,6 @@ export const lawSecurity = {
     if (!payload) return null;
     const state = this.state;
     if (!state || state.playerId == null) return null;
-    if (openingBeforeClaim(state)) return null; // OPENING-1b: no intercept before the 3:00 choice
     return this._reportStolenCargoPod(entityById(state, payload.targetId));
   },
 
@@ -2999,6 +3009,7 @@ export const lawSecurity = {
       || (entity.data && entity.data.freightCustodyPod)) return null;
     const ownerId = cargoPodOwnerId(entity);
     if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+    if (isOpeningRockCollateralLot(state, entity)) return null;
     // A manifest pod is the dead victim's cargo. If the kill itself was already adjudicated a
     // crime, the murder receipt already priced the scene — a second receipt would be double
     // jeopardy. A lawful or unwitnessed kill leaves the pod an honest salvage claim instead.
@@ -3046,9 +3057,22 @@ export const lawSecurity = {
     if (!state || !payload || state.playerId == null) return;
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (payload.killerId !== state.playerId || payload.id === state.playerId) return;
-    // The opening's claimed-salvage choice is its first law consequence, even if a
-    // training contact becomes lethal and reaches the separate kill owner.
-    if (openingBeforeClaim(state)) return;
+    // The opening's only exempt lethal contact is the authored swing rock's own collision.
+    // A gun kill near that rock is still a gun kill: the frozen presentation receipt must say
+    // collision, and the impactor identity/generation must match the body the pilot released.
+    const presentationCause = payload.presentation && typeof payload.presentation.cause === 'string'
+      ? payload.presentation.cause : '';
+    const collisionKillReceipt = presentationCause === 'ship_collision' || presentationCause === 'terrain_collision';
+    if (collisionKillReceipt && isOpeningRockCollisionCollateral(state, {
+      origin: { kind: 'collision' },
+      targetId: payload.id,
+      impactorId: payload.impactorId,
+      impactorGeneration: payload.impactorGeneration,
+      pos: payload.pos,
+    })) {
+      rememberOpeningRockCollateralVictim(state, entityById(state, payload.id), payload);
+      return;
+    }
     // Canonical kill causality (combat's frozen presentation receipt): HOW the victim died is as
     // much a legal fact as WHO. A hull slammed into a rock is reckless endangerment, not murder —
     // the charge, the heat price, and the rep answer all key off this same cause.
@@ -7509,6 +7533,7 @@ function freshState() {
     highSecWantedS: 0,
     highSecWarrantEpoch: 0,
     highSecWarrantRetryTick: null,
+    openingRockCollateral: {},
   };
 }
 
@@ -7534,6 +7559,9 @@ function ensureState(state) {
   }
   if (!own.unreportedKills || typeof own.unreportedKills !== 'object' || Array.isArray(own.unreportedKills)) {
     own.unreportedKills = {};
+  }
+  if (!own.openingRockCollateral || typeof own.openingRockCollateral !== 'object' || Array.isArray(own.openingRockCollateral)) {
+    own.openingRockCollateral = {};
   }
   // RC-CHASE — lazy: the key exists only while testimony is pending (serialize mirrors the
   // reportedIncidents laziness contract); malformed contents fail closed.
@@ -7678,6 +7706,58 @@ export function cargoPodOwnerId(entity) {
   return ownerId == null || ownerId === '' ? null : ownerId;
 }
 
+function normalizeOpeningRockCollateral(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw).slice(0, 32)) {
+    const row = raw[key];
+    const stable = row && typeof row.victimStableId === 'string' && row.victimStableId.trim()
+      ? row.victimStableId : (typeof key === 'string' && key.trim() ? key : null);
+    if (!stable) continue;
+    out[stable] = {
+      victimStableId: stable,
+      victimEntityId: row && row.victimEntityId != null ? row.victimEntityId : null,
+      at: row && Number.isFinite(Number(row.at)) ? Number(row.at) : 0,
+    };
+  }
+  return out;
+}
+
+function rememberOpeningRockCollateralVictim(state, victim, payload) {
+  const stable = victimStableIdOf(victim, payload || {});
+  if (!stable) return;
+  const victimGeneration = victim ? (occupantGenerationOf(victim) ?? null) : null;
+  const stamp = {
+    victimStableId: stable,
+    victimEntityId: payload && payload.id != null ? payload.id : (victim && victim.id != null ? victim.id : null),
+    victimGeneration,
+    at: Number.isFinite(state.simTime) ? state.simTime : 0,
+  };
+  // The minted lot, not the victim's identity, carries the exemption. Stamping the dead hull
+  // here lets lootShards copy one exact provenance record onto only the cargo body it mints.
+  if (victim && victim.data && typeof victim.data === 'object') {
+    victim.data.openingRockCollateral = { ...stamp };
+  }
+  const own = ensureState(state);
+  const ledger = own.openingRockCollateral;
+  ledger[stable] = { ...stamp };
+  const keys = Object.keys(ledger);
+  for (let i = 0; i < keys.length - 24; i += 1) delete ledger[keys[i]];
+}
+
+// Cargo thrown loose by the authored opening-rock collision keeps the collision's lesson
+// treatment. The minted lot itself carries that provenance; victim identity alone never
+// exempts unrelated cargo or a later occupant.
+function isOpeningRockCollateralLot(state, entity) {
+  const stamp = entity && entity.data && entity.data.openingRockCollateral;
+  if (!stamp || typeof stamp !== 'object') return false;
+  if (typeof stamp.victimStableId !== 'string' || !stamp.victimStableId.trim()) return false;
+  if (stamp.victimEntityId == null) return false;
+  // The victim-generation field may be absent only in saves written before generation-aware
+  // provenance. Newly minted lots carry it; it is never a match key for a different occupant.
+  return true;
+}
+
 // A manifest pod's victim already priced by an accepted crime receipt (the kill) is not a second
 // theft. Shared by the theft door and the advisory owner read so they cannot drift apart.
 function manifestKillAlreadyPriced(state, ownerId) {
@@ -7712,6 +7792,7 @@ export function chargeableLotOwnerId(state, entity) {
     ownerId = data.ownerId;
   }
   if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+  if (isOpeningRockCollateralLot(state, entity)) return null;
   if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
   const victim = isPod ? entity : entityById(state, ownerId);
   const jurisdiction = protectedStationAt(state, { pos: entity.pos })
@@ -8053,7 +8134,9 @@ function publicIncident(incident) {
     stationId: incident.stationId,
     factionId: incident.factionId,
     attackerId: incident.attackerId,
+    attackerGeneration: incident.attackerGeneration ?? null,
     victimId: incident.victimId,
+    victimGeneration: incident.victimGeneration ?? null,
     victimAnchor: incident.victimAnchor ? { ...incident.victimAnchor } : null,
     cause: incident.cause,
     status: incident.status,

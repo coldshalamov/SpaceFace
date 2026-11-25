@@ -4003,6 +4003,10 @@ export const onboarding = {
   _onFirstThrow(p) {
     const rescue = this._rescue && this._rescue();
     if (!rescue || this._rescueCurrentKey() !== 'swing') return;
+    // Completing the lesson clears the transient reel flags immediately. The thrown body's
+    // release identity is the durable causal fact law needs for the contact that happens next.
+    rescue.rockThrowPayloadId = p && p.payloadId != null ? p.payloadId : null;
+    rescue.rockThrowPayloadGeneration = p && p.payloadGeneration != null ? p.payloadGeneration : null;
     this._dropRescueScrap(this._rescueActor('derelict'));
     this._rescueDone('swing');
   },
