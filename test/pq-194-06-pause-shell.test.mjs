@@ -72,8 +72,11 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
     const buttons = root.querySelectorAll('button');
     const labels = buttons.map((button) => button.textContent);
     assert.deepEqual(labels.slice(0, 4), ['Resume', 'Settings', 'Save', 'Load'], 'the sheet order leads with the interruption choices');
-    for (const required of ['Mission Log', 'My Ship', 'Operations', 'Help / Controls', 'Codex', 'Photo', 'Main Menu', 'Quit Game']) {
+    for (const required of ['Mission Log', 'My Ship', 'Help / Controls', 'Codex', 'Main Menu', 'Quit Game']) {
       assert.ok(labels.some((label) => label.startsWith(required)), `${required} is reachable without opening anything`);
+    }
+    for (const gone of ['Operations', 'Photo', 'Replay', 'Clips']) {
+      assert.ok(!labels.some((label) => label.startsWith(gone)), `${gone} is not on the sheet`);
     }
     assert.equal(new Set(labels).size, labels.length, 'no two pause verbs share a label');
     // The vocabulary moved from the kit to Deckplate on 2026-09-22; the CONTRACT did not. Either
@@ -100,12 +103,12 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
     // `ui-look` (which clicks everything), not by a structural assertion. These are the plain
     // navigation verbs; the confirm-gated ones (Load, Main Menu, Quit) need a real dialog.
     const pushes = [];
-    for (const label of ['Settings', 'Save', 'Mission Log', 'My Ship', 'Operations']) {
+    for (const label of ['Settings', 'Save', 'Mission Log', 'My Ship']) {
       const button = buttons.find((candidate) => candidate.textContent.startsWith(label));
       assert.ok(button, `${label} is reachable`);
       assert.doesNotThrow(() => button.dispatch('click'), `${label} pick must not throw`);
     }
-    assert.deepEqual(pushes, ['settings', 'saveLoad', 'missionLog', 'ship', 'automation'],
+    assert.deepEqual(pushes, ['settings', 'saveLoad', 'missionLog', 'ship'],
       'every plain verb pushes its own destination');
   } finally {
     dom.restore();

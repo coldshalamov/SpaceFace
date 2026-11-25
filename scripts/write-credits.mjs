@@ -83,7 +83,7 @@ const assets = [
   {
     name: 'Kenney — Interface Sounds (Denied Latch)',
     author: 'Kenney', license: 'CC0',
-    role: 'sound: the Massline\'s refused-latch tick',
+    role: 'sound: the Line\'s refused-latch tick',
     homepage: 'https://kenney.nl/assets/interface-sounds',
     origin: 'kenney/interface/Audio/tick_001.ogg',
     promotedFile: 'assets/audio/massline/massline_deny.wav',

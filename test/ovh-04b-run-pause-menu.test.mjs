@@ -5,8 +5,8 @@ import { startBenchServer } from '../scripts/lib/benchServer.mjs';
 import { loadPlaywright } from '../scripts/lib/load-playwright.mjs';
 
 // The Pilot Tree joins the run's entries (2026-11-20): this run so far, read-only.
-const RUN = ['Resume', 'Settings', 'Pilot Tree', 'Help / Controls', 'Records Wall', 'Photo', 'End run'];
-const BANNED = /^(Save|Load|Mission Log|My Ship|Operations|Physics|Sandbox|Codex|Achievements|Replay|Clips|Main Menu|Quit)/i;
+const RUN = ['Resume', 'Settings', 'Pilot Tree', 'Help / Controls', 'Records Wall', 'End run'];
+const BANNED = /^(Save|Load|Mission Log|My Ship|Operations|Physics|Sandbox|Codex|Achievements|Photo|Replay|Clips|Main Menu|Quit)/i;
 
 async function pauseView(page, base, run) {
   await page.goto(`${base}tools/ui-bench.html?screen=pause&chrome=0`, { waitUntil: 'domcontentloaded' });
@@ -34,11 +34,15 @@ test('Swarm pause lists exactly the run entries; Adventure pause keeps Save, Loa
     assert.deepEqual(swarm.labels, RUN);
     assert.ok(!swarm.labels.some((l) => BANNED.test(l)));
     assert.ok(!swarm.keys.includes('F5') && !swarm.keys.includes('F9'), 'no quick save/load hints in a run');
-    assert.deepEqual(swarm.keys.slice(0, 2), ['Esc', 'P']);
+    assert.equal(swarm.keys[0], 'Esc');
+    assert.ok(!swarm.keys.includes('P'), 'photo stays off the run sheet');
 
     const adv = await pauseView(page, server.baseUrl, null);
-    for (const want of ['Resume', 'Settings', 'Save', 'Load', 'Mission Log', 'My Ship', 'Operations', 'Help / Controls', 'Codex', 'Photo', 'Records Wall']) {
+    for (const want of ['Resume', 'Settings', 'Save', 'Load', 'Mission Log', 'My Ship', 'Help / Controls', 'Codex', 'Records Wall']) {
       assert.ok(adv.labels.some((l) => l.startsWith(want)), `Adventure still offers ${want}`);
+    }
+    for (const gone of ['Operations', 'Photo', 'Replay', 'Clips']) {
+      assert.ok(!adv.labels.some((l) => l.startsWith(gone)), `Adventure does not offer ${gone}`);
     }
     assert.ok(adv.keys.includes('F5') && adv.keys.includes('F9'));
   } finally {

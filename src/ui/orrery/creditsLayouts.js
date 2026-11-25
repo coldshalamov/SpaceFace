@@ -39,6 +39,16 @@ ${C} .of-credits-name {
   max-width:100% !important;
   overflow-wrap:anywhere !important;
   word-break:break-word !important;
+  white-space:normal !important;
+}
+/* the emblem stays inside the frame: the shared sheet parks it past the right edge */
+${C} > .orr-cr-orrery {
+  right:16px !important;
+  width:min(62vh, 36vw) !important;
+  height:min(62vh, 36vw) !important;
+  margin-top:calc(min(62vh, 36vw) / -2) !important;
+  max-width:calc(100vw - 32px) !important;
+  overflow:hidden !important;
 }
 ${C} .of-credits-notice {
   box-sizing:border-box !important;

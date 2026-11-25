@@ -58,6 +58,9 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 /** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
 const PHOTO_HINT_MS = 2000;
 export const PHOTO_LABEL = 'Photo';
+// Photo, Replay and Clips stay off the pause sheet. Their overlays do not yet take pad focus
+// through an empty recording a player can trust, so the sheet does not offer them.
+export const PAUSE_MEDIA_ON_SHEET = false;
 export const ACHIEVEMENTS_LABEL = 'Achievements';
 export const ENDING_ARCHIVE_LABEL = 'Ending Archive';
 export const PHOTO_CAPTURE_LABEL = 'Capture';
@@ -273,18 +276,18 @@ function routeCommitment(state, wp) {
 export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
   if (isPhoneLayout()) {
     return {
-      label: localizeText('Local Map'),
+      label: localizeText('Chart'),
       hint: inThisSystem
-        ? localizeText('Open Local Map for the live marker in this system.')
-        : localizeText('Open Local Map for the live marker{place}; no jump route is required.', { place }),
-      title: 'Open Local Map',
+        ? localizeText('Open Chart for the live marker in this system.')
+        : localizeText('Open Chart for the live marker{place}; no jump route is required.', { place }),
+      title: 'Open Chart',
     };
   }
-  const label = localizeText('Local Map ({key})', { key });
+  const label = localizeText('Chart ({key})', { key });
   const hint = inThisSystem
-    ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
-    : localizeText('Open Local Map ({key}) for the live marker{place}; no jump route is required.', { key, place });
-  return { label, hint, title: 'Open Local Map' };
+    ? localizeText('Open Chart ({key}) for the live marker in this system.', { key })
+    : localizeText('Open Chart ({key}) for the live marker{place}; no jump route is required.', { key, place });
+  return { label, hint, title: 'Open Chart' };
 }
 
 export function pauseMapAction(state) {
@@ -318,13 +321,13 @@ export function pauseMapAction(state) {
     };
   }
   const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
-  const mapLabel = 'Star Map' + pauseKeyHint(BINDINGS.starmap);
+  const mapLabel = 'Chart' + pauseKeyHint(BINDINGS.starmap);
   const hint = 'Open ' + mapLabel + ' to review the inter-system route' + target + ' before committing a jump.';
   // Inter-system review still uses the same galaxyMap surface with GALAXY focus.
   const handoff = mapHandoffAction({
     focus: MAP_FOCUS.GALAXY,
     label: mapLabel,
-    title: 'Open Star Map',
+    title: 'Open Chart',
     body: hint,
     sectorId: wp.sectorId || null,
     stationId: wp.stationId || null,
@@ -1209,11 +1212,7 @@ export const pauseScreen = {
     if (!inRun) mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
     // The Pilot Tree (T): in Adventure where points are spent; in a Swarm run, this run so far (read-only).
     mk('Pilot Tree', () => nav(ctx, 'pushScreen', 'pilotTree'), { group: inRun ? 'Run' : 'Ship', bank: true, icon: 'ready', hint: 'T' });
-    // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
-    // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
-    // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
-    // UI-polish scope this cycle; a first-class station tab would be promotion).
-    if (!inRun) mk('Operations', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+    // Automation (Operations) is retired. The pause sheet does not link to it.
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction && !inRun) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
     // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
@@ -1222,15 +1221,13 @@ export const pauseScreen = {
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
     if (!inRun) mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
     mk('Records Wall', () => nav(ctx, 'pushScreen', 'statistics'), { group: inRun ? 'Run' : 'Reference', bank: true, icon: 'info' });
-    // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
-    // assets; filters off by default. Esc returns here. Do not restyle this sheet.
-    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: inRun ? 'Run' : 'Media', bank: true, icon: 'scan' });
-    // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
-    // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    if (!inRun) mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
-    // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
-    // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    if (!inRun) mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    // Photo, Replay and Clips stay callable for their own screens, and off this sheet until a
+    // player can run them from the pad with an honest empty state.
+    if (PAUSE_MEDIA_ON_SHEET) {
+      mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: inRun ? 'Run' : 'Media', bank: true, icon: 'scan' });
+      if (!inRun) mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
+      if (!inRun) mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    }
     // Ending Archive (B7): once the story owner has filed the written ending
     // (state.story.writtenFinale — the same record its ui:endingArchiveOpen handler serves), the
     // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
@@ -1243,7 +1240,7 @@ export const pauseScreen = {
       requestCodexTab('Archive');
       nav(ctx, 'pushScreen', 'codex');
       if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
-    }, { group: 'Media', bank: true, icon: 'ledger' });
+    }, { group: 'Reference', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     // TITLE-02: practice and test modes (Physics challenges, Circuits, Sandbox) are not on a player's
@@ -1394,7 +1391,7 @@ export const pauseScreen = {
       keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
     };
     keyHint('Esc', 'Resume');
-    keyHint('P', 'Photo');
+    if (PAUSE_MEDIA_ON_SHEET) keyHint('P', 'Photo');
     if (!inRun) {
       keyHint('F5', 'Quick Save');
       keyHint('F9', 'Quick Load');
@@ -1489,7 +1486,7 @@ export const pauseScreen = {
     // FB-085: P (BINDINGS.photo) opens photo mode over this screen — capture phase, ahead of the
     // uiInput route that would read the same press as "open pause" again. The photo overlay's own
     // Esc route returns here. Photo mode owns the keys while it is up, so a live session ignores it.
-    if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (PAUSE_MEDIA_ON_SHEET && !pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       pausePhotoKeyHandler = (ev) => {
         if (photo || ev.repeat || !isPhotoBindingKey(ev)) return;
         const target = ev.target;

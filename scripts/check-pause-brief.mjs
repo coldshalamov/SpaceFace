@@ -109,7 +109,7 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
-assert.match(lines.next, new RegExp(`Local Map \\(${BINDINGS.localmap.label}\\)`));
+assert.match(lines.next, new RegExp(`Chart \\(${BINDINGS.localmap.label}\\)`));
 assert.match(lines.save, /^Unsaved run/);
 
 lines = pauseStatusLines({
@@ -135,7 +135,7 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^INTER-SYSTEM ROUTE/);
 assert.match(lines.objective, /Sell Food at Meridian Exchange/);
-assert.match(lines.next, new RegExp(`Star Map \\(${BINDINGS.starmap.label}\\).*Meridian`));
+assert.match(lines.next, new RegExp(`Chart \\(${BINDINGS.starmap.label}\\).*Meridian`));
 assert.match(lines.next, /before committing a jump/);
 
 // Map review CTA: one public surface (galaxyMap) + MAP_FOCUS vocabulary.
@@ -154,7 +154,7 @@ let mapAction = pauseMapAction({
 assert.equal(mapAction.screenId, MAP_SCREEN_ID);
 assert.equal(mapAction.screenId, 'galaxyMap');
 assert.equal(mapAction.focus, MAP_FOCUS.LOCAL);
-assert.equal(mapAction.label, `Local Map (${BINDINGS.localmap.label})`);
+assert.equal(mapAction.label, `Chart (${BINDINGS.localmap.label})`);
 assert.equal(mapAction.commitment, 'local');
 assert.match(mapAction.hint, /live marker/);
 assert.match(mapAction.hint, /no jump route is required/);
@@ -166,7 +166,7 @@ mapAction = pauseMapAction({
 assert.equal(mapAction.screenId, MAP_SCREEN_ID);
 assert.equal(mapAction.screenId, 'galaxyMap');
 assert.equal(mapAction.focus, MAP_FOCUS.GALAXY);
-assert.equal(mapAction.label, `Star Map (${BINDINGS.starmap.label})`);
+assert.equal(mapAction.label, `Chart (${BINDINGS.starmap.label})`);
 assert.equal(mapAction.commitment, 'inter-system');
 assert.match(mapAction.hint, /inter-system route/);
 assert.match(mapAction.hint, /Meridian/);

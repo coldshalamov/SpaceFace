@@ -193,10 +193,10 @@ test('PRO-05 In-use, Keeps, restart and Local Map resolve through placeholders i
 
   const key = BINDINGS.localmap.label;
   const local = localMapPauseCopy(key, { place: ' in Helios' });
-  assert.equal(local.label, `Local Map (${key})`);
-  assert.equal(local.hint, `Open Local Map (${key}) for the live marker in Helios; no jump route is required.`);
+  assert.equal(local.label, `Chart (${key})`);
+  assert.equal(local.hint, `Open Chart (${key}) for the live marker in Helios; no jump route is required.`);
   const here = localMapPauseCopy(key, { inThisSystem: true });
-  assert.equal(here.hint, `Open Local Map (${key}) for the live marker in this system.`);
+  assert.equal(here.hint, `Open Chart (${key}) for the live marker in this system.`);
 
   const action = pauseMapAction({
     nav: {
@@ -222,16 +222,13 @@ function shimDocument() {
     const origAppend = node.append.bind(node);
     node.appendChild = (child) => {
       const result = origAppendChild(child);
-      child.parentElement = node;
       return result;
     };
     node.append = (...kids) => {
       origAppend(...kids);
-      for (const kid of kids) if (kid && typeof kid === 'object') kid.parentElement = node;
     };
     node.insertBefore = (child, ref) => {
       child.parentNode = node;
-      child.parentElement = node;
       const index = node.children.indexOf(ref);
       node.children.splice(index < 0 ? node.children.length : index, 0, child);
       return child;

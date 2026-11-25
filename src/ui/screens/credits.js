@@ -55,6 +55,11 @@ function getManager(ctx) {
   return null;
 }
 
+/** Player copy for a credit line. Internal names stay out of the reel. */
+export function creditsPlayerLine(text) {
+  return String(text || '').replace(/\bMassline\b/g, 'Line');
+}
+
 /** A homepage as a place, not a link: no protocol, no "www.", no trailing slash or #readme. */
 export function creditsHost(url) {
   const raw = String(url || '').trim();
@@ -279,9 +284,8 @@ export const creditsScreen = {
       switch (s.id) {
         case 'made': {
           const made = el('div', 'of-credits-made orr-cr-line');
-          made.appendChild(el('h2', 'of-credits-name fh-hero', c.madeBy));
+          made.appendChild(el('h2', 'of-credits-name fh-hero', c.madeBy || 'SpaceFace'));
           if (c.version) made.appendChild(el('p', 'of-credits-ver fh-data', 'v' + c.version));
-          made.appendChild(el('p', 'k-row__sub fh-fine', 'design, code and art'));
           sec.appendChild(made);
           sec.appendChild(el('p', 'k-sentence k-measure fh-body orr-cr-line',
             'A space brawler where everything has mass. Rope it, throw it, wreck it: survive the Swarm, or work your way up in the Helios Reach.'));
@@ -297,7 +301,7 @@ export const creditsScreen = {
           break;
         case 'assets':
           sec.appendChild(staticRows((c.assets || []).map((a) => ({
-            name: a.name, sub: [a.author, a.role, creditsHost(a.homepage)].filter(Boolean).join(' · '), value: a.license,
+            name: a.name, sub: [a.author, creditsPlayerLine(a.role), creditsHost(a.homepage)].filter(Boolean).join(' · '), value: a.license,
           })), 'Assets'));
           sec.appendChild(el('p', 'k-sentence k-measure fh-body orr-cr-line',
             'Every asset listed above is promoted from reference files under Creative Commons Zero (CC0); full notices ship beside each asset.'));
