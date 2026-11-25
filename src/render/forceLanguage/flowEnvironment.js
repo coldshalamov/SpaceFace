@@ -73,9 +73,13 @@ export class FlowEnvironment {
     const time = finite(state.simTime);
     const originChanged = this._origin.x !== this._lastOriginX || this._origin.z !== this._lastOriginZ;
     const movement = Math.hypot(x - this._lastX, z - this._lastZ);
+    const elapsed = time - this._lastTime;
     let refresh = state !== this._state || excludeId !== this._excludeId || originChanged
-      || Math.abs(radius - this._lastRadius) > 0.01 || movement > Math.max(2, radius * 0.025)
-      || time < this._lastTime || time - this._lastTime >= CADENCE;
+      || Math.abs(radius - this._lastRadius) > 0.01
+      // A jump into a new neighborhood cannot wait on sim time (which may be paused).
+      || movement > Math.max(24, radius)
+      || (elapsed >= 0.05 && movement > Math.max(12, radius * 0.12))
+      || time < this._lastTime || elapsed >= CADENCE;
     this._state = state; this._excludeId = excludeId;
     // Destroyed and recycled identities are removed immediately, even during a paused render.
     for (let i = 0; i < this.count; i++) {
