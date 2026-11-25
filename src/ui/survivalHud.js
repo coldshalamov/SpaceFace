@@ -40,7 +40,7 @@ import { createPilotBreathController } from './pilotCards.js';
 import { loadCrucibleMeta } from '../systems/survivalRecords.js';
 import { ENEMY_JOB_WORDS, castJobs } from '../data/enemyJobs.js';
 import { CONTACT_JOB_PALETTE, CONTACT_ROLE_GLYPHS } from './map/tacticalMapGrammar.js';
-import { isSwarmHudActive } from './swarmGlass.js';
+import { isSwarmGlass, isSwarmHudActive } from './swarmGlass.js';
 import {
   SWARM_HUD_BODY_CLASS,
   SWARM_PICK_PULSE_S,
@@ -53,6 +53,7 @@ import {
   formatSwarmRoundName,
   isRoomKillCausePhrase,
 } from './swarmHudLayer.js';
+import { getSwarmTeaching, SWARM_TEACH_MECHANIC } from './swarmTeaching.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -1407,6 +1408,36 @@ export const survivalHud = {
     const showAnswer = explicitAnswer != null ? explicitAnswer : shouldShowCastAnswer(this._readProfile());
     const model = buildCastAnnouncementModel(payload, { showAnswer });
     if (!model) return;
+    // DEMO-SWARM-TUTOR-1 (owner demo 2026-11-23): inside a Swarm run the round brief is a TEACHING
+    // CARD, and it goes through the one Swarm teaching lane so it can never land beside the
+    // first-sighting card and the first-use power caption on the same frame. It is the one card
+    // allowed to repeat on Again (`repeat`), because the round is new; the codex and power cards
+    // are not. The lane owns the seat and the read clock, so the HUD's own top-left cast strip
+    // stays empty. The gate mirrors the power caption's: SWARM GLASS ONLY — a Gauntlet or open
+    // ladder cast keeps the strip below, it never takes the lane (XR-DEMO-SWARM-TUTOR-1).
+    const teaching = isSwarmGlass(this.state) ? getSwarmTeaching() : null;
+    if (teaching) {
+      const run = this.state && this.state.run;
+      const wave = model.wave != null ? model.wave : (run && Number.isInteger(run.wave) ? run.wave : 1);
+      this._cast = null;
+      this._castUntil = -1;
+      this._castSig = '';
+      // A veteran profile omits the tactical answer (`shouldShowCastAnswer`), so the card falls back
+      // to the plain-words line alone rather than offering an empty card.
+      const answer = model.answer || '';
+      teaching.offer({
+        id: `swarm:brief:${wave}`,
+        // The brief's opening lesson IS the Line ("Catch one Wasp on the Line…") — the same verb
+        // the first-sighting card teaches, so one catch retires whichever of the two is up
+        // (XR-DEMO-SWARM-TUTOR-1). `repeat` still lets it announce each new round on Again.
+        mechanic: SWARM_TEACH_MECHANIC.line,
+        kicker: formatSwarmRoundKicker(run || { wave }),
+        title: answer ? model.line : '',
+        line: answer || model.line,
+        repeat: true,
+      });
+      return;
+    }
     const simNow = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     this._cast = model;
     this._castUntil = simNow + CAST_ANNOUNCE_S;

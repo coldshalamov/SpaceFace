@@ -173,6 +173,7 @@ import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createStage } from './stage.js';
+import { installSwarmTeaching } from './swarmTeaching.js';
 import { createWatchlistHud } from './watchlistHud.js';
 import { createGlobalFind } from './globalFind.js';
 import { createDiscoveryPlate } from './discoveryPlate.js';
@@ -697,6 +698,12 @@ export const ui = {
     this.windowTitle = null;
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
+    // DEMO-SWARM-TUTOR-1: the Swarm teaching lane is NOT released here. `ui.init()` runs again for
+    // every new game (Again is a new game), and the lane's session memory — "you already told me
+    // that" — has to outlive the re-init or Again re-teaches everything. `installSwarmTeaching`
+    // below replaces the lane in place: old handlers off the bus, old seat released, and whatever
+    // card is still inside its read window re-seated in the new document.
+    this.swarmTeaching = null;
     this.toasts?.destroy?.();
     this.toasts = null;
     this.stage?.destroy?.();
@@ -774,6 +781,20 @@ export const ui = {
     // slot; whatever is shown through stage.show() queues instead of overlapping.
     this.stage = createStage(ctx);
     ctx.stage = this.stage;
+    // DEMO-SWARM-TUTOR-1: the Swarm teaching lane. One card at a time on its own left-margin seat
+    // (never over the fight's centre, never the story speaker's seat), retired when its mechanic
+    // is used or after ~6 s, and never repeated for a card this session already showed (Again
+    // stays quiet). `state` rides along so a tether latch can tell a taught hull from a rock.
+    this.swarmTeaching = installSwarmTeaching({ bus: ctx.bus, state: ctx.state });
+    // Dev-only observer seam: a probe reading the lane's hold/queue state must not guess it from
+    // DOM nodes — a card correctly held behind the loading veil has no node yet by design.
+    if (IS_DEV && typeof window !== 'undefined') {
+      window.__sfTeachLane = () => this.swarmTeaching ? {
+        visible: this.swarmTeaching.visibleId(),
+        queued: this.swarmTeaching.queuedIds(),
+        live: this.swarmTeaching.liveIds(),
+      } : null;
+    }
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
     // PQ-183.01 the watch list: pinned readings render inside the receipts lane (#toasts), above

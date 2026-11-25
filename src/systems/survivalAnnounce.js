@@ -46,6 +46,7 @@ import { playerBearingName } from '../core/playerCompass.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
 import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
+import { SWARM_TEACH_MECHANIC_BY_ENEMY } from '../data/swarmTeaching.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
 import { pluralWord } from '../core/numberFormat.js';
 
@@ -1083,11 +1084,47 @@ export const survivalAnnounce = {
     if (this._bossAnnouncedWave === this._wave) return;
     const text = hintTextFor(enemyId, this.state);
     if (!text) return;
+    // DEMO-SWARM-TUTOR-1 (owner demo 2026-11-23): inside a Swarm run this lesson is a teaching
+    // CARD, not a voice line. It used to speak on the tutorial channel, which the one-voice floor
+    // draws top-right — so it landed beside the round brief and the power caption on the first
+    // frame of control. It now hands the card to the Swarm teaching lane (src/ui/swarmTeaching.js),
+    // which shows one at a time in the margin and retires it when the mechanic is used. The card is
+    // still one line inside this wave's budget, and still once per archetype per run.
+    if (this._swarmTeach(enemyId, text)) {
+      this._hintedEnemyIds.add(enemyId);
+      this._hintsThisWave += 1;
+      return;
+    }
     // 'tutorial' (70) — voiceArbiter.js:40 calls this channel "first-hour teaching", which is
     // exactly what a counter-hint is. It preempts objective and chatter, yields to danger.
     if (!this._say('tutorial', `survival:hint:${enemyId}`, text, 7)) return;
     this._hintedEnemyIds.add(enemyId);
     this._hintsThisWave += 1;
+  },
+
+  /**
+   * Hand a first-sighting lesson to the Swarm teaching lane as a card. True when the run is Swarm
+   * and the card was offered; false in the Gauntlet or in an endless non-Swarm run, which keep the
+   * voice line. The line is split at the hull name's own colon (hintTextFor authors "Name: lesson")
+   * so the card carries a name and a sentence ("Wasp Swarmer" / "Light enough to throw — …")
+   * instead of one long run-on.
+   */
+  _swarmTeach(enemyId, text) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.ruleset !== 'swarm') return false;
+    if (!this.bus || typeof this.bus.emit !== 'function') return false;
+    const at = text.indexOf(': ');
+    const title = at > 0 ? text.slice(0, at) : '';
+    const line = at > 0 ? text.slice(at + 2) : text;
+    const mechanic = SWARM_TEACH_MECHANIC_BY_ENEMY[enemyId] || '';
+    this.bus.emit('swarm:teach', {
+      id: `swarm:teach:${enemyId}`,
+      mechanic,
+      kicker: 'New contact',
+      title,
+      line,
+    });
+    return true;
   },
 
   _plateSuffix() {

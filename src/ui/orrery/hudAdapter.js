@@ -15,11 +15,13 @@
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass — for a
 //                       declared manifest, only the measurement the loaded rope earned
-import { weaponHeatSummary } from '../weaponHeat.js';
+import { HEAT_AMBER_BAND, weaponHeatSummary } from '../weaponHeat.js';
 import { BOMB_SLOT_INDEX, FLIGHT_POWER_COPY, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { createArsenalPresentation, readArsenalBindings } from '../../data/arsenalPresentation.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { isSwarmGlass } from '../swarmGlass.js';
+import { getSwarmTeaching } from '../swarmTeaching.js';
+import { SWARM_TEACH_MECHANIC } from '../../data/swarmTeaching.js';
 import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
@@ -412,7 +414,9 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     while (rel <= -180) rel += 360;
     drift = rel;
   }
-  const heat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
+  // W2-1 (OVH-08b): the clock goes in so the per-gun lock (`_lockUntil`) is part of the reading —
+  // without it the gauge showed a locked gun as merely cooling.
+  const heat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch, finite(state && state.simTime, NaN));
   const player = (state && state.player) || {};
   const local = player.tether;
   const tether = local && local.active ? local : player.remoteMassline;
@@ -463,6 +467,10 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     armor: finite(p.armorHp), armorMax: finite(p.armorMax, 0),
     energy: finite(p.cap), energyMax: finite(p.capMax, 0),
     heat: finite(heat && heat.frac),
+    // W2-1: the lock the gauge must name — flightCluster reads these to show the countdown.
+    heatLocked: !!(heat && heat.locked),
+    heatOverheated: !!(heat && heat.overheated),
+    heatLockRemainingS: finite(heat && heat.lockRemainingS),
     speed, speedRef: finite(clusterSpeedRef(p, state), 180), speedMax: finite(speedMax),
     boost: p.boost && p.boost.max > 0 ? Math.max(0, Math.min(1, p.boost.energy / p.boost.max)) : 0,
     boosting: !!(p.flags && p.flags.boosting),
@@ -544,8 +552,33 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   };
 
   const triggerPowerCaption = (liveState, slotIdx) => {
+    // DEMO-SWARM-TUTOR-1 (owner demo 2026-11-23): inside a Swarm run the power hint is a TEACHING
+    // CARD, so it takes the one Swarm teaching lane (one at a time, in the margin) instead of
+    // drawing its own strip over the power bar beside the round brief and the first-sighting card.
+    const teaching = isSwarmGlass(liveState) ? getSwarmTeaching() : null;
+    const copy = FLIGHT_POWER_COPY[slotIdx] || null;
+    const mechanic = copy ? SWARM_TEACH_MECHANIC.power(copy.power) : '';
+    // A press while this power's card is still on the glass completes the lesson the card names
+    // (for a two-stage power the follow-up press IS the rest of it) — the card retires early and
+    // nothing re-offers. The lesson never depends on this press: it was already spent when the
+    // card was offered, below, so a card that times out unread can never re-teach either
+    // (XR-DEMO-SWARM-TUTOR-1 — the card must not wait on a second press to count the lesson).
+    if (teaching && mechanic && teaching.used(mechanic) === true) return;
     const shown = consumePowerCaption(liveState, slotIdx, { profile: readProfileForRun(liveState) });
     if (!shown) return;
+    if (teaching) {
+      const verdict = teaching.offer({
+        id: `swarm:power:${shown.power}`,
+        mechanic,
+        kicker: shown.name,
+        line: shown.text,
+      });
+      // The first press IS the mechanic being used — the card exists because the player just did
+      // the thing. Spend the lesson the moment the card is offered (never before, or the offer
+      // itself would read as spent), so the ~6 s read window and Again both stay truthful.
+      if (verdict === 'shown') teaching.spend(mechanic);
+      return;
+    }
     const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
     activeCaption = shown;
     captionUntilWall = nowWall + POWER_CAPTION_DURATION_MS;
@@ -814,13 +847,18 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
           stern: hitUntilWall.stern > nowWall ? (hitUntilWall.stern - nowWall) / HIT_FLASH_MS : 0,
         };
         const weapons = Array.isArray(p.data?.weapons) ? p.data.weapons : [];
+        const simNowS = finite(liveState && liveState.simTime);
         const hardpoints = benchShip?.hardpoints || weapons.slice(0, 4).map((w, idx) => {
           const heatMax = Number(w?.heatMax) || 100;
           const heatFrac = Number.isFinite(w?._heat) && heatMax > 0 ? w._heat / heatMax : 0;
           const slotKey = w?.slotIndex != null ? w.slotIndex : idx;
           const firing = !!(w?._firing || (weaponFireUntil.get(slotKey) > nowWall) || (weaponFireUntil.get(idx) > nowWall));
-          const hot = !!(w?._overheated || w?._venting || heatFrac >= 0.8);
-          return { firing, hot };
+          // W2-1 (OVH-08b): one amber band everywhere — the pip goes hot at the sim's own 0.6
+          // feather band, and stays hot for the gun's whole `_lockUntil` (the sim never sets
+          // `_overheated`/`_venting`; those reads lied that a locked gun was already cooling).
+          const locked = Number.isFinite(w?._lockUntil) && simNowS < w._lockUntil;
+          const hot = locked || heatFrac >= HEAT_AMBER_BAND;
+          return { firing, hot, locked };
         });
         let lineTag = benchShip?.lineTag || '';
         if (!lineTag && model.tether && model.tether.state && model.tether.state !== 'Idle') {
