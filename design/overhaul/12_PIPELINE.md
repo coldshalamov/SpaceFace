@@ -2,8 +2,10 @@
 
 **Director, 2026-11-20.** The owner put one session in charge of a multi-day, full-coverage facelift:
 *"orchestrate agents broadly across the game to polish and improve it… you're in charge and
-responsible for the overall quality of the output at the end."* This page is how that runs. The
-board at the bottom is the live state.
+responsible for the overall quality of the output at the end."* This page retains that campaign's
+record and the live status board. Follow [root AGENTS.md](../../AGENTS.md) for assignments and
+landing and [10 Engine](10_ENGINE.md) for playable-flight priorities. The old queue and parking
+labels record past status.
 
 ## 1. Who does what
 
@@ -22,21 +24,8 @@ is reviewed by the director or an Opus lead.
 
 ## 2. How a change lands
 
-The working copy and `master` are the same thing again (checkpoint 9b3b0f1930, 2026-11-20), so the
-line is short.
-
-1. **Brief.** The director writes it: the player-visible result, the files, how it is proven.
-   Outside agents get theirs as `design/program/fleet/packets/<ID>.md`.
-2. **Build.** The builder edits its files, runs its checks and commits its own files by exact path.
-   It does not push.
-3. **Review.** The director (or the area's lead) reads the commit, opens the frame if anything is
-   visible, and fixes forward or reverts. A finding blocks only if the change breaks the game, a
-   test of something still wanted, or its own claim.
-4. **Publish.** The director pushes by merge. Never rebase, never force.
-5. **Board.** The row below moves.
-
-Two builders never share a file at the same time. If a build needs a prerequisite, the builder or
-the director does it then and there.
+Follow [root AGENTS.md](../../AGENTS.md) for scope, ownership, verification, and landing.
+The board below records the result.
 
 ## 3. Departments
 

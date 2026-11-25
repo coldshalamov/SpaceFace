@@ -1937,6 +1937,19 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
   const helper = helpers && helpers.queryRadius;
   const out = scratch || [];
   out.length = 0;
+  const index = state && state.entityIndex;
+  const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
+    ? index.collidables
+    : null;
+  const scanSmallIndex = collidables && collidables.length > 0
+    && collidables.length < AI_SPATIAL_MIN_COLLIDABLES && pos;
+  const hash = state && state.spatialHash;
+  const useHash = !scanSmallIndex && hasActiveSpatialHash(hash) && typeof hash.queryRadius === 'function';
+  let spatialCandidates;
+  if (useHash) {
+    nearbyHashScratch.length = 0;
+    spatialCandidates = hash.queryRadius(pos.x, pos.z, range, nearbyHashScratch);
+  }
   const tableHits = queryCombatTableEntities(
     state,
     pos && pos.x,
@@ -1944,6 +1957,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     range,
     nearbyCombatScratch,
     COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
+    spatialCandidates,
   );
   const seen = nearbySeen;
   seen.clear();
@@ -1953,11 +1967,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     seen.add(entity.id);
     out.push(entity);
   }
-  const index = state && state.entityIndex;
-  const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
-    ? index.collidables
-    : null;
-  if (collidables && collidables.length > 0 && collidables.length < AI_SPATIAL_MIN_COLLIDABLES && pos) {
+  if (scanSmallIndex) {
     for (let i = 0; i < collidables.length; i++) {
       const entity = collidables[i];
       if (!entity || seen.has(entity.id) || entity.alive === false || !entity.pos) continue;
@@ -1969,9 +1979,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     }
     return out;
   }
-  if (hasActiveSpatialHash(state && state.spatialHash) && typeof (state.spatialHash.queryRadius) === 'function') {
-    nearbyHashScratch.length = 0;
-    state.spatialHash.queryRadius(pos.x, pos.z, range, nearbyHashScratch);
+  if (useHash) {
     for (let i = 0; i < nearbyHashScratch.length; i++) {
       const entity = nearbyHashScratch[i];
       if (!entity || seen.has(entity.id)) continue;

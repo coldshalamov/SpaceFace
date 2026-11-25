@@ -8,6 +8,7 @@ import { createTimeEffects } from '../src/core/timeEffects.js';
 import { focusLossPauseBlocked } from '../src/core/focusLossHold.js';
 import { fnv1a } from '../src/save/checksum.js';
 import { installSalvageTenderSaveAdapter } from '../src/features/salvageTender/saveAdapter.js';
+import { addCargo } from '../src/systems/cargo.js';
 
 function storage() {
   const previous = globalThis.localStorage;
@@ -62,7 +63,7 @@ test('live Quick Save detaches the current flight before paced encoding and keep
     const bound = { tick: state.tick, playtimeS: Math.floor(state.meta.playtimeS),
       pos: xz(run.player.pos), vel: xz(run.player.vel) };
     state.player.credits = 2302;
-    state.player.cargo.items.cmdty_ore_iron = 7;
+    assert.equal(addCargo(state, 'cmdty_ore_iron', 7), 7);
     // Older World News rows are accepted as a JSON array and the serializer slices the outer array.
     const previousDockLine = { text: 'Original bulletin', detail: { severity: 1 } };
     state.worldNews = { dockLines: [previousDockLine] };
@@ -71,7 +72,7 @@ test('live Quick Save detaches the current flight before paced encoding and keep
     assert.equal(store.rows.has('sf.save.quick'), false);
     assert.equal(completed.length, 0);
     state.player.credits = 3302;
-    state.player.cargo.items.cmdty_ore_iron = 8;
+    assert.equal(addCargo(state, 'cmdty_ore_iron', 1), 1);
     state.meta.playtimeS += 10;
     previousDockLine.detail.severity = 2;
     run.step(5);
@@ -148,8 +149,8 @@ for (const deferred of [true, false]) {
       run.step(60);
       writeRealPathInput(run.state);
       assert(Math.hypot(run.player.vel.x, run.player.vel.z) > 10, 'real propulsion establishes a moving save');
-      run.state.player.cargo.items.cmdty_ore_iron = 52;
-      run.state.player.cargo.items.cmdty_silicate = 7;
+      assert.equal(addCargo(run.state, 'cmdty_ore_iron', 52), 52);
+      assert.equal(addCargo(run.state, 'cmdty_silicate', 7), 7);
       run.state.mode = 'paused';
       createTimeEffects(run.state).set('ui:pausing-screen', { scale: 0 });
       const writes = [];
@@ -191,7 +192,7 @@ for (const deferred of [true, false]) {
         cargoItems: envelope.data.cargo.items,
       }, 'the restore receipt reflects the selected save before resumed gameplay');
       const restoredEconomy = structuredClone(loaded[0].restoredEconomy);
-      run.state.player.cargo.items.cmdty_ore_iron += 1;
+      assert.equal(addCargo(run.state, 'cmdty_ore_iron', 1), 1);
       run.state.player.credits += 1;
       assert.deepEqual(loaded[0].restoredEconomy, restoredEconomy,
         'later changes to the canonical player cannot mutate the restore receipt');

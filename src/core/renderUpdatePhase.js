@@ -7,7 +7,7 @@
 import { updateBombPresentation, releaseBombPresentation } from '../render/bombPresentation.js';
 import { vfx as liveVfx } from '../render/vfx.js';
 import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js';
-import { shouldFreezeFlightSubmit, shouldPresentPausedPhotoFrame, shouldSkipFlightDraw } from './presentationFreeze.js';
+import { shouldFreezeFlightSubmit, shouldPresentPausedPhotoFrame } from './presentationFreeze.js';
 import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 import { presentProExperiencesFrame, releaseProExperiencesPresentation } from '../features/proExperiencesBrowser.js';
 import { attachSectorDimmer, applySectorDimmer } from '../render/sectorDimmer.js';
@@ -18,7 +18,6 @@ import {
   releaseUiStage,
   tickUiStagePrewarm,
   uiStageResident,
-  warmUiStagePrewarm,
 } from '../render/uiStage.js';
 
 const VFX_ERROR_LOG_CAP = 20;
@@ -111,10 +110,8 @@ export function runRenderUpdatePhase({
   let t = clock();
   let renderMs = 0;
   let renderedPreparedScene = false;
-  // The berth prewarm (D67): a dock in range starts building the berth stage now, during the
-  // approach, so the docked frame adopts a warm stage instead of compiling one under the station
-  // screen. Its one warm-up draw is only ever taken directly ahead of a world draw in this same
-  // task — the flight picture lands over it before the browser presents anything.
+  // Start berth compilation and residency on approach. The docked stage owns its first
+  // draw under the station plate, so the flight frame submits only the world.
   if (state && state.mode === 'flight') {
     try { tickUiStagePrewarm({ render, state }); }
     catch (error) {
@@ -123,7 +120,6 @@ export function runRenderUpdatePhase({
       else if (uiStagePrewarmErrorLogCount === UI_STAGE_ERROR_LOG_CAP + 1) console.error('[loop] further ui stage prewarm errors suppressed');
     }
   }
-  const worldDrawFollows = !!(state && state.mode === 'flight' && !shouldSkipFlightDraw(state));
   let renderError = null;
   try {
     // Photo advances only its camera controls. Every world presenter inside prepareFrame gets
@@ -131,7 +127,6 @@ export function runRenderUpdatePhase({
     if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, photoFrame ? 0 : presentDt,
       presentationFrame, presentDt) !== false;
     else if (render && typeof render.renderFrame === 'function') {
-      if (worldDrawFollows) warmUiStagePrewarm({ render, state });
       render.renderFrame(alpha, presentDt, presentationFrame);
     }
     applySectorDimmer(render, presentDt);
@@ -161,7 +156,6 @@ export function runRenderUpdatePhase({
     t = clock();
     try {
       if (!renderError && renderedPreparedScene) {
-        if (worldDrawFollows) warmUiStagePrewarm({ render, state });
         const submitted = render.drawPreparedFrame();
         if (presentationFrame) presentationFrame.worldSubmitted = submitted === true;
         if (submitted === true) publishSceneTruthPlayStep(render);

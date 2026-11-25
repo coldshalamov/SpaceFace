@@ -24,9 +24,8 @@
 // physics' `dock:range`, published by input.js as `state.ui.dockInRange` — is seconds long and the
 // hull and prop set are already known then, so the stage is now built during the approach:
 // `tickUiStagePrewarm()` starts it from the flight branch, its uploads ride the renderer's
-// present-sliced residency lane, its one warm-up draw runs inside a flight frame that the flight
-// draw then overwrites (`warmUiStagePrewarm()`, never a presented frame), and the docked request
-// adopts the warm stage in `presentUiStage()` instead of building one. A request the prewarm does
+// present-sliced residency lane, and the docked request adopts the prepared stage in
+// `presentUiStage()`. Its first visible draw also bakes the shadow map. A request the prewarm does
 // not match (another hull) releases it and builds as before, so the prewarm can only ever be
 // early, never wrong.
 
@@ -492,9 +491,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   stage.clock += motionAllowed(state) ? dt : 0;
 
   try {
-    // An adopted stage the flight frame never got to warm (the player docked on the very frame it
-    // finished preparing) takes its warm-up here, under the plate — exactly where it used to be.
-    if (stage.warmupPending === true) warmupStage(stage, renderer);
+    if (stage.warmupPending === true && stage.id !== BERTH_SCENE) warmupStage(stage, renderer);
     // title-field sits under the authored still on the title (titleDoorsLayouts keeps that
     // plate opaque). Warm-up still compiles and draws once; later frames are GPU spent on a
     // picture nobody sees. Motion ask shares the scene and lets the plate step aside, so it
@@ -576,7 +573,7 @@ export function resumeUiStageAfterContextRestore(renderer) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The berth prewarm. Both entry points run ONLY from the flight branch of the presentation frame.
+// The flight branch prepares berth assets. The first docked frame owns the draw.
 
 /**
  * The def the next dock will seat, resolved as the station screen resolves it (`berthSeatDefId` →
@@ -632,21 +629,6 @@ export function tickUiStagePrewarm({ render, state } = {}) {
     prewarm = null;
     return false;
   }
-  return true;
-}
-
-/**
- * The prewarm's one warm-up draw, taken inside a flight frame that is about to draw the world over
- * it: the shadow map bakes, the depth program and every residual variant link, and the frame the
- * player sees is the flight frame. Returns true when a draw was taken.
- */
-export function warmUiStagePrewarm({ render, state } = {}) {
-  if (!prewarm || prewarm.warmupPending !== true || prewarm.disposed === true
-      || contextLostRenderers.has(prewarm.renderer)) return false;
-  if (!state || state.mode !== 'flight' || canvasIsProtectedDuringFreeze(state)) return false;
-  const renderer = rendererFrom(render, state);
-  if (!renderer) return false;
-  warmupStage(prewarm, renderer);
   return true;
 }
 
@@ -862,9 +844,7 @@ function buildStage(id, renderer, request, hullFile, options = {}) {
     prepared: false,
     generation: (buildStage.generation = (buildStage.generation || 0) + 1),
     renderer,
-    // Built ahead of its request (the berth during the docking approach). A prewarm takes its
-    // uploads on the renderer's present-sliced residency lane and defers its one warm-up draw to
-    // a flight frame (`warmUiStagePrewarm`) so nothing it does lands on a presented picture.
+    // A berth prewarm uses the existing residency lane before the player docks.
     prewarm: options.prewarm === true,
     isRequested: options.isRequested,
     // The def the prewarm was asked for, so the per-frame keep/rebuild decision is one compare.
@@ -1305,8 +1285,8 @@ function setShadowRoles(group, rig, casts) {
  * stall to well under a second, and the scene goes from requested to live in about three.
  *
  * That "well under a second" is still the whole main thread while the station screen is opening,
- * which is why the berth is now prepared during the approach instead (see the prewarm note at the
- * top of the file): same admission, earlier window, uploads on the sliced lane, draw off-frame.
+ * which is why the berth admits its assets during approach with uploads on the sliced lane.
+ * Dock presentation owns the first draw and shadow bake.
  */
 async function prepareForFirstDraw(roots, renderer, built) {
   // In the graph but not yet on screen: three compiles what a scene CONTAINS, and draws what a
@@ -1378,14 +1358,13 @@ async function prepareForFirstDraw(roots, renderer, built) {
 
   // One draw before the reveal. With a single shared depth program the shadow pass is cheap, and
   // it is also the moment the casters exist, so an autoUpdate-latched light bakes its only map
-  // here; the draw itself binds every buffer and links every residual variant. A stage under a
-  // plate takes it now, inside the window the plate is covering. A prewarm is flying: its draw
-  // waits for `warmUiStagePrewarm`, a flight frame that draws the world over it.
+  // here; the draw itself binds buffers and links residual variants. A berth
+  // does that work in its first docked draw, including when it builds on demand.
   if (built.rig.shadows || built.prewarm) {
     // A title can finish linking after New Game has covered it. Keep its prepared roots
     // cached for Back, but do not pay a hidden first-use draw (and residual shader links)
     // during the form's opening. presentUiStage drains this warm when it is requested again.
-    if (built.prewarm || (built.isRequested && !built.isRequested())) {
+    if (built.id === BERTH_SCENE || (built.isRequested && !built.isRequested())) {
       built.warmupPending = true;
       return;
     }
@@ -1396,9 +1375,7 @@ async function prepareForFirstDraw(roots, renderer, built) {
 }
 
 /**
- * The warm-up draw: every admitted root shown for exactly one render, the renderer's state handed
- * back piece by piece. Under the plate the canvas is covered; inside a flight frame the flight
- * draw follows in the same task, so neither picture is ever presented.
+ * Draw the prepared stage under its covering plate so first-use work is complete.
  */
 function warmupStage(built, renderer) {
   built.warmupPending = false;
@@ -1426,6 +1403,11 @@ function warmupStage(built, renderer) {
     renderer.setClearColor(previousClear, previousClearAlpha);
   }
   for (let i = 0; i < roots.length; i++) roots[i].visible = shown[i];
+  markStageWarm(built);
+}
+
+function markStageWarm(built) {
+  built.warmupPending = false;
   built.marks.warmup = stageNow() - built.marks.start;
   if (built.prepared && typeof built.prepared === 'object') built.prepared.warm = true;
 }
@@ -1489,6 +1471,10 @@ function drawStage(built, renderer, state, dt = 0, target = null) {
   }
   if (!(built.live && built.live.controlsCamera)) applyCamera(built, built.clock);
   for (const rider of built.skyRiders) rider.position.copy(built.camera.position);
+  const warmBerth = built.id === BERTH_SCENE && built.warmupPending === true && !target;
+  if (warmBerth && built.rig.shadows && built.rig.shadowLight) {
+    built.rig.shadowLight.shadow.needsUpdate = true;
+  }
   if (built.rig.shadows && built.hullDrawn && built.shadowsRendered !== true) {
     built.shadowsRendered = true;
   }
@@ -1513,6 +1499,7 @@ function drawStage(built, renderer, state, dt = 0, target = null) {
     renderer.shadowMap.enabled = previousShadows;
     renderer.setClearColor(previousClear, previousClearAlpha);
   }
+  if (warmBerth) markStageWarm(built);
   built.frames++;
   if (state && state.render) state.render.uiStageFrames = (state.render.uiStageFrames || 0) + 1;
 }

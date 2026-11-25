@@ -2,8 +2,8 @@
 //
 // Each program.isReady() is a driver completion query (getProgramParameter) that can block on the command
 // buffer. The poll walked the whole pending set per tick, so a cohort of 40 programs could hold one task for
-// 40 queries (221 ms over five long animation frames in the 2026-10-13 loading profile). The poll now keeps a
-// cursor and queries at most eight programs, or about 2 ms, per task, then reuses the existing 10 ms timer.
+// 40 queries (221 ms over five long animation frames in the 2026-10-13 loading profile). Standalone
+// compiles on one context now share a poll and at most eight unique queries or about 2 ms per task.
 // Every program is still checked, invalid handles and context loss still end the wait, and the deadline
 // still resolves it.
 import assert from 'node:assert/strict';
@@ -70,6 +70,25 @@ test('forty ready programs are all checked, but no single task queries more than
   assert.equal(queried, 40, 'every program was queried exactly once');
   assert.ok(Math.max(...perTask) <= 8, `largest task queried ${Math.max(...perTask)}: ${perTask.join(',')}`);
   assert.ok(perTask.length >= 5, 'the work was spread across several tasks');
+});
+
+test('concurrent compiles share a single completion query for the same program', async () => {
+  let queried = 0;
+  const { renderer } = fakeRenderer({
+    count: 1,
+    isReady() { queried++; return true; },
+  });
+  const gl = { isContextLost: () => false };
+  renderer.getContext = () => gl;
+  const compile = () => compileScenePipelinesForRenderTarget(
+    renderer, null, {}, {}, {}, { skipSharedBatch: true },
+  );
+  const first = compile();
+  const second = compile();
+  assert.equal(queried, 0, 'issuing the link never waits for a readiness query');
+  const results = await Promise.all([first, second]);
+  assert.ok(results.every(result => !result.skipped && !result.incomplete));
+  assert.equal(queried, 1);
 });
 
 test('a program that becomes ready later is still found: the cursor wraps and re-checks pending ones', async () => {

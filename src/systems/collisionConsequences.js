@@ -179,7 +179,8 @@ export const collisionConsequences = {
     const a = entityById(state, payload.aId);
     const b = entityById(state, payload.bId);
     if (!a || !b || a === b || a.alive === false || b.alive === false) return;
-    const tick = nonNegativeTick(Number.isFinite(payload.tick) ? payload.tick : state.tick);
+    const currentTick = nonNegativeTick(state.tick);
+    const tick = Number.isFinite(payload.tick) ? nonNegativeTick(payload.tick) : currentTick;
     // physics interns the identical sorted pair key on the pooled payload — reuse it instead
     // of allocating `${a}\0${b}` again per admitted contact.
     const internedKey = typeof payload.pairKey === 'string' ? payload.pairKey : null;
@@ -190,7 +191,7 @@ export const collisionConsequences = {
     // A player-propelled hull carries the cause of the whole contact. Share the freshest causal
     // impulse across both consequence directions so the struck hull does not become an
     // environment-attributed kill merely because the impulse was recorded on the incoming hull.
-    const causalProvenance = this._contactProvenance(a, b, tick)
+    const causalProvenance = this._contactProvenance(a, b, tick, tick < currentTick)
       || explicitContactProvenance(payload, tick);
     if ((a.type === 'payload' && a.data?.orchardKind === 'pod')
       || (b.type === 'payload' && b.data?.orchardKind === 'pod')) {
@@ -212,11 +213,18 @@ export const collisionConsequences = {
     this._resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, false);
   },
 
+  hasPlayerContactCause(a, b, tick) {
+    const playerId = this.state?.playerId;
+    if (playerId == null) return false;
+    const provenance = this._contactProvenance(a, b, tick, true);
+    return provenance?.actorId === playerId && provenance.tag !== 'environment';
+  },
+
   // Perf-instrumentation seams (F1 crowd-cost): the stress fixture sub-attributes _onImpact's
   // phases by wrapping these `this.` methods exactly the way it wraps physics internals. Pure
   // delegation — the module functions remain the single implementation.
-  _contactProvenance(a, b, tick) {
-    return contactImpulseProvenance(a, b, tick);
+  _contactProvenance(a, b, tick, observeOnly = false) {
+    return contactImpulseProvenance(a, b, tick, observeOnly);
   },
 
   _potentialWhipContact(state, a, b) {
@@ -377,8 +385,9 @@ export const collisionConsequences = {
     if (!this.state || body?.type !== 'wreck') return null;
     const witness = currentChainWreckWitness(this.state, body);
     if (!witness) return null;
-    const history = readRecentImpulseProvenanceHistory(body, tick);
-    const provenance = readRecentImpulseProvenance(body, tick);
+    const observeOnly = tick < nonNegativeTick(this.state.tick);
+    const history = readRecentImpulseProvenanceHistory(body, tick, undefined, observeOnly);
+    const provenance = readRecentImpulseProvenance(body, tick, undefined, observeOnly);
     return { witness, provenance, history, body, playerId: this.state.playerId };
   },
 
@@ -1078,12 +1087,14 @@ function preferImpulseProvenance(left, right) {
   return provenanceCompare(left, right) <= 0 ? left : right;
 }
 
-function bestImpulseProvenance(entity, tick) {
+function bestImpulseProvenance(entity, tick, observeOnly) {
   // History first. A stale latest read clears both maps, and the held copy is not in history.
-  const history = readRecentImpulseProvenanceHistory(entity, tick);
+  const history = readRecentImpulseProvenanceHistory(entity, tick, undefined, observeOnly);
   let best = null;
   for (const record of history) best = preferImpulseProvenance(best, record);
-  const latest = readRecentImpulseProvenance(entity, tick);
+  const latest = readRecentImpulseProvenance(entity, tick, undefined, observeOnly);
+  // Scheduling and past contact ticks inspect the cause without rewriting current attribution.
+  if (observeOnly) return preferImpulseProvenance(best, latest);
   if (!latest) {
     // The latest slot was an older expired record, so that read deleted the in-window winner
     // along with it. Put the winner back before the next read.
@@ -1117,8 +1128,11 @@ function retargetHeldProvenance(entity, latest, chosen, tick) {
   return holdImpulseProvenance(entity, until, now, restored.appliedTick) || restored;
 }
 
-export function contactImpulseProvenance(a, b, tick) {
-  return preferImpulseProvenance(bestImpulseProvenance(a, tick), bestImpulseProvenance(b, tick));
+export function contactImpulseProvenance(a, b, tick, observeOnly = false) {
+  return preferImpulseProvenance(
+    bestImpulseProvenance(a, tick, observeOnly),
+    bestImpulseProvenance(b, tick, observeOnly),
+  );
 }
 
 // Same ordering as the old [a,b,c].join('\u0000') key compare — '\u0000' sorts below any id

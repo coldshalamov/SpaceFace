@@ -1405,8 +1405,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (destroyed || suspended || !isPresentingState(lifecycleState)) return;
 
     diagnostics.executedFrames++;
-    // Presentation heartbeat: every callback proves the page can still present. If beats stop,
-    // the worker holds authoritative time instead of running ahead into a later jump.
+    // Report presentation liveness and reply progress. Explicit lifecycle transitions own pause.
     try { simulationRunner.heartbeat?.(); } catch (_) { /* heartbeat is best-effort */ }
     // The worker lane applies replies from the frame while these callbacks keep arriving.
     try { simulationRunner.noteAnimationFrame?.(); } catch (_) { /* optional */ }

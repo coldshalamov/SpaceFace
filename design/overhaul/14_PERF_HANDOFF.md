@@ -1,4 +1,7 @@
-# 14 (companion) — Performance handoff: executable now, no blocked files
+# 14 (companion) — Historical performance handoff, November 22
+
+> [10 Engine](10_ENGINE.md) owns current playable-flight recovery. The handoff below records the
+> state and proposed assignments on November 22.
 
 **Written 2026-11-22 (late) for the next builder session.** Everything here touches files that
 were **clean in the shared checkout at writing time** — nothing below waits on another lane.

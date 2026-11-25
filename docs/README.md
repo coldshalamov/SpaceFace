@@ -11,7 +11,8 @@ This is the navigation front door for engineering and world-content documentatio
 | Named campaign / symptom door | [`TASK_ROUTER.md`](./TASK_ROUTER.md) |
 | Shared-checkout work, validation, and reporting | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
 | Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
-| Active game-finishing work and verification | [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
+| Playable flight, freezes, hitches, or frame rate | [`design/overhaul/10_ENGINE.md`](../design/overhaul/10_ENGINE.md) |
+| Game-finishing status | [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
 | Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
 | Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |

@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { createPresentationJournal } from '../src/core/presentationJournal.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import {
   createSharedPoseTable, createPoseTableReader, createPoseTableWriter, getActivePoseFeed,
@@ -93,6 +94,27 @@ test('a dense retained reply (thousands of durable rows) never stops the clock',
     'the retained reply really was dense/unacked during the measurement');
 });
 
+test('a blocked transferable pose port retains one newest table while the worker steps', { timeout: 60000 }, async (t) => {
+  const { port1, port2 } = new MessageChannel();
+  const tables = [];
+  port1.onmessage = ({ data }) => tables.push(data);
+  t.after(() => port1.close());
+  const { replies } = await bootWorker(t, 'transfer-backpressure', { posePort: port2 });
+  const reader = createPoseTableReader();
+  await waitFor(() => tables.length === 1);
+  const first = tables[0];
+  reader.acceptTransfer(first.buffer);
+  const firstTick = reader.read().snapshot.tick;
+
+  await sleep(250);
+  assert.equal(tables.length, 1, 'there is never a queue of old pose messages');
+  assert.ok(!replies.some((reply) => reply.kind === 'poseTable'), 'motion uses the separate port');
+  port1.postMessage({ kind: 'poseTableAck', sequence: first.sequence });
+  await waitFor(() => tables.length === 2);
+  reader.acceptTransfer(tables[1].buffer);
+  assert.ok(reader.read().snapshot.tick > firstTick + 1, 'the next delivery skips to the newest completed step');
+});
+
 test('the main lane serves poses from the table while the reply journal is stalled', (t) => {
   const posts = [];
   let receive = null;
@@ -131,10 +153,7 @@ test('the main lane serves poses from the table while the reply journal is stall
     const feed = getActivePoseFeed();
     assert.equal(feed.active, true, 'the frame reads a live pose feed');
     assert.equal(row.pos.x, frame * 2, `frame ${frame}: the facade row moved with no reply applied`);
-    const snap = feed.snapshot;
-    const o = 0;
-    world.applySharedPose(snap.rows[o], snap.rows[o + 1], snap.rows[o + 2], snap.rows[o + 3],
-      snap.rows[o + 4], snap.rows[o + 5], snap.rows[o + 6], snap.rows[o + 7], snap.rows[o + 8]);
+    world.applySharedPoseTable(feed.snapshot);
     const slot = world.getSlotForEntityId(7);
     assert.equal(world.x[slot], frame * 2, `frame ${frame}: the drawn world moved with no journal record`);
   }
@@ -142,15 +161,20 @@ test('the main lane serves poses from the table while the reply journal is stall
   assert.equal(lane.getDiagnostics().replyCount, 0, 'no reply was ever applied');
 
   // A body whose spawn the journal has not delivered is simply not drawn.
-  assert.equal(world.applySharedPose(99, 1, 0, 5, 0, 5, 0, 0, 0), false);
+  const snapshotOf = (id, generation, occupant) => ({
+    count: 1, rows: new Float64Array([id, generation, occupant, 50, 0, 50, 0, 0, 0, 0, 0, 0]),
+  });
+  assert.equal(world.applySharedPoseTable(snapshotOf(99, 1, 0), false), 0);
   // A recycled id (different generation and occupant) never takes the old body's pose.
-  assert.equal(world.applySharedPose(7, 2, 4, 50, 0, 50, 0, 0, 0), false);
+  assert.equal(world.applySharedPoseTable(snapshotOf(7, 2, 4), false), 0);
+  assert.equal(world.applySharedPoseTable(snapshotOf(7, 1, 4), false), 0);
 });
 
 test('held input is state: pointer motion and key repeats mint no transport post of their own', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const { laneDomEvent } = await import('../src/core/simLaneCommands.js');
   const posts = [];
+  const deferredBoundaries = [];
   let receive = null;
   const state = {
     entities: new Map(), entityList: [], settings: { controls: { mouse: {} } }, mode: 'flight',
@@ -160,7 +184,14 @@ test('held input is state: pointer motion and key repeats mint no transport post
     state, registry: {}, bus: createBus(),
     flags: { lane: 'worker', warnings: [], sab: false, sabEnvelope: false },
     clockMode: 'worker-local',
-    channelFactory: () => ({ post(msg) { posts.push(msg); }, onMessage(h) { receive = h; }, terminate() {} }),
+    channelFactory: () => ({
+      post(msg) { posts.push(msg); },
+      onMessage(h) { receive = h; },
+      setDeferral() {},
+      drainDeferred() { deferredBoundaries.push(posts.length); },
+      deferredStats() { return { held: 0 }; },
+      terminate() {},
+    }),
   });
   t.after(() => lane.close());
   receive({ kind: 'ready', seq: posts[0].seq });
@@ -186,6 +217,7 @@ test('held input is state: pointer motion and key repeats mint no transport post
   const batch = posts.filter((m) => m.kind === 'clockCommand').at(-1);
   const moves = batch.commands.filter((env) => env.t === 'dom' && /move$/.test(env.p?.d?.type || ''));
   assert.equal(moves.length, 2, 'one latest row per pointer event type reaches the frame batch');
+  assert.ok(posts.indexOf(batch) < deferredBoundaries.at(-1), 'live input posts before deferred read-model delivery');
   assert.equal(moves[0].p.d.movementX, 16, 'relative motion is summed, not lost');
   assert.equal(lane.getDiagnostics().coalescedPointerEvents, 32);
 });
@@ -204,24 +236,88 @@ test('the worker never returns per-frame camera envelopes as durable receipt row
   assert.equal(cameraAcks.length, 0, 'camera receipts are latest-wins state, not reply rows');
 });
 
-test('a throw inside a pose-table write never leaves the seqlock odd (readers would keep a stale copy forever)', () => {
-  const table = createSharedPoseTable();
+for (const shared of [true, false]) {
+  test(`a partial ${shared ? 'shared' : 'transferred'} pose write preserves the latest complete table`, () => {
+    const table = shared ? createSharedPoseTable() : null;
+    const writer = createPoseTableWriter(table);
+    const reader = createPoseTableReader();
+    if (table) assert.equal(reader.bindShared(table), true);
+    const first = { id: 3, pos: { x: 1, z: 2 } };
+    const second = { id: 4, pos: { x: 3, z: 4 } };
+    const state = { entityList: [first, second], tick: 1, simTime: 0.1 };
+    const goodJournal = { getActiveGeneration: () => 1 };
+    const read = (now) => {
+      if (!shared) reader.acceptTransfer(writer.takeTransfer());
+      return reader.read(now);
+    };
+
+    assert.equal(read(0).snapshot.valid, false, 'an empty buffer has no completed physics step');
+    writer.write(state, goodJournal);
+
+    // The reader has not seen the last successful write yet. A sequence check
+    // against its previous reads cannot detect this partial write on its own.
+    first.pos.x = 99;
+    state.tick = 2;
+    state.simTime = 0.2;
+    writer.write(state, {
+      getActiveGeneration(id) {
+        if (id === second.id) throw new Error('failed after the first row');
+        return 1;
+      },
+    });
+    const retained = read(1).snapshot;
+    assert.equal(retained.tick, 1);
+    assert.equal(retained.count, 2);
+    assert.equal(retained.rows[3], 1, 'the partial first row is never published');
+    assert.equal(retained.writeErrors, 1, 'the producer reports the failed attempt');
+
+    writer.write(state, goodJournal);
+    const { snapshot, advanced } = read(2);
+    assert.equal(advanced, true);
+    assert.equal(snapshot.tick, 2);
+    assert.equal(snapshot.rows[3], 99);
+  });
+}
+
+test('the pose table reports whether the current roster is incomplete', () => {
+  const table = createSharedPoseTable(1);
   const writer = createPoseTableWriter(table);
   const reader = createPoseTableReader();
   reader.bindShared(table);
-  const state = { entityList: [{ id: 3, alive: true, pos: { x: 1, y: 0, z: 2 }, vel: { x: 0, z: 0 } }], tick: 1, simTime: 0.1 };
-  writer.write(state, { getActiveGeneration: () => 1 }, {});
-  assert.equal(reader.read(0).snapshot.count, 1);
-  writer.write(state, { getActiveGeneration: () => { throw new Error('boom'); } }, {});
-  const header = new Int32Array(table.sab, 0, 16);
-  assert.equal(Atomics.load(header, 2) % 2, 0, 'the sequence is even after a throw');
-  assert.equal(writer.getStats().writeErrors, 1);
-  state.simTime = 0.2;
-  writer.write(state, { getActiveGeneration: () => 1 }, {});
-  const { snapshot, advanced } = reader.read(1);
-  assert.equal(advanced, true, 'the next good write still reaches the reader');
-  assert.equal(snapshot.simTime, 0.2);
-  assert.equal(snapshot.writeErrors, 1, 'main sees the swallowed throw');
+  const state = { entityList: [{ id: 1 }, { id: 2 }], tick: 1 };
+  const journal = { getActiveGeneration: () => 1 };
+  writer.write(state, journal);
+  assert.equal(reader.read().snapshot.overflow, true);
+  state.entityList.pop();
+  writer.write(state, journal);
+  assert.equal(reader.read().snapshot.overflow, false);
+  assert.equal(reader.snapshot.truncated, 1, 'historical overflow count is independent of current completeness');
+});
+
+test('the pose writer visits journaled lives and never takes pose from a replacement awaiting spawn', () => {
+  const journal = createPresentationJournal(16);
+  const writer = createPoseTableWriter();
+  const reader = createPoseTableReader();
+  const previous = { id: 1, occupantGeneration: 5, pos: { x: 20, z: 0 } };
+  const replacement = { id: 1, occupantGeneration: 6, pos: { x: 90, z: 0 } };
+  const state = { tick: 1, entities: new Map([[1, previous]]),
+    get entityList() { throw new Error('the writer must not scan unrelated world records'); } };
+  const publish = () => {
+    writer.write(state, journal);
+    reader.acceptTransfer(writer.takeTransfer());
+    return reader.read().snapshot;
+  };
+  journal.recordSpawn(1, previous);
+  assert.equal(publish().rows[3], 20);
+  state.entities.set(1, replacement);
+  assert.equal(publish().count, 0);
+  journal.recordDestroy(1, previous);
+  journal.recordSpawn(1, replacement);
+  const snapshot = publish();
+  assert.equal(snapshot.count, 1);
+  assert.equal(snapshot.rows[2], 6);
+  assert.equal(snapshot.rows[3], 90);
+  assert.equal(journal.getActiveGenerationFor(previous), 0);
 });
 
 test('a drawn row whose life the simulation no longer has is hidden at once; a rebuilt same body is not', () => {
@@ -230,10 +326,15 @@ test('a drawn row whose life the simulation no longer has is hidden at once; a r
   world.allocateRecord({ entityId: 6, generation: 1, x: 0, z: 0 }, { id: 6, occupantGeneration: 60 });
   world.allocateRecord({ entityId: 7, generation: 1, x: 0, z: 0 }, { id: 7, occupantGeneration: 70 });
   // id 5 recycled into a new occupant; id 6 re-minted by a transport rebuild (same occupant); id 7 retired.
-  const gens = new Map([[5, 2], [6, 2]]);
-  const occs = new Map([[5, 51], [6, 60]]);
-  assert.equal(world.hideRowsRetiredBy(gens, occs), 2);
+  const snapshot = { count: 2, rows: new Float64Array([
+    5, 2, 51, 40, 0, 0, 0, 0, 0, 0, 0, 0,
+    6, 2, 60, 50, 0, 0, 0, 0, 0, 0, 0, 0,
+  ]) };
+  assert.equal(world.applySharedPoseTable({ ...snapshot, overflow: true }), 1);
+  assert.equal(world.doomed[world.getSlotForEntityId(7)], 0, 'a truncated roster cannot hide a missing row');
+  world.applySharedPoseTable(snapshot);
   assert.equal(world.doomed[world.getSlotForEntityId(5)], 1, 'recycled id: the old life is hidden');
   assert.equal(world.doomed[world.getSlotForEntityId(6)], 0, 'rebuilt same body stays drawn');
   assert.equal(world.doomed[world.getSlotForEntityId(7)], 1, 'retired body is hidden');
+  assert.equal(world.getDiagnostics().tableRetiredHidden, 2);
 });

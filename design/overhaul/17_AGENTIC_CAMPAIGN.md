@@ -1,5 +1,8 @@
 # 17 — Agentic quality campaign
 
+> [10 Engine](10_ENGINE.md) owns playable-flight priorities, architecture, and acceptance. This
+> page retains the broader stage-one product bar and campaign record.
+
 **Director, 2026-11-24.** This is the working shape for the full first-stage completion campaign: finish the game that is already promised, make it smooth and coherent enough to feel professionally built, then expand only what is stable. It does not replace `01_THE_GAME`, `11_ORDER_OF_WORK`, or the measure in `12_PIPELINE`; it is the operating plan for reaching them with multiple agents.
 
 The owner's framing is the controlling one: the game is still in **stage one — crafting the game**. Stage one ends when a new player can play the core game for a substantial session and not notice that it is unfinished until they run out of laid-out levels, sectors, or story. **Stage two — laying out experiences with finished pieces** begins only after the core game is confidently built. This campaign does not stop at a demo impression and does not stop because a queue looks shorter; it stops at the stage-one gate below.
@@ -129,19 +132,7 @@ These are the lanes the campaign rotates through until the stage-one gate is tru
 
 ### A. World-motion backend and frame consistency
 
-Player result: the world never appears to pause while the interface continues.
-
-Exhaustive work:
-
-1. Prove and repair the worker → journal/reply/pose-table → main-thread → renderer transform path.
-2. Separate ordered correctness events from latest-wins motion/pose data.
-3. Remove ACK/backpressure/reply-coalescing behavior that can hold or burst motion.
-4. Make heartbeat, wake, credit recovery, command sequencing, and paused save/load transitions fail visible rather than silently strand presentation.
-5. Cut sim-step spikes: bullets as physics bodies, sleeping, contact coalescing, phased AI, force fields, population scans.
-6. Cut main-thread spikes: DOM reads, HUD rebuilds, scene preparation, allocation churn, event fan-out, asset admission.
-7. Measure worst frames, world speed, motion freshness, and freeze count on quiet hardware after every layer.
-
-Done when: representative Swarm and Adventure scenes maintain continuous motion at locked 30+ fps with no visible freezes and no frames over 100 ms.
+The player outcome and current assignments are in [10 Engine](10_ENGINE.md).
 
 ### B. Loading, streaming, and asset admission
 
@@ -152,7 +143,8 @@ Exhaustive work:
 1. Profile cold and warm boot by named stage.
 2. Move nonessential shader, lighting, texture, geometry, and scene preparation off the first-control path.
 3. Cache stable transcodes, merged geometry, generated textures, and package verification truthfully.
-4. Load only the first minute first; stream the rest after control with visible-world priority.
+4. Prepare the work that protects play before control. Stage later content within the live frame,
+   simulation, and input budgets in [10 Engine](10_ENGINE.md).
 5. Repair authored asset admission, stand-ins, LOD, shadow warm-up, and first-flight holds.
 6. Audit the Foundry and other heavy arenas for draw cost without removing their identity.
 

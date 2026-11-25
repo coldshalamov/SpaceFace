@@ -1231,8 +1231,18 @@ export function createSimLaneRuntime({
   // once, refreshes the facade rows, and hands the same coherent copy to the renderer.
   const laneLegacy = resolved.legacy === true;
   const poseShared = !laneLegacy && workerClockMode === 'worker-local' ? createSharedPoseTable() : null;
+  // A browser without shared memory gets a separate pose port. A deferred
+  // structured-clone reply for the read model cannot queue ahead of motion.
+  const poseChannel = !poseShared && !laneLegacy && workerClockMode === 'worker-local'
+    && typeof channelFactory !== 'function' && typeof MessageChannel === 'function'
+    ? new MessageChannel() : null;
   const poseReader = createPoseTableReader();
   if (poseShared) poseReader.bindShared(poseShared);
+  if (poseChannel) {
+    poseChannel.port1.onmessage = ({ data }) => {
+      if (data?.kind === 'poseTable') receivePoseTransfer(data);
+    };
+  }
   const poseFeed = { active: false, snapshot: null, advanced: false, frame: 0 };
   let poseTransferArrivals = 0;
   let poseFeedFrames = 0;
@@ -1242,6 +1252,19 @@ export function createSimLaneRuntime({
   let poseGenerationMismatchLiveFrames = 0;
   let posePeekWrites = -1;
   let posePeekChangedAtMs = -1;
+
+  function receivePoseTransfer(msg) {
+    if (laneClosed) return;
+    poseReader.acceptTransfer(msg.buffer);
+    poseTransferArrivals++;
+    // Credit applies only to this replaceable table. The worker keeps stepping
+    // and retains just the newest pending table while delivery is delayed.
+    if (Number.isSafeInteger(msg.sequence)) {
+      const ack = { kind: 'poseTableAck', sequence: msg.sequence };
+      if (poseChannel) poseChannel.port1.postMessage(ack);
+      else channel.post(ack);
+    }
+  }
   // Coast state for the table feed. The pack stream glides through worker silence via the
   // snapshot fence; the pose table is latest-wins, so without this a stalled write froze
   // every table-fed body dead while the fence-fed picture kept gliding (owner bug
@@ -1443,9 +1466,7 @@ export function createSimLaneRuntime({
     if (!msg || typeof msg !== 'object') return;
     if (msg.kind === 'boot') return;
     if (msg.kind === 'poseTable') {
-      // Non-shared fallback: the latest compact table, posted outside the ACK protocol.
-      poseReader.acceptTransfer(msg.buffer);
-      poseTransferArrivals++;
+      receivePoseTransfer(msg);
       return;
     }
     if (msg.kind === 'clockTick' && laneForce.holdRepliesUntilMs > nowMs()) {
@@ -2436,11 +2457,7 @@ export function createSimLaneRuntime({
         detailDirectives: bounded(d.detailDirectives),
         detailForcedByCommands: bounded(d.detailForcedByCommands),
         detailSkippedHandOnly: bounded(d.detailSkippedHandOnly),
-        heartbeatHolds: bounded(d.heartbeatHolds),
-        heartbeatHeld: d.heartbeatHeld === true,
         heartbeatAgeMs: bounded(d.heartbeatAgeMs),
-        heartbeatHeldMs: bounded(d.heartbeatHeldMs, Number.MAX_SAFE_INTEGER),
-        heartbeatHeldTurns: bounded(d.heartbeatHeldTurns),
         heartbeatProductionGapMs: bounded(d.heartbeatProductionGapMs, Number.MAX_SAFE_INTEGER),
         heartbeatProcessingLagMs: bounded(d.heartbeatProcessingLagMs, Number.MAX_SAFE_INTEGER),
         heartbeatSilences: bounded(d.heartbeatSilences),
@@ -3555,13 +3572,20 @@ export function createSimLaneRuntime({
       advanceResult.shedSteps = 0;
       advanceResult.accumulator = Number.isFinite(state.accumulator)
         ? Math.max(0, state.accumulator) : 0;
-      // Worker-local presentation frames do not call advance(), but they still
-      // own the main→worker UI boundary. Keep modal depth and screen-stack
-      // admission in sync before flushing the frame's cursor/clock command.
+      const controlsFirst = workerClockMode === 'worker-local' && workerClockRequested
+        && state.mode === 'flight' && state.timeScale > 0;
+      if (controlsFirst) {
+        // Poll the gamepad and publish the current controls before decoding or
+        // replaying a batch of read-model work. Projection uses the last drawn view.
+        sampleLaneUiFold();
+        flushDirectives({ projectCursor: true, frame: true });
+      }
       serviceFrameBoundary();
       drainClockReplies(true);
+      // A reply can change modal depth. Send any resulting fold or ACK now.
       sampleLaneUiFold();
-      flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
+      if (controlsFirst) flushDirectives();
+      else flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
       readPoseFeed();
       return advanceResult;
     },
@@ -3865,9 +3889,9 @@ export function createSimLaneRuntime({
     // E1 stall harness: the worker blocks its event loop for these ms values in cycle
     // (one per local-clock tick) — the faithful emulation of a heavy authoritative step.
     simStall: Array.isArray(resolved.simStall) ? resolved.simStall : null,
-    // Shared pose table (null without SharedArrayBuffer: the worker then posts a compact
-    // transferable table per tick, still outside the ACK protocol).
+    // Shared table, or a dedicated transferable latest-state port without shared memory.
     poseTable: poseShared,
+    ...(poseChannel ? { posePort: poseChannel.port2 } : {}),
     legacyStopAndWait: laneLegacy,
     directiveMarks: IS_DEV && (() => { try { return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sf.directiveMarks') === '1'; } catch (_) { return false; } })(),
     // E2 profiler: `?simProfile=1` asks the worker realm to measure per-system step time and
@@ -3884,7 +3908,8 @@ export function createSimLaneRuntime({
   const readyPromise = new Promise((resolve, reject) => {
     pending.set(initSeq, { kind: 'init', resolve, reject });
   });
-  channel.post(initPayload);
+  if (poseChannel) channel.post(initPayload, [poseChannel.port2]);
+  else channel.post(initPayload);
   if (initPayload.sabArena) {
     journal.attachSabArena(initPayload.sabArena);
     // Arm the envelope rings on the same arena — the worker binds the same
@@ -3944,6 +3969,7 @@ export function createSimLaneRuntime({
       try { applyTickReplyTimed(parked.msg, parked, 0); } catch (_) { /* teardown */ }
     }
     poseFeed.active = false;
+    poseChannel?.port1.close();
     setActivePoseFeed(null);
     try { setWorldHoldPlate(false); } catch (_) { /* teardown */ }
     if (domEventFlushTimer !== null) {
@@ -4010,7 +4036,7 @@ export function createSimLaneRuntime({
 
 // The channel contract simLaneMain consumes. A browser Worker is the default;
 // a verification lane (node twin) may inject an adapter with the same surface:
-//   post(msg) / onMessage(cb) / onError(cb) / terminate()
+//   post(msg, transfer?) / onMessage(cb) / onError(cb) / terminate()
 function createBrowserChannel() {
   const worker = new Worker(
     // Retail path resolves workers/wholeSimBrowserWorker.js against the document
@@ -4073,8 +4099,8 @@ function createBrowserChannel() {
     // unchanged; the caller's existing startup deadline still bounds this wait.
     if (msg?.kind === 'boot' && !workerBooted) {
       workerBooted = true;
-      for (const queued of preBootMessages.splice(0)) {
-        try { worker.postMessage(queued); }
+      for (const { msg: queued, transfer } of preBootMessages.splice(0)) {
+        try { worker.postMessage(queued, transfer); }
         catch (error) {
           for (const h of errorHandlers) {
             try { h(error); } catch (_) {}
@@ -4103,14 +4129,14 @@ function createBrowserChannel() {
     }
   };
   return {
-    post(msg) {
+    post(msg, transfer = []) {
       if (workerTerminated) throw new Error('sim worker channel is terminated');
-      if (workerBooted) { worker.postMessage(msg); return; }
+      if (workerBooted) { worker.postMessage(msg, transfer); return; }
       // Before ready, current callers can queue only init plus a close-triggered
       // shutdown. Keep this seam bounded and fail through the existing caller
       // error path if that invariant ever changes.
       if (preBootMessages.length >= 2) throw new Error('sim worker pre-boot message queue is full');
-      preBootMessages.push(msg);
+      preBootMessages.push({ msg, transfer });
     },
     onMessage(cb) { messageHandlers.push(cb); },
     onError(cb) { errorHandlers.push(cb); },

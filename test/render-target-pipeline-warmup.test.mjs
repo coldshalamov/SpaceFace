@@ -94,10 +94,13 @@ test('pipeline warm-up cancels owned shader polling when the WebGL context is lo
   const nativeProgram = {};
   let contextLost = false;
   let readinessChecks = 0;
+  let noteFirstCheck;
+  const firstCheck = new Promise((resolve) => { noteFirstCheck = resolve; });
   const program = {
     program: nativeProgram,
     isReady() {
       readinessChecks++;
+      noteFirstCheck();
       return false;
     },
   };
@@ -123,6 +126,8 @@ test('pipeline warm-up cancels owned shader polling when the WebGL context is lo
   };
 
   const pending = compileScenePipelinesForRenderTarget(renderer, null, {}, {}, {});
+  assert.equal(readinessChecks, 0, 'starting a compile does not query the driver synchronously');
+  await firstCheck;
   assert.equal(readinessChecks, 1, 'the owned readiness loop starts while the context is valid');
   contextLost = true;
   listeners.get('webglcontextlost')?.();

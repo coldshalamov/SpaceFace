@@ -384,7 +384,8 @@ export function recordImpulseProvenance(entity, input = {}) {
   return record;
 }
 
-export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS,
+  observeOnly = false) {
   if (!entity || typeof entity !== 'object') return null;
   const record = RECENT_IMPULSES.get(entity) || null;
   if (!record) return null;
@@ -395,7 +396,8 @@ export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_
   // knocked loose is still the player's kill on the far side of a 4 s flight.
   const held = record.holdUntilTick != null && now <= record.holdUntilTick;
   if (age < 0 || (age > maxAge && !held)) {
-    clearImpulseProvenance(entity);
+    // A deferred contact can ask about an earlier tick. Its query cannot retire a newer cause.
+    if (!observeOnly) clearImpulseProvenance(entity);
     return null;
   }
   return record;
@@ -483,7 +485,8 @@ export function markKickStampSpent(entity, stamp) {
 // Immutable insertion-order view for consumers that must not lose an earlier same-tick impulse when
 // another hit becomes the compatibility/latest record. Filtering is destructive just like the
 // latest reader's stale path, but it never changes which record the latest reader returns.
-export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS,
+  observeOnly = false) {
   if (!entity || typeof entity !== 'object') return EMPTY_IMPULSE_HISTORY;
   const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
   if (history.length === 0) return history;
@@ -494,6 +497,7 @@ export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = I
     return age >= 0 && age <= maxAge;
   });
   if (recent.length === history.length) return history;
+  if (observeOnly) return recent.length > 0 ? Object.freeze(recent) : EMPTY_IMPULSE_HISTORY;
   if (recent.length === 0) {
     RECENT_IMPULSE_HISTORY.delete(entity);
     return EMPTY_IMPULSE_HISTORY;
@@ -760,9 +764,9 @@ function collisionProvenance(input) {
 }
 
 function recentImpulseMatches(target, other, actorId, tick) {
-  const onTarget = readRecentImpulseProvenance(target, tick);
+  const onTarget = readRecentImpulseProvenance(target, tick, undefined, true);
   if (onTarget && onTarget.actorId === actorId && onTarget.tag && onTarget.tag !== 'environment') return true;
-  const onOther = readRecentImpulseProvenance(other, tick);
+  const onOther = readRecentImpulseProvenance(other, tick, undefined, true);
   return !!(onOther && onOther.actorId === actorId && onOther.tag && onOther.tag !== 'environment');
 }
 

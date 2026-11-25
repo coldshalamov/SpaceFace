@@ -2,7 +2,8 @@
 # SpaceFace orientation
 
 This is a short map of the game and repository. Start at root [`AGENTS.md`](../AGENTS.md); the live
-board for current work is [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
+status board is [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md). For flight
+stability and performance start at [10 Engine](../design/overhaul/10_ENGINE.md).
 [`TASK_ROUTER.md`](./TASK_ROUTER.md) points to named workflows. These documents route work; they do
 not duplicate volatile status.
 

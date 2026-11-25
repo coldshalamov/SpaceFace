@@ -5,7 +5,7 @@ import { DIRTY, hasDirty, collectDirtyIds } from './dirtyJournal.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
-export const COMBAT_TABLE_SCHEMA = 'spaceface.combatTable.v1';
+export const COMBAT_TABLE_SCHEMA = 'spaceface.combatTable.v2';
 
 const FLAG_SHIP = 1 << 0;
 const FLAG_PROJECTILE = 1 << 1;
@@ -19,11 +19,7 @@ function grow(table, capacity) {
   table.id = new Uint32Array(capacity);
   table.x = new Float64Array(capacity);
   table.z = new Float64Array(capacity);
-  table.vx = new Float64Array(capacity);
-  table.vz = new Float64Array(capacity);
-  table.yaw = new Float64Array(capacity);
   table.radius = new Float64Array(capacity);
-  table.team = new Int32Array(capacity);
   table.flags = new Uint32Array(capacity);
 }
 
@@ -91,11 +87,7 @@ export function packCombatTable(state) {
         if (!entity || entity.alive === false || !entity.pos) continue;
         table.x[row] = Number(entity.pos.x) || 0;
         table.z[row] = Number(entity.pos.z) || 0;
-        table.vx[row] = entity.vel ? Number(entity.vel.x) || 0 : 0;
-        table.vz[row] = entity.vel ? Number(entity.vel.z) || 0 : 0;
-        table.yaw[row] = Number(entity.rot) || 0;
         table.radius[row] = Number(entity.radius) || 0;
-        table.team[row] = entity.team == null ? -1 : entity.team | 0;
         let flags = table.flags[row] & ~FLAG_PLAYER;
         if (entity.isPlayer === true || entity.id === state.playerId) flags |= FLAG_PLAYER;
         table.flags[row] = flags;
@@ -121,11 +113,7 @@ export function packCombatTable(state) {
     table.id[w] = entity.id >>> 0;
     table.x[w] = Number(entity.pos.x) || 0;
     table.z[w] = Number(entity.pos.z) || 0;
-    table.vx[w] = entity.vel ? Number(entity.vel.x) || 0 : 0;
-    table.vz[w] = entity.vel ? Number(entity.vel.z) || 0 : 0;
-    table.yaw[w] = Number(entity.rot) || 0;
     table.radius[w] = Number(entity.radius) || 0;
-    table.team[w] = entity.team == null ? -1 : entity.team | 0;
     let flags = extraFlags;
     if (entity.isPlayer === true || entity.id === state.playerId) flags |= FLAG_PLAYER;
     table.flags[w] = flags;
@@ -158,7 +146,9 @@ export function queryCombatTableRadius(table, x, z, radius, outIds = []) {
 
 const COMBAT_HASH_MIN_COUNT = 48;
 
-export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask = 0) {
+// A caller combining this table with the live hash can pass the candidates
+// from the same radius query. Small tables still keep their linear row order.
+export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask = 0, spatialCandidates) {
   out.length = 0;
   const table = state && state.combatTable;
   // SpatialHash.queryRadius appends. This private buffer belongs to one query,
@@ -174,7 +164,7 @@ export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask
   const hash = state.spatialHash;
   if (n >= COMBAT_HASH_MIN_COUNT && rowById && hasActiveSpatialHash(hash)
     && typeof hash.queryRadius === 'function') {
-    const nearby = hash.queryRadius(
+    const nearby = spatialCandidates ?? hash.queryRadius(
       x, z, radius,
       table._hashScratch || (table._hashScratch = []),
     );

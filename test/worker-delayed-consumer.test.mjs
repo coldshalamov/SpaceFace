@@ -253,9 +253,8 @@ test('continuous production heartbeats keep worker congestion as honest catch-up
   }
   await f.releaseAcks();
 
-  assert.equal(f.clock.heartbeatHolds, 0,
-    'continuously produced beats prove the page was alive, so no dead-page hold is recorded');
-  assert.equal(f.clock.heartbeatHeld, false);
+  assert.equal(f.clock.heartbeatSilences, 0,
+    'continuously produced beats describe worker congestion, not presentation silence');
   assert.ok(f.clock.lastHeartbeatProductionGapMs <= 20,
     `the queued production stream stayed at frame cadence (gap ${f.clock.lastHeartbeatProductionGapMs})`);
 
@@ -276,27 +275,17 @@ test('true one-shot backlog remains bounded and its pressure is reported before 
       spawnInfos: Array.from({ length: 200 }, (_, i) => info(9000 + tick * 200 + i)),
     }),
   });
-  // Arm the heartbeat-hold guard exactly once: in production rAF beats always precede a stall,
-  // so a dead consumer means beats STOP — 1 s later the hold parks the clock and the durable
-  // queue freezes. Without a first beat the guard cannot tell a stall from a page that never
-  // presented, and the queue would grow forever on this harness only.
   f.lane.runner.heartbeat();
   await f.until(1000);
   assert.equal(f.clock.backpressured, true, 'durable pressure is still reported while rows retain');
-  // NO-FREEZE (173afdeea4): durable rows are never shed, so the queue keeps retaining past the
-  // pressure flag — the bound is the heartbeat hold parking the producer, not a row ceiling.
   assert.ok(f.clock.durableCount >= 4096,
     `the durable queue must reach the pressure flag: ${f.clock.durableCount}`);
   assert.equal(f.clock.latestReply.clockDiagnostics.backpressured, true, 'diagnostics reflect pressure after merging');
   assert.equal(f.clock.backpressureEpisodes, 1);
-  await f.until(2000);
-  assert.equal(f.clock.heartbeatHeld, true,
-    'one second of missing beats parks the producer (the bound on a stopped consumer)');
-  const stopped = f.clock.stepCount;
-  const durableFrozen = f.clock.durableCount;
-  await f.until(2500);
-  assert.equal(f.clock.stepCount, stopped, 'a held producer cannot grow the durable queue indefinitely');
-  assert.equal(f.clock.durableCount, durableFrozen, 'the durable queue freezes with the producer');
+  const stepsDuringPressure = f.clock.stepCount;
+  await f.until(1600);
+  assert.ok(f.clock.stepCount > stepsDuringPressure,
+    'a stopped consumer cannot stop authoritative flight while durable rows retain');
   await f.pause();
   await f.releaseAcks();
   assert.deepEqual(f.seenEvents, Array.from({ length: f.generatedEvents() / 300 }, (_, i) => i * 300 + 1),
@@ -461,11 +450,7 @@ test('pause discards whole old debt and resume does not charge the hidden wall i
   assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
 });
 
-test('timer-first continuous delivery releases the provisional hold and recovers promptly', async t => {
-  // Ordering probe: the worker's overdue timer runs BEFORE the queued heartbeat batch
-  // drains. Continuous production means the hold is transport congestion, never a dead
-  // page — it must park without destroying debt, refuse release on stale beats, and
-  // replace the coarse 100 ms recheck the moment a current beat lands.
+test('an overdue timer steps before delayed presentation heartbeats arrive', async t => {
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
@@ -483,87 +468,47 @@ test('timer-first continuous delivery releases the provisional hold and recovers
 
   // Timer-first: one overdue fixed-step timer fires before any queued beat is consumed.
   assert.equal(await f.stepTimer(), true, 'an overdue clock timer is pending');
-  assert.equal(f.clock.heartbeatHeld, true, 'the timer parks stepping while production is unproven');
-  assert.equal(f.clock.heartbeatHolds, 1, 'the parking episode is counted at entry, not deferred');
-  assert.equal(f.clock.heartbeatSilences, 0, 'continuous production is never producer silence');
-  const stepsHeld = f.clock.stepCount;
+  assert.ok(f.clock.shedStepCount > 0, 'the worker accounts for debt beyond its cap');
+  const timerSteps = f.clock.stepCount;
+  const timerAnchor = f.clock.anchorMs;
+  assert.ok(timerSteps > 6, 'the timer runs without a fresh producer stamp');
 
-  // Stale beats only prove the cadence of old frames. They must not release the hold.
-  for (const sentAt of stale) f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
-  assert.equal(f.clock.heartbeatHeld, true, 'a stale queued beat cannot release the provisional hold');
-  assert.equal(f.clock.stepCount, stepsHeld, 'stepping stays parked on stale production');
+  for (const sentAt of [...stale, ...fresh]) {
+    f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
+  }
+  assert.equal(f.clock.anchorMs, timerAnchor, 'queued beats cannot move the simulation anchor');
   assert.equal(f.clock.heartbeatSilences, 0, 'frame-cadence gaps confirm no silence');
-
-  // The current tail of the same batch proves production is alive now: release at once,
-  // with the parked 100 ms recheck replaced by a prompt wake.
-  for (const sentAt of fresh) f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
-  assert.equal(f.clock.heartbeatHeld, false, 'a current beat releases the hold');
-  assert.equal(f.clock.heartbeatSilences, 0);
-
-  const shedBefore = f.clock.shedStepCount;
-  // Recovery must not wait another coarse recheck: 40 ms is well inside the 100 ms park cycle.
   await f.until(f.now() - 1000 + 40);
-  assert.ok(f.clock.stepCount > stepsHeld,
-    'stepping resumes promptly instead of waiting out the parked recheck');
-  assert.ok(f.clock.shedStepCount > shedBefore,
-    'the congestion interval stays honest capped catch-up debt, not deleted time');
-  assert.equal(f.clock.heartbeatSilences, 0, 'no production time was discarded as dead-page time');
+  assert.ok(f.clock.stepCount > timerSteps, 'the worker continues draining bounded debt');
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
-test('a late-drained restart after a true producer gap keeps the live suffix as capped catch-up debt', async t => {
-  // The receipt probe: last pre-gap beat at 1100, the page resumes production at 2200, but
-  // the blocked worker only consumes the batch at 3000 — and a timer parks stepping before
-  // the messages drain. The live suffix after the restart must survive as ordinary capped
-  // debt (and shed accounting) instead of vanishing into a receipt-time reset.
+test('a late presentation gap is observable without discarding owed simulation time', async t => {
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
   await f.until(100);
-  // The last frame the page produced before dying, stamped exactly at 1100.
   f.send({ kind: 'laneHeartbeat', sentAtMs: 1100, clockKind: 'performance' });
 
-  f.skip(1900); // now = 3000: the worker was blocked across the stall AND the restart.
-  assert.equal(await f.stepTimer(), true, 'timer-first: one overdue turn runs before the batch');
-  assert.equal(f.clock.heartbeatHeld, true, 'the hold engages while the restart is still queued');
-  assert.equal(f.clock.heartbeatHolds, 1);
-  const stepsBeforeDrain = f.clock.stepCount;
-  const shedBeforeDrain = f.clock.shedStepCount;
-
-  // The page resumed at 2200 producing at frame cadence; the whole batch drains late at 3000.
-  for (let sentAt = 2200; sentAt <= 3000; sentAt += 1000 / 60) {
-    f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
-  }
-  assert.equal(f.clock.heartbeatHeld, false, 'the confirmed restart releases the hold');
-  assert.equal(f.clock.heartbeatSilences, 1, 'the dead interval is producer silence, not worker parking');
-  assert.equal(f.clock.heartbeatHolds, 1, 'the one parking episode is neither lost nor double-counted');
-  // 1100 ms of production gap less the 1000 ms grace window = 100 ms deliberately discarded.
-  assert.ok(Math.abs(f.clock.heartbeatSilenceMs - 100) < 1,
-    `only the silence past the grace window is discarded (got ${f.clock.heartbeatSilenceMs})`);
-  // The anchor moved to the producer restart in worker coordinates (timeOrigin 0 here),
-  // not to message receipt time — the live suffix [2200, 3000] is still owed.
-  assert.ok(Math.abs(f.clock.anchorMs - 2200) < 1,
-    `anchor follows the producer restart, not receipt time (got ${f.clock.anchorMs})`);
-
-  // One tick turn accrues the suffix through the ordinary cap path: the grace second plus
-  // the 800 ms live suffix exceed the 1 s debt cap, so the excess surfaces in shed accounting
-  // instead of vanishing unattributed — the original bug zeroed it at receipt.
+  f.skip(1900);
   assert.equal(await f.stepTimer(), true);
-  assert.ok(f.clock.shedStepCount - shedBeforeDrain >= 40,
-    `the live suffix stays inside capped debt accounting (shed +${f.clock.shedStepCount - shedBeforeDrain})`);
-  assert.ok(f.clock.stepCount > stepsBeforeDrain, 'the world resumes stepping after the restart');
+  const anchorBefore = f.clock.anchorMs;
+  const owedBefore = f.clock.owedTicks;
+  const shedBefore = f.clock.shedStepCount;
+  assert.ok(shedBefore > 0, 'the ordinary debt cap handled the late worker turn');
 
+  f.send({ kind: 'laneHeartbeat', sentAtMs: 2200, clockKind: 'performance' });
+  assert.equal(f.clock.heartbeatSilences, 1);
+  assert.equal(f.clock.heartbeatSilenceMs, 100);
+  assert.equal(f.clock.anchorMs, anchorBefore, 'observation cannot reset simulation time');
+  assert.equal(f.clock.owedTicks, owedBefore);
+  assert.equal(f.clock.shedStepCount, shedBefore);
   await f.until(f.now() - 1000 + 100);
-  const diagnostics = f.lane.getDiagnostics().workerClockLastDiagnostics;
-  assert.ok(diagnostics.heartbeatSilences >= 1, 'main-side diagnostics project producer silence');
-  assert.ok(diagnostics.heartbeatSilenceMs >= 100, 'main-side diagnostics project discarded silence time');
+  assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.heartbeatSilences >= 1);
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
-test('a deliberate pause does not become a dead-page hold across reactivation', async t => {
-  // Hidden-page probe: beats stop while the clock is intentionally paused. Reactivation is
-  // itself main-thread liveness, so the first timer of the new active period must not age
-  // the pre-pause beat into a dead-page hold before the next heartbeat can even arrive.
+test('an explicit pause discards hidden wall time before the clock reactivates', async t => {
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
@@ -574,26 +519,18 @@ test('a deliberate pause does not become a dead-page hold across reactivation', 
   f.skip(3000); // hidden for three seconds: no frames, no beats, by design
   await f.resume();
 
-  // The reactivation timer fires before any new-period beat can be delivered.
-  assert.equal(await f.stepTimer(), true);
-  assert.equal(f.clock.heartbeatHeld, false,
-    'deliberate paused time is not charged as dead-page time');
-  assert.equal(f.clock.heartbeatHolds, 0, 'no hold is attributed across the intentional boundary');
-  assert.equal(f.clock.heartbeatSilences, 0);
   const stepsAtResume = f.clock.stepCount;
-
-  // Once foreground production actually resumes, the new period steps at cadence.
-  f.lane.runner.heartbeat();
+  const shedAtResume = f.clock.shedStepCount;
   await f.until(f.now() - 1000 + 100);
-  assert.ok(f.clock.stepCount > stepsAtResume, 'the reactivated clock resumes stepping');
-  assert.equal(f.clock.heartbeatHolds, 0);
+  assert.ok(f.clock.stepCount - stepsAtResume >= 5 && f.clock.stepCount - stepsAtResume <= 6,
+    'explicit reactivation resumes at live cadence without accumulating paused time');
+  assert.equal(f.clock.shedStepCount, shedAtResume);
+  f.lane.runner.heartbeat();
+  assert.equal(f.clock.heartbeatSilences, 0);
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
-test('mixed-format beats fall back to receipt time without re-tripping the guard', async t => {
-  // Clock-format transition probe: once an unstamped (or clock-incompatible) beat arrives,
-  // the producer stamp baseline must be abandoned. Otherwise the timer keeps aging the old
-  // stamp and the guard holds repeatedly even though fresh unstamped beats keep landing.
+test('a receipt-only heartbeat clears the incompatible diagnostic timestamp', async t => {
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
@@ -607,65 +544,19 @@ test('mixed-format beats fall back to receipt time without re-tripping the guard
     await f.until(elapsed);
   }
   assert.equal(f.clock.lastHeartbeatSentAtMs, 0, 'the incompatible format clears the stamp baseline');
-  assert.equal(f.clock.heartbeatHolds, 0,
-    'fresh unstamped beats are not aged against a stale producer stamp');
-  assert.equal(f.clock.heartbeatHeld, false);
+  assert.ok(f.clock.stepCount > 70, 'the clock stays autonomous across diagnostic formats');
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
-test('stopped presentation heartbeats hold the world until foreground beats resume', async t => {
-  // ENGINE slice 5: the hold is a dead-main-thread guard at 1 s; an ordinary render stall shorter
-  // than that keeps the world running and the fence plays the backlog out.
+test('missing presentation heartbeats leave active fixed-step flight running', async t => {
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
   await f.until(100);
-  assert.ok(f.clock.stepCount >= 5);
-  assert.equal(f.clock.heartbeatHeld, false);
-  await f.until(700);
-  assert.equal(f.clock.heartbeatHeld, false, 'a sub-second stall does not hold the world');
-
-  await f.until(1300);
-  assert.equal(f.clock.heartbeatHeld, true, 'the real worker clock enters its heartbeat hold');
-  const heldTick = f.clock.stepCount;
+  const stepsBefore = f.clock.stepCount;
   await f.until(1800);
-  assert.equal(f.clock.stepCount, heldTick, 'ticks stay parked during the hold');
-
-  for (let elapsed = 1820; elapsed <= 2000; elapsed += 20) {
-    f.lane.runner.heartbeat();
-    await f.until(elapsed);
-  }
-  assert.equal(f.clock.heartbeatHeld, false);
-  assert.ok(f.clock.stepCount - heldTick >= 11 && f.clock.stepCount - heldTick <= 12,
-    'recurring foreground beats resume the fixed-step cadence without charging the held interval');
-  assert.equal(f.lane.getDiagnostics().workerClockLastDiagnostics.heartbeatHolds, 1);
+  assert.ok(f.clock.stepCount - stepsBefore >= 100,
+    'the active worker continues fixed-step flight throughout presentation silence');
   assert.equal(f.clock.shedStepCount, 0);
   assert.equal(f.lane.getDiagnostics().error, null);
 });
-
-for (const boundary of ['scale', 'lifecycle']) {
-  test(`${boundary} boundary starts a new wall interval instead of replaying whole old debt`, async t => {
-    let reset = false;
-    const f = await fixture(t, { bodies: 4, stepCostMs: 3, wakeDelays: [130],
-      onWake: async ({ clock, lane, setOwnerScale, settle }) => {
-        if (!reset && clock.accumulator >= 1 / 60) {
-          reset = true;
-          if (boundary === 'scale') setOwnerScale(0.25);
-          else {
-            lane.runner.setLifecycleGeneration(1);
-            lane.runner.setClockActive(true);
-          }
-          await settle();
-          assert.ok(clock.accumulator < 1 / 60, 'old whole-step debt is discarded at the explicit boundary');
-        }
-      },
-    });
-    await f.until(1000);
-    assert.equal(reset, true);
-    assert.equal(f.clock.scale, boundary === 'scale' ? 0.25 : 1);
-    assert.equal(f.clock.shedStepCount, 0);
-    assert.ok(f.batches.every(batch => batch.steps <= 4));
-    assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
-    assert.equal(f.lane.getDiagnostics().error, null);
-  });
-}

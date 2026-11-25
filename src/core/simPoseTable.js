@@ -6,15 +6,14 @@
 // stalled journal (spawns, despawns, events, saves) can lag, but the bodies the renderer already
 // knows keep moving at the simulation's own rate.
 //
-// Transport: one SharedArrayBuffer guarded by a seqlock (the writer makes the sequence odd while it
-// writes and even when the rows are coherent; a reader that sees an odd or changed sequence retries
-// or keeps last frame's copy). Where SharedArrayBuffer is unavailable the worker posts the same
-// compact Float64Array as a transferable on its own message kind, still outside the ACK protocol.
+// The writer fills the unpublished bank and atomically publishes its sequence on success.
+// A reader checks that sequence after copying, so it can keep using the last complete bank even
+// if a write throws. The transferable fallback stages its next table the same way.
 //
 // This module never touches the DOM or Three.js; both realms import it.
 
 export const POSE_TABLE_MAGIC = 0x50534531; // 'PSE1'
-export const POSE_TABLE_VERSION = 1;
+export const POSE_TABLE_VERSION = 2;
 export const POSE_ROW_STRIDE = 12;
 export const POSE_PLAYER_FIELDS = Object.freeze([
   'hull', 'hullMax', 'shield', 'shieldMax', 'cap', 'capMax', 'fuel', 'fuelMax',
@@ -43,8 +42,12 @@ const HEADER_INTS = 16;
 const F_SIM_TIME = 0;
 const F_WALL_MS = 1;
 const F_PLAYER_BASE = 2;
-const HEADER_F64 = F_PLAYER_BASE + POSE_PLAYER_FIELDS.length + 2;
+const F_OVERFLOW = F_PLAYER_BASE + POSE_PLAYER_FIELDS.length;
+const HEADER_F64 = F_OVERFLOW + 1;
 const HEADER_BYTES = HEADER_INTS * 4 + HEADER_F64 * 8;
+const PUBLISHED_SEQUENCE = 0;
+const SHARED_WRITE_ERRORS = 1;
+const SHARED_CONTROL_BYTES = 2 * Int32Array.BYTES_PER_ELEMENT;
 
 export const POSE_TABLE_DEFAULT_CAPACITY = 4096;
 
@@ -52,27 +55,49 @@ export function poseTableByteLength(capacity = POSE_TABLE_DEFAULT_CAPACITY) {
   return HEADER_BYTES + Math.max(1, capacity | 0) * POSE_ROW_STRIDE * 8;
 }
 
-function bindViews(buffer, capacity) {
+function bindViews(buffer, capacity, offset = 0) {
   return {
     buffer,
     capacity,
-    header: new Int32Array(buffer, 0, HEADER_INTS),
-    scalars: new Float64Array(buffer, HEADER_INTS * 4, HEADER_F64),
-    rows: new Float64Array(buffer, HEADER_BYTES, capacity * POSE_ROW_STRIDE),
+    header: new Int32Array(buffer, offset, HEADER_INTS),
+    scalars: new Float64Array(buffer, offset + HEADER_INTS * 4, HEADER_F64),
+    rows: new Float64Array(buffer, offset + HEADER_BYTES, capacity * POSE_ROW_STRIDE),
   };
 }
 
 const sabAvailable = () => typeof SharedArrayBuffer === 'function'
   && (typeof globalThis === 'undefined' || globalThis.crossOriginIsolated !== false);
 
-/** Main realm: mint the shared table (null when SharedArrayBuffer is unavailable). */
-export function createSharedPoseTable(capacity = POSE_TABLE_DEFAULT_CAPACITY) {
-  if (!sabAvailable()) return null;
-  const sab = new SharedArrayBuffer(poseTableByteLength(capacity));
-  const views = bindViews(sab, capacity);
+function bindSharedTable(buffer, capacity) {
+  if (typeof SharedArrayBuffer !== 'function' || !(buffer instanceof SharedArrayBuffer)
+    || !Number.isSafeInteger(capacity) || capacity < 1) return null;
+  const bankBytes = poseTableByteLength(capacity);
+  if (buffer.byteLength !== SHARED_CONTROL_BYTES + 2 * bankBytes) return null;
+  return {
+    control: new Int32Array(buffer, 0, 2),
+    banks: [
+      bindViews(buffer, capacity, SHARED_CONTROL_BYTES),
+      bindViews(buffer, capacity, SHARED_CONTROL_BYTES + bankBytes),
+    ],
+  };
+}
+
+function stampFormat(views) {
   views.header[H_MAGIC] = POSE_TABLE_MAGIC;
   views.header[H_VERSION] = POSE_TABLE_VERSION;
-  views.header[H_CAPACITY] = capacity;
+  views.header[H_CAPACITY] = views.capacity;
+}
+
+function validFormat(views) {
+  return views.header[H_MAGIC] === POSE_TABLE_MAGIC
+    && views.header[H_VERSION] === POSE_TABLE_VERSION;
+}
+
+/** Main realm: mint the shared table (null when SharedArrayBuffer is unavailable). */
+export function createSharedPoseTable(capacity = POSE_TABLE_DEFAULT_CAPACITY) {
+  if (!sabAvailable() || !Number.isSafeInteger(capacity) || capacity < 1) return null;
+  const sab = new SharedArrayBuffer(SHARED_CONTROL_BYTES + 2 * poseTableByteLength(capacity));
+  for (const bank of bindSharedTable(sab, capacity).banks) stampFormat(bank);
   return { sab, capacity };
 }
 
@@ -83,109 +108,102 @@ const finiteOr = (value, fallback = 0) => (Number.isFinite(value) ? value : fall
  * `takeTransfer()` hands out for posting. `write(state, journal, meta)` is read-only of sim state.
  */
 export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE_DEFAULT_CAPACITY } = {}) {
-  let shared = false;
-  let views = null;
-  if (descriptor && typeof SharedArrayBuffer === 'function' && descriptor.sab instanceof SharedArrayBuffer) {
-    const cap = Number.isSafeInteger(descriptor.capacity) ? descriptor.capacity : capacity;
-    views = bindViews(descriptor.sab, cap);
-    if (views.header[H_MAGIC] !== POSE_TABLE_MAGIC || views.header[H_VERSION] !== POSE_TABLE_VERSION) {
-      views = null;
-    } else {
-      shared = true;
-    }
-  }
-  let privateCapacity = capacity;
-  const allocPrivate = () => {
-    const buf = new ArrayBuffer(poseTableByteLength(privateCapacity));
-    const v = bindViews(buf, privateCapacity);
-    v.header[H_MAGIC] = POSE_TABLE_MAGIC;
-    v.header[H_VERSION] = POSE_TABLE_VERSION;
-    v.header[H_CAPACITY] = privateCapacity;
-    return v;
-  };
-  if (!views) views = allocPrivate();
+  const table = bindSharedTable(descriptor?.sab, descriptor?.capacity);
+  const shared = table?.banks.every(validFormat) === true;
+  let privateWrite = null;
+  let pendingTransfer = null;
   let writes = 0;
-  let dirtyPrivate = false;
-  const stats = { writes: 0, rows: 0, truncated: 0, lastWriteMs: 0, maxWriteMs: 0 };
+  const stats = { writes: 0, rows: 0, truncated: 0, writeErrors: 0, lastWriteMs: 0, maxWriteMs: 0 };
 
   function write(state, journal, meta = {}) {
     if (!state || !journal || typeof journal.getActiveGeneration !== 'function') return 0;
     const started = typeof performance !== 'undefined' ? performance.now() : 0;
-    if (!views) views = allocPrivate();
+    if (!shared && !privateWrite) {
+      privateWrite = bindViews(new ArrayBuffer(poseTableByteLength(capacity)), capacity);
+      stampFormat(privateWrite);
+    }
+    const sequence = (writes + 1) | 0;
+    const views = shared ? table.banks[sequence & 1] : privateWrite;
     const { header, scalars, rows, capacity: cap } = views;
-    if (shared) Atomics.add(header, H_SEQ, 1); // odd: rows are being written
-    else header[H_SEQ] += 1;
-    // The sequence goes even again in `finally`: a throw mid-write must never leave the table odd
-    // (readers would keep a stale copy forever). The throw is counted in the header for main.
     let count = 0;
+    let overflow = false;
     try {
-    const list = state.entityList || [];
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      // Every body the journal still presents gets its pose, dying ones included: a killed hull keeps
-      // drifting through its death beat until the journal retires it, instead of freezing mid-air.
-      if (!e || !Number.isSafeInteger(e.id) || e.id <= 0) continue;
-      const generation = typeof journal.getActiveGenerationFor === 'function'
-        ? journal.getActiveGenerationFor(e) : journal.getActiveGeneration(e.id);
-      if (!generation) continue;
-      if (count >= cap) { stats.truncated++; break; }
-      const o = count * POSE_ROW_STRIDE;
-      const pos = e.pos || null;
-      const vel = e.vel || null;
-      rows[o] = e.id;
-      rows[o + 1] = generation;
-      rows[o + 2] = Number.isSafeInteger(e.occupantGeneration) ? e.occupantGeneration : 0;
-      rows[o + 3] = pos ? finiteOr(pos.x) : 0;
-      rows[o + 4] = pos ? finiteOr(pos.y) : 0;
-      rows[o + 5] = pos ? finiteOr(pos.z) : 0;
-      rows[o + 6] = finiteOr(e.rot);
-      rows[o + 7] = finiteOr(e.bank);
-      rows[o + 8] = finiteOr(e.pitch);
-      rows[o + 9] = vel ? finiteOr(vel.x) : 0;
-      rows[o + 10] = vel ? finiteOr(vel.z) : 0;
-      rows[o + 11] = finiteOr(e.angVel);
-      count++;
-    }
-    const playerId = Number.isSafeInteger(state.playerId) ? state.playerId : 0;
-    const player = playerId > 0 && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(playerId) : null;
-    for (let k = 0; k < POSE_PLAYER_FIELDS.length; k++) {
-      const key = POSE_PLAYER_FIELDS[k];
-      let value = NaN;
-      if (player) {
-        if (key === 'boostEnergy') value = player.boost ? player.boost.energy : NaN;
-        else if (key === 'boostMax') value = player.boost ? player.boost.max : NaN;
-        else value = player[key];
+      const roster = journal.activePoseEntities?.();
+      const list = roster || state.entityList || [];
+      const liveEntities = roster && typeof state.entities?.get === 'function' ? state.entities : null;
+      for (const e of list) {
+        // Every body the journal still presents gets its pose, dying ones included: a killed hull keeps
+        // drifting through its death beat until the journal retires it, instead of freezing mid-air.
+        if (!e || !Number.isSafeInteger(e.id) || e.id <= 0) continue;
+        // The entity owner may already have removed or reused an id when the
+        // structural journal needs a rebuild. Publish only the exact live life.
+        if (liveEntities && liveEntities.get(e.id) !== e) continue;
+        const generation = roster || typeof journal.getActiveGenerationFor !== 'function'
+          ? journal.getActiveGeneration(e.id) : journal.getActiveGenerationFor(e);
+        if (!generation) continue;
+        if (count >= cap) { overflow = true; break; }
+        const o = count * POSE_ROW_STRIDE;
+        const pos = e.pos || null;
+        const vel = e.vel || null;
+        rows[o] = e.id;
+        rows[o + 1] = generation;
+        rows[o + 2] = Number.isSafeInteger(e.occupantGeneration) ? e.occupantGeneration : 0;
+        rows[o + 3] = pos ? finiteOr(pos.x) : 0;
+        rows[o + 4] = pos ? finiteOr(pos.y) : 0;
+        rows[o + 5] = pos ? finiteOr(pos.z) : 0;
+        rows[o + 6] = finiteOr(e.rot);
+        rows[o + 7] = finiteOr(e.bank);
+        rows[o + 8] = finiteOr(e.pitch);
+        rows[o + 9] = vel ? finiteOr(vel.x) : 0;
+        rows[o + 10] = vel ? finiteOr(vel.z) : 0;
+        rows[o + 11] = finiteOr(e.angVel);
+        count++;
       }
-      scalars[F_PLAYER_BASE + k] = Number.isFinite(value) ? value : NaN;
-    }
-    scalars[F_SIM_TIME] = finiteOr(state.simTime);
-    scalars[F_WALL_MS] = started;
-    header[H_COUNT] = count;
-    header[H_LIFECYCLE] = Number.isSafeInteger(meta.lifecycleGeneration) ? meta.lifecycleGeneration : 0;
-    header[H_TICK] = Number.isSafeInteger(state.tick) ? state.tick : 0;
-    header[H_PLAYER_ID] = playerId;
-    header[H_APPLIED_COMMAND] = Number.isSafeInteger(meta.appliedCommandSequence) ? meta.appliedCommandSequence : 0;
-    header[H_STEPS] = Number.isSafeInteger(meta.steps) ? (meta.steps & 0x7fffffff) : 0;
-    header[H_TRUNCATED] = stats.truncated & 0x7fffffff;
-    header[H_REPLY_SEQ] = Number.isSafeInteger(meta.replySequence) ? meta.replySequence & 0x7fffffff : 0;
-    header[H_UNACKED] = Number.isSafeInteger(meta.unacked) ? meta.unacked : 0;
-    header[H_RETAINED] = Number.isSafeInteger(meta.retained) ? meta.retained : 0;
-    writes++;
-    header[H_WRITES] = writes & 0x7fffffff;
-    } catch (error) {
-      stats.writeErrors = (stats.writeErrors || 0) + 1;
+      const playerId = Number.isSafeInteger(state.playerId) ? state.playerId : 0;
+      const player = playerId > 0 && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(playerId) : null;
+      for (let k = 0; k < POSE_PLAYER_FIELDS.length; k++) {
+        const key = POSE_PLAYER_FIELDS[k];
+        let value = NaN;
+        if (player) {
+          if (key === 'boostEnergy') value = player.boost ? player.boost.energy : NaN;
+          else if (key === 'boostMax') value = player.boost ? player.boost.max : NaN;
+          else value = player[key];
+        }
+        scalars[F_PLAYER_BASE + k] = Number.isFinite(value) ? value : NaN;
+      }
+      scalars[F_SIM_TIME] = finiteOr(state.simTime);
+      scalars[F_WALL_MS] = started;
+      header[H_COUNT] = count;
+      header[H_LIFECYCLE] = Number.isSafeInteger(meta.lifecycleGeneration) ? meta.lifecycleGeneration : 0;
+      header[H_TICK] = Number.isSafeInteger(state.tick) ? state.tick : 0;
+      header[H_PLAYER_ID] = playerId;
+      header[H_APPLIED_COMMAND] = Number.isSafeInteger(meta.appliedCommandSequence) ? meta.appliedCommandSequence : 0;
+      header[H_STEPS] = Number.isSafeInteger(meta.steps) ? (meta.steps & 0x7fffffff) : 0;
+      header[H_REPLY_SEQ] = Number.isSafeInteger(meta.replySequence) ? meta.replySequence & 0x7fffffff : 0;
+      header[H_UNACKED] = Number.isSafeInteger(meta.unacked) ? meta.unacked : 0;
+      header[H_RETAINED] = Number.isSafeInteger(meta.retained) ? meta.retained : 0;
+      scalars[F_OVERFLOW] = overflow ? 1 : 0;
+      if (overflow) stats.truncated++;
+      header[H_TRUNCATED] = stats.truncated & 0x7fffffff;
       header[H_WRITE_ERRORS] = stats.writeErrors & 0x7fffffff;
-    } finally {
+      header[H_WRITES] = sequence;
+      header[H_SEQ] = sequence;
+      writes++;
+      stats.writes = writes;
+      stats.rows = count;
       if (shared) {
-        Atomics.add(header, H_SEQ, 1); // even: coherent
+        Atomics.store(table.control, PUBLISHED_SEQUENCE, sequence);
       } else {
-        header[H_SEQ] += 1;
-        dirtyPrivate = true;
+        privateWrite = pendingTransfer;
+        pendingTransfer = views;
       }
+    } catch {
+      stats.writeErrors++;
+      if (shared) Atomics.store(table.control, SHARED_WRITE_ERRORS, stats.writeErrors);
+      else if (pendingTransfer) pendingTransfer.header[H_WRITE_ERRORS] = stats.writeErrors;
+      count = 0;
     }
-    stats.writes = writes;
-    stats.rows = count;
     if (typeof performance !== 'undefined') {
       stats.lastWriteMs = performance.now() - started;
       if (stats.lastWriteMs > stats.maxWriteMs) stats.maxWriteMs = stats.lastWriteMs;
@@ -193,16 +211,17 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
     return count;
   }
 
-  /** Non-shared fallback: detach the latest private table for a transfer post (or null). */
+  /** Non-shared fallback: transfer the latest successful table. */
   function takeTransfer() {
-    if (shared || !dirtyPrivate || !views) return null;
+    if (shared || !pendingTransfer) return null;
+    const views = pendingTransfer;
+    pendingTransfer = null;
     const out = views.buffer;
-    // Shrink the transfer to the populated rows so a 300-body scene posts ~30 KB, not 400 KB.
+    // Compact small scenes and reuse the source buffer for a later write.
     const used = HEADER_BYTES + views.header[H_COUNT] * POSE_ROW_STRIDE * 8;
-    const compact = out.byteLength > used * 2 ? out.slice(0, used) : out;
-    if (compact === out) views = null; // transferred away; the next write allocates
-    dirtyPrivate = false;
-    return compact;
+    if (out.byteLength <= used * 2) return out;
+    if (!privateWrite) privateWrite = views;
+    return out.slice(0, used);
   }
 
   return { shared, write, takeTransfer, getStats: () => ({ ...stats, shared }) };
@@ -211,11 +230,13 @@ export function createPoseTableWriter(descriptor = null, { capacity = POSE_TABLE
 /**
  * Main realm reader. `bindShared(descriptor)` reads the live SAB; `acceptTransfer(buffer)` takes a
  * posted fallback table. `read()` returns a private coherent snapshot, or the previous one when the
- * writer is mid-write (never a torn row).
+ * writer publishes while the copy is in progress.
  */
 function createSnapshot() {
   return {
     valid: false,
+    overflow: false,
+    writeErrors: 0,
     seq: -1,
     writes: -1,
     count: 0,
@@ -241,21 +262,26 @@ export function createPoseTableReader() {
   let back = createSnapshot();
   const stats = { reads: 0, retries: 0, tornSkips: 0, advances: 0 };
 
-  function copyInto(target, views, seqValue) {
+  function readInto(target, views, seqValue, takeRows = false) {
     const { header, scalars, rows } = views;
     const count = Math.max(0, Math.min(header[H_COUNT], views.capacity));
     const needed = count * POSE_ROW_STRIDE;
-    if (target.rows.length < needed) {
-      target.rows = new Float64Array(Math.max(needed, target.rows.length * 2));
+    if (takeRows) {
+      target.rows = rows;
+    } else {
+      if (target.rows.length < needed) {
+        target.rows = new Float64Array(Math.max(needed, target.rows.length * 2));
+      }
+      target.rows.set(rows.subarray(0, needed));
     }
-    target.rows.set(rows.subarray(0, needed));
     target.count = count;
     target.lifecycleGeneration = header[H_LIFECYCLE];
     target.tick = header[H_TICK];
     target.playerId = header[H_PLAYER_ID];
     target.appliedCommandSequence = header[H_APPLIED_COMMAND];
     target.steps = header[H_STEPS];
-    target.writes = header[H_WRITES];
+    target.writes = header[H_WRITES] >>> 0;
+    target.overflow = scalars[F_OVERFLOW] === 1;
     target.truncated = header[H_TRUNCATED];
     target.replySequence = header[H_REPLY_SEQ];
     target.unacked = header[H_UNACKED];
@@ -284,17 +310,18 @@ export function createPoseTableReader() {
   function read(nowMs = 0) {
     stats.reads++;
     if (sharedViews) {
-      const { header } = sharedViews;
+      const { control, banks } = sharedViews;
       for (let attempt = 0; attempt < 4; attempt++) {
-        const s1 = Atomics.load(header, H_SEQ);
-        if (s1 & 1) { stats.retries++; continue; }
-        if (s1 === snapshot.seq && snapshot.valid) {
+        const sequence = Atomics.load(control, PUBLISHED_SEQUENCE);
+        if ((sequence === 0 && !snapshot.valid) || sequence === snapshot.seq) {
           snapshot.readAtMs = nowMs;
+          snapshot.writeErrors = Atomics.load(control, SHARED_WRITE_ERRORS);
           return { snapshot, advanced: false };
         }
-        copyInto(back, sharedViews, s1);
-        if (Atomics.load(header, H_SEQ) === s1) {
+        readInto(back, banks[sequence & 1], sequence);
+        if (Atomics.load(control, PUBLISHED_SEQUENCE) === sequence) {
           const advanced = commit(nowMs);
+          snapshot.writeErrors = Atomics.load(control, SHARED_WRITE_ERRORS);
           return { snapshot, advanced };
         }
         stats.retries++;
@@ -307,8 +334,8 @@ export function createPoseTableReader() {
       const views = bindViews(latestTransfer, Math.floor(
         (latestTransfer.byteLength - HEADER_BYTES) / (POSE_ROW_STRIDE * 8)));
       latestTransfer = null;
-      if (views.header[H_MAGIC] === POSE_TABLE_MAGIC) {
-        copyInto(back, views, views.header[H_SEQ]);
+      if (validFormat(views)) {
+        readInto(back, views, views.header[H_SEQ], true);
         const advanced = commit(nowMs);
         return { snapshot, advanced };
       }
@@ -319,9 +346,11 @@ export function createPoseTableReader() {
 
   return {
     bindShared(descriptor) {
-      if (!descriptor || typeof SharedArrayBuffer !== 'function'
-        || !(descriptor.sab instanceof SharedArrayBuffer)) return false;
-      sharedViews = bindViews(descriptor.sab, descriptor.capacity);
+      const table = bindSharedTable(descriptor?.sab, descriptor?.capacity);
+      if (!table?.banks.every(validFormat)) return false;
+      sharedViews = table;
+      snapshot = createSnapshot();
+      back = createSnapshot();
       return true;
     },
     acceptTransfer(buffer) {
@@ -329,7 +358,7 @@ export function createPoseTableReader() {
     },
     isShared: () => sharedViews !== null,
     /** Cheap liveness probe: the writer's write counter, without copying or committing. */
-    peekWrites: () => (sharedViews ? Atomics.load(sharedViews.header, H_WRITES) : -1),
+    peekWrites: () => (sharedViews ? (Atomics.load(sharedViews.control, PUBLISHED_SEQUENCE) >>> 0) : -1),
     read,
     get snapshot() { return snapshot; },
     getStats: () => ({ ...stats, shared: sharedViews !== null }),

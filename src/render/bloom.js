@@ -635,7 +635,7 @@ export async function compileScenePipelinesForRenderTarget(
     );
     // Owned compile() performs its complete GL issue synchronously; keep unsupported
     // compileAsync implementations on the original serialized lifetime.
-    if ((options?.restoreTargetAfterIssue === true || typeof options?.onIssueComplete === 'function') && typeof renderer.compile === 'function'
+    if (typeof renderer.compile === 'function'
         && renderer.properties?.get && renderer.extensions?.get
         && renderer.domElement?.addEventListener && renderer.domElement?.removeEventListener
         && renderer.getContext && renderer.extensions.get('KHR_parallel_shader_compile')) {
@@ -798,6 +798,48 @@ function programReadiness(program) {
   const ready = program.isReady();
   if (ready === null) return 'invalid';
   return ready ? 'ready' : 'pending';
+}
+
+const shaderPollsByContext = new WeakMap();
+const shaderPollNow = () => globalThis.performance?.now?.() ?? Date.now();
+
+function shaderPollBudgetSpent(poll) {
+  return poll.queries >= 8 || (poll.queries > 0 && shaderPollNow() - poll.started >= 2);
+}
+
+function armShaderPoll(queue) {
+  if (queue.running || queue.timer !== null || queue.checks.size === 0) return;
+  queue.timer = setTimeout(() => {
+    queue.timer = null;
+    queue.running = true;
+    const poll = { started: shaderPollNow(), queries: 0, results: new Map() };
+    let remaining = queue.checks.size;
+    for (const check of queue.checks) {
+      if (--remaining < 0 || shaderPollBudgetSpent(poll)) break;
+      queue.checks.delete(check);
+      // Unfinished checks rejoin at the back to share the next budget fairly.
+      check(poll);
+    }
+    queue.running = false;
+    armShaderPoll(queue);
+  }, 10);
+}
+
+function scheduleShaderPoll(context, check) {
+  let queue = shaderPollsByContext.get(context);
+  if (!queue) {
+    queue = { timer: null, running: false, checks: new Set() };
+    shaderPollsByContext.set(context, queue);
+  }
+  queue.checks.add(check);
+  armShaderPoll(queue);
+  return () => {
+    queue.checks.delete(check);
+    if (queue.checks.size === 0 && queue.timer !== null) {
+      clearTimeout(queue.timer);
+      queue.timer = null;
+    }
+  };
 }
 
 export function beginScenePipelineReadinessBatch(renderer = null, options = {}) {
@@ -981,12 +1023,12 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
 
   return new Promise((resolve, reject) => {
     const gl = renderer.getContext();
-    let timer = null;
+    let cancelPoll = null;
     let settled = false;
 
     const cleanup = () => {
-      if (timer != null) clearTimeout(timer);
-      timer = null;
+      cancelPoll?.();
+      cancelPoll = null;
       canvas.removeEventListener('webglcontextlost', onContextLost, false);
     };
     const finish = (result) => {
@@ -1053,20 +1095,16 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
     // would hold the compile tail (and every admission serialized behind it)
     // indefinitely. Past the bound the wait resolves — the driver still finishes
     // the link on first use, so the worst case is one slow draw, not a dead lane.
-    const readinessDeadline = (typeof performance !== 'undefined' && performance
-        && typeof performance.now === 'function' ? performance.now() : Date.now())
+    const readinessDeadline = shaderPollNow()
       + (Number.isFinite(options.readinessTimeoutMs) ? options.readinessTimeoutMs : 20000);
     let programCursor = null;
-    const pollNow = () => globalThis.performance?.now?.() ?? Date.now();
-    const checkProgramsReady = () => {
+    const checkProgramsReady = (poll) => {
       if (settled) return;
       try {
         if ((typeof gl.isContextLost === 'function' && gl.isContextLost())) {
           onContextLost();
           return;
         }
-        const pollStarted = pollNow();
-        let queried = 0;
         programCursor ??= programs.values();
         for (;;) {
           const step = programCursor.next();
@@ -1081,7 +1119,12 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
             });
             return;
           }
-          const readiness = programReadiness(program);
+          let readiness = poll.results.get(program);
+          if (readiness === undefined) {
+            readiness = programReadiness(program);
+            poll.results.set(program, readiness);
+            poll.queries++;
+          }
           if (readiness === 'invalid') {
             finish({
               contextLost: true,
@@ -1090,25 +1133,25 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
             return;
           }
           if (readiness === 'ready') programs.delete(program);
-          if (++queried >= 8 || pollNow() - pollStarted >= 2) break;
+          if (shaderPollBudgetSpent(poll)) break;
         }
         if (programs.size === 0) {
           finish({ contextLost: false });
           return;
         }
-        if ((typeof performance !== 'undefined' && performance
-            && typeof performance.now === 'function' ? performance.now() : Date.now())
-            >= readinessDeadline) {
+        if (shaderPollNow() >= readinessDeadline) {
           finish({ contextLost: false, readinessTimedOut: true });
           return;
         }
-        timer = setTimeout(checkProgramsReady, 10);
+        cancelPoll = scheduleShaderPoll(gl || canvas, checkProgramsReady);
       } catch (error) {
         fail(error);
       }
     };
 
-    checkProgramsReady();
+    // Compiles for the same context share one poll budget and one result per
+    // program. The compile issue phase does not wait synchronously for a link.
+    cancelPoll = scheduleShaderPoll(gl || canvas, checkProgramsReady);
   });
 }
 

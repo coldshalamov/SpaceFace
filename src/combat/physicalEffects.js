@@ -90,9 +90,10 @@ function gatherPhysicalCandidates(state, center, radius, options) {
   const cz = center.z;
   try {
     if (hasActiveSpatialHash(state.spatialHash)) {
-      state.spatialHash.queryRadius(cx, cz, radius, live);
+      const spatialCandidates = state.spatialHash.queryRadius(cx, cz, radius, live);
       queryCombatTableEntities(state, cx, cz, radius, combat,
-        COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK);
+        COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
+        spatialCandidates);
       for (let i = 0; i < combat.length; i++) live.push(combat[i]);
       const index = state.entityIndex;
       if (index && index.__spacefaceEntityIndexV1) {
