@@ -122,6 +122,13 @@ ${H} > .orr-help__stage { ${PLAIN} grid-area:stage; position:relative; min-heigh
 /* CONTROLS: the rig and the ladder of every key */
 ${H} .orr-help-controls { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) clamp(236px, 19vw, 430px); column-gap:clamp(20px, 2.4vw, 56px); height:100%; min-height:0; }
 ${H} .orr-help-controls__rig { position:relative; min-width:0; min-height:0; }
+/* Remove decorative concentric ring / tick bands round the ship; keep the hull, subtle ground shadow,
+   callout leaders, socket marks, and live thruster/weapon FX. */
+${H} .orr-hrig__under > g:has(> .orr-hrig__band),
+${H} .orr-hrig__under > .orr-drift,
+${H} .orr-hrig__under > .orr-hrig__tick,
+${H} .orr-hrig__gate { display:none !important; }
+${H} .orr-hrig__floor { opacity:.55; }
 ${H} .orr-hreg { position:relative; display:flex; flex-direction:column; min-height:0; height:100%; }
 ${H} .orr-hreg__head { display:flex; flex-direction:column; gap:10px; padding:0 0 12px 0; }
 ${H} .orr-hreg__title { margin:0; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.25vw, 22px);

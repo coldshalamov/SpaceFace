@@ -81,6 +81,12 @@ ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-size {
   font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .82) !important; font-variant-numeric:tabular-nums !important; }
 ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-size::before { content:none !important; display:none !important; }
+${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-mod-note {
+  grid-column:1 / -1 !important; margin-top:1px !important;
+  font-family:var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif !important;
+  font-stretch:100% !important; font-variation-settings:normal !important; font-weight:400 !important;
+  font-size:12px !important; line-height:1.3 !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(${BONE} / .68) !important; }
 ${NG} .orr-ng-caption > div.orr-ng-loadout > .orr-ng-label,
 ${NG} .orr-ng-caption > div.orr-ng-loadout > .fh-legend {
   color:rgb(${BONE} / .86) !important; margin-bottom:8px !important; letter-spacing:.06em !important; }
@@ -90,20 +96,62 @@ ${NG} .orr-ng-caption > div.orr-ng-loadout > .fh-legend {
     grid-template-columns:13.2em 1.1em !important; font-size:12px !important; }
 }
 
+/* Ship stat sheet on New Game: hoverable rows, no orphan rest blurb, role heading matches Shipyard */
+${NG} .sf-ng-sheet { pointer-events:auto !important; margin-top:10px !important; }
+${NG} .sf-ng-sheet .sfs__word { text-transform:uppercase !important; letter-spacing:.08em !important;
+  font-size:13px !important; color:rgb(${WARM}) !important; }
+${NG} .sf-ng-sheet .sfs__meaning[hidden],
+${NG} .sf-ng-sheet .sfs__meaning:empty { display:none !important; min-height:0 !important; margin:0 !important; }
+${NG} .sf-ng-sheet .sfs__meaning { min-height:0 !important; margin:6px 0 0 !important; color:rgb(${BONE} / .86) !important; }
+${NG} .sf-ng-sheet .sfs__stat { cursor:default; transition:color 120ms linear; }
+${NG} .sf-ng-sheet .sfs__stat:hover .sfs__name,
+${NG} .sf-ng-sheet .sfs__stat.is-active .sfs__name { color:rgb(${WARM}) !important; }
+
 /* the hull's ratings are figures in a table: the body face with tabular numbers, not the code face
    (the deckplate ship sheet paints them in --dp-face-num, which is the mono) */
 ${NG} .sfs__num { font-family:var(--dp-face-read, "Instrument Sans"), system-ui, sans-serif !important; font-weight:600 !important;
   font-variant-numeric:tabular-nums lining-nums !important; }
 
+/* Remove decorative circular turntable rings around the ship; keep subtle grounded floor shadow
+   and crisp Deckplate hull selector framing. */
+${NG} .orr-yard > svg.orr-svg :is(.orr-band, .orr-edge, .orr-tick, .orr-lit-bloom, .orr-lit, .orr-yard__bead),
+${NG} .orr-yard__back :is(.orr-band, .orr-edge) { display:none !important; }
+${NG} .orr-yard__model.is-rear { opacity:0 !important; visibility:hidden !important; }
+
 /* yard hull names ride above every model, so a hero's engine glow never cuts a rear name */
 ${NG} .orr-yard--models > .orr-turntable__row { z-index:auto !important; }
-${NG} .orr-yard--models > .orr-turntable__row > li { z-index:120 !important; }
+${NG} .orr-yard--models > .orr-turntable__row > li { z-index:120 !important; display:flex !important; flex-direction:column !important; align-items:center !important; }
+${NG} .orr-yard--models > .orr-turntable__row > li > .k-word { justify-content:center !important; text-align:center !important; }
 ${NG} .orr-yard--models > .orr-turntable__row > li .k-word {
   text-shadow:0 0 2px rgb(4 6 9), 0 0 10px rgb(4 6 9 / .9), 0 1px 14px rgb(0 0 0 / .6) !important; }
+${NG} .orr-yard > .orr-turntable__row > li.is-front { position:absolute; padding-top:8px !important; }
+${NG} .orr-yard > .orr-turntable__row > li.is-front::before {
+  content:""; position:absolute; left:50%; top:0; width:36px; height:2px; margin-left:-18px;
+  background:var(--dp-hand, #f2b950); box-shadow:0 0 8px rgb(242 185 80 / .45); border-radius:1px; }
 
 /* yard rear hulls a touch clearer as choices */
-${NG} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { color:rgb(${BONE} / .78) !important; }
+${NG} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { color:rgb(${BONE} / .84) !important;
+  padding:4px 8px !important; border-bottom:1px solid rgb(${BONE} / .28) !important; }
+${NG} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word:is(:hover, :focus-visible) {
+  color:rgb(${WARM}) !important; border-bottom-color:var(--dp-hand, #f2b950) !important; }
 ${NG} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { color:rgb(${BONE} / .68) !important; }
+
+/* Form column: drop the empty spacer row so Pilot / Difficulty / First flight / Universe seed all sit
+   cleanly above Back / Launch without scroll-clipping Universe seed into a dead faded label. */
+${NGD} {
+  grid-template-rows:auto minmax(0, 1fr) auto auto !important;
+  grid-template-areas:"title stage" "hang stage" "foot stage" "note stage" !important;
+}
+${NGD} > .sf-ng-body { padding-bottom:4px !important; }
+${NGD} > .sf-ng-body[data-overflow="0"],
+${NGD} > .sf-ng-body[data-more-below="0"] {
+  -webkit-mask-image:none !important; mask-image:none !important; animation:none !important;
+}
+${NG} .orr-ng-seed-field .orr-ng-seed-row {
+  display:flex !important; flex-wrap:nowrap !important; align-items:baseline !important; gap:12px !important;
+}
+${NG} .orr-ng-seed-field .orr-ng-seed { flex:1 1 0 !important; width:auto !important; min-width:0 !important; }
+${NG} .orr-ng-seed-field .orr-ng-key--small { flex:0 0 auto !important; padding:4px 0 !important; white-space:nowrap !important; }
 
 /* foot: ‹ BACK + ESC keycap (matches settings / save-load / help / credits / archive / achievements / statistics).
    Launch stays the Lamp Key — do not restyle .sf-ng-launch here. */
@@ -149,11 +197,12 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
    above the 24px hit floor), the live tier's sentence to 6px under — which stands the helper and the seed
    clear of the 20px fade. */
 @media (min-width:801px) and (max-height:800px) {
-  ${NGD} .sf-ng-body .orr-ng-gap { height:4px !important; }
+  ${NGD} { padding-top:34px !important; padding-bottom:26px !important; row-gap:12px !important; }
+  ${NGD} .sf-ng-body .orr-ng-gap { height:6px !important; }
   ${NGD} .orr-ng-label { margin-bottom:2px !important; }
   ${NGD} .orr-stopscale--y > .orr-stopscale__row > li > .k-word { min-height:26px !important; height:26px !important;
     padding-top:0 !important; padding-bottom:0 !important; align-items:center !important; }
-  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { margin-bottom:6px !important; }
+  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { margin-bottom:4px !important; }
 }
 /* ≤700 tall (1366×650): the frame's 68px margins top and bottom close to 40/32 and the rows to 12px, so the
    column gains the ~70px First flight needs instead of leaving it under the fade */

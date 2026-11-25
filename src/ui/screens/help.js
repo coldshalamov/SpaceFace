@@ -21,7 +21,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
-import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
+import { formatBindingCode, MOUSE_ACTION_LABELS, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
 import { powersFireOnPress } from '../../systems/powerVerbs.js';
 import { staticVerbSentence } from '../../data/arsenalWords.js';
 import { resolveArsenalPresentation } from '../../data/arsenalPresentation.js';
@@ -98,6 +98,17 @@ function liveBoostLabel(state) {
   return codes.every((c) => String(c).startsWith('Shift'))
     ? 'Shift'
     : resolveActionLabel(state, 'boost');
+}
+
+function liveLineLabel(state) {
+  const mouse = MOUSE_ACTION_LABELS.tether || 'RMB';
+  const kb = resolveActionLabel(state, 'tether', { sep: ' / ' });
+  if (!kb || kb === mouse) return mouse;
+  return `${mouse} / ${kb}`;
+}
+
+function mouseSteersScheme(state) {
+  return !resolveActionCodes(state, 'yawLeft').length && !resolveActionCodes(state, 'yawRight').length;
 }
 
 // INF-059: the gamepad section printed stock button names as literals, so a pad remap
@@ -272,26 +283,34 @@ export function controlSections(state) {
     holdLine && `Hold + ${holdLine}: reel/pay out/orbit`,
     pump && `${pump} pump`,
   ].filter(Boolean).join('; ');
-  // G18-02: a flight verb with no key seat lives on the context wheel — the row names the
-  // wheel instead of an em-dash, and a live rebind still overrides it (resolveActionLabel wins).
+  // G18-02: a flight verb with no key seat that lives on the context wheel names the wheel
+  // instead of an em-dash; verbs that are NOT wheel slices never falsely claim the wheel.
   const wheelKey = resolveActionLabel(state, 'contextWheel', { sep: ' ' }) || 'Q';
+  const mouseSteers = mouseSteersScheme(state);
   const withWheelDef = (rows) => rows.map((r) => (r[1] && r.length === 2
     && !resolveActionLabel(state, r[1])
+    && WHEEL_SLICE_ACTIONS.has(r[1])
     ? [r[0], r[1], `hold ${wheelKey} — context wheel`]
     : r));
+  const steerRows = mouseSteers
+    ? [['Steer & aim (nose follows cursor)', null, 'Mouse']]
+    : [
+      ['Steer right (yaw + bank)', 'yawRight'],
+      ['Steer left (yaw + bank)', 'yawLeft'],
+    ];
   const sections = [
     ['Flight', withWheelDef([
       ['Throttle forward', 'forward'],
       ['Reverse thrust', 'reverse'],
       ['Brake / full stop', 'brake'],
-      ['Steer right (yaw + bank)', 'yawRight'],
-      ['Steer left (yaw + bank)', 'yawLeft'],
+      ...steerRows,
       ['Lateral thruster (left)', 'strafeLeft'],
       ['Lateral thruster (right)', 'strafeRight'],
       ['Boost (hold) / Dash (tap)', 'boost'],
       ['Fire weapons', 'fire'],
       // What is actually fitted, and what its fitted modifiers change (the compiled result, in plain words).
       ...arsenal.weapons.slice(0, 4).map((w) => [`${w.name} — ${[w.sentence, ...w.changes].join(' ')}`, 'fire']),
+      ['Mine beam (hold)', 'mine'],
       ['Draw-to-fly (optional toggle)', 'autoFire'],
       ['Countermeasure', 'countermeasure'],
       ['Line: hook, swing, throw', 'tether'],
@@ -315,11 +334,10 @@ export function controlSections(state) {
       [`Combination — ${arsenal.combo.text} ${arsenal.combo.note}`, null,
         arsenal.combo.steps.map((step, i) => (i === 2 ? 'release' : step.key)).join(' → ')],
       // The keyboard sheet is COMPLETE: every live rebindable flight verb gets a row, same as the
-      // pad sheet. These seven shipped bound (scanPulse KeyC is the scanner verb the first-hour
-      // seam beat orders: "Pulse the scanner.") but were listed only on the pad sheet — a keyboard
-      // pilot who opened Help at the scanner moment found no answer anywhere.
+      // pad sheet.
       ['Scanner pulse (reveals contacts and bright seams)', 'scanPulse'],
       ['World Site beam (selected target)', 'siteBeam'],
+      ['Skim scoop (in a planet harvest band)', 'scoop'],
       ['Cruise drive (charge/drop)', 'cruise'],
       ['Bullet time (hold)', 'bulletTime'],
       ['Cloak toggle', 'cloak'],
@@ -332,8 +350,6 @@ export function controlSections(state) {
     ])],
     ['Interface (fixed keys)', [
       ['Aim weapons freely', null, 'Backspace, then Mouse'],
-      ['Line: hook, swing, throw', null, 'RMB'],
-      ['Mine / salvage / weld', null, 'hold Q → MINE/SITE BEAM'],
       ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
       ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
       ['Cycle combat lock', null, 'Tab / Shift+Tab'],
@@ -378,10 +394,39 @@ export function controlSections(state) {
   // wheel slice with no key seat names the wheel; an unbound movement pair (yaw in helm assist,
   // strafe in pilot) drops out of the Move row instead of printing a wheel fallback.
   const firstKey = (action) => String(resolveActionLabel(state, action, { sep: '\n' }) || '').split('\n')[0];
-  const contextCard = contextHelpRows(state,
-    (action) => firstKey(action)
-      || (WHEEL_SLICE_ACTIONS.has(action) && !MOVE_CARD_ACTIONS.includes(action) ? `${wheelKey} wheel` : ''))
-    .map(([keys, verb]) => [verb, null, keys]);
+  const liveCardKey = (action) => firstKey(action)
+    || (WHEEL_SLICE_ACTIONS.has(action) && !MOVE_CARD_ACTIONS.includes(action) ? `${wheelKey} wheel` : '');
+  const rawContextRows = contextHelpRows(state, liveCardKey);
+  const contextCard = [];
+  for (const [keys, verb] of rawContextRows) {
+    if (verb === 'Aim' && mouseSteers) {
+      contextCard.push(['Steer & aim', null, keys]);
+      continue;
+    }
+    if (verb === 'Line: hook, swing, throw') {
+      contextCard.push([verb, null, liveLineLabel(state)]);
+      continue;
+    }
+    if (verb === 'Dock / interact') {
+      contextCard.push([verb, null, BINDINGS.dock.label]);
+      continue;
+    }
+    if (verb === 'Map') {
+      contextCard.push([verb, null, BINDINGS.localmap.label]);
+      continue;
+    }
+    contextCard.push([verb, null, keys]);
+    if (verb === 'Boost') {
+      if (context === 'flight' && contextActionAllowed(state, 'mine')) {
+        const mineKey = liveCardKey('mine');
+        if (mineKey) contextCard.push(['Mine beam', null, mineKey]);
+      }
+      if ((context === 'flight' || context === 'combat') && contextActionAllowed(state, 'scanPulse')) {
+        const scanKey = liveCardKey('scanPulse');
+        if (scanKey) contextCard.push(['Scan', null, scanKey]);
+      }
+    }
+  }
   // X5 final review: the long reference is checked by the same gates. A refused row says so
   // instead of teaching a key that does nothing where the player is.
   const annotated = sections.map(([heading, rows]) => [heading, rows.map((row) => {
@@ -392,6 +437,7 @@ export function controlSections(state) {
 }
 
 function keyLabel(state, action, def) {
+  if (action === 'tether') return liveLineLabel(state);
   if (action) return resolveActionLabel(state, action, { sep: ' / ' }) || def || '—';
   return def || '—';
 }
@@ -408,8 +454,8 @@ const GAMEPLAY_LOOPS = [
 ];
 
 // ------------------------------------------------------------------------------------------------
-// The Controls Rig: the verbs that live on the ship, the part each drives and its pad binding.
-// `pad`: a pad action (its live button) or a left-stick direction. Columns balance 7 / 6.
+// The Controls diagram: the verbs that live on the ship, the part each drives and its pad binding.
+// `pad`: a pad action (its live button) or a left-stick direction.
 const RIG_STATIONS = Object.freeze([
   { id: 'yawLeft', action: 'yawLeft', verb: 'Steer left', part: 'bowL', fx: 'steerL', partName: 'bow', side: 'left', stick: 'left' },
   { id: 'fire', action: 'fire', verb: 'Fire', part: 'hardpoint', fx: 'fire', partName: 'hardpoint', side: 'left', padAction: 'fire', mouse: 'Mouse0' },
@@ -420,7 +466,8 @@ const RIG_STATIONS = Object.freeze([
   { id: 'forward', action: 'forward', verb: 'Throttle', part: 'drive', fx: 'drive', partName: 'drive', side: 'left', stick: 'up', order: 0 },
   { id: 'brake', action: 'brake', verb: 'Brake', part: 'drive', fx: 'brake', partName: 'drive', side: 'left', padAction: 'brake', order: 1 },
   { id: 'yawRight', action: 'yawRight', verb: 'Steer right', part: 'bowR', fx: 'steerR', partName: 'bow', side: 'right', stick: 'right' },
-  { id: 'mine', action: null, verb: 'Mine beam', part: 'mining', fx: 'mine', partName: 'mining head', side: 'right', padAction: 'mine' },
+  { id: 'mine', action: 'mine', verb: 'Mine beam', part: 'mining', fx: 'mine', partName: 'mining head', side: 'right', padAction: 'mine' },
+  { id: 'scanPulse', action: 'scanPulse', verb: 'Scan', part: 'helm', fx: 'none', partName: 'scanner', side: 'right', padAction: 'scanPulse' },
   { id: 'reverse', action: 'reverse', verb: 'Reverse', part: 'bow', fx: 'retro', partName: 'bow', side: 'right', stick: 'down' },
   { id: 'strafeRight', action: 'strafeRight', verb: 'Lateral right', part: 'flankR', fx: 'flankR', partName: 'starboard thruster', side: 'right' },
   { id: 'countermeasure', action: 'countermeasure', verb: 'Countermeasure', part: 'belly', fx: 'belly', partName: 'belly', side: 'right', padAction: 'countermeasure' },
@@ -428,14 +475,23 @@ const RIG_STATIONS = Object.freeze([
 ]);
 const STICK_GLYPH = { up: '↑', down: '↓', left: '←', right: '→' };
 
-// The fixed interface keys by KeyboardEvent.code, so the echo can light their ladder rows.
+// The fixed interface and context-card keys by KeyboardEvent.code, so the echo lights their rows.
 function fixedRowCodes(state) {
   const code = (b) => (b && b.code ? [b.code] : []);
+  const moveCodes = MOVE_CARD_ACTIONS.flatMap((a) => resolveActionCodes(state, a));
   return new Map([
+    ['Move', moveCodes],
+    ['Fire', ['Mouse0', ...resolveActionCodes(state, 'fire')]],
+    ['Line: hook, swing, throw', ['Mouse2', ...resolveActionCodes(state, 'tether')]],
+    ['Pull · Shove · Pin · Bomb · Plow', ['pull', 'shove', 'pin', 'bomb', 'rig'].flatMap((a) => resolveActionCodes(state, a))],
+    ['Boost', resolveActionCodes(state, 'boost')],
+    ['Mine beam', resolveActionCodes(state, 'mine')],
+    ['Scan', resolveActionCodes(state, 'scanPulse')],
+    ['Wheel — hold · aim · release', resolveActionCodes(state, 'contextWheel')],
+    ['Target · clear', ['Tab', 'Backspace']],
+    ['Dock / interact', code(BINDINGS.dock)],
+    ['Map', code(BINDINGS.localmap)],
     ['Aim weapons freely', ['Backspace']],
-    // G18-02: RMB lights the Line row; the mine row lights on the live wheel key.
-    ['Line: hook, swing, throw', ['Mouse2']],
-    ['Mine / salvage / weld', resolveActionCodes(state, 'contextWheel')],
     ['Deep-core extraction', code(BINDINGS.drill)],
     ['Claim body / open base', code(BINDINGS.claimBase)],
     ['Cycle combat lock', ['Tab']],
@@ -481,28 +537,46 @@ function shortPad(label) {
   return String(label || '').replace(/^D-Pad /, 'D-pad ');
 }
 
-/** The rig's stations with their live bindings (keyboard from input.js, pad from the resolved map). */
+/** The diagram's stations with their live bindings (keyboard from input.js, pad from the resolved map). */
 export function rigStations(state) {
   const padMap = resolveGamepadBindings(state && state.settings);
   const wheelKey = resolveActionLabel(state, 'contextWheel', { sep: ' ' }) || 'Q';
-  return RIG_STATIONS.map((s) => {
-    let kb;
-    if (s.id === 'mine') kb = { main: `hold ${wheelKey}`, alt: 'wheel' };
-    else if (s.id === 'tether') {
-      // RMB is the permanent Line seat; a rebound key comes back as the main glyph.
-      const codes = resolveActionCodes(state, 'tether');
-      kb = codes.length ? { main: formatBindingCode(codes[0]), alt: 'RMB' } : { main: 'RMB' };
+  const mouseSteers = mouseSteersScheme(state);
+  const out = [];
+  for (const s of RIG_STATIONS) {
+    // In mouse-steered schemes (Helm Assist), merge the two yaw stations into one Steer & aim card
+    // instead of duplicating "Mouse · aim" on both sides of the hull.
+    if (mouseSteers && s.id === 'yawRight') continue;
+    if (mouseSteers && s.id === 'yawLeft') {
+      out.push({
+        id: 'steer',
+        action: null,
+        verb: 'Steer & aim',
+        part: 'bowL',
+        fx: 'steerL',
+        partName: 'bow',
+        side: 'left',
+        stick: 'left',
+        kb: { main: 'Mouse', alt: '' },
+        pad: { main: 'L-stick', alt: '←→' },
+      });
+      continue;
     }
-    else if (s.id === 'boost') {
+    let kb;
+    if (s.id === 'tether') {
+      // RMB is the permanent Line seat; a bound keyboard key sits beside it as RMB · F.
+      const mouse = MOUSE_ACTION_LABELS.tether || 'RMB';
+      const codes = resolveActionCodes(state, 'tether');
+      const key = codes.length ? formatBindingCode(codes[0]) : '';
+      kb = key && key !== mouse ? { main: mouse, alt: key } : { main: mouse };
+    } else if (s.id === 'boost') {
       const label = liveBoostLabel(state);
       kb = { main: label.length > 8 ? label.split('/')[0] : label };
     } else {
       const codes = resolveActionCodes(state, s.action);
       // A wheel slice with no key seat stays reachable — the card names the wheel. A core verb
       // the player unbound (forward, boost…) has no wheel seat and stays a dead "not bound".
-      // Steering with no key of its own is the mouse: the ship turns toward the aim. The card says
-      // so instead of printing a dead "not bound" on the first screen a stranger reads.
-      if (!codes.length && (s.action === 'yawLeft' || s.action === 'yawRight')) kb = { main: 'Mouse', alt: 'aim' };
+      if (!codes.length && (s.action === 'yawLeft' || s.action === 'yawRight')) kb = { main: 'Mouse', alt: '' };
       else if (!codes.length) kb = s.action === 'fire'
         ? { main: resolveActionLabel(state, 'fire') }
         : WHEEL_SLICE_ACTIONS.has(s.action)
@@ -520,12 +594,14 @@ export function rigStations(state) {
     if (s.padAction && !pad.main && WHEEL_SLICE_PAD_ACTIONS.has(s.padAction)) {
       pad = { main: `hold ${shortPad(gamepadButtonLabels('contextWheel', padMap)[0] || 'Y')}`, alt: 'wheel' };
     }
-    return { ...s, kb, pad };
-  });
+    out.push({ ...s, kb, pad });
+  }
+  return out;
 }
 
 /** code -> { stations, rows } for the echo; rows are the ladder rows' keys ("section:index"). */
-function echoIndex(state, sections) {
+function echoIndex(state, sections, stations) {
+  const liveStations = stations || rigStations(state);
   const byCode = new Map();
   const put = (code, kind, value) => {
     if (!code) return;
@@ -533,18 +609,21 @@ function echoIndex(state, sections) {
     const e = byCode.get(code);
     if (!e[kind].includes(value)) e[kind].push(value);
   };
-  for (const s of RIG_STATIONS) {
+  for (const s of liveStations) {
     if (s.mouse) put(s.mouse, 'stations', s.id);
-    if (s.action && s.id !== 'mine') for (const c of resolveActionCodes(state, s.action)) put(c, 'stations', s.id);
+    if (s.action) for (const c of resolveActionCodes(state, s.action)) put(c, 'stations', s.id);
   }
   const fixed = fixedRowCodes(state);
+  const padSecIndex = sections.findIndex(([heading]) => String(heading).startsWith('Gamepad'));
+  const touchSecIndex = sections.findIndex(([heading]) => String(heading).startsWith('Touch'));
   sections.forEach(([heading, rows], si) => {
-    if (si > 1) return;
+    if (si === padSecIndex || si === touchSecIndex) return;
     rows.forEach(([label, action], ri) => {
       const key = `${si}:${ri}`;
       if (action) {
         for (const c of resolveActionCodes(state, action)) put(c, 'rows', key);
         if (action === 'fire') put('Mouse0', 'rows', key);
+        if (action === 'tether') put('Mouse2', 'rows', key);
       } else for (const c of fixed.get(label) || []) put(c, 'rows', key);
     });
   });
@@ -557,13 +636,14 @@ function echoIndex(state, sections) {
     const e = byPad.get(name);
     if (!e[kind].includes(value)) e[kind].push(value);
   };
-  for (const s of RIG_STATIONS) {
-    if (s.stick) putPad(`axis:${s.stick}`, 'stations', s.id);
+  for (const s of liveStations) {
+    if (s.id === 'steer') { putPad('axis:left', 'stations', s.id); putPad('axis:right', 'stations', s.id); }
+    else if (s.stick) putPad(`axis:${s.stick}`, 'stations', s.id);
     else if (s.padAction) for (const n of padMap[s.padAction] || []) putPad(n, 'stations', s.id);
   }
-  const padRows = sections[2] ? sections[2][1] : [];
+  const padRows = padSecIndex >= 0 && sections[padSecIndex] ? sections[padSecIndex][1] : [];
   padRows.forEach(([label], ri) => {
-    const key = `2:${ri}`;
+    const key = `${padSecIndex}:${ri}`;
     const axes = PAD_STATIC_AXES.get(label);
     if (axes) { for (const a of axes) putPad(`axis:${a}`, 'rows', key); return; }
     const action = PAD_ROW_ACTION.get(label);
@@ -848,13 +928,13 @@ export const helpScreen = {
     const wrap = el('div', 'orr-help-controls');
     const rigHost = el('div', 'orr-help-controls__rig');
     rigHost.setAttribute('role', 'group');
-    rigHost.setAttribute('aria-label', 'Controls rig: press any key, mouse or pad button to see what it drives');
+    rigHost.setAttribute('aria-label', 'Ship controls diagram: press any key, mouse button or pad button to highlight what it controls');
     const reg = el('div', 'orr-hreg');
-    // S5: in a live Swarm run the rig and its Adventure stations stay off the card.
+    // S5: in a live Swarm run the diagram and its Adventure stations stay off the card.
     if (swarmHelp) wrap.append(reg); else wrap.append(rigHost, reg);
     this._body.appendChild(wrap);
 
-    // the ladder of every key, beside the rig
+    // the ladder of every key, beside the diagram
     const head = el('div', 'orr-hreg__head');
     head.appendChild(el('p', 'orr-hreg__title', 'Every key'));
     const secNav = el('div', 'orr-hreg__secs');
@@ -864,7 +944,6 @@ export const helpScreen = {
     const list = el('ul', 'orr-hreg__list');
     const rowEls = new Map();
     const secEls = [];
-    const SEC_WORDS = ['Flight', 'Interface', 'Pad', 'Touch'];
     sections.forEach(([heading, rows], si) => {
       const sec = el('li', 'orr-hreg__sec', heading);
       sec.dataset.sec = String(si);
@@ -885,18 +964,28 @@ export const helpScreen = {
       });
     });
     scroll.appendChild(list);
-    const secBtns = SEC_WORDS.map((w, si) => {
+    // Map each jump button to its real section heading (sections[0] is the live context card,
+    // followed by Flight, Interface, Gamepad, Touch — never assume 0..3).
+    const findSec = (prefix) => sections.findIndex(([h]) => String(h).startsWith(prefix));
+    const padSecIndex = findSec('Gamepad');
+    const navEntries = [
+      ['Flight', 0],
+      ['Interface', findSec('Interface')],
+      ['Pad', padSecIndex],
+      ['Touch', findSec('Touch')],
+    ].filter(([, idx]) => idx >= 0 && secEls[idx]);
+    const secBtns = navEntries.map(([w, targetIdx]) => {
       const b = el('button', 'orr-hreg__secword', w);
       b.type = 'button';
       b.dataset.action = 'help-section:' + w.toLowerCase();
       b.addEventListener('click', () => {
-        const target = secEls[si];
+        const target = secEls[targetIdx];
         if (target) scroll.scrollTo({ top: target.offsetTop - 4, behavior: reducedMotion() ? 'auto' : 'smooth' });
       });
       secNav.appendChild(b);
-      return b;
+      return { btn: b, targetIdx };
     });
-    head.appendChild(secNav);
+    if (navEntries.length > 1) head.appendChild(secNav);
     // with a pad, the drawn pad stands at the head of the ladder and lights the button pressed
     const padHost = el('div', 'orr-hreg__pad');
     padHost.setAttribute('aria-hidden', 'true');
@@ -906,16 +995,19 @@ export const helpScreen = {
     const spy = () => {
       const top = scroll.scrollTop + 8;
       let cur = 0;
-      secEls.forEach((s, i) => { if (s.offsetTop <= top) cur = i; });
-      secBtns.forEach((b, i) => b.setAttribute('aria-current', String(i === cur)));
+      secBtns.forEach(({ targetIdx }, i) => {
+        const target = secEls[targetIdx];
+        if (target && target.offsetTop <= top) cur = i;
+      });
+      secBtns.forEach(({ btn }, i) => btn.setAttribute('aria-current', String(i === cur)));
     };
     scroll.addEventListener('scroll', spy, { passive: true });
     spy();
     syncScrollExtent(scroll);
 
-    // the rig
+    // the diagram
     const stations = rigStations(state);
-    const index = echoIndex(state, sections);
+    const index = echoIndex(state, sections, stations);
     const stationById = new Map(stations.map((s) => [s.id, s]));
     let lastPad = [];
     const rig = createControlsRig(rigHost, {
@@ -927,20 +1019,46 @@ export const helpScreen = {
         rig.echo(glyph || '—', `${s.verb} → ${s.partName}`);
         lightRows(rowsForStation(s), false);
       },
-      onDevice: (dev) => { if (dev === 'pad') scrollToSec(2); },
+      onDevice: (dev) => { if (dev === 'pad' && padSecIndex >= 0) scrollToSec(padSecIndex); },
       padHost,
     });
     rig.set({ hullId: playerHullId(state), stations });
 
+    // Plain-words prompt below the ship diagram (replaces the banned "the rig lights what it drives").
+    const echoEl = rigHost.querySelector && rigHost.querySelector('.orr-hrig__echo');
+    const sanitizeEchoPrompt = () => {
+      if (!echoEl || echoEl.classList.contains('is-live')) return;
+      const expected = rig.device() === 'pad'
+        ? 'Press any pad button to highlight'
+        : 'Press any key or click to highlight';
+      if (echoEl.textContent !== expected) echoEl.textContent = expected;
+    };
+    sanitizeEchoPrompt();
+    let echoMo = null;
+    if (echoEl && typeof MutationObserver === 'function') {
+      echoMo = new MutationObserver(sanitizeEchoPrompt);
+      echoMo.observe(echoEl, { childList: true, characterData: true, subtree: true });
+    }
+
     const rowsForStation = (s) => {
       const out = [];
-      sections.forEach(([, rows], si) => {
-        if (si > 1 && !(si === 2 && rig.device() === 'pad')) return;
-        rows.forEach(([, action], ri) => { if (action && action === s.action) out.push(`${si}:${ri}`); });
+      const cardMatchByStation = {
+        fire: 'Fire',
+        tether: 'Line: hook, swing, throw',
+        boost: 'Boost',
+        mine: 'Mine beam',
+        scanPulse: 'Scan',
+        steer: 'Steer & aim',
+      };
+      sections.forEach(([heading, rows], si) => {
+        if (String(heading).startsWith('Touch')) return;
+        if (si === padSecIndex && rig.device() !== 'pad') return;
+        rows.forEach(([label, action], ri) => {
+          if (action && action === s.action) out.push(`${si}:${ri}`);
+          else if (!action && cardMatchByStation[s.id] && label === cardMatchByStation[s.id]) out.push(`${si}:${ri}`);
+          else if (si === padSecIndex && s.padAction && PAD_ROW_ACTION.get(label) === s.padAction) out.push(`${si}:${ri}`);
+        });
       });
-      // Interface rows that no action resolves to: the Line is RMB (row 1), the beam is the wheel (row 2).
-      if (s.id === 'tether') out.push('1:1');
-      if (s.id === 'mine') out.push('1:2');
       return out;
     };
     const scrollToSec = (si) => {
@@ -983,7 +1101,7 @@ export const helpScreen = {
         let glyph = '';
         let src = '';
         if (ev.device === 'pad') {
-          if (rig.device() !== 'pad' && ev.down) { rig.setDevice('pad'); scrollToSec(2); }
+          if (rig.device() !== 'pad' && ev.down) { rig.setDevice('pad'); if (padSecIndex >= 0) scrollToSec(padSecIndex); }
           if (ev.button) {
             src = 'pad:' + ev.button;
             entry = index.byPad.get(ev.button);
@@ -1031,6 +1149,7 @@ export const helpScreen = {
     this._rig = rig;
     return {
       dispose: () => {
+        if (echoMo) { echoMo.disconnect(); echoMo = null; }
         echo.dispose();
         rig.dispose();
         for (const t of rowTimers.values()) clearTimeout(t);
