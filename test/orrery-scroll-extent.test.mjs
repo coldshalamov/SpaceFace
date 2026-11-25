@@ -90,3 +90,27 @@ test('same-frame syncs share one post-layout paint per scroller and keep immedia
   assert.equal(cue(element).thumbHeight, '0px');
   assert.equal(callbacks.length, 0, 'scroll and resize paint without scheduling a second pass');
 });
+
+test('mobile cue stays right unless it would occupy the primary footer control', (t) => {
+  const globals = {
+    getComputedStyle: (element) => ({ position: element.style.position || 'static' }),
+    requestAnimationFrame: undefined,
+    ResizeObserver: undefined,
+    innerWidth: 390,
+    innerHeight: 844,
+  };
+  for (const [key, value] of Object.entries(globals)) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+    t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
+  }
+  const { element, layout } = mountScroller(fakeDom());
+  layout.rect = { top: 100, bottom: 340, left: 12, right: 378 };
+  syncScrollExtent(element);
+  assert.equal(cue(element).left, '286px');
+  assert.equal(cue(element).top, '318px');
+  layout.rect = { top: 510, bottom: 820, left: 12, right: 378 };
+  syncScrollExtent(element);
+  assert.equal(cue(element).left, '26px');
+  assert.equal(cue(element).top, '746px');
+});

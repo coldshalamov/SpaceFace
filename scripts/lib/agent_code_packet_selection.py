@@ -60,7 +60,7 @@ DENIED_PREFIXES = (
 SELECTION_POLICY = (
     'all tracked blobs <= 8 MiB except heavyweight/binary media extensions, '
     'generated run-artifact/evidence lanes, archive/probe/review bulk prefixes, '
-    'and generated localization catalogs'
+    'generated localization catalogs, and generated release render-package JSONs'
 )
 
 
@@ -82,6 +82,13 @@ def classify(path: str, size: int) -> str | None:
         return 'generated-run-artifact'
     if is_generated_localization_catalog(path):
         return 'generated-localization-catalog'
+    # Release render packages are derived asset data, not the engineering surface.
+    # Keep source manifests, pilot inputs and other asset metadata eligible. The
+    # omitted release JSONs remain in Git at the exact packet commit for on-demand
+    # inspection, and their paths/reasons are recorded in the omission manifest.
+    if (path.startswith('assets/ships/release/render-packages/')
+            and pathlib.PurePosixPath(path).name == 'render-package.json'):
+        return 'generated-release-render-package'
     return None
 
 
