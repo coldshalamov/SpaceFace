@@ -80,7 +80,9 @@ test('native subsequent wreck collision reaches the chain tape and comms', async
     const first=ship(0,75,1), second=ship(220,0,1);
     h.step(1); h.assertBodies([first,second]);
     const fighter=h.runtime.getSystem('combat');
-    h.withFeatures(()=>fighter.kill(first,h.state.playerId,{origin:{kind:'weapon',id:'wpn_autocannon_s'},packet:{source:{kind:'weapon',weaponId:'wpn_autocannon_s'}}}));
+    // Kill inside the step: the deferred kill-wreck mint drains in the same step's lifetimeSweep,
+    // so the body rides this step's collision pass exactly as the old synchronous mint did.
+    h.step(1,{before(){h.withFeatures(()=>fighter.kill(first,h.state.playerId,{origin:{kind:'weapon',id:'wpn_autocannon_s'},packet:{source:{kind:'weapon',weaponId:'wpn_autocannon_s'}}}));}});
     const wreck=[...h.state.entities.values()].find(e=>e.type==='wreck'&&e.data?.markerId&&e.data?.aftermath?.victimId===first.id)
       || [...h.state.entities.values()].find(e=>e.type==='wreck'&&e.data?.markerId);
     assert.ok(wreck,'canonical aftermath spawned the live wreck');

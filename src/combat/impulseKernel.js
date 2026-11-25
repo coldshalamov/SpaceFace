@@ -601,7 +601,16 @@ export function resolveCollisionConsequence(input = {}) {
     // CH-02 (CRAFT_RAM_LAW): the damage reads the victim's mass-ratio share of the pre-solve
     // closing speed whenever the solver bound truncated it. Control, the receipt's `deltaV`
     // and every reader of them keep the solver's number.
-    if (surface === 'craft' && surfaceDamageMultiplier > 0) {
+    // The debris surface reads the same law: a wreck, a freight pod or a fracture shard is dead
+    // craft matter, and the owner's game is throwing exactly that matter into hulls ("wreckage
+    // you can throw", 03 §6.1 — a chain kill is a wreck carrying the player's cause into the
+    // next hull). Restricting the share to live craft left the debris class reading the solver's
+    // rate-limited exchange alone, so a wreck meeting a hull at 70+ WU/s crumpled itself (the
+    // hull side is craft) while the hull took literally nothing — the thrown-ammunition verb
+    // pq-154 pins was unobservable on the native path. Mass ratio and the minShare floor keep
+    // gentle freight contact soft: a light pod's share of a bump never clears the crumple floor,
+    // and the uncaused/energised net still caps everything else.
+    if ((surface === 'craft' || surface === 'debris') && surfaceDamageMultiplier > 0) {
       const share = craftRamDeltaV(
         input.preSolveClosingSpeed,
         mass,
