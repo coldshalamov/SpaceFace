@@ -86,7 +86,7 @@ import { flightV3 } from '../src/systems/flightV3.js';
 import { weapons } from '../src/systems/weapons.js';
 import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
-import { cargo } from '../src/systems/cargo.js';
+import { cargo, addCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
 import { missions } from '../src/systems/missions.js';
 import { story } from '../src/systems/story.js';
@@ -334,8 +334,10 @@ test('dock/trade save-load soak: serialized payload is flat in the tail window',
     // one chronicler story per sell, so the 96-story cap passes by cycle 16 and the cycles
     // 26-36 window measures only unbounded channels (at 3 sells/cycle the cap passes at
     // cycle 32, inside the window — measured on this harness's first red run).
-    const items = state.player.cargo.items;
-    items['cmdty_ore_iron'] = (Number(items['cmdty_ore_iron']) || 0) + 60;
+    // 7592bb895f: slots own the hold and `items` is a derived mirror — seed through the writer
+    // so the sell path sees the units (a direct items write resyncs away as phantom stock).
+    const accepted = addCargo(state, 'cmdty_ore_iron', 60);
+    assert.ok(accepted > 0, `cycle ${c}: the hold must take the seeded ore, got ${accepted}`);
     let sells = 0;
     for (let s = 0; s < 6; s++) {
       const res = econ.execute(STATION, 'cmdty_ore_iron', 'sell', 10);
