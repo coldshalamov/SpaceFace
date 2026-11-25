@@ -68,8 +68,7 @@ const THROAT_FRAG = /* glsl */`
     // Bell-interior wall: an annulus at the lip that only truly lights once the drive is live,
     // broken into gas spokes scrubbing the wall. Two incommensurate spoke frequencies so it
     // never reads as a machined spline. At idle the wall stays dark metal (ring ~0.10).
-    float ringDist = (r - 0.66) * 4.2;
-    float ring = exp(-(ringDist * ringDist))
+    float ring = exp(-pow(abs(r - 0.66) * 4.2, 2.0))
       * (0.10 + uDrive * 0.30 + uBoost * 0.14)
       * (0.62 + 0.38 * (0.5 + 0.5 * sin(ang * 9.0 + uTime * 0.9))
         * (0.55 + 0.45 * (0.5 + 0.5 * sin(ang * 5.0 - uTime * 0.53))));
@@ -202,14 +201,13 @@ export class PlasmaStreamSystem {
     this._clump = this.recipe.ribbon && this.recipe.ribbon.clump != null
       ? this.recipe.ribbon.clump : 0;
 
-    // Allocate primary slot up front; additional nozzle trails/forges/throats are added lazily
-    // only when multi-nozzle ships actually request them.
-    this._trails.push(new ContrailTrail(this.THREE, {}));
-    this._trailNozzles.push({ x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 });
-    this._forges.push(new DriveForge(this.THREE, {}));
+    for (let i = 0; i < 4; i++) {
+      this._trails.push(new ContrailTrail(this.THREE, {}));
+      this._trailNozzles.push({ x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 });
+      this._forges.push(new DriveForge(this.THREE, {}));
+    }
     this._contrail = this._trails[0];
     this._forge = this._forges[0];
-    this._throatColor = (this.recipe.throat || {}).color || [0.5, 0.9, 1];
     this._env = createDriveEnvelope();
     // The visible gas of the live jet (head/tail), nozzle-local. See ribbon/plumeSlug.js: the
     // jet is a slug that is emitted at the throat and detaches on release, not a mesh scaled
@@ -273,39 +271,6 @@ export class PlasmaStreamSystem {
     return n;
   }
 
-  _ensureNozzleSlots(trailCount, throatCount) {
-    const T = this.THREE;
-    const targetTrails = Math.max(1, Math.min(4, trailCount | 0));
-    const targetThroats = Math.max(1, Math.min(4, throatCount | 0));
-    while (this._trails.length < targetTrails) {
-      const trail = new ContrailTrail(T, {});
-      const forge = new DriveForge(T, {});
-      if (this._camObj) {
-        trail.setCamera(this._camObj);
-        forge.setCamera(this._camObj);
-      } else {
-        trail.material.uniforms.uCamPos.value.set(this._cam.x, this._cam.y, this._cam.z);
-        forge.material.uniforms.uCamPos.value.set(this._cam.x, this._cam.y, this._cam.z);
-      }
-      if (this.group) {
-        trail.attach(this.group);
-        forge.attach(this.group);
-      }
-      this._trails.push(trail);
-      this._trailNozzles.push({ x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 });
-      this._forges.push(forge);
-    }
-    if (this.group) {
-      while (this._throats.length < targetThroats) {
-        const ti = this._throats.length;
-        const throat = createThroatMesh(T, this._throatColor);
-        throat.name = `sf-plasma-throat-${ti}`;
-        this.group.add(throat);
-        this._throats.push(throat);
-      }
-    }
-  }
-
   attach(scene) {
     if (this._disposed || !scene || this.group) return this.group;
     const T = this.THREE;
@@ -325,8 +290,13 @@ export class PlasmaStreamSystem {
     // Nozzle throat glows next so group traversals that take the last strip mesh (unit tests,
     // look-dev gates) keep measuring the wake strips, not these quads.
     const throatCfg = this.recipe.throat || {};
-    this._throatColor = throatCfg.color || [0.5, 0.9, 1];
-    this._ensureNozzleSlots(this._trails.length, 1);
+    const throatColor = throatCfg.color || [0.5, 0.9, 1];
+    for (let ti = 0; ti < 4; ti++) {
+      const throat = createThroatMesh(T, throatColor);
+      throat.name = `sf-plasma-throat-${ti}`;
+      this.group.add(throat);
+      this._throats.push(throat);
+    }
 
     scene.add(this.group);
     return this.group;
@@ -667,24 +637,19 @@ export class PlasmaStreamSystem {
 
     // Leftover thruster light, one ghost per live bell, on the flown line only. Never advects along
     // the exhaust, so it cannot put a vertex anywhere that bell has not been.
-    const nTrail = nSock;
-    this._ensureNozzleSlots(nTrail, nSock);
+    const nTrail = list ? Math.min(list.length, this._trails.length) : 1;
     let trailLive = 0;
     for (let ti = 0; ti < this._trails.length; ti++) {
       const trail = this._trails[ti];
       const forge = this._forges[ti];
       if (ti >= nTrail) {
-        if (trail.liveSampleCount() > 0 || trail.mesh.visible) {
-          trail.update(frameDt, null, this._ribbonShape);
-          const live = trail.liveSampleCount();
-          if (live > trailLive) trailLive = live;
-        }
-        if (forge.mesh.visible) forge.update(null, null, this._ribbonShape, 1);
+        trail.update(frameDt, null, this._ribbonShape);
+        forge.update(null, null, this._ribbonShape, 1);
         continue;
       }
       const sock = list ? list[ti] : this._fallbackNozzle;
-      const sx = Number.isFinite(sock.ax) ? sock.ax : 1;
-      const sz = Number.isFinite(sock.az) ? sock.az : 0;
+      let sx = Number.isFinite(sock.ax) ? sock.ax : 1;
+      let sz = Number.isFinite(sock.az) ? sock.az : 0;
       const sl = Math.hypot(sx, sz) || 1;
       const nz = this._trailNozzles[ti];
       nz.x = sock.x || 0;
@@ -692,8 +657,7 @@ export class PlasmaStreamSystem {
       nz.z = sock.z || 0;
       nz.aftX = -sx / sl;
       nz.aftZ = -sz / sl;
-      if (this._camObj) trail.setCamera(this._camObj);
-      else trail.material.uniforms.uCamPos.value.set(this._cam.x, this._cam.y, this._cam.z);
+      trail.setCamera(this._camObj);
       trail.update(frameDt, nz, this._ribbonShape);
       const live = trail.liveSampleCount();
       if (live > trailLive) trailLive = live;
@@ -702,8 +666,7 @@ export class PlasmaStreamSystem {
       // the bell and the band leaving it are one event rather than two effects near each other.
       // The forge takes its aim from the nozzle axis; the legacy `aft` fallback is never needed
       // here, so no dead aim vector is maintained.
-      if (this._camObj) forge.setCamera(this._camObj);
-      else forge.material.uniforms.uCamPos.value.set(this._cam.x, this._cam.y, this._cam.z);
+      forge.setCamera(this._camObj);
       forge.update(nz, null, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
     }
     this._active = emitting || trailLive >= 2 || slug.live || throatLive;
