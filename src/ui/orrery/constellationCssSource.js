@@ -599,6 +599,17 @@ html body #screens#screens > .k-screen.con-research :is(h1, .k-t-title) {
   font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
   font-variation-settings:normal !important; font-weight:800 !important; letter-spacing:-.02em !important;
   font-size:40px !important; line-height:1.1 !important; color:#ffffff !important; }
+/* The Pilot Tree reading states effect, cost and prerequisite. That column scrolls so the
+   facts stay reachable beside the dial instead of running under the foot. On a phone the
+   page itself scrolls, and the title yields so the first line is not cut. */
+html body #screens#screens > #sf-pilottree.con-research > .con-side {
+  overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+@media (max-width:760px) {
+  html body #screens#screens > #sf-pilottree.con-research > .con-side { overflow:visible; }
+  html body #screens#screens > #sf-pilottree.con-research > .k-title .con-title {
+    font-size:clamp(28px, 8vw, 36px) !important; }
+  html body #screens#screens > #sf-pilottree.con-research > .k-title .con-sub { max-width:none; }
+}
 `;
 
 export const CONSTELLATION_CSS = RESEARCH + ACHIEVEMENTS;

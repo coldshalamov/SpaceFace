@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { readPilotTree, pilotNodeReading } from '../src/ui/screens/pilotTree.js';
+import { pilotTreeIntro, readPilotTree, pilotNodeReading } from '../src/ui/screens/pilotTree.js';
 
 const adventure = (nodes, banked, points) => ({
   run: { kind: 'adventure', phase: 'inactive' },
@@ -28,9 +28,17 @@ test('the reading: one line, what it needs, and Take it only when a point can bu
   assert.equal(drum.action.enabled, true);
   assert.equal(drum.action.label, 'Take it');
   assert.equal(drum.kicker, 'Guns · tier II');
+  assert.equal(drum.stateLabel, 'Available');
+  assert.equal(drum.cost, '1 point');
+  assert.equal(drum.prerequisite, 'Opened with 2 points in Guns');
+  assert.equal(drum.doorLine, 'Your pilot. It stays');
   const ricochet = pilotNodeReading(view, 'gunner_ricochet');
   assert.equal(ricochet.action.enabled, false);
-  assert.equal(ricochet.action.label, 'Needs 2 more points in Guns');
+  assert.equal(ricochet.action.label, 'Locked');
+  assert.equal(ricochet.stateLabel, 'Locked');
+  assert.equal(ricochet.prerequisite, 'Needs 2 more points in Guns');
+  assert.equal(ricochet.cost, '1 point');
+  assert.match(ricochet.effect, /bounce/);
   const broke = readPilotTree(adventure(['gunner_steady_hands'], 0, { gunner: 1 }));
   assert.equal(pilotNodeReading(broke, 'gunner_drum').action.label, 'Earn a level to take it');
   assert.equal(pilotNodeReading(view, 'gunner_steady_hands').action.label, 'Yours');
@@ -48,4 +56,55 @@ test('Swarm: the run\'s own record, read-only, and Run Over says what the run di
   assert.equal(pilotNodeReading(view, 'bruiser_billiards').action.label, 'Pick it from the level-up cards');
   state.run.phase = 'ended';
   assert.equal(pilotNodeReading(readPilotTree(state), 'bruiser_billiards').action.label, 'Not taken this run');
+  assert.match(pilotTreeIntro(view), /Swarm run/);
+  assert.doesNotMatch(pilotTreeIntro(view), /Adventure/);
+  assert.equal(pilotNodeReading(view, 'bruiser_heavy_slugs').stateLabel, 'Yours');
+  assert.equal(pilotNodeReading(view, 'bruiser_billiards').stateLabel, 'Not taken');
+  assert.equal(pilotNodeReading(view, 'bruiser_heavy_slugs').doorLine, 'This run only. Cards spend the points');
+});
+
+test('a fresh Adventure pilot is an honest start: no fake progress and no empty not-yet rows', () => {
+  const view = readPilotTree({ run: { kind: 'adventure', phase: 'inactive' }, player: {} });
+  const intro = pilotTreeIntro(view);
+  assert.match(intro, /Adventure/);
+  assert.match(intro, /No skills yet/);
+  assert.match(intro, /100 XP/);
+  assert.doesNotMatch(intro, /not yet/i);
+  assert.doesNotMatch(intro, /\b0 XP/);
+  assert.equal(view.taken, 0);
+  assert.equal(view.banked, 0);
+  assert.equal(view.level, 1);
+  const first = pilotNodeReading(view, view.nodes[0].id);
+  assert.equal(first.stateLabel, 'Available');
+  assert.equal(first.cost, '1 point');
+  assert.equal(first.prerequisite, 'No earlier skill');
+  assert.equal(first.doorLine, 'Your pilot. It stays');
+  assert.ok(first.effect.length > 8);
+});
+
+test('every visible node states a real effect, cost, prerequisite and state, with no internal ids', () => {
+  const doors = [
+    readPilotTree(adventure([], 0, {})),
+    readPilotTree({
+      run: { kind: 'survival', phase: 'active', level: 1, xp: 0, pilot: { points: {}, nodes: [], banked: 0, offer: null } },
+      player: { pilot: { nodes: ['gunner_drum'], points: { gunner: 1 }, banked: 3, level: 4, xp: 400 } },
+    }),
+  ];
+  const swarmFresh = doors[1];
+  assert.match(pilotTreeIntro(swarmFresh), /No skills yet/);
+  assert.match(pilotTreeIntro(swarmFresh), /level-up cards/);
+  assert.doesNotMatch(pilotTreeIntro(swarmFresh), /Adventure/);
+  assert.notEqual(pilotNodeReading(swarmFresh, 'gunner_drum').stateLabel, 'Yours');
+  for (const view of doors) {
+    for (const node of view.nodes) {
+      const reading = pilotNodeReading(view, node.id);
+      assert.ok(reading.effect && reading.effect.length > 8, node.id);
+      assert.match(reading.cost, /point/, node.id);
+      assert.ok(reading.prerequisite && reading.prerequisite.length > 3, node.id);
+      assert.ok(['Yours', 'Available', 'Locked', 'Not taken'].includes(reading.stateLabel), node.id);
+      const blob = [reading.name, reading.kicker, reading.effect, reading.cost, reading.prerequisite, reading.stateLabel, reading.doorLine, reading.action.label, reading.build || ''].join(' ');
+      assert.doesNotMatch(blob, /not yet/i, node.id);
+      assert.doesNotMatch(blob, /\b[a-z]+_[a-z0-9_]+\b/, node.id);
+    }
+  }
 });

@@ -58,6 +58,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // A career some hours in: six nodes researched and research points banked (tools/ui-bench.js).
   // The Pilot Tree (T): Adventure some hours in with points to spend; Swarm mid-run and on Run Over.
   { id: 'pilot-tree', screen: 'pilotTree', backdrop: 'title', pilotTree: 'adventure' },
+  { id: 'pilot-tree-fresh', screen: 'pilotTree', backdrop: 'title', pilotTree: 'fresh' },
   { id: 'pilot-tree-swarm', screen: 'pilotTree', backdrop: 'title', pilotTree: 'swarm' },
   { id: 'pilot-tree-run-over', screen: 'pilotTree', backdrop: 'title', pilotTree: 'run-over' },
   { id: 'tech-tree-progress', screen: 'techTree', backdrop: 'title', research: ['tech_combat_basics', 'tech_strike_craft', 'tech_fire_control', 'tech_deflector_theory', 'tech_industrial_mining', 'tech_drive_tuning'] },

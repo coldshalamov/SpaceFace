@@ -2,8 +2,9 @@
 // design/overhaul/06_PROGRESSION_AND_ECONOMY.md §2.4). The Research Constellation's instrument,
 // showing the Pilot Tree: one sector per branch, rings as tiers with the capstone at the rim, and
 // each evolution standing at the rim of its first branch with a beam bridging to the second. The
-// chosen node's reading says in one line what changes in your hands and what it needs; the one
-// primary action takes it.
+// chosen node's reading states the effect, the cost, the prerequisite and whether it is yours,
+// available or locked. The one primary action takes it. A Swarm run only lights what that run
+// took; Adventure is where a point is spent, and what you take stays.
 //
 // Doors: in Adventure the screen is where points are spent (T opens it; emits
 // pilot:nodeRequested { nodeId } and, docked, pilot:respecRequested). In Swarm it is read-only —
@@ -28,6 +29,7 @@ import {
   PILOT_NODES,
   activePilotRecord,
   getPilotBranch,
+  getPilotCard,
   pilotNodeStanding,
 } from '../../data/pilotTree.js';
 import { adventureRespecFee, adventureXpForLevel } from '../../data/pilotAdventure.js';
@@ -112,19 +114,106 @@ export function readPilotTree(state) {
     level,
     xp: Number.isFinite(pilot.xp) ? pilot.xp : (swarmRun ? run.xp : 0),
     nextXp: door === 'adventure' ? adventureXpForLevel(level + 1) : null,
-    taken: Array.isArray(pilot.nodes) ? pilot.nodes.length : 0,
+    taken: nodes.filter((n) => Array.isArray(pilot.nodes) && pilot.nodes.includes(n.id)).length,
     branches: branches.filter((b) => shownBranches.has(b.id)).map((b) => ({ id: b.id, label: b.name })),
     nodes,
     standing,
   };
 }
 
-/** The reading's sentence for a node: what it does, what it needs, and the one verb. */
+/** What the sky and the reading call this node. A Swarm run only lights skills that run took. */
+export function pilotShownState(view, id) {
+  const st = (view && view.standing && view.standing[id] && view.standing[id].state) || 'locked';
+  if (view && view.door === 'swarm' && st !== 'taken') return 'locked';
+  return st;
+}
+
+function plainNeeds(needs) {
+  const text = String(needs || '').trim();
+  if (!text) return '';
+  return text.replace(/\b[a-z]+(?:_[a-z0-9]+)+\b/g, (token) => {
+    const card = getPilotCard(token);
+    if (card && card.name) return card.name;
+    const branch = getPilotBranch(token);
+    if (branch && branch.name) return branch.name;
+    return 'an earlier skill';
+  });
+}
+
+/** The one prerequisite a player can check. A met gate is said in the past; an unmet one says what is missing. */
+function prerequisiteOf(card, standing) {
+  if (card.kind === 'evolution') {
+    const names = (card.requires || []).map((branchId) => (getPilotBranch(branchId) || {}).name).filter(Boolean);
+    const line = standing.needs
+      ? plainNeeds(standing.needs)
+      : (names.length >= 2 ? `Four points in ${names[0]} and in ${names[1]}` : 'Four points in each of two branches');
+    return standing.state === 'locked' ? line : `${line} — met`;
+  }
+  if (standing.needs) return plainNeeds(standing.needs);
+  if (card.needs) {
+    const prior = getPilotCard(card.needs);
+    const name = prior && prior.name ? prior.name : 'an earlier skill';
+    return standing.state === 'locked' ? `Needs ${name} first` : `Follows ${name} — yours`;
+  }
+  const branchName = (getPilotBranch(card.branch) || {}).name || 'this branch';
+  const gate = card.tier === 2 ? `2 points in ${branchName}`
+    : card.tier === 3 ? `4 points in ${branchName}`
+      : card.tier === 'capstone' ? `6 points in ${branchName}` : '';
+  if (!gate) return 'No earlier skill';
+  return standing.state === 'locked' ? `Opens with ${gate}` : `Opened with ${gate}`;
+}
+
+function costOf(view, shown) {
+  if (shown === 'taken') return view.door === 'swarm' ? 'Spent 1 point this run' : 'Spent 1 point';
+  return '1 point';
+}
+
+function stateLabelOf(view, shown) {
+  if (shown === 'taken') return 'Yours';
+  if (shown === 'open') return 'Available';
+  return view.door === 'swarm' ? 'Not taken' : 'Locked';
+}
+
+function doorLineOf(view) {
+  if (view.door === 'swarm') {
+    return view.runOver ? 'This run only. It does not carry forward' : 'This run only. Cards spend the points';
+  }
+  return 'Your pilot. It stays';
+}
+
+/** The line under the title: which door this is, and an honest start when nothing is earned. */
+export function pilotTreeIntro(view) {
+  const toGo = Math.max(0, Math.round((Number(view.nextXp) || 0) - (Number(view.xp) || 0)));
+  if (view.door === 'swarm') {
+    if (view.runOver) {
+      return view.taken === 0
+        ? 'Swarm run, over. No skills taken. The next run starts empty.'
+        : 'Swarm run, over. The lit skills are this run\'s. The next run starts empty.';
+    }
+    if (view.taken === 0) {
+      return 'Swarm run. No skills yet. Points are spent on the level-up cards, not here.';
+    }
+    return 'Swarm run. Points are spent on the level-up cards, not here. Nothing carries to the next run.';
+  }
+  if (view.taken === 0 && view.banked === 0 && view.level <= 1 && !(view.xp > 0)) {
+    const wait = toGo > 0 ? ` The first point is ${toGo.toLocaleString()} XP away.` : '';
+    return `Adventure. No skills yet.${wait} Fight, haul, mine, trade and explore.`;
+  }
+  if (view.banked > 0) {
+    const n = view.banked === 1 ? 'One point' : `${view.banked.toLocaleString()} points`;
+    return `Adventure. ${n} to spend on any available skill. They stay on your pilot.`;
+  }
+  if (toGo > 0) return `Adventure. Next point in ${toGo.toLocaleString()} XP. Skills stay on your pilot.`;
+  return 'Adventure. No point is waiting. Skills stay on your pilot.';
+}
+
+/** The reading for a node: effect, cost, prerequisite, state, and the one verb. */
 export function pilotNodeReading(view, id) {
   const node = view.nodes.find((n) => n.id === id);
   if (!node) return null;
   const card = node.card;
   const st = view.standing[id] || { state: 'locked', needs: '' };
+  const shown = pilotShownState(view, id);
   const evolution = card.kind === 'evolution';
   const branch = getPilotBranch(evolution ? card.requires[0] : card.branch);
   const kicker = evolution
@@ -133,12 +222,14 @@ export function pilotNodeReading(view, id) {
   let action;
   if (st.state === 'taken') action = { enabled: false, label: 'Yours' };
   else if (view.door === 'swarm') action = { enabled: false, label: view.runOver ? 'Not taken this run' : 'Pick it from the level-up cards' };
-  else if (st.state !== 'open') action = { enabled: false, label: st.needs || 'Locked' };
+  else if (st.state !== 'open') action = { enabled: false, label: 'Locked' };
   else if (!view.canSpend) action = { enabled: false, label: 'Earn a level to take it' };
   else action = { enabled: true, label: 'Take it' };
   return {
-    id, name: card.name, text: card.text, build: evolution ? card.build : null,
-    kicker, state: st.state, needs: st.needs, action,
+    id, name: card.name, text: card.text, effect: card.text, build: evolution ? card.build : null,
+    kicker, state: shown, stateLabel: stateLabelOf(view, shown),
+    cost: costOf(view, shown), prerequisite: prerequisiteOf(card, st),
+    doorLine: doorLineOf(view), needs: plainNeeds(st.needs), action,
   };
 }
 
@@ -161,6 +252,7 @@ export const pilotTreeScreen = {
   _els: null,
   _sig: '',
   _takenBefore: null,
+  _changed: '',
 
   mount(rootEl, ctx) {
     injectDeckplate();
@@ -211,7 +303,7 @@ export const pilotTreeScreen = {
     });
     foot.appendChild(back);
     const legend = el('div', 'con-legend');
-    for (const [kind, word] of [['researched', 'Yours'], ['available', 'Open'], ['locked', 'Locked']]) {
+    for (const [kind, word] of [['researched', 'Yours'], ['available', 'Available'], ['locked', 'Locked']]) {
       const item = el('span', 'con-legend__item');
       item.innerHTML = legendStarSvg(kind, starUrl('combat'));
       item.appendChild(el('span', 'con-legend__word', word));
@@ -279,6 +371,7 @@ export const pilotTreeScreen = {
     if (!this._selectedId || !view.nodes.some((n) => n.id === this._selectedId)) this._selectedId = this._defaultId(view);
     this._sig = '';
     this._takenBefore = null;
+    this._changed = '';
     this.refresh(this._ctx);
     if (this._sky) { this._sky.choose(this._selectedId, { instant: true }); this._sky.arrive(); }
     cue('open');
@@ -308,7 +401,16 @@ export const pilotTreeScreen = {
     if (ctx) this._ctx = ctx;
     if (!this._root) return;
     const view = this._view();
-    const pilotSig = `${view.door}|${(view.pilot.nodes || []).join(',')}|${view.banked}|${view.level}|${view.runOver}`;
+    const nowTaken = new Set(view.pilot.nodes || []);
+    if (this._takenBefore) {
+      const names = [...nowTaken].filter((id) => !this._takenBefore.has(id)).map((id) => {
+        const node = view.nodes.find((n) => n.id === id);
+        return node && node.name;
+      }).filter(Boolean);
+      if (names.length === 1) this._changed = `Took ${names[0]}.`;
+      else if (names.length > 1) this._changed = `Took ${names.join(', ')}.`;
+    }
+    const pilotSig = `${view.door}|${(view.pilot.nodes || []).join(',')}|${view.banked}|${view.level}|${view.runOver}|${this._changed}`;
     this._syncHeader(view);
     if (pilotSig !== this._sig) {
       this._sig = pilotSig;
@@ -347,17 +449,8 @@ export const pilotTreeScreen = {
     if (els._level !== view.level) { els._level = view.level; rollTo(els.level, view.level); }
     if (els._points !== view.banked) { els._points = view.banked; rollTo(els.points, view.banked); }
     if (els._taken !== view.taken) { els._taken = view.taken; rollTo(els.taken, view.taken); }
-    let line;
-    if (view.door === 'swarm') {
-      line = view.runOver ? 'This run\'s path, lit. Every run starts the tree empty.'
-        : 'This run so far. Pick skills from the level-up cards.';
-    } else if (view.banked > 0) {
-      line = `${view.banked === 1 ? 'One point' : view.banked + ' points'} to spend: choose any open skill.`;
-    } else {
-      const toGo = Math.max(0, Math.round((view.nextXp || 0) - (view.xp || 0)));
-      line = `Next point in ${toGo.toLocaleString()} XP: fight, haul, mine, trade and explore to earn it.`;
-    }
-    setText(els.sub, line);
+    const changed = this._changed ? ` ${this._changed}` : '';
+    setText(els.sub, pilotTreeIntro(view) + changed);
     const state = this._ctx && this._ctx.state;
     const docked = !!(state && ((state.player && state.player.flags && state.player.flags.docked) || (state.ui && state.ui.docked)));
     const canRespec = view.door === 'adventure' && docked && view.taken > 0;
@@ -369,10 +462,24 @@ export const pilotTreeScreen = {
     const select = this._els && this._els.select;
     if (!select) return;
     select.innerHTML = '';
+    const groups = new Map();
     for (const n of view.nodes) {
-      const option = el('option', '', n.name);
-      option.value = n.id;
-      select.appendChild(option);
+      const key = n.card && n.card.kind === 'evolution'
+        ? 'Evolutions'
+        : ((view.branches.find((b) => b.id === n.branch) || {}).label || 'Skills');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(n);
+    }
+    for (const [label, list] of groups) {
+      const group = el('optgroup');
+      group.label = label;
+      for (const n of list) {
+        const word = stateLabelOf(view, pilotShownState(view, n.id));
+        const option = el('option', '', `${n.name} — ${word}`);
+        option.value = n.id;
+        group.appendChild(option);
+      }
+      select.appendChild(group);
     }
     select.value = this._selectedId || '';
   },
@@ -385,7 +492,7 @@ export const pilotTreeScreen = {
     const glyphs = {};
     const art = {};
     for (const n of view.nodes) {
-      const st = view.standing[n.id].state;
+      const st = pilotShownState(view, n.id);
       states[n.id] = st === 'taken' ? 'researched' : st === 'open' ? 'available' : 'locked';
       ready[n.id] = st === 'open' && view.canSpend;
       costs[n.id] = view.canSpend && st === 'open' ? '1 point' : '';
@@ -433,21 +540,25 @@ export const pilotTreeScreen = {
     }
     const active = typeof document !== 'undefined' ? document.activeElement : null;
     const hadFocus = !!(active && els.actions.contains && els.actions.contains(active));
-    const stateWord = r.state === 'taken' ? 'Yours.' : r.state === 'open' ? 'Open.' : 'Locked.';
+    const skyState = r.state === 'taken' ? 'researched' : r.state === 'open' ? 'available' : 'locked';
+    const reason = [r.stateLabel, r.effect, r.cost, r.prerequisite].filter(Boolean).join('. ');
     els.selected.innerHTML = `
       <p class="con-dossier__kicker">${escapeHtml(r.kicker)}</p>
       <h2 class="con-dossier__name">${escapeHtml(r.name)}</h2>
-      <p class="con-dossier__state" data-state="${escapeHtml(r.state === 'taken' ? 'researched' : r.state === 'open' ? 'available' : 'locked')}">${escapeHtml(stateWord)}</p>
-      <p class="con-sentence con-dossier__verb">${escapeHtml(r.text)}</p>
+      <p class="con-sentence">${escapeHtml(r.doorLine)}.</p>
+      <p class="con-dossier__state" data-state="${escapeHtml(skyState)}">${escapeHtml(r.stateLabel)}.</p>
+      <p class="con-sentence con-dossier__verb">${escapeHtml(r.effect)}</p>
       ${r.build ? `<p class="con-sentence con-dossier__rider">The build: ${escapeHtml(r.build)}.</p>` : ''}
-      ${r.needs && r.state !== 'taken' ? `<div class="con-caps">Needs</div><p class="con-sentence">${escapeHtml(r.needs)}.</p>` : ''}
+      <div class="con-caps">Cost</div>
+      <p class="con-sentence">${escapeHtml(r.cost)}.</p>
+      <div class="con-caps">Needs</div>
+      <p class="con-sentence">${escapeHtml(r.prerequisite)}.</p>
     `;
     els.actions.innerHTML = r.action.enabled
       ? `<button class="con-unlock tt-unlock" data-act="take" aria-label="Take ${escapeHtml(r.name)} for one point">${escapeHtml(r.action.label)}</button>`
-      : `<button class="con-why" aria-disabled="true" tabindex="0" aria-label="${escapeHtml(r.action.label)}">${escapeHtml(r.action.label)}</button>`;
-    els.actions.dataset.state = r.state;
-    const verb = els.selected.querySelector('.con-dossier__state');
-    if (verb) verb.insertAdjacentElement('afterend', els.actions);
+      : `<button class="con-why" aria-disabled="true" tabindex="0" aria-label="${escapeHtml(reason)}">${escapeHtml(r.action.label)}</button>`;
+    els.actions.dataset.state = skyState;
+    els.selected.appendChild(els.actions);
     const btn = els.actions.querySelector('button[data-act="take"]');
     if (btn) dressLampKey(btn);
     if (hadFocus) {

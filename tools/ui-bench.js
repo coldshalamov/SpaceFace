@@ -17,6 +17,8 @@ import { missions } from '../src/systems/missions.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { createRunState } from '../src/core/runState.js';
+import { createAdventurePilot } from '../src/data/pilotAdventure.js';
+import { getPilotCard, isPilotCardEligible } from '../src/data/pilotTree.js';
 import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS, applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
 import { TECH_NODES } from '../src/data/tech.js';
@@ -434,11 +436,38 @@ const PILOT_TREE_BENCH_NODES = Object.freeze({
     'rigger_long_reel', 'rigger_quick_latch', 'rigger_sweet_spot', 'rigger_crane', 'evolution_orbital_saw', 'gunner_gold_thread'],
 });
 let pilotTreeRunSaved = null;
+let pilotTreeIntentBound = false;
+/** The bench has no run owner. Apply the same spend the Adventure screen asks for, so Take it changes the picture. */
+function bindPilotTreeBenchIntent() {
+  if (pilotTreeIntentBound) return;
+  pilotTreeIntentBound = true;
+  bus.on('pilot:nodeRequested', (payload) => {
+    const run = state.run;
+    if (run && run.kind && run.kind !== 'adventure') return;
+    const pilot = state.player && state.player.pilot;
+    if (!pilot || !(pilot.banked > 0)) return;
+    const card = getPilotCard(payload && payload.nodeId);
+    if (!card || !isPilotCardEligible(card, pilot, 'adventure')) return;
+    pilot.nodes = (pilot.nodes || []).concat(card.id);
+    pilot.points = { ...(pilot.points || {}) };
+    if (card.kind !== 'evolution') pilot.points[card.branch] = (pilot.points[card.branch] || 0) + 1;
+    pilot.banked -= 1;
+  });
+}
 function seedPilotTreeShot(shot) {
   const kind = shot && shot.pilotTree;
   if (!kind) {
     delete state.player.pilot;
     if (pilotTreeRunSaved) { Object.assign(state.run, pilotTreeRunSaved); delete state.run.pilot; pilotTreeRunSaved = null; }
+    return;
+  }
+  if (kind === 'fresh') {
+    if (!pilotTreeRunSaved) pilotTreeRunSaved = { kind: state.run.kind, phase: state.run.phase, level: state.run.level };
+    delete state.run.pilot;
+    state.run.kind = 'adventure';
+    state.run.phase = 'inactive';
+    state.player.pilot = createAdventurePilot();
+    bindPilotTreeBenchIntent();
     return;
   }
   const nodes = PILOT_TREE_BENCH_NODES[kind] || [];
@@ -447,6 +476,7 @@ function seedPilotTreeShot(shot) {
   if (kind === 'adventure') {
     delete state.player.pilot;
     state.player.pilot = { schema: 1, xp: 5200, level: 12, points, nodes: nodes.slice(), banked: 2, respecs: 0 };
+    bindPilotTreeBenchIntent();
     return;
   }
   delete state.player.pilot;
@@ -1330,8 +1360,9 @@ async function goto(rawId) {
     state.settings.accessibility.textScale = shot.textScale;
     applyTextScaleFromSettings(state.settings);
   }
-  // A shot with `pilotTree` mounts a pilot: 'adventure' (some hours in, two points to spend),
-  // 'swarm' (a run in progress) or 'run-over' (the run's path, lit). Cleared on every other shot.
+  // A shot with `pilotTree` mounts a pilot: 'fresh' (a new Adventure pilot), 'adventure'
+  // (some hours in, two points to spend), 'swarm' (a run in progress) or 'run-over'
+  // (the run's path, lit). Cleared on every other shot.
   seedPilotTreeShot(shot);
   clearOverlayHost();
   if (id !== 'bootOverlay') hideBenchLoading();
