@@ -1645,7 +1645,7 @@ export const weapons = {
     } else if (fireGate && fireGate.target && fireGate.target.pos) {
       beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
       const bareDir = this._hardpointDir(e, w, beamAim, 0);
-      solutionBlocked = !arcadeAim && !pilotAim && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
+      solutionBlocked = !arcadeAim && !pilotAim && def.id !== 'wpn_incinerator_m' && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
     }
     if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
@@ -1670,7 +1670,8 @@ export const weapons = {
     }
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
-    const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
+    const twinThermal = def.id === 'wpn_incinerator_m';
+    const dir = twinThermal ? e.rot : (arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0));
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     // RW-01: a siege-class beam pushes its firing hull backward for as long as it holds the beam.
@@ -1692,6 +1693,29 @@ export const weapons = {
       : w;
     const damageType = w.damageType || def.damageType || 'energy';
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
+    if (twinThermal) {
+      // A battery spends heat/cap once. Two parallel rays each own half of the advertised DPS
+      // and their own independent first-skin contact and release key. Never aim at the mouse.
+      const origins = incineratorBeamOrigins(e, origin);
+      for (let side = 0; side < origins.length; side++) {
+        const key = beamKey + ':incinerator:' + side;
+        const phase = this._beamFiringPrev.has(key) ? 'update' : 'begin';
+        this._beamFiring.add(key);
+        if (!this._beamActiveMeta.has(key)) this._beamActiveMeta.set(key, {
+          beamKey: key, ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
+        });
+        const from = origins[side];
+        const endpoint = { x: from.x + Math.cos(dir) * range, z: from.z + Math.sin(dir) * range };
+        if (state.combat && Array.isArray(state.combat.beams)) state.combat.beams.push({
+          ownerId: e.id, sourceLife: occupantGenerationOf(e), sourceTeam: e.team, factionId: e.factionId,
+          weaponId: w.defId, from, to: endpoint, dmgType: damageType, dpsThisTick: damage / 2,
+          damagePacket: beamDamagePacket(wForPacket, def, damage / 2, damageType, dt),
+          beamKey: key, twinThermal: true, hardpointIdx: w.slotIndex, dir, range, phase,
+        });
+      }
+      // Combat publishes each final ray on the existing fire channel after resolving cover.
+      return capLeft;
+    }
     const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
     this._beamFiring.add(beamKey);
     let beamMeta = this._beamActiveMeta.get(beamKey);
@@ -3827,6 +3851,21 @@ function resetWeaponDiagnostics(diag) {
   if (!diag) return;
   diag.autoFireSpatialQueries = 0;
   diag.autoFireCandidates = 0;
+}
+
+/** Symmetric nose apertures in the simulation plane. The muzzle supplies authored longitudinal
+ * reach when available; never inherit its lateral offset (a fitted side mount is not the nose).
+ */
+export function incineratorBeamOrigins(ship, muzzle) {
+  const dir = Number.isFinite(ship.rot) ? ship.rot : 0;
+  const c = Math.cos(dir), s = Math.sin(dir);
+  const r = Math.max(2, Number(ship.radius) || 6);
+  const forward = Math.max(r * 0.52, (muzzle.x - ship.pos.x) * c + (muzzle.z - ship.pos.z) * s);
+  const lateral = Math.max(1.2, r * 0.32);
+  const x = ship.pos.x + c * forward, z = ship.pos.z + s * forward;
+  const y = Number.isFinite(muzzle.y) ? muzzle.y : 0.35;
+  return [{ x: x + s * lateral, z: z - c * lateral, y },
+    { x: x - s * lateral, z: z + c * lateral, y }];
 }
 
 /** One tick of a continuous beam: the authored packet plus its share of the armor window. */

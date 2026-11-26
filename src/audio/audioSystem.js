@@ -1755,7 +1755,8 @@ export function recipeForWeapon(weaponId) {
     // variant), then the tables above turn it into a voice.
     const presentation = classifyWeaponFamily(weaponId, def);
     // INST-34: a sustained beam whose per-hit momentum is capital-scale reads the heavy register.
-    if (presentation.family === 'beam' && (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN) {
+    if (presentation.family === 'beam' && (presentation.variant === 'incinerator-beam'
+      || (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN)) {
       return 'sfx_wpn_heavy_beam';
     }
     return WEAPON_VARIANT_RECIPE[presentation.variant]

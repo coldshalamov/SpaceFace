@@ -57,6 +57,32 @@ export function createWeaponImpactVfxMethods({
       // A sustained beam gets one source ignition. The pool's actual inactive→active transition is
       // authoritative, so malformed or compatibility receipts cannot strobe merely by omitting
       // phase:'update'.
+      if (p.weaponId === 'wpn_incinerator_m' && p.thermalContact === 'material') {
+        // Each ray has its own hot work face, but emits at a capped presentation cadence.
+        const key = String(p.ownerId) + ':thermal-seat:' + p.beamKey;
+        const now = Number(this.state?.simTime) || this._t;
+        if (now >= (this._beamDamageCueNext.get(key) || 0)) {
+          this._beamDamageCueNext.set(key, now + 0.09);
+          const x = p.to.x, z = p.to.z, back = base + Math.PI;
+          const dx = Math.cos(back), dz = Math.sin(back);
+          const reduced = this._isReduced();
+          this._spawnSprite(SPR_COMBUSTION, x, 0.30, z, 0.24, 1.2, 3.0,
+            reduced ? 0.28 : 0.8, 0, '#ff4d16', dx * 5, dz * 5, 1.65, back);
+          this._spawnSprite(SPR_PUFF, x, 0.15, z, 0.48, 1.1, 4.2,
+            0.4, 0, '#49302b', dx * 5, dz * 5, 1.7, back);
+          if (!reduced) {
+            this._spawnSprite(SPR_FLASH, x, 0.38, z, 0.10, 1.15, 2.8,
+              0.82, 0, '#fff1c8', 0, 0, 1.25, base);
+            for (let i = 0; i < 4; i++) {
+              const a = back + (i - 1.5) * 0.48;
+              const vx = Math.cos(a), vz = Math.sin(a);
+              this._spawnProjectileTrailStreak(x, 0.30, z, 0.18, 0.16, 3.1,
+                0.85, i % 2 ? '#ff7730' : '#fff0a8', vx * 30, vz * 30, vx, vz);
+            }
+            this._eventLight({ x, z }, 'impact', { color: '#ff381c', sizeMul: 1.25 });
+          }
+        }
+      }
       if (this._combatBeams.startCount === startsBefore) return;
     }
     const burst = this._burst || 1;

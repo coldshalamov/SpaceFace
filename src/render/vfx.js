@@ -4346,8 +4346,8 @@ export const vfx = {
       }
     }
     if (impactProfile.family === 'beam') {
-      if (this._combatBeams) this._combatBeams.retarget(p, this._t);
-      const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}`;
+      if (this._combatBeams && p.weaponId !== 'wpn_incinerator_m') this._combatBeams.retarget(p, this._t);
+      const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}${p.origin?.beamKey ? ':' + p.origin.beamKey : ''}`;
       const now = Number(this.state && this.state.simTime) || this._t;
       if (!p.brokeShield && now < (this._beamDamageCueNext.get(cueKey) || 0)) return;
       this._beamDamageCueNext.set(cueKey, now + 0.08);

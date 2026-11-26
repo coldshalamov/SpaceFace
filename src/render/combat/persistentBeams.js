@@ -384,15 +384,16 @@ export class PersistentCombatBeamPool {
     // material on frame zero to avoid the black first-frame failure in a normal-speed capture.
     const birthIntensity = 0.24 + 0.76 * birth;
     this._color.set(colorValue(profile && profile.coreColor, 0xffffff));
-    entry.coreR = this._color.r;
-    entry.coreG = this._color.g;
-    entry.coreB = this._color.b;
+    const radiance = Math.max(1, finite(profile && profile.beamRadiance, 1));
+    entry.coreR = this._color.r * radiance;
+    entry.coreG = this._color.g * radiance;
+    entry.coreB = this._color.b * radiance;
     this._writeSlotColor(this._coreBatch, entry.slot,
       entry.coreR * birthIntensity, entry.coreG * birthIntensity, entry.coreB * birthIntensity);
     this._color.set(colorValue(profile && profile.accentColor, 0x66ccff));
-    entry.haloR = this._color.r;
-    entry.haloG = this._color.g;
-    entry.haloB = this._color.b;
+    entry.haloR = this._color.r * radiance;
+    entry.haloG = this._color.g * radiance;
+    entry.haloB = this._color.b * radiance;
     this._writeSlotColor(this._haloBatch, entry.slot,
       entry.haloR * birthIntensity, entry.haloG * birthIntensity, entry.haloB * birthIntensity);
     this._commitBatch(this._coreBatch);
@@ -408,6 +409,9 @@ export class PersistentCombatBeamPool {
     for (const entry of this._entries) {
       if (!entry.active || entry.ownerId !== ownerId) continue;
       if (payload.weaponId != null && entry.weaponId !== payload.weaponId) continue;
+      if (payload.beamKey != null && entry.key !== String(payload.beamKey)) continue;
+      // Incinerator fire receipts already carry independently resolved endpoints.
+      if (entry.weaponId === 'wpn_incinerator_m' && payload.beamKey == null) continue;
       entry.toX = finite(payload.pos.x, entry.toX);
       entry.toZ = finite(payload.pos.z, entry.toZ);
       entry.lastSeen = finite(timeS, entry.lastSeen);
@@ -460,7 +464,9 @@ export class PersistentCombatBeamPool {
         matricesChanged = true;
         continue;
       }
-      if (socketOf && entry.ownerId != null) {
+      // The ordinary resolver has one shared weapon socket; applying it to a twin battery
+      // collapses its two authoritative apertures into one. Keep the simulation seats.
+      if (socketOf && entry.ownerId != null && entry.weaponId !== 'wpn_incinerator_m') {
         const socket = socketOf(entry);
         if (socket && Number.isFinite(socket.x) && Number.isFinite(socket.z)) {
           // XZ ONLY, deliberately. SOCKET_Weapon_Front sits anywhere from y 0.0 to 0.82 depending
@@ -493,7 +499,7 @@ export class PersistentCombatBeamPool {
         : 1;
       const width = Math.max(
         (reducedFlash ? 0.55 : 0.85) * entry.widthMul * birthWidth * coolWidth,
-        cameraFloor || 0,
+        entry.weaponId === 'wpn_incinerator_m' ? Math.min(1.3, cameraFloor || 0) : (cameraFloor || 0),
       );
       this._writeSlotQuad(this._coreBatch, entry.slot, ax, az, bx, bz, entry.y, width, length);
       this._writeSlotQuad(this._haloBatch, entry.slot, ax, az, bx, bz, entry.y - 0.01, width * 3.4, length);
